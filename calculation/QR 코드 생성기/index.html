@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR 코드 생성기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- QR 코드 생성 라이브러리 (UMD, 전역 qrcode 노출 → canvas에 직접 렌더링) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <style>
+    /* Tailwind으로 처리 불가한 부분만 커스텀 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+
+    /* 네이티브 color input의 패딩/테두리 정리 */
+    input[type="color"] {
+      -webkit-appearance: none;
+      appearance: none;
+      border: none;
+      padding: 0;
+      background: none;
+      cursor: pointer;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 0.5rem; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ========================================
+    // React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+
+    function Button({ variant = 'primary', size = 'md', disabled = false, onClick, className = '', children, ...rest }) {
+      const base = 'inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+      const variants = {
+        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 shadow-sm',
+        secondary: 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-400',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-400',
+      };
+      const sizes = {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-4 py-2.5 text-sm',
+        lg: 'px-5 py-3 text-base',
+      };
+      return (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Input({ type = 'text', label, value, onChange, placeholder, error, disabled = false, id, className = '' }) {
+      const inputId = id || (label ? `input-${label.replace(/\s/g, '-')}` : undefined);
+      return (
+        <div className={`w-full ${className}`}>
+          {label && (
+            <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-1.5">
+              {label}
+            </label>
+          )}
+          <input
+            id={inputId}
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            aria-invalid={!!error}
+            className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-slate-900 placeholder-slate-400 transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100 ${error ? 'border-red-400' : 'border-slate-300'}`}
+          />
+          {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        </div>
+      );
+    }
+
+    function Textarea({ label, value, onChange, placeholder, rows = 3, id, className = '' }) {
+      const inputId = id || (label ? `ta-${label.replace(/\s/g, '-')}` : undefined);
+      return (
+        <div className={`w-full ${className}`}>
+          {label && (
+            <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-1.5">
+              {label}
+            </label>
+          )}
+          <textarea
+            id={inputId}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            rows={rows}
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder-slate-400 transition resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+      );
+    }
+
+    function Select({ label, value, onChange, options, id, className = '' }) {
+      const inputId = id || (label ? `sel-${label.replace(/\s/g, '-')}` : undefined);
+      return (
+        <div className={`w-full ${className}`}>
+          {label && (
+            <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-1.5">
+              {label}
+            </label>
+          )}
+          <select
+            id={inputId}
+            value={value}
+            onChange={onChange}
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 transition focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
+
+    function ColorField({ label, value, onChange, id }) {
+      const inputId = id || `color-${label.replace(/\s/g, '-')}`;
+      return (
+        <div className="w-full">
+          <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-1.5">
+            {label}
+          </label>
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-xl border border-slate-300 bg-white">
+            <input
+              id={inputId}
+              type="color"
+              value={value}
+              onChange={onChange}
+              className="w-9 h-9 rounded-lg overflow-hidden"
+              aria-label={`${label} 색상 선택`}
+            />
+            <span className="text-sm font-mono text-slate-600 uppercase">{value}</span>
+          </div>
+        </div>
+      );
+    }
+
+    function Card({ className = '', children }) {
+      return (
+        <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function Slider({ label, value, min, max, step = 1, onChange, suffix = '' }) {
+      return (
+        <div className="w-full">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-sm font-medium text-slate-700">{label}</label>
+            <span className="text-sm font-semibold text-indigo-600">{value}{suffix}</span>
+          </div>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={onChange}
+            className="w-full accent-indigo-600 cursor-pointer"
+            aria-label={label}
+          />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 Common / Layout Components
+    // ========================================
+
+    function Header() {
+      return (
+        <header className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 text-white mb-4 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.008v.008H6.75V6.75zm0 9.75h.008v.008H6.75v-.008zm9.75-9.75h.008v.008H16.5V6.75zm-3 7.5h3.75v3.75H13.5v-3.75z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900">QR 코드 생성기</h1>
+          <p className="mt-2 text-slate-500">텍스트나 URL을 입력하면 실시간으로 QR 코드를 만들어 드려요.</p>
+        </header>
+      );
+    }
+
+    function Footer() {
+      return (
+        <footer className="mt-10 text-center text-sm text-slate-400">
+          <p>React + Tailwind CSS · qrcode.js 기반 단일 파일 웹앱</p>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // 📄 Page Component — QR Generator
+    // ========================================
+
+    const ERROR_LEVELS = [
+      { value: 'L', label: 'L — 낮음 (약 7% 복원)' },
+      { value: 'M', label: 'M — 보통 (약 15% 복원)' },
+      { value: 'Q', label: 'Q — 높음 (약 25% 복원)' },
+      { value: 'H', label: 'H — 최고 (약 30% 복원)' },
+    ];
+
+    function EmptyState() {
+      return (
+        <div className="flex flex-col items-center justify-center text-center py-16 px-6 animate-fade-in">
+          <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center mb-5">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-slate-700">QR 코드가 여기에 표시됩니다</h3>
+          <p className="mt-1.5 text-sm text-slate-500 max-w-xs">
+            왼쪽에 텍스트나 URL을 입력하면 자동으로 QR 코드가 생성돼요.
+          </p>
+        </div>
+      );
+    }
+
+    function QRGenerator() {
+      const [text, setText] = useState('');
+      const [size, setSize] = useState(280);
+      const [fgColor, setFgColor] = useState('#1e293b');
+      const [bgColor, setBgColor] = useState('#ffffff');
+      const [level, setLevel] = useState('M');
+      const [error, setError] = useState(null);
+
+      const canvasRef = useRef(null);
+      const trimmed = text.trim();
+      const hasContent = trimmed.length > 0;
+
+      // QR 코드 실시간 렌더링 (canvas)
+      useEffect(() => {
+        if (!hasContent) {
+          setError(null);
+          return;
+        }
+        const canvas = canvasRef.current;
+        if (!canvas || !window.qrcode) return;
+
+        try {
+          // 타입 0 = 데이터 길이에 맞춰 자동 선택, level = 오류 정정 레벨(L/M/Q/H)
+          const qr = window.qrcode(0, level);
+          qr.addData(trimmed);
+          qr.make();
+
+          const count = qr.getModuleCount();
+          const margin = 4; // 여백(모듈 단위) — QR 표준 권장 quiet zone
+          const totalModules = count + margin * 2;
+          const cell = Math.max(1, Math.floor(size / totalModules));
+          const dim = cell * totalModules;
+
+          canvas.width = dim;
+          canvas.height = dim;
+          const ctx = canvas.getContext('2d');
+
+          // 배경 채우기
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, dim, dim);
+
+          // 어두운 모듈 그리기
+          ctx.fillStyle = fgColor;
+          for (let row = 0; row < count; row++) {
+            for (let col = 0; col < count; col++) {
+              if (qr.isDark(row, col)) {
+                ctx.fillRect((col + margin) * cell, (row + margin) * cell, cell, cell);
+              }
+            }
+          }
+          setError(null);
+        } catch (err) {
+          console.error(err);
+          setError('QR 코드를 생성하지 못했어요. 입력 내용이 너무 길거나 오류 정정 레벨이 높을 수 있습니다.');
+        }
+      }, [trimmed, hasContent, size, fgColor, bgColor, level]);
+
+      // PNG 다운로드
+      const handleDownload = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !hasContent) return;
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        const safeName = trimmed.replace(/[^a-zA-Z0-9가-힣]/g, '_').slice(0, 30) || 'qrcode';
+        link.download = `qrcode_${safeName}.png`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, [hasContent, trimmed]);
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* 설정 패널 */}
+          <Card className="p-6 space-y-6">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span className="inline-block w-1.5 h-5 rounded bg-indigo-600"></span>
+              설정
+            </h2>
+
+            <Textarea
+              label="텍스트 또는 URL"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="예) https://example.com 또는 안녕하세요"
+              rows={3}
+            />
+
+            <Slider
+              label="크기"
+              value={size}
+              min={120}
+              max={500}
+              step={10}
+              onChange={(e) => setSize(Number(e.target.value))}
+              suffix="px"
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <ColorField label="전경색" value={fgColor} onChange={(e) => setFgColor(e.target.value)} />
+              <ColorField label="배경색" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+            </div>
+
+            <Select
+              label="오류 정정 레벨"
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              options={ERROR_LEVELS}
+            />
+
+            {error && (
+              <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700" role="alert">
+                {error}
+              </div>
+            )}
+          </Card>
+
+          {/* 미리보기 패널 */}
+          <Card className="p-6 flex flex-col">
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2 mb-4">
+              <span className="inline-block w-1.5 h-5 rounded bg-indigo-600"></span>
+              미리보기
+            </h2>
+
+            <div className="flex-1 flex flex-col items-center justify-center">
+              {hasContent ? (
+                <div className="flex flex-col items-center gap-6 animate-fade-in w-full">
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 inline-flex">
+                    {/* canvas는 항상 마운트 유지 (ref 안정성), 보이기만 토글하지 않음 */}
+                    <canvas
+                      ref={canvasRef}
+                      className="rounded-lg max-w-full h-auto"
+                      role="img"
+                      aria-label="생성된 QR 코드"
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={handleDownload}
+                    disabled={!!error}
+                    className="w-full sm:w-auto"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    PNG로 다운로드
+                  </Button>
+                </div>
+              ) : (
+                <EmptyState />
+              )}
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App Component
+    // ========================================
+
+    function App() {
+      return (
+        <div className="min-h-screen px-4 py-10 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto">
+            <Header />
+            <QRGenerator />
+            <Footer />
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
