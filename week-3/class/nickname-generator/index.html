@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 별명 생성기 ✨</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 결과 카드 등장 애니메이션 (Tailwind로 표현하기 어려운 지연 애니메이션) */
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .card-enter { animation: popIn 0.35s ease-out backwards; }
+
+    /* 로딩 스피너 */
+    @keyframes spin360 { to { transform: rotate(360deg); } }
+    .spinner { animation: spin360 0.8s linear infinite; }
+
+    /* 부드러운 그라데이션 배경 흐름 */
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50%      { background-position: 100% 50%; }
+    }
+    .animated-bg {
+      background: linear-gradient(135deg, #fce7f3, #ede9fe, #e0f2fe, #fef3c7);
+      background-size: 300% 300%;
+      animation: gradientShift 18s ease infinite;
+    }
+  </style>
+</head>
+<body class="animated-bg min-h-screen text-slate-800">
+
+  <main class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+
+    <!-- 헤더 -->
+    <header class="text-center mb-8">
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">
+        ✨ AI 별명 생성기
+      </h1>
+      <p class="mt-2 text-slate-600 text-sm sm:text-base">
+        이름·성격·취미를 알려주면, 딱 맞는 별명을 여러 개 짓고<br class="hidden sm:block">
+        별명에 어울리는 캐릭터 그림까지 그려드려요! 🎨
+      </p>
+    </header>
+
+    <!-- 입력 폼 카드 -->
+    <section class="bg-white/80 backdrop-blur rounded-3xl shadow-lg shadow-purple-200/50 p-5 sm:p-7">
+      <form id="nickname-form" class="space-y-4" novalidate>
+
+        <div>
+          <label for="name" class="block text-sm font-semibold mb-1.5">이름 <span class="text-pink-500">*</span></label>
+          <input id="name" name="name" type="text" maxlength="40" autocomplete="off"
+            placeholder="예: 민지"
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-200">
+        </div>
+
+        <div>
+          <label for="personality" class="block text-sm font-semibold mb-1.5">성격 <span class="text-pink-500">*</span></label>
+          <input id="personality" name="personality" type="text" maxlength="200" autocomplete="off"
+            placeholder="예: 밝고 엉뚱하지만 은근 꼼꼼함"
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-200">
+        </div>
+
+        <div>
+          <label for="hobby" class="block text-sm font-semibold mb-1.5">취미 <span class="text-pink-500">*</span></label>
+          <input id="hobby" name="hobby" type="text" maxlength="200" autocomplete="off"
+            placeholder="예: 베이킹, 고양이 영상 보기"
+            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-200">
+        </div>
+
+        <!-- 스타일 선택 -->
+        <div>
+          <span class="block text-sm font-semibold mb-2">별명 스타일</span>
+          <div id="style-options" class="flex flex-wrap gap-2">
+            <!-- 스타일 버튼은 client.js 가 /api/styles 결과로 동적 생성합니다 -->
+            <span class="text-xs text-slate-400">스타일 불러오는 중…</span>
+          </div>
+        </div>
+
+        <!-- 생성 버튼 -->
+        <button id="submit-btn" type="submit"
+          class="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-purple-500 px-4 py-3 text-white font-bold text-sm shadow-md shadow-purple-300/50 transition hover:from-pink-600 hover:to-purple-600 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed">
+          <span id="submit-spinner" class="spinner hidden h-4 w-4 rounded-full border-2 border-white/40 border-t-white"></span>
+          <span id="submit-label">✨ 별명 생성하기</span>
+        </button>
+
+        <!-- 폼 에러 메시지 -->
+        <p id="form-error" class="hidden text-sm text-red-500 text-center"></p>
+      </form>
+    </section>
+
+    <!-- 결과 영역 -->
+    <section id="result-section" class="mt-8 space-y-3" aria-live="polite"></section>
+
+    <footer class="mt-10 text-center text-xs text-slate-400">
+      OpenAI gpt-4o-mini(별명) · gpt-image-1(캐릭터) 기반 · 재미로 즐겨주세요 😊
+    </footer>
+
+  </main>
+
+  <!-- 클라이언트 로직 -->
+  <script src="client.js"></script>
+</body>
+</html>

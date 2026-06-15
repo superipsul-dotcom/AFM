@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎨 MyMidjourney — 나만의 AI 화가</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    /* 로딩 스피너 회전 애니메이션 (Tailwind animate-spin으로도 가능하지만 명시) */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      animation: spin 0.9s linear infinite;
+    }
+
+    /* 결과 등장 애니메이션 */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .result-enter {
+      animation: fadeInUp 0.4s ease-out;
+    }
+
+    /* 부드러운 스크롤바 */
+    body::-webkit-scrollbar { width: 8px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb {
+      background: rgba(167, 139, 250, 0.35);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ========================================
+    // React Hooks 추출
+    // ========================================
+    const { useState, useCallback } = React;
+
+    // ========================================
+    // 🎨 미리 정해둔 화풍 프리셋 (UI 표시용)
+    // 실제 화풍 묘사(suffix)는 서버에서 프롬프트에 붙입니다.
+    // 여기 key 값은 서버의 STYLE_PRESETS key 와 일치해야 합니다.
+    // ========================================
+    const STYLES = [
+      { key: 'ghibli',     emoji: '🌿', label: '지브리풍 애니메이션', desc: '따뜻하고 몽환적인 손그림 애니' },
+      { key: 'watercolor', emoji: '🎨', label: '수채화 일러스트',     desc: '부드럽게 번지는 물감 느낌' },
+      { key: 'cyberpunk',  emoji: '🌃', label: '사이버펑크 네온',     desc: '네온이 빛나는 미래 도시' },
+      { key: 'oil',        emoji: '🖼️', label: '유화 명화',           desc: '두꺼운 붓터치의 고전 명화' },
+    ];
+    const DEFAULT_STYLE = 'ghibli';
+
+    // 프롬프트 입력 예시 (placeholder 회전용)
+    const PROMPT_EXAMPLES = [
+      '창가에서 잠든 고양이',
+      '비 내리는 도시의 밤거리',
+      '노을 지는 바닷가의 작은 등대',
+      '꽃이 만발한 봄날의 정원',
+    ];
+
+    // ========================================
+    // 🌐 백엔드 API 호출 (POST /api/generate)
+    // ========================================
+    async function generateImage(prompt, style, count) {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, style, count }),
+      });
+
+      let body = null;
+      try {
+        body = await res.json();
+      } catch (_) {
+        /* JSON 파싱 실패 */
+      }
+
+      if (!res.ok || !body || !body.success) {
+        const message = (body && body.message) || '이미지를 생성하지 못했어요. 잠시 후 다시 시도해 주세요.';
+        throw new Error(message);
+      }
+      return body.data; // { imageUrls, count, style, styleLabel, finalPrompt }
+    }
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+
+    // 화풍 선택 칩 버튼
+    function StyleChip({ style, selected, onSelect, disabled }) {
+      return (
+        <button
+          type="button"
+          onClick={() => onSelect(style.key)}
+          disabled={disabled}
+          aria-pressed={selected}
+          className={
+            'text-left px-4 py-3 rounded-2xl border transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ' +
+            (selected
+              ? 'bg-gradient-to-br from-violet-500 to-indigo-500 border-transparent text-white shadow-md'
+              : 'bg-white/80 border-violet-200 text-slate-700 shadow-sm hover:bg-violet-50 hover:border-violet-300')
+          }
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{style.emoji}</span>
+            <span className="font-semibold text-sm">{style.label}</span>
+          </div>
+          <p className={'text-[11px] mt-1 leading-snug ' + (selected ? 'text-violet-100' : 'text-slate-400')}>
+            {style.desc}
+          </p>
+        </button>
+      );
+    }
+
+    // 로딩 스피너
+    function Spinner() {
+      return (
+        <span
+          className="spinner inline-block w-5 h-5 border-2 border-white/40 border-t-white rounded-full"
+          aria-hidden="true"
+        ></span>
+      );
+    }
+
+    // 빈 상태 (placeholder 캔버스)
+    function EmptyCanvas() {
+      return (
+        <div className="flex flex-col items-center justify-center text-center py-16 px-6 text-slate-400">
+          <div className="text-5xl mb-3">🖼️</div>
+          <p className="text-sm leading-relaxed">
+            아직 그려진 그림이 없어요.<br />
+            화풍을 고르고 장면을 입력한 뒤 <span className="font-semibold text-violet-500">✨ 이미지 생성</span>을 눌러보세요.
+          </p>
+        </div>
+      );
+    }
+
+    // 로딩 캔버스
+    function LoadingCanvas() {
+      return (
+        <div className="result-enter flex flex-col items-center justify-center text-center py-16 px-6">
+          <span className="spinner inline-block w-10 h-10 border-4 border-violet-200 border-t-violet-500 rounded-full mb-4"></span>
+          <p className="text-violet-600 font-medium">🎨 그림을 그리는 중이에요... (장수가 많으면 1분 이상 걸릴 수 있어요)</p>
+          <p className="text-xs text-slate-400 mt-1">AI 화가가 붓을 들었어요. 잠시만 기다려 주세요.</p>
+        </div>
+      );
+    }
+
+    // 에러 박스
+    function ErrorBox({ message }) {
+      return (
+        <div className="result-enter mx-1 my-2 px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm leading-relaxed flex items-start gap-2">
+          <span className="text-lg leading-none mt-0.5" aria-hidden="true">⚠️</span>
+          <p className="whitespace-pre-wrap break-words">{message}</p>
+        </div>
+      );
+    }
+
+    // 결과 이미지 카드 (1~4장 그리드 표시)
+    function ResultCard({ result }) {
+      const urls = result.imageUrls || [];
+      const multi = urls.length > 1;
+      return (
+        <div className="result-enter">
+          <div className={multi ? 'grid grid-cols-2 gap-3' : ''}>
+            {urls.map((url, i) => (
+              <div key={i} className="relative">
+                <img
+                  src={url}
+                  alt={`${result.finalPrompt} (${i + 1})`}
+                  className="w-full rounded-2xl shadow-lg border border-violet-100"
+                />
+                <a
+                  href={url}
+                  download={`mymidjourney-${i + 1}.png`}
+                  className="absolute bottom-2 right-2 px-2 py-1 rounded-full bg-white/90 backdrop-blur border border-violet-200 text-violet-600 text-[11px] font-semibold hover:bg-white shadow-sm transition"
+                >
+                  ↓ 저장
+                </a>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 px-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold">
+                🎨 {result.styleLabel}
+              </span>
+              <span className="px-2.5 py-1 rounded-full bg-violet-50 text-violet-500 text-xs font-medium">
+                🖼️ {urls.length}장
+              </span>
+            </div>
+            <p className="text-[13px] text-slate-500 mt-2 leading-relaxed break-words">
+              <span className="font-semibold text-slate-600">입력한 장면:</span> {result.finalPrompt}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 Header
+    // ========================================
+    function Header() {
+      return (
+        <header className="text-center mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center justify-center gap-2">
+            <span>🎨</span>
+            <span className="bg-gradient-to-r from-violet-600 to-indigo-500 bg-clip-text text-transparent">
+              MyMidjourney
+            </span>
+          </h1>
+          <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+            나만의 AI 화가 · 원하는 장면을 입력하면 '미리 정해둔 화풍'으로 그려드려요.
+          </p>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 📄 메인 페이지 (상태 & 비즈니스 로직)
+    // ========================================
+    function StudioPage() {
+      const [style, setStyle] = useState(DEFAULT_STYLE);
+      const [count, setCount] = useState(1);
+      const [prompt, setPrompt] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState('');
+
+      // placeholder 예시는 마운트 시 한 번 무작위로 고름
+      const [placeholder] = useState(
+        () => PROMPT_EXAMPLES[Math.floor(Math.random() * PROMPT_EXAMPLES.length)]
+      );
+
+      const handleGenerate = useCallback(async () => {
+        const text = prompt.trim();
+        if (!text || loading) return;
+
+        setLoading(true);
+        setError('');
+        setResult(null);
+
+        try {
+          const data = await generateImage(text, style, count);
+          setResult(data);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, [prompt, style, count, loading]);
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        handleGenerate();
+      };
+
+      // Ctrl/Cmd + Enter 로도 생성
+      const handleKeyDown = (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          e.preventDefault();
+          handleGenerate();
+        }
+      };
+
+      return (
+        <div className="w-full max-w-2xl mx-auto px-4 py-8">
+          <Header />
+
+          <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-xl border border-violet-100 p-5 sm:p-7">
+            {/* 화풍 선택 */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                1. 화풍 고르기
+                <span className="ml-1 text-xs font-normal text-slate-400">(미리 정해둔 4가지 스타일)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {STYLES.map((s) => (
+                  <StyleChip
+                    key={s.key}
+                    style={s}
+                    selected={style === s.key}
+                    onSelect={setStyle}
+                    disabled={loading}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* 프롬프트 입력 */}
+            <form onSubmit={handleSubmit}>
+              <label htmlFor="prompt" className="block text-sm font-semibold text-slate-700 mb-2">
+                2. 어떤 장면을 그릴까요?
+              </label>
+              <textarea
+                id="prompt"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={3}
+                placeholder={`예) ${placeholder}`}
+                aria-label="그리고 싶은 장면 입력"
+                disabled={loading}
+                className="w-full resize-none px-4 py-3 rounded-2xl border border-violet-200 bg-white text-slate-700 text-[15px] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-transparent leading-relaxed disabled:opacity-60"
+              />
+              <p className="text-[11px] text-slate-400 mt-1.5 px-1">
+                💡 영어로 입력하면 더 정확하게 그려져요. (예: "a cat sleeping by the window")
+              </p>
+
+              {/* 장수 선택 (1~4) */}
+              <div className="mt-4">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  3. 몇 장 그릴까요?
+                  <span className="ml-1 text-xs font-normal text-slate-400">(많을수록 시간·비용 ↑)</span>
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCount(c)}
+                      disabled={loading}
+                      aria-pressed={count === c}
+                      className={
+                        'flex-1 py-2.5 rounded-2xl border text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ' +
+                        (count === c
+                          ? 'bg-gradient-to-br from-violet-500 to-indigo-500 border-transparent text-white shadow-md'
+                          : 'bg-white/80 border-violet-200 text-slate-700 hover:bg-violet-50 hover:border-violet-300')
+                      }
+                    >
+                      {c}장
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!prompt.trim() || loading}
+                className="mt-4 w-full py-3.5 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-500 text-white font-semibold shadow-md hover:shadow-lg active:scale-[0.99] transition disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Spinner />
+                    <span>그리는 중...</span>
+                  </>
+                ) : (
+                  <span>✨ {count}장 생성</span>
+                )}
+              </button>
+            </form>
+
+            {/* 결과 / 로딩 / 에러 / 빈 상태 */}
+            <div className="mt-6">
+              {error && <ErrorBox message={error} />}
+              {loading && <LoadingCanvas />}
+              {!loading && !error && result && <ResultCard result={result} />}
+              {!loading && !error && !result && <EmptyCanvas />}
+            </div>
+          </div>
+
+          <p className="text-center text-[11px] text-slate-400 mt-5">
+            Powered by OpenAI gpt-image-1 · 생성된 이미지는 새로고침하면 사라져요.
+          </p>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+    function App() {
+      return (
+        <div className="min-h-[100dvh] bg-gradient-to-br from-violet-100 via-rose-100 to-indigo-100">
+          <StudioPage />
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

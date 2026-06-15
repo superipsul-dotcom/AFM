@@ -1,0 +1,9 @@
+{
+  "name": "coin-tracker",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.22.2"
+  }
+}

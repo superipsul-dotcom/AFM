@@ -1,0 +1,12 @@
+{
+  "name": "sebastian-butler",
+  "version": "1.0.0",
+  "description": "세바스찬 - 집사 비서 챗봇 (OpenAI 연동)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.22.2"
+  }
+}

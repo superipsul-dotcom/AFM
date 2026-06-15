@@ -1,0 +1,12 @@
+{
+  "name": "dream-reader",
+  "version": "1.0.0",
+  "description": "AI 해몽가 - OpenAI 기반 꿈 해몽 웹앱 (신비로운 점술가 / MZ 친구 페르소나)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

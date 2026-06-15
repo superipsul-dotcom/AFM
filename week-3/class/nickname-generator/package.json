@@ -1,0 +1,12 @@
+{
+  "name": "nickname-generator",
+  "version": "1.0.0",
+  "description": "AI 별명(닉네임) 생성기 - 이름·성격·취미·스타일을 입력하면 OpenAI가 재미있는 별명을 여러 개 추천 (OpenAI 연동)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.22.2"
+  }
+}

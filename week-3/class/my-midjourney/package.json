@@ -1,0 +1,12 @@
+{
+  "name": "my-midjourney",
+  "version": "1.0.0",
+  "description": "MyMidjourney - 나만의 AI 화가 (fal.ai FLUX 연동)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.22.2"
+  }
+}

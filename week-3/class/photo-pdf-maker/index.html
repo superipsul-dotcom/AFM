@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사진붙여넣기 모음</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-soft: #1e293b;
+      --card: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --brand: #6366f1;
+      --brand-dark: #4f46e5;
+      --danger: #ef4444;
+      --ok: #10b981;
+      --shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+        "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
+      background: linear-gradient(160deg, #eef2ff 0%, #f8fafc 45%, #faf5ff 100%);
+      color: var(--ink);
+      min-height: 100vh;
+      line-height: 1.55;
+    }
+
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+
+    header.hero {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    header.hero h1 {
+      font-size: clamp(26px, 4vw, 38px);
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    header.hero .sub {
+      color: var(--muted);
+      font-size: 15px;
+      margin: 0;
+    }
+
+    /* 사용법 안내 */
+    .howto {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+    }
+    .howto .ic { font-size: 26px; line-height: 1.2; }
+    .howto h2 { margin: 0 0 4px; font-size: 16px; }
+    .howto p { margin: 0; font-size: 14px; opacity: 0.95; }
+    .howto kbd {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 6px;
+      padding: 1px 7px;
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 600;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      margin-bottom: 22px;
+    }
+
+    /* 붙여넣기 영역 */
+    #dropZone {
+      border: 2px dashed #c7d2fe;
+      border-radius: var(--radius);
+      background: #f5f7ff;
+      padding: 34px 20px;
+      text-align: center;
+      transition: all 0.18s ease;
+      cursor: pointer;
+      outline: none;
+    }
+    #dropZone:focus-visible { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(99,102,241,0.18); }
+    #dropZone.dragover {
+      border-color: var(--brand);
+      background: #eef2ff;
+      transform: scale(1.005);
+    }
+    #dropZone .big { font-size: 40px; margin-bottom: 8px; }
+    #dropZone .t1 { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+    #dropZone .t2 { color: var(--muted); font-size: 14px; }
+    #dropZone kbd {
+      display: inline-block;
+      background: #e0e7ff;
+      color: var(--brand-dark);
+      border-radius: 6px;
+      padding: 1px 7px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.18s ease, background 0.18s ease, opacity 0.18s;
+    }
+    button:active { transform: translateY(1px); }
+    .btn-ghost {
+      background: #f1f5f9;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    .btn-ghost:hover { background: #e9eef5; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.32);
+    }
+    .btn-primary:hover { box-shadow: 0 8px 22px rgba(79, 70, 229, 0.42); }
+    .btn-danger-ghost {
+      background: #fff;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+    }
+    .btn-danger-ghost:hover { background: #fef2f2; }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* 옵션 영역 */
+    .opts-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .seg {
+      display: inline-flex;
+      background: #f1f5f9;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .seg label {
+      position: relative;
+      cursor: pointer;
+    }
+    .seg input { position: absolute; opacity: 0; pointer-events: none; }
+    .seg .pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .seg .pill .mini {
+      display: inline-grid;
+      gap: 2px;
+      width: 16px;
+    }
+    .seg .pill .mini span {
+      display: block;
+      height: 3px;
+      border-radius: 1px;
+      background: currentColor;
+      opacity: 0.55;
+    }
+    .seg input:checked + .pill {
+      background: #fff;
+      color: var(--brand-dark);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+    }
+    .seg input:checked + .pill .mini span { opacity: 1; }
+    .seg input:focus-visible + .pill { box-shadow: 0 0 0 3px rgba(99,102,241,0.3); }
+    .opt-hint { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
+
+    /* 갤러리 */
+    .gallery-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .gallery-head h2 { margin: 0; font-size: 18px; }
+    .count-badge {
+      background: #eef2ff;
+      color: var(--brand-dark);
+      font-weight: 700;
+      font-size: 13px;
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 40px 20px;
+      font-size: 15px;
+    }
+    .empty .e-ic { font-size: 38px; opacity: 0.5; margin-bottom: 6px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+    }
+    .thumb {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #f8fafc;
+      aspect-ratio: 4 / 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: box-shadow 0.18s ease, border-color 0.18s;
+      cursor: grab;
+    }
+    .thumb.dragging { opacity: 0.4; }
+    .thumb.drop-target { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(99,102,241,0.25); }
+    .thumb img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+      pointer-events: none;
+    }
+    .thumb .idx {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: rgba(15, 23, 42, 0.78);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .thumb .tools {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .thumb:hover .tools, .thumb:focus-within .tools { opacity: 1; }
+    .thumb .tools button {
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border-radius: 7px;
+      font-size: 14px;
+      line-height: 1;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+    }
+    .thumb .tools button.del { color: var(--danger); }
+    .thumb .tools button:disabled { opacity: 0.3; }
+    .thumb .meta {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to top, rgba(15,23,42,0.7), transparent);
+      color: #fff;
+      font-size: 11px;
+      padding: 14px 8px 5px;
+      text-align: center;
+    }
+
+    .actions-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .actions-bar .grow { flex: 1 1 auto; min-width: 160px; }
+    #makePdfBtn { font-size: 16px; padding: 13px 22px; }
+
+    /* 토스트 */
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 28px;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--ink);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 50;
+      max-width: 90vw;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.ok { background: #065f46; }
+    #toast.err { background: #991b1b; }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 560px) {
+      .seg { width: 100%; justify-content: space-between; }
+      .seg label { flex: 1; }
+      .seg .pill { justify-content: center; padding: 9px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>🖼️ 사진붙여넣기 모음</h1>
+      <p class="sub">복사한 이미지를 붙여넣어 모은 뒤, 한 개의 PDF로 만들어 다운로드하세요.</p>
+    </header>
+
+    <!-- 사용법 안내 -->
+    <div class="howto">
+      <div class="ic">📋</div>
+      <div>
+        <h2>이렇게 사용하세요</h2>
+        <p>
+          이미지를 복사한 뒤(<kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>⌘</kbd>+<kbd>C</kbd>)
+          이 페이지에서 <kbd>Ctrl</kbd>+<kbd>V</kbd> / <kbd>⌘</kbd>+<kbd>V</kbd> 로 붙여넣으면 목록에 추가됩니다.
+          파일 선택이나 드래그&드롭도 됩니다.
+        </p>
+      </div>
+    </div>
+
+    <!-- 붙여넣기 / 추가 영역 -->
+    <div class="card">
+      <div id="dropZone" tabindex="0" role="button"
+           aria-label="이미지 붙여넣기 영역. 클릭하면 파일을 선택하거나, Ctrl+V로 붙여넣거나, 드래그해서 놓을 수 있습니다.">
+        <div class="big">📥</div>
+        <div class="t1">여기에 <kbd>Ctrl</kbd>+<kbd>V</kbd> 로 붙여넣기</div>
+        <div class="t2">또는 클릭해서 파일 선택 · 이미지를 끌어다 놓기</div>
+      </div>
+
+      <div class="row">
+        <button class="btn-ghost" id="pickBtn" type="button">📁 파일 선택</button>
+        <button class="btn-danger-ghost" id="clearBtn" type="button" disabled>🗑️ 전체 비우기</button>
+        <input type="file" id="fileInput" accept="image/*" multiple hidden />
+      </div>
+    </div>
+
+    <!-- 페이지당 이미지 수 옵션 -->
+    <div class="card">
+      <p class="opts-title">📄 한 페이지에 몇 장씩 넣을까요?</p>
+      <div class="seg" role="radiogroup" aria-label="페이지당 이미지 수">
+        <label>
+          <input type="radio" name="perPage" value="1" checked />
+          <span class="pill"><span class="mini"><span></span></span>1장</span>
+        </label>
+        <label>
+          <input type="radio" name="perPage" value="2" />
+          <span class="pill"><span class="mini"><span></span><span></span></span>2장</span>
+        </label>
+        <label>
+          <input type="radio" name="perPage" value="3" />
+          <span class="pill"><span class="mini"><span></span><span></span><span></span></span>3장</span>
+        </label>
+      </div>
+      <p class="opt-hint">A4 세로 기준 · 1장은 가운데 크게, 2~3장은 세로로 나눠 배치합니다. 비율은 유지돼요.</p>
+    </div>
+
+    <!-- 갤러리 -->
+    <div class="card">
+      <div class="gallery-head">
+        <h2>모은 이미지</h2>
+        <span class="count-badge" id="countBadge">0장</span>
+      </div>
+      <div id="gallery"></div>
+    </div>
+
+    <!-- 액션 -->
+    <div class="actions-bar">
+      <div class="grow"></div>
+      <button class="btn-primary" id="makePdfBtn" type="button" disabled>📄 PDF 만들기</button>
+    </div>
+
+    <footer>이미지는 서버로 전송되지 않고, 브라우저 안에서만 처리됩니다. PDF도 내 브라우저에서 생성돼요.</footer>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- jsPDF (클라이언트 사이드 PDF 생성) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>

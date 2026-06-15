@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌤️ 오늘 뭐 입지? - 날씨 기반 옷차림 추천</title>
+
+  <!-- ====== CDN: Tailwind + React + Babel ====== -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Tailwind으로 표현하기 어려운 부분만 커스텀 CSS로 처리 */
+    html, body, #root { height: 100%; }
+    body {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', -apple-system,
+        BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 결과 카드가 등장할 때 부드러운 팝업 애니메이션 */
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-pop { animation: pop 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+
+    /* 스켈레톤 shimmer 효과 */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.5) 25%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0.5) 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.4s infinite linear;
+    }
+
+    /* 배경 그라데이션이 기온대에 따라 부드럽게 전환되도록 */
+    .bg-transition { transition: background 0.9s ease; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- ====================================================================
+       ★ 프론트엔드 보안 핵심 ★
+       이 페이지에는 외부 날씨 API 주소도, API 키도 단 한 글자도 없습니다.
+       오직 우리 서버의 상대경로 '/recommend' 만 fetch 합니다.
+       외부 OpenWeatherMap 호출과 키 사용은 전부 server.js(백엔드)가 담당합니다.
+       ==================================================================== -->
+  <script type="text/babel">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    // ========================================
+    // 🔌 API 설정 & 데이터 페칭
+    // ========================================
+    // ★ 절대 외부 도메인/키를 두지 않는다. 오직 자기 서버의 상대경로만 호출.
+    const API_BASE_URL = '/api'.replace('/api', ''); // = '' (origin 상대경로)
+
+    // /recommend?city=... 한 곳만 호출하는 전용 함수
+    async function fetchRecommendation(city) {
+      const safeCity = (city || 'Seoul').trim() || 'Seoul';
+      const res = await fetch(`/recommend?city=${encodeURIComponent(safeCity)}`);
+      let json;
+      try {
+        json = await res.json();
+      } catch (_) {
+        // JSON 파싱 자체가 실패한 경우 (서버가 비정상 응답)
+        throw new Error('서버 응답을 해석하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      }
+      // 서버 계약: 실패 시 { success:false, message:"한글 안내" }
+      if (!res.ok || !json || json.success !== true) {
+        throw new Error((json && json.message) || '추천을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.');
+      }
+      return json; // { success, demo, notice?, data }
+    }
+
+    // ========================================
+    // 🌡️ 기온대 → 배경 그라데이션 / 강조 색 테마
+    // ========================================
+    // 더울수록 따뜻한 주황·노랑, 추울수록 시원한 파랑·하늘 계열.
+    function getThemeByTemp(temp) {
+      const t = Number(temp);
+      if (!Number.isFinite(t)) {
+        return { bg: 'from-indigo-400 via-purple-400 to-indigo-500', accent: 'indigo', chipBg: 'bg-indigo-50', chipText: 'text-indigo-600' };
+      }
+      if (t >= 28) return { bg: 'from-orange-400 via-red-400 to-rose-500',     accent: 'orange', chipBg: 'bg-orange-50',  chipText: 'text-orange-700' };
+      if (t >= 23) return { bg: 'from-amber-300 via-orange-400 to-orange-500', accent: 'amber',  chipBg: 'bg-amber-50',   chipText: 'text-amber-700' };
+      if (t >= 20) return { bg: 'from-lime-300 via-emerald-400 to-teal-500',   accent: 'emerald',chipBg: 'bg-emerald-50', chipText: 'text-emerald-700' };
+      if (t >= 17) return { bg: 'from-teal-300 via-cyan-400 to-sky-500',       accent: 'teal',   chipBg: 'bg-teal-50',    chipText: 'text-teal-700' };
+      if (t >= 12) return { bg: 'from-sky-300 via-blue-400 to-indigo-500',     accent: 'sky',    chipBg: 'bg-sky-50',     chipText: 'text-sky-700' };
+      if (t >= 9)  return { bg: 'from-blue-400 via-indigo-400 to-indigo-600',  accent: 'blue',   chipBg: 'bg-blue-50',    chipText: 'text-blue-700' };
+      if (t >= 5)  return { bg: 'from-indigo-400 via-blue-500 to-blue-700',    accent: 'indigo', chipBg: 'bg-indigo-50',  chipText: 'text-indigo-700' };
+      return            { bg: 'from-blue-500 via-indigo-600 to-slate-700',   accent: 'blue',   chipBg: 'bg-blue-50',    chipText: 'text-blue-800' };
+    }
+
+    // ========================================
+    // 🎨 Design System Components (순수 프레젠테이션)
+    // ========================================
+
+    // --- Button ---
+    function Button({ children, variant = 'primary', size = 'md', disabled = false, type = 'button', onClick, className = '' }) {
+      const base = 'inline-flex items-center justify-center font-bold rounded-2xl transition-all duration-150 active:scale-95 focus:outline-none focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap';
+      const variants = {
+        primary: 'bg-slate-900 text-white hover:bg-slate-800 focus:ring-slate-300 shadow-lg shadow-slate-900/20',
+        secondary: 'bg-white text-slate-800 hover:bg-slate-50 border border-slate-200 focus:ring-slate-200',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-200',
+        danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-200',
+      };
+      const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-5 py-3 text-[15px]', lg: 'px-7 py-4 text-base' };
+      return (
+        <button
+          type={type}
+          onClick={onClick}
+          disabled={disabled}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // --- Input ---
+    function Input({ value, onChange, onKeyDown, placeholder = '', disabled = false, ariaLabel, className = '' }) {
+      return (
+        <input
+          type="text"
+          value={value}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          aria-label={ariaLabel}
+          autoComplete="off"
+          className={`w-full px-4 py-3 text-[16px] rounded-2xl border-2 border-slate-200 bg-white/90 text-slate-800 placeholder-slate-400 outline-none transition focus:border-slate-800 focus:ring-4 focus:ring-slate-200 disabled:opacity-60 ${className}`}
+        />
+      );
+    }
+
+    // --- Card ---
+    function Card({ children, className = '' }) {
+      return (
+        <div className={`bg-white/95 backdrop-blur-xl rounded-[28px] shadow-2xl shadow-slate-900/25 ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    // --- Badge (라벨/뱃지) ---
+    function Badge({ children, tone = 'slate', className = '' }) {
+      const tones = {
+        slate: 'bg-slate-100 text-slate-600',
+        amber: 'bg-amber-100 text-amber-800 border border-amber-200',
+      };
+      return (
+        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${tones[tone]} ${className}`}>
+          {children}
+        </span>
+      );
+    }
+
+    // --- Pill (옷차림 아이템 칩) ---
+    function Pill({ children, chipBg, chipText }) {
+      return (
+        <span className={`px-4 py-2 rounded-full text-sm font-semibold ${chipBg} ${chipText}`}>
+          {children}
+        </span>
+      );
+    }
+
+    // ========================================
+    // 🧩 상태별 UI 컴포넌트 (로딩 / 에러 / 데모배지)
+    // ========================================
+
+    // --- 데모 모드 배지 (응답 최상위 demo === true 일 때만 노출) ---
+    function DemoBadge({ notice }) {
+      return (
+        <div className="mt-4 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-800">
+          <span className="text-base leading-none">🧪</span>
+          <span>{notice || '샘플 데이터입니다 — 서버에 API 키를 설정하면 실시간 날씨로 동작합니다.'}</span>
+        </div>
+      );
+    }
+
+    // --- 로딩 스켈레톤 (카드 1개분) ---
+    function DaySkeletonCard() {
+      return (
+        <div className="flex flex-col items-center rounded-3xl border border-slate-100 bg-white/60 px-4 py-6">
+          <div className="skeleton h-4 w-16 rounded-full opacity-70" />
+          <div className="skeleton mt-4 h-14 w-14 rounded-full opacity-70" />
+          <div className="skeleton mt-4 h-10 w-24 rounded-2xl opacity-70" />
+          <div className="skeleton mt-3 h-3 w-32 rounded-full opacity-70" />
+          <div className="my-5 h-px w-full bg-slate-100" />
+          <div className="skeleton h-5 w-40 rounded-full opacity-70" />
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {[56, 48, 44].map((w, i) => (
+              <div key={i} className="skeleton h-7 rounded-full opacity-70" style={{ width: w }} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // --- 로딩 스켈레톤 (오늘/내일/모레 3카드, 반응형 그리드) ---
+    function LoadingSkeleton() {
+      return (
+        <div className="mt-6" role="status" aria-live="polite" aria-busy="true">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <DaySkeletonCard key={i} />
+            ))}
+          </div>
+          <p className="mt-6 text-center text-sm font-medium text-slate-400">날씨를 확인하는 중...</p>
+        </div>
+      );
+    }
+
+    // --- 에러 카드 (서버의 message를 그대로 노출) ---
+    function ErrorState({ message, onRetry }) {
+      return (
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-5 text-center" role="alert">
+          <div className="text-3xl">⚠️</div>
+          <p className="mt-2 text-[15px] font-semibold text-red-700">{message}</p>
+          <Button variant="danger" size="sm" className="mt-4" onClick={onRetry}>
+            다시 시도
+          </Button>
+        </div>
+      );
+    }
+
+    // --- 빈 상태 (초기에 결과가 아무것도 없을 때) ---
+    function EmptyState() {
+      return (
+        <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-8 text-center">
+          <div className="text-4xl">🔎</div>
+          <p className="mt-3 text-sm font-medium text-slate-500">
+            도시 이름을 입력하고 <span className="font-bold text-slate-700">추천받기</span>를 눌러보세요
+          </p>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📅 날짜 헤더 라벨 → 짧은 날짜 포맷 (예: "2026-06-15" → "6/15")
+    // ========================================
+    function formatShortDate(dateStr) {
+      if (!dateStr) return '';
+      const m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return dateStr; // 예상 밖 포맷이면 원문 그대로
+      return `${Number(m[2])}/${Number(m[3])}`; // 0 패딩 제거 → 6/15
+    }
+
+    // ========================================
+    // 📄 하루 카드 (백엔드 data.days[i] 필드 매핑)
+    // ========================================
+    // day: { label, date, temp, feelsLike, description, weatherEmoji,
+    //        outfit: { label, headline, items[], emoji } }
+    // 각 카드는 자기 자신의 기온으로 칩/포인트 색 테마를 적용 → 날짜별 분위기.
+    // isToday=true 인 "오늘" 카드는 살짝 강조(ring + 큰 그림자).
+    function DayCard({ day, isToday = false }) {
+      const { label, date, temp, feelsLike, description, weatherEmoji, outfit } = day;
+      const theme = getThemeByTemp(temp); // 이 카드 자신의 기온 기준
+      return (
+        <div
+          className={`animate-pop flex h-full flex-col rounded-3xl border bg-white px-4 py-5 text-center transition ${
+            isToday
+              ? 'border-slate-200 shadow-xl shadow-slate-900/15 ring-2 ring-slate-900/10'
+              : 'border-slate-100 shadow-md shadow-slate-900/5'
+          }`}
+        >
+          {/* 날짜 헤더: label(강조) + date(작게) */}
+          <div className="flex items-baseline justify-center gap-2">
+            <span className="text-[17px] font-extrabold tracking-tight text-slate-900">{label}</span>
+            <span className="text-xs font-medium text-slate-400">{formatShortDate(date)}</span>
+          </div>
+
+          {/* 날씨 이모지 + 큰 기온 */}
+          <div className="mt-2 text-[56px] leading-none" aria-hidden="true">
+            {weatherEmoji || '🌡️'}
+          </div>
+          <div className="mt-1 flex items-start justify-center text-slate-900">
+            <span className="text-[40px] font-extrabold leading-none tracking-tight">{temp}</span>
+            <span className="mt-1 text-lg font-bold text-slate-400">°C</span>
+          </div>
+
+          {/* 날씨 설명 + 체감온도 */}
+          <p className="mt-2 text-[13px] text-slate-500">
+            {description} · 체감 <span className="font-semibold text-slate-700">{feelsLike}°C</span>
+          </p>
+
+          {/* 구분선 */}
+          <div className="my-5 h-px w-full bg-slate-100" />
+
+          {/* 옷차림 섹션 */}
+          <div className="text-4xl leading-none" aria-hidden="true">{outfit.emoji || '👚'}</div>
+          <h3 className="mt-2 px-1 text-[16px] font-extrabold leading-snug tracking-tight text-slate-900">
+            {outfit.headline}
+          </h3>
+
+          <div className="mt-3 flex justify-center">
+            <Badge tone="slate">🌡️ {outfit.label}</Badge>
+          </div>
+
+          {/* 추천 아이템 pill 목록 — 카드 자신의 기온 테마 색 */}
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {(outfit.items || []).map((item, i) => (
+              <Pill key={i} chipBg={theme.chipBg} chipText={theme.chipText}>
+                {item}
+              </Pill>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 결과 그리드 (오늘/내일/모레 3카드)
+    // ========================================
+    // data: { city, days: [ {…}, {…}, {…} ] }
+    // - 도시명은 3일 공통이므로 상단에 한 번만 표시 (카드마다 반복 X).
+    // - 모바일: 세로 1열 stack / sm+: 가로 3열 그리드.
+    function ResultGrid({ data }) {
+      const { city, days } = data;
+      const list = Array.isArray(days) ? days : [];
+      return (
+        <div className="mt-6">
+          {/* 도시명 (상단 1회) */}
+          <div className="mb-4 text-center">
+            <span className="inline-flex items-center gap-1 text-[15px] font-semibold text-slate-500">
+              <span aria-hidden="true">📍</span> {city}
+            </span>
+          </div>
+
+          {/* 3카드 반응형 그리드 */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {list.map((day, i) => (
+              <DayCard key={day.date || day.label || i} day={day} isToday={i === 0} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 Layout — Header / Footer
+    // ========================================
+    function AppHeader() {
+      return (
+        <header className="mb-6 text-center text-white">
+          <h1 className="text-[30px] font-extrabold tracking-tight drop-shadow-sm sm:text-[34px]">
+            🌤️ 오늘 뭐 입지?
+          </h1>
+          <p className="mt-2 text-sm text-white/90 sm:text-[15px]">
+            도시를 입력하면 오늘·내일·모레 날씨에 딱 맞는 옷차림을 추천해드려요
+          </p>
+        </header>
+      );
+    }
+
+    function AppFooter() {
+      return (
+        <footer className="mt-6 px-2 text-center text-[12px] leading-relaxed text-white/80">
+          <p>날씨 데이터: OpenWeatherMap</p>
+          <p className="mt-1">🔒 API 키는 서버에서만 안전하게 처리됩니다</p>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // 🔍 검색 영역 (입력 + 추천받기 버튼 + Enter)
+    // ========================================
+    function SearchBar({ value, onChange, onSubmit, loading }) {
+      // Enter 키로도 검색 (form submit). 버튼 클릭과 동일 동작.
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        onSubmit();
+      };
+      return (
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="도시명 (예: Seoul, 부산)"
+            ariaLabel="도시명 입력"
+            disabled={loading}
+          />
+          <Button type="submit" variant="primary" disabled={loading}>
+            {loading ? '...' : '추천받기'}
+          </Button>
+        </form>
+      );
+    }
+
+    // ========================================
+    // 🚀 App — 루트 컴포넌트 (상태 + 데이터 흐름)
+    // ========================================
+    function App() {
+      const [city, setCity] = useState('Seoul');     // 입력창 값
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);       // 서버 message 문자열
+      const [result, setResult] = useState(null);     // { data }
+      const [isDemo, setIsDemo] = useState(false);     // 최상위 demo 플래그
+      const [notice, setNotice] = useState('');        // 최상위 notice 문구
+      const lastQueryRef = useRef('Seoul');            // 재시도용 마지막 검색어
+
+      // 배경/강조 테마는 "오늘"(days[0]) 기온 기준 (없으면 기본 인디고).
+      // 각 카드의 칩 색은 카드 자신의 기온으로 DayCard 안에서 따로 계산한다.
+      const todayTemp =
+        result && Array.isArray(result.data.days) && result.data.days.length > 0
+          ? result.data.days[0].temp
+          : NaN;
+      const theme = getThemeByTemp(todayTemp);
+
+      // 추천 요청 실행
+      const search = useCallback(async (rawCity) => {
+        const target = (rawCity ?? '').trim() || 'Seoul';
+        lastQueryRef.current = target;
+        setLoading(true);
+        setError(null);
+        try {
+          const json = await fetchRecommendation(target);
+          setResult({ data: json.data });
+          // demo / notice 는 최상위 필드 (data 안이 아님!)
+          setIsDemo(json.demo === true);
+          setNotice(json.demo === true ? (json.notice || '') : '');
+        } catch (err) {
+          setError(err.message || '추천을 가져오지 못했어요.');
+          setResult(null);
+          setIsDemo(false);
+          setNotice('');
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      // 버튼/Enter 핸들러 — 현재 입력창 값으로 검색
+      const handleSubmit = useCallback(() => {
+        search(city);
+      }, [city, search]);
+
+      // 첫 로드 시 Seoul 자동 조회
+      useEffect(() => {
+        search('Seoul');
+      }, [search]);
+
+      return (
+        <div
+          className={`bg-transition flex min-h-full items-start justify-center bg-gradient-to-br ${theme.bg} px-4 py-8 sm:py-12`}
+        >
+          <div className="mx-auto w-full max-w-md sm:max-w-4xl">
+            <AppHeader />
+
+            <Card className="p-5 sm:p-6">
+              {/* 검색 영역 — 카드가 넓어져도 입력/안내/데모배지는 가운데 좁게 유지 */}
+              <div className="mx-auto max-w-md">
+                <SearchBar
+                  value={city}
+                  onChange={setCity}
+                  onSubmit={handleSubmit}
+                  loading={loading}
+                />
+                <p className="mt-3 text-center text-xs text-slate-400">
+                  한글 도시명도 입력할 수 있어요 · 비우면 서울로 검색됩니다
+                </p>
+
+                {/* 데모 모드 배지 — 최상위 demo === true 일 때만 */}
+                {isDemo && <DemoBadge notice={notice} />}
+              </div>
+
+              {/* 상태에 따른 본문 렌더링 (오늘/내일/모레 3카드) */}
+              {loading ? (
+                <LoadingSkeleton />
+              ) : error ? (
+                <div className="mx-auto max-w-md">
+                  <ErrorState message={error} onRetry={() => search(lastQueryRef.current)} />
+                </div>
+              ) : result ? (
+                <ResultGrid data={result.data} />
+              ) : (
+                <div className="mx-auto max-w-md">
+                  <EmptyState />
+                </div>
+              )}
+            </Card>
+
+            <AppFooter />
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

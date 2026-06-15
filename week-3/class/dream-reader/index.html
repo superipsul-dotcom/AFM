@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🔮 AI 해몽가</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg-1: #0b0420;
+        --bg-2: #1a0b3d;
+        --bg-3: #2a1259;
+        --card: rgba(255, 255, 255, 0.06);
+        --card-border: rgba(255, 255, 255, 0.12);
+        --text: #ece8ff;
+        --text-dim: #b6acdf;
+        --accent: #b388ff;
+        --accent-2: #7c4dff;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+          "Malgun Gothic", sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 20% 10%, var(--bg-3) 0%, transparent 45%),
+          radial-gradient(circle at 80% 0%, #3a1a6e 0%, transparent 40%),
+          linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 60%, #06030f 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+        line-height: 1.6;
+      }
+
+      /* 별 반짝임 */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background-image: radial-gradient(1px 1px at 25% 15%, #fff, transparent),
+          radial-gradient(1px 1px at 60% 40%, #fff, transparent),
+          radial-gradient(1.5px 1.5px at 80% 20%, #fff, transparent),
+          radial-gradient(1px 1px at 10% 70%, #fff, transparent),
+          radial-gradient(1px 1px at 45% 85%, #fff, transparent),
+          radial-gradient(1.5px 1.5px at 90% 75%, #fff, transparent),
+          radial-gradient(1px 1px at 35% 55%, #fff, transparent),
+          radial-gradient(1px 1px at 70% 90%, #fff, transparent);
+        opacity: 0.5;
+        animation: twinkle 6s ease-in-out infinite alternate;
+        pointer-events: none;
+      }
+
+      @keyframes twinkle {
+        from {
+          opacity: 0.25;
+        }
+        to {
+          opacity: 0.6;
+        }
+      }
+
+      .wrap {
+        position: relative;
+        z-index: 1;
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 40px 20px 64px;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 28px;
+      }
+
+      header h1 {
+        font-size: 2rem;
+        letter-spacing: 0.5px;
+        background: linear-gradient(90deg, #e0c3fc, #b388ff, #8ec5fc);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      header p {
+        color: var(--text-dim);
+        margin-top: 8px;
+        font-size: 0.95rem;
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        border-radius: 18px;
+        padding: 22px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+      }
+
+      .label {
+        font-size: 0.85rem;
+        color: var(--text-dim);
+        margin-bottom: 10px;
+        display: block;
+      }
+
+      /* 페르소나 카드 */
+      .personas {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .persona {
+        cursor: pointer;
+        border: 1.5px solid var(--card-border);
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 14px;
+        padding: 14px 12px;
+        text-align: center;
+        transition: all 0.18s ease;
+        user-select: none;
+      }
+
+      .persona:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+      }
+
+      .persona.active {
+        border-color: var(--accent);
+        background: rgba(124, 77, 255, 0.22);
+        box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.18);
+      }
+
+      .persona .emoji {
+        font-size: 1.6rem;
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .persona .name {
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 120px;
+        resize: vertical;
+        border-radius: 12px;
+        border: 1.5px solid var(--card-border);
+        background: rgba(0, 0, 0, 0.25);
+        color: var(--text);
+        padding: 14px;
+        font-size: 1rem;
+        font-family: inherit;
+        line-height: 1.6;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.18);
+      }
+
+      textarea::placeholder {
+        color: #8779b3;
+      }
+
+      .btn {
+        margin-top: 16px;
+        width: 100%;
+        border: none;
+        border-radius: 12px;
+        padding: 15px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #fff;
+        cursor: pointer;
+        background: linear-gradient(90deg, var(--accent-2), #b388ff);
+        transition: filter 0.18s ease, transform 0.1s ease;
+      }
+
+      .btn:hover:not(:disabled) {
+        filter: brightness(1.1);
+      }
+
+      .btn:active:not(:disabled) {
+        transform: scale(0.99);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      /* 상태/결과 영역 */
+      #status {
+        margin-top: 20px;
+        text-align: center;
+        color: var(--text-dim);
+        min-height: 1.2em;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: -3px;
+        margin-right: 8px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error {
+        margin-top: 20px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        background: rgba(255, 86, 86, 0.12);
+        border: 1px solid rgba(255, 86, 86, 0.4);
+        color: #ffc9c9;
+        font-size: 0.95rem;
+      }
+
+      #result {
+        margin-top: 22px;
+        animation: rise 0.4s ease;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* ===== 공유 카드 (캡처 대상) ===== */
+      .share-card {
+        position: relative;
+        border-radius: 22px;
+        padding: 2px; /* 그라데이션 테두리 */
+        background: linear-gradient(135deg, rgba(179, 136, 255, 0.55), rgba(142, 197, 252, 0.35), rgba(124, 77, 255, 0.55));
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+      }
+
+      .share-card-glow {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 0%, rgba(179, 136, 255, 0.35) 0%, transparent 55%);
+        pointer-events: none;
+      }
+
+      .share-card-inner {
+        position: relative;
+        border-radius: 20px;
+        padding: 24px 22px 18px;
+        /* 캡처 안정성을 위해 불투명 배경 (backdrop-filter 미사용) */
+        background: linear-gradient(165deg, #1c0e44 0%, #160a36 55%, #0d0622 100%);
+      }
+
+      .sc-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .sc-logo {
+        font-size: 1.1rem;
+        font-weight: 800;
+        background: linear-gradient(90deg, #e0c3fc, #b388ff, #8ec5fc);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .sc-persona {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-dim);
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        padding: 5px 12px;
+        white-space: nowrap;
+      }
+
+      /* 행운지수 게이지 (conic-gradient 원형) */
+      .luck {
+        text-align: center;
+        margin: 6px 0 20px;
+      }
+
+      .luck-ring {
+        --score: 0;
+        --ring: #b388ff;
+        width: 132px;
+        height: 132px;
+        margin: 0 auto 10px;
+        border-radius: 50%;
+        background: conic-gradient(
+          var(--ring) calc(var(--score) * 1%),
+          rgba(255, 255, 255, 0.08) 0
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 26px rgba(124, 77, 255, 0.45);
+        transition: background 0.6s ease;
+      }
+
+      .luck-ring-inner {
+        width: 104px;
+        height: 104px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 50% 40%, #241354, #140a32);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.1;
+      }
+
+      .luck-score {
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: var(--ring, #fff);
+      }
+
+      .luck-max {
+        font-size: 0.78rem;
+        color: var(--text-dim);
+        margin-top: 2px;
+      }
+
+      .luck-label {
+        font-size: 0.85rem;
+        color: var(--text-dim);
+        letter-spacing: 0.5px;
+      }
+
+      /* 1) 한줄요약 헤드라인 */
+      .sc-summary {
+        font-size: 1.25rem;
+        font-weight: 800;
+        line-height: 1.45;
+        text-align: center;
+        color: #fff;
+        margin-bottom: 16px;
+      }
+
+      /* 2) 키워드 칩 */
+      .sc-keywords {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .sc-keywords:empty {
+        display: none;
+      }
+
+      .chip {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #e7deff;
+        background: rgba(124, 77, 255, 0.22);
+        border: 1px solid rgba(179, 136, 255, 0.45);
+        border-radius: 999px;
+        padding: 6px 13px;
+      }
+
+      .chip::before {
+        content: "#";
+        opacity: 0.6;
+        margin-right: 1px;
+      }
+
+      /* 3) 길몽/흉몽 배지 */
+      .sc-verdict-row {
+        text-align: center;
+        margin-bottom: 18px;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 9px 22px;
+        border-radius: 999px;
+        font-weight: 800;
+        font-size: 1.1rem;
+        letter-spacing: 2px;
+      }
+
+      .badge.good {
+        background: linear-gradient(90deg, #b8860b, #ffd54f);
+        color: #2a1a00;
+        box-shadow: 0 0 20px rgba(255, 213, 79, 0.55);
+      }
+
+      .badge.bad {
+        background: linear-gradient(90deg, #b71c1c, #ef5350);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(239, 83, 80, 0.55);
+      }
+
+      .badge.mixed {
+        background: linear-gradient(90deg, #e65100, #ffa726);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(255, 167, 38, 0.55);
+      }
+
+      /* 4) 오늘의 조언 */
+      .advice-box {
+        padding: 15px 18px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(124, 77, 255, 0.2), rgba(142, 197, 252, 0.12));
+        border: 1px solid rgba(179, 136, 255, 0.4);
+      }
+
+      .advice-box .advice-title {
+        font-size: 0.78rem;
+        color: var(--accent);
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+      }
+
+      .advice-box .advice-text {
+        font-size: 1.02rem;
+        font-weight: 600;
+        line-height: 1.5;
+      }
+
+      /* 워터마크 */
+      .sc-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 18px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.72rem;
+        color: #7a6eae;
+      }
+
+      .sc-mark {
+        font-weight: 700;
+        color: #9b8ed6;
+      }
+
+      /* 저장/공유 버튼 */
+      .share-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .action-btn {
+        flex: 1;
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 13px 10px;
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+        cursor: pointer;
+        transition: filter 0.18s ease, transform 0.1s ease, background 0.18s ease;
+      }
+
+      .action-btn:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .action-btn:active:not(:disabled) {
+        transform: scale(0.98);
+      }
+
+      .action-btn.primary {
+        border: none;
+        color: #fff;
+        background: linear-gradient(90deg, var(--accent-2), #b388ff);
+      }
+
+      .action-btn.primary:hover:not(:disabled) {
+        filter: brightness(1.1);
+        background: linear-gradient(90deg, var(--accent-2), #b388ff);
+      }
+
+      .action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .share-note {
+        margin-top: 12px;
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--text-dim);
+      }
+
+      footer {
+        text-align: center;
+        margin-top: 28px;
+        color: #6f63a0;
+        font-size: 0.78rem;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 480px) {
+        header h1 {
+          font-size: 1.6rem;
+        }
+        .wrap {
+          padding: 28px 14px 48px;
+        }
+        .sc-summary {
+          font-size: 1.12rem;
+        }
+        .luck-ring {
+          width: 120px;
+          height: 120px;
+        }
+        .luck-ring-inner {
+          width: 94px;
+          height: 94px;
+        }
+        .luck-score {
+          font-size: 2.2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>🔮 AI 해몽가</h1>
+        <p>당신의 꿈, 별들에게 물어보세요</p>
+      </header>
+
+      <div class="panel">
+        <span class="label">해몽가를 골라주세요</span>
+        <div class="personas" id="personas">
+          <!-- client.js 가 채워 넣습니다 -->
+        </div>
+
+        <span class="label">어젯밤 어떤 꿈을 꾸셨나요?</span>
+        <textarea
+          id="dream"
+          placeholder="예) 하늘을 자유롭게 날아다니다가, 커다란 황금빛 용을 만났어요. 무섭기보다 신비로운 기분이었어요."
+          maxlength="2000"
+        ></textarea>
+
+        <button class="btn" id="submit">해몽하기</button>
+
+        <div id="status"></div>
+        <div id="error" class="error hidden"></div>
+
+        <div id="result" class="hidden">
+          <!-- 캡처 대상: 공유 카드 -->
+          <div class="share-card" id="shareCard">
+            <div class="share-card-glow"></div>
+            <div class="share-card-inner">
+              <!-- 상단: 로고 + 페르소나 -->
+              <div class="sc-head">
+                <div class="sc-logo">🔮 AI 해몽가</div>
+                <div class="sc-persona" id="scPersona"></div>
+              </div>
+
+              <!-- 행운지수 게이지 -->
+              <div class="luck">
+                <div class="luck-ring" id="luckRing">
+                  <div class="luck-ring-inner">
+                    <span class="luck-score" id="luckScore">0</span>
+                    <span class="luck-max">/ 100</span>
+                  </div>
+                </div>
+                <div class="luck-label">오늘의 행운지수</div>
+              </div>
+
+              <!-- 1) 한줄요약 (헤드라인) -->
+              <p class="sc-summary" id="summary"></p>
+
+              <!-- 2) 상징 키워드 (칩) -->
+              <div class="sc-keywords" id="keywords"></div>
+
+              <!-- 3) 길몽/흉몽 배지 -->
+              <div class="sc-verdict-row">
+                <span class="badge" id="badge"></span>
+              </div>
+
+              <!-- 4) 오늘의 조언 -->
+              <div class="advice-box">
+                <div class="advice-title">✨ 오늘의 조언</div>
+                <div class="advice-text" id="advice"></div>
+              </div>
+
+              <!-- 워터마크 -->
+              <div class="sc-foot">
+                <span id="scDate"></span>
+                <span class="sc-mark">🔮 AI 해몽가</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 저장/공유 버튼 (카드 바깥 = 캡처에 안 들어감) -->
+          <div class="share-actions">
+            <button class="action-btn primary" id="saveImg" type="button">🖼️ 이미지로 저장</button>
+            <button class="action-btn" id="copyTxt" type="button">📋 결과 복사</button>
+          </div>
+          <div id="shareNote" class="share-note hidden"></div>
+        </div>
+      </div>
+
+      <footer>해몽 결과는 재미와 위로를 위한 것이며, 의학적·심리적 진단이 아닙니다.</footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="client.js"></script>
+  </body>
+</html>
