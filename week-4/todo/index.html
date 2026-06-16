@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>할 일 관리 · TODO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    /* Tailwind 유틸리티로 표현하기 어려운 진입 애니메이션만 정의 */
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-in { animation: slideIn 0.18s ease-out; }
+    /* 커스텀 체크박스 체크 애니메이션 */
+    @keyframes pop {
+      0%   { transform: scale(0.6); }
+      60%  { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+    .animate-pop { animation: pop 0.2s ease-out; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 via-indigo-50 to-purple-100 min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // ========================================
+    // 🌐 API 클라이언트 — 서버(Express + Postgres)와 통신
+    //   영속화 계층을 localStorage 에서 실제 DB 로 교체했다.
+    //   API_BASE_URL 은 상대 경로 '/api' — 같은 서버가 index.html 과 API 를
+    //   둘 다 서빙하므로 호스트/포트를 하드코딩하지 않는다.
+    // ========================================
+    const API_BASE_URL = '/api';
+
+    // fetch 래퍼: JSON 파싱 + 서버의 { success, message } 규약에 맞춰 에러 throw.
+    // 네트워크 단절/DB 다운 시에도 사용자 친화적 메시지를 만들 수 있게 한다.
+    async function apiRequest(path, options = {}) {
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}${path}`, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options,
+        });
+      } catch (networkErr) {
+        // fetch 자체가 실패 = 서버에 닿지 못함(서버 미실행/네트워크 문제)
+        throw new Error('서버에 연결할 수 없어요. 서버가 실행 중인지 확인해 주세요.');
+      }
+
+      let body = null;
+      try {
+        body = await res.json();
+      } catch (_) {
+        // JSON 이 아니면 body 는 null 로 둔다(아래에서 상태코드로 판단)
+      }
+
+      if (!res.ok || (body && body.success === false)) {
+        const msg = (body && body.message) || `요청에 실패했어요 (HTTP ${res.status})`;
+        throw new Error(msg);
+      }
+      return body; // { success: true, data: ... }
+    }
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+    function Button({ variant = 'primary', size = 'md', disabled = false, onClick, className = '', type = 'button', children, ...rest }) {
+      const base = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95';
+      const variants = {
+        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-400 shadow-sm shadow-indigo-200',
+        secondary: 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 focus:ring-slate-300',
+        danger: 'bg-rose-50 text-rose-600 hover:bg-rose-100 focus:ring-rose-300',
+        ghost: 'bg-transparent text-slate-500 hover:bg-slate-100 focus:ring-slate-300',
+      };
+      const sizes = {
+        sm: 'text-xs px-3 py-1.5 gap-1',
+        md: 'text-sm px-4 py-2.5 gap-1.5',
+        lg: 'text-base px-5 py-3 gap-2',
+      };
+      return (
+        <button
+          type={type}
+          disabled={disabled}
+          onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    const Input = React.forwardRef(function Input(
+      { value, onChange, onKeyDown, placeholder = '', disabled = false, className = '', ...rest },
+      ref
+    ) {
+      return (
+        <input
+          ref={ref}
+          type="text"
+          value={value}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
+          disabled={disabled}
+          className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ${className}`}
+          {...rest}
+        />
+      );
+    });
+
+    function Card({ className = '', children }) {
+      return (
+        <div className={`bg-white/90 backdrop-blur rounded-3xl shadow-xl shadow-indigo-100/60 border border-white ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function Badge({ children, className = '' }) {
+      return (
+        <span className={`inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-bold ${className}`}>
+          {children}
+        </span>
+      );
+    }
+
+    // 커스텀 원형 체크박스
+    function Checkbox({ checked, onChange, label }) {
+      return (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={checked}
+          aria-label={label}
+          onClick={onChange}
+          className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
+            checked
+              ? 'bg-indigo-600 border-indigo-600'
+              : 'bg-white border-slate-300 hover:border-indigo-400'
+          }`}
+        >
+          {checked && (
+            <svg className="w-3.5 h-3.5 text-white animate-pop" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="3">
+              <path d="M5 10l3.5 3.5L15 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </button>
+      );
+    }
+
+    // ========================================
+    // 🧩 Layout Components
+    // ========================================
+    function Header({ remaining }) {
+      const today = useMemo(() => {
+        const d = new Date();
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+      }, []);
+
+      return (
+        <header className="text-center mb-6">
+          <p className="text-sm text-indigo-400 font-medium mb-1">{today}</p>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
+            오늘의 할 일 ✨
+          </h1>
+          <p className="text-slate-500 mt-2 text-sm">
+            {remaining > 0
+              ? <>아직 <span className="font-bold text-indigo-600">{remaining}개</span>의 할 일이 남아 있어요</>
+              : '모든 할 일을 끝냈어요! 🎉'}
+          </p>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 📄 Page Components
+    // ========================================
+
+    // 할 일 입력 폼
+    function TodoInput({ onAdd, disabled = false }) {
+      const [text, setText] = useState('');
+      const inputRef = useRef(null);
+
+      const handleAdd = () => {
+        if (disabled) return;
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        onAdd(trimmed);
+        setText('');
+        inputRef.current?.focus();
+      };
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleAdd();
+        }
+      };
+
+      return (
+        <div className="flex gap-2 mb-5">
+          <Input
+            ref={inputRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="할 일을 입력하고 Enter 를 눌러보세요"
+            aria-label="새 할 일 입력"
+            disabled={disabled}
+          />
+          <Button onClick={handleAdd} disabled={disabled || !text.trim()} size="md" className="shrink-0 px-5">
+            {disabled ? '추가 중…' : '추가'}
+          </Button>
+        </div>
+      );
+    }
+
+    // 필터 탭
+    function FilterTabs({ filter, onChange, counts }) {
+      const tabs = [
+        { key: 'all', label: '전체', count: counts.all },
+        { key: 'active', label: '진행중', count: counts.active },
+        { key: 'completed', label: '완료', count: counts.completed },
+      ];
+      return (
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl" role="tablist">
+          {tabs.map((tab) => {
+            const isActive = filter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => onChange(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  isActive ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {tab.label}
+                <Badge className={isActive ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}>
+                  {tab.count}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // 개별 할 일 항목
+    function TodoItem({ todo, onToggle, onDelete }) {
+      return (
+        <li className="animate-slide-in group flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3 hover:border-indigo-200 hover:shadow-sm transition-all">
+          <Checkbox
+            checked={todo.completed}
+            onChange={() => onToggle(todo.id)}
+            label={`${todo.text} ${todo.completed ? '완료 해제' : '완료 처리'}`}
+          />
+          <span
+            className={`flex-1 text-sm break-all transition-colors ${
+              todo.completed ? 'line-through text-slate-400' : 'text-slate-700'
+            }`}
+          >
+            {todo.text}
+          </span>
+          <button
+            onClick={() => onDelete(todo.id)}
+            aria-label="할 일 삭제"
+            className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition opacity-0 group-hover:opacity-100 focus:opacity-100"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 6l8 8M14 6l-8 8" strokeLinecap="round" />
+            </svg>
+          </button>
+        </li>
+      );
+    }
+
+    // 빈 상태
+    function EmptyState({ filter }) {
+      const messages = {
+        all: { emoji: '📝', text: '아직 할 일이 없어요', sub: '위에서 첫 할 일을 추가해보세요!' },
+        active: { emoji: '🎉', text: '진행중인 할 일이 없어요', sub: '모두 완료했네요. 멋져요!' },
+        completed: { emoji: '🫥', text: '완료한 할 일이 없어요', sub: '하나씩 체크해 나가 보세요!' },
+      };
+      const msg = messages[filter] || messages.all;
+      return (
+        <div className="text-center py-14 px-4">
+          <div className="text-5xl mb-3">{msg.emoji}</div>
+          <p className="text-slate-600 font-semibold">{msg.text}</p>
+          <p className="text-slate-400 text-sm mt-1">{msg.sub}</p>
+        </div>
+      );
+    }
+
+    // 에러 배너 — 서버/DB 연결 실패 등 사용자 친화적 알림
+    function ErrorBanner({ message, onRetry, onDismiss }) {
+      if (!message) return null;
+      return (
+        <div className="mb-4 flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 animate-slide-in">
+          <span className="text-lg leading-none">⚠️</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-rose-700">{message}</p>
+            <div className="flex gap-3 mt-1.5">
+              {onRetry && (
+                <button onClick={onRetry} className="text-xs font-bold text-rose-600 hover:text-rose-800 underline">
+                  다시 시도
+                </button>
+              )}
+              {onDismiss && (
+                <button onClick={onDismiss} className="text-xs font-medium text-rose-400 hover:text-rose-600">
+                  닫기
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 로딩 스피너 — 초기 데이터 로드 중 표시
+    function LoadingState() {
+      return (
+        <div className="text-center py-14 px-4">
+          <svg className="w-8 h-8 mx-auto text-indigo-400 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+          </svg>
+          <p className="text-slate-400 text-sm mt-3">할 일을 불러오는 중…</p>
+        </div>
+      );
+    }
+
+    // 메인 TODO 앱 (비즈니스 로직 — 서버 API 로 영속화)
+    function TodoApp() {
+      const [todos, setTodos] = useState([]);
+      const [filter, setFilter] = useState('all');
+      const [loading, setLoading] = useState(true);   // 초기 로드 상태
+      const [error, setError] = useState('');         // 사용자 표시용 에러 메시지
+      const [submitting, setSubmitting] = useState(false); // 추가 요청 진행 중
+
+      // --- 초기 로드: GET /api/todos ---
+      const loadTodos = useCallback(async () => {
+        setLoading(true);
+        setError('');
+        try {
+          const { data } = await apiRequest('/todos');
+          setTodos(Array.isArray(data) ? data : []);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        loadTodos();
+      }, [loadTodos]);
+
+      // --- 추가: POST → 응답 row(서버가 부여한 number id)로 상태 갱신 ---
+      const addTodo = useCallback(async (text) => {
+        setError('');
+        setSubmitting(true);
+        try {
+          const { data } = await apiRequest('/todos', {
+            method: 'POST',
+            body: JSON.stringify({ text }),
+          });
+          setTodos((prev) => [data, ...prev]); // 서버가 만든 항목을 맨 앞에
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setSubmitting(false);
+        }
+      }, []);
+
+      // --- 토글: PATCH → 업데이트된 row 로 상태 갱신 (낙관적 업데이트 + 실패 시 롤백) ---
+      const toggleTodo = useCallback(async (id) => {
+        const target = todos.find((t) => t.id === id);
+        if (!target) return;
+        const nextCompleted = !target.completed;
+
+        // 낙관적 업데이트: UI 를 먼저 바꾸고, 실패하면 되돌린다.
+        setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, completed: nextCompleted } : t)));
+        setError('');
+        try {
+          const { data } = await apiRequest(`/todos/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ completed: nextCompleted }),
+          });
+          setTodos((prev) => prev.map((t) => (t.id === id ? data : t))); // 서버 응답으로 확정
+        } catch (err) {
+          // 롤백
+          setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, completed: target.completed } : t)));
+          setError(err.message);
+        }
+      }, [todos]);
+
+      // --- 삭제: DELETE /api/todos/:id (낙관적 업데이트 + 실패 시 복원) ---
+      const deleteTodo = useCallback(async (id) => {
+        const snapshot = todos;
+        setTodos((prev) => prev.filter((t) => t.id !== id));
+        setError('');
+        try {
+          await apiRequest(`/todos/${id}`, { method: 'DELETE' });
+        } catch (err) {
+          setTodos(snapshot); // 실패 시 원래 목록 복원
+          setError(err.message);
+        }
+      }, [todos]);
+
+      // --- 완료 일괄 삭제: DELETE /api/todos/completed ---
+      const clearCompleted = useCallback(async () => {
+        const snapshot = todos;
+        setTodos((prev) => prev.filter((t) => !t.completed)); // 낙관적
+        setError('');
+        try {
+          await apiRequest('/todos/completed', { method: 'DELETE' });
+        } catch (err) {
+          setTodos(snapshot);
+          setError(err.message);
+        }
+      }, [todos]);
+
+      // --- 파생 상태 ---
+      const counts = useMemo(() => ({
+        all: todos.length,
+        active: todos.filter((t) => !t.completed).length,
+        completed: todos.filter((t) => t.completed).length,
+      }), [todos]);
+
+      const visibleTodos = useMemo(() => {
+        if (filter === 'active') return todos.filter((t) => !t.completed);
+        if (filter === 'completed') return todos.filter((t) => t.completed);
+        return todos;
+      }, [todos, filter]);
+
+      return (
+        <div className="w-full max-w-lg mx-auto px-4 py-8 sm:py-12">
+          <Header remaining={counts.active} />
+
+          <Card className="p-5 sm:p-6">
+            {/* 서버/DB 에러 알림 — 초기 로드 실패 시 재시도 버튼 제공 */}
+            <ErrorBanner
+              message={error}
+              onRetry={loading || todos.length === 0 ? loadTodos : null}
+              onDismiss={() => setError('')}
+            />
+
+            <TodoInput onAdd={addTodo} disabled={submitting} />
+            <FilterTabs filter={filter} onChange={setFilter} counts={counts} />
+
+            {/* 할 일 목록 */}
+            <div className="mt-4">
+              {loading ? (
+                <LoadingState />
+              ) : visibleTodos.length === 0 ? (
+                <EmptyState filter={filter} />
+              ) : (
+                <ul className="space-y-2">
+                  {visibleTodos.map((todo) => (
+                    <TodoItem key={todo.id} todo={todo} onToggle={toggleTodo} onDelete={deleteTodo} />
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* 푸터 — 요약 & 완료 삭제 */}
+            {!loading && counts.all > 0 && (
+              <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-100">
+                <span className="text-xs text-slate-500">
+                  전체 {counts.all}개 · 남은 일 {counts.active}개
+                </span>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={clearCompleted}
+                  disabled={counts.completed === 0}
+                >
+                  완료 항목 삭제 ({counts.completed})
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          <p className="text-center text-xs text-slate-400 mt-6">
+            데이터는 서버 데이터베이스에 안전하게 저장돼요 · Supabase PostgreSQL
+          </p>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App Component
+    // ========================================
+    function App() {
+      return <TodoApp />;
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

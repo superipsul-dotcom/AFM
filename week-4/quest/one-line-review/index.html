@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📝 한줄 기대평</title>
+  <style>
+    /* ===== 기본 리셋 & 폰트 ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg1: #ffecd2;
+      --bg2: #fcb69f;
+      --card: #ffffff;
+      --accent: #ff7e5f;
+      --accent-dark: #eb5e41;
+      --text: #3a3a3a;
+      --muted: #9a9a9a;
+      --line: #f0e6e0;
+    }
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+      display: flex;
+      justify-content: center;
+    }
+    .wrap { width: 100%; max-width: 560px; }
+
+    /* ===== 헤더 ===== */
+    header { text-align: center; margin-bottom: 22px; }
+    header h1 { font-size: 28px; margin-bottom: 6px; }
+    header p { color: #7a4a3a; font-size: 14px; }
+
+    /* ===== 입력 카드 ===== */
+    .card {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(235, 94, 65, 0.18);
+    }
+    .field { margin-bottom: 12px; }
+    label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #6b4a3a; }
+    input[type="text"], textarea {
+      width: 100%;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 13px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      transition: border-color .15s;
+      resize: none;
+    }
+    input[type="text"]:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    textarea { min-height: 70px; line-height: 1.5; }
+
+    .row-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+    .counter { font-size: 12px; color: var(--muted); }
+    .counter.over { color: var(--accent-dark); font-weight: 700; }
+
+    button.submit {
+      width: 100%;
+      margin-top: 8px;
+      border: none;
+      border-radius: 12px;
+      padding: 13px;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      cursor: pointer;
+      transition: transform .08s, opacity .15s;
+    }
+    button.submit:hover { opacity: .93; }
+    button.submit:active { transform: scale(.98); }
+    button.submit:disabled { opacity: .55; cursor: not-allowed; }
+
+    /* 폼 하단 알림(검증 메시지) */
+    .form-msg { min-height: 18px; margin-top: 8px; font-size: 13px; text-align: center; }
+    .form-msg.error { color: var(--accent-dark); }
+    .form-msg.ok { color: #2e9e5b; }
+
+    /* ===== 목록 영역 ===== */
+    .list-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: 26px 4px 12px;
+    }
+    .list-head h2 { font-size: 17px; color: #6b4a3a; }
+    .count-badge {
+      background: rgba(255,255,255,.75);
+      color: var(--accent-dark);
+      font-weight: 800; font-size: 13px;
+      padding: 4px 12px; border-radius: 999px;
+    }
+
+    ul.reviews { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    li.review {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 14px rgba(235, 94, 65, 0.1);
+      animation: pop .25s ease;
+    }
+    @keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .review .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .review .nick { font-weight: 800; color: var(--accent-dark); font-size: 14px; }
+    .review .time { font-size: 11px; color: var(--muted); }
+    .review .msg { font-size: 15px; line-height: 1.55; word-break: break-word; white-space: pre-wrap; }
+
+    /* 비었을 때 / 로딩 안내 */
+    .empty, .loading {
+      text-align: center; color: #8a5a48; padding: 28px 10px; font-size: 14px;
+      background: rgba(255,255,255,.5); border-radius: 14px;
+    }
+    footer { text-align: center; margin-top: 30px; font-size: 12px; color: #8a5a48; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>📝 한줄 기대평</h1>
+      <p>이 프로젝트에 바라는 점, 응원, 한마디를 남겨주세요! ✨</p>
+    </header>
+
+    <!-- 입력 카드 -->
+    <section class="card">
+      <form id="reviewForm">
+        <div class="field">
+          <label for="nickname">닉네임 <span style="color:var(--muted);font-weight:400;">(선택 · 비우면 익명)</span></label>
+          <input type="text" id="nickname" placeholder="예: 코딩초보" maxlength="20" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="message">한줄 기대평 <span style="color:var(--accent-dark);">*</span></label>
+          <textarea id="message" placeholder="예: 완성이 정말 기대돼요! 화이팅 🙌" maxlength="100"></textarea>
+          <div class="row-meta">
+            <span></span>
+            <span class="counter" id="counter">0 / 100</span>
+          </div>
+        </div>
+        <button type="submit" class="submit" id="submitBtn">등록하기 🚀</button>
+        <div class="form-msg" id="formMsg"></div>
+      </form>
+    </section>
+
+    <!-- 목록 -->
+    <div class="list-head">
+      <h2>💬 모두의 기대평</h2>
+      <span class="count-badge" id="countBadge">0개</span>
+    </div>
+    <ul class="reviews" id="reviewList"></ul>
+    <div class="loading" id="loading">불러오는 중... ⏳</div>
+
+    <footer>AFM week-4 · 한줄 기대평 (작성한 글은 서버에 저장됩니다 💾)</footer>
+  </div>
+
+  <!-- 클라이언트 로직 -->
+  <script src="client.js"></script>
+</body>
+</html>

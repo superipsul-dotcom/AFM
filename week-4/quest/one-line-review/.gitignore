@@ -1,0 +1,6 @@
+node_modules
+
+# data/ 폴더는 커밋합니다 (제출 자료 저장이 목적).
+# 단, 실제 제출 데이터 파일까지 올리고 싶지 않다면 아래 두 줄의 주석을 해제하세요.
+# data/reviews.json
+# data/entries/*.json

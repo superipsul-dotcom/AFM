@@ -1,0 +1,7 @@
+# 비밀/자격 증명은 절대 업로드하지 않는다 (DATABASE_URL 은 Vercel 환경변수로 주입)
+.env
+.env.*
+# 의존성/로컬 산출물 (Vercel 이 빌드 시 재설치)
+node_modules
+npm-debug.log*
+.DS_Store
