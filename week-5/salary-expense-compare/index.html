@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💰 익명 월급·지출 비교소</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ 중요: 최신 @babel/standalone 은 JSX 를 automatic runtime 으로 변환하면서
+    //    `import { jsx } from "react/jsx-runtime"` 를 코드 맨 위에 삽입한다.
+    //    이 앱은 React 를 UMD(전역 변수)로 불러오므로, 그 import 때문에
+    //    "Cannot use import statement outside a module" 오류가 나고 화면이 하얗게 멈춘다.
+    //    → JSX 를 classic runtime(React.createElement)으로 변환하도록 강제한다.
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+  <!-- Supabase JS 클라이언트: 이 한 줄이 우리 앱의 "서버 + DB" 역할을 해준다.
+       Supabase가 자동 생성하는 API(PostgREST/RPC)가 서버이고, Postgres의 submissions 테이블이 DB다.
+       별도의 Node 서버(server.js)는 없다. 브라우저에서 supabase-js 로 직접 통신한다. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 통계 막대그래프(분포/카테고리 비교)를 그리기 위한 Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Tailwind으로 표현하기 어려운 애니메이션만 커스텀 처리 */
+
+    /* 카드가 아래에서 부드럽게 떠오르며 나타나는 효과 */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up { animation: fadeInUp 0.32s ease-out both; }
+
+    /* 모달이 살짝 커지며 등장 */
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .animate-modal-pop { animation: modalPop 0.18s ease-out both; }
+
+    /* 숫자(상위 %, 합계 등)가 통! 하고 튀어오르는 효과 */
+    @keyframes countPop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.35); }
+      100% { transform: scale(1); }
+    }
+    .animate-count-pop { animation: countPop 0.4s cubic-bezier(.34,1.56,.64,1) both; }
+
+    /* 검증 실패(빈 입력 등)일 때 흔들리는 효과 */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-7px); }
+      40% { transform: translateX(7px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+    .animate-shake { animation: shake 0.4s ease-in-out both; }
+
+    /* 토스트가 위에서 슬라이드되어 내려오는 효과 */
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-toast-in { animation: toastIn 0.25s ease-out both; }
+
+    /* 줄바꿈 보존 (SQL 블록 등) */
+    .preserve-lines { white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // ========================================
+    // 🔌 Supabase 설정 (서버 + DB)
+    // ========================================
+    //
+    // ▸ 이 앱의 한 줄 요약:
+    //   "혼자의 월급은 숫자, 함께 모이면 통계."
+    //   여러 명이 익명으로 월급/지출을 입력하면 평균·분포·내 위치(상위 %) 같은
+    //   '통계'가 만들어진다. 그 통계 계산을 Supabase(=DB+서버)가 대신 해 준다.
+    //
+    // ▸ 역할 분담
+    //   - DB     : submissions 테이블(Postgres) — 익명 원본 데이터를 저장한다.
+    //   - Server : 통계 함수(RPC) 4개 — AVG · COUNT · GROUP BY 를 DB가 직접 계산해 돌려준다.
+    //              (브라우저에서 db.rpc('함수이름') 으로 호출한다.)
+    //   ⇒ 별도의 Node 서버가 없어도, Supabase 가 "서버 + DB" 두 역할을 모두 해 준다.
+    //
+    // ▸ submissions 테이블 스키마 (⚠️ 모든 금액 단위 = 만원, 정수)
+    //   ┌──────────────────────┬─────────┬─────────────────────────────────┐
+    //   │ job_category         │ text    │ 직군 (개발/디자인/마케팅 ...)     │
+    //   │ experience_years     │ int     │ 연차 (년)                        │
+    //   │ monthly_salary       │ int     │ 월급 (만원)                      │
+    //   │ expense_food         │ int     │ 식비 (만원)                      │
+    //   │ expense_housing      │ int     │ 주거 (만원)                      │
+    //   │ expense_transport    │ int     │ 교통 (만원)                      │
+    //   │ expense_subscription │ int     │ 구독료 (만원)                    │
+    //   │ expense_other        │ int     │ 기타 (만원)                      │
+    //   └──────────────────────┴─────────┴─────────────────────────────────┘
+    //
+    // ▸ 통계 RPC 4종 (supabase-schema.sql 에 이미 정의되어 있음)
+    //   1) get_overall_stats()                    → 객체: 전체 평균/인원
+    //   2) get_job_category_stats()               → 배열: 직군별 평균 (GROUP BY)
+    //   3) get_salary_percentile({ p_salary })    → 객체: 내 위치 = 상위 %
+    //   4) get_salary_distribution()              → 배열: 월급 구간별 인원 (분포)
+    //
+    // ▸ 아래 두 상수를 직접 채워도 되고, 우측 상단 ⚙️ 설정에서 입력해도 된다.
+    //   (입력하면 이 브라우저의 localStorage 에만 저장된다.)
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+    // localStorage 키
+    const LS_URL = 'sb_url';
+    const LS_KEY = 'sb_key';
+    const LS_MY = 'myLastSubmission'; // 내가 마지막으로 제출한 값 (내 위치 비교용)
+
+    // 플레이스홀더/빈 문자열은 "설정 안 됨" 으로 취급한다.
+    function isConfigured(url, key) {
+      const bad = (v) =>
+        !v ||
+        !v.trim() ||
+        v === 'YOUR_SUPABASE_URL' ||
+        v === 'YOUR_SUPABASE_ANON_KEY';
+      return !bad(url) && !bad(key);
+    }
+
+    // 우선순위: localStorage 값 → 상단 상수
+    function resolveCredentials() {
+      let lsUrl = '';
+      let lsKey = '';
+      try {
+        lsUrl = localStorage.getItem(LS_URL) || '';
+        lsKey = localStorage.getItem(LS_KEY) || '';
+      } catch (_) {
+        // 시크릿 모드 등에서 localStorage 접근이 막힐 수 있다 → 무시
+      }
+      const url = isConfigured(lsUrl, 'x') ? lsUrl.trim() : SUPABASE_URL;
+      const key = isConfigured('x', lsKey) ? lsKey.trim() : SUPABASE_ANON_KEY;
+      return { url, key };
+    }
+
+    // 설정이 되어 있으면 supabase 클라이언트를 1회 생성한다.
+    const CREDS = resolveCredentials();
+    const CONFIGURED = isConfigured(CREDS.url, CREDS.key);
+    // 주의: 전역 UMD 변수도 `supabase` 이므로, 클라이언트는 `db` 로 이름을 달리한다.
+    //       (같은 이름이면 "Identifier 'supabase' has already been declared" 오류로 화면이 하얗게 멈춘다.)
+    const db = CONFIGURED
+      ? window.supabase.createClient(CREDS.url, CREDS.key)
+      : null;
+
+    // 설정 화면 / 설정 모달에서 보여줄 · 복사할 SQL.
+    // supabase-schema.sql 과 동일한 내용 — 그대로 실행하면 테이블 + RLS + 통계 함수 4개가 한 번에 만들어진다.
+    const SETUP_SQL = `-- 익명 월급·지출 비교소 — 테이블 + 통계 함수 (한 번에 실행)
+-- 금액 단위는 모두 "만원" 입니다. (예: 300 = 300만원)
+
+-- 1) 익명 제출 데이터 저장소
+create table if not exists submissions (
+  id                   bigint generated always as identity primary key,
+  job_category         text        not null,
+  experience_years     int         not null default 0,
+  monthly_salary       int         not null,
+  expense_food         int         not null default 0,
+  expense_housing      int         not null default 0,
+  expense_transport    int         not null default 0,
+  expense_subscription int         not null default 0,
+  expense_other        int         not null default 0,
+  created_at           timestamptz not null default now(),
+  constraint chk_exp   check (experience_years     between 0 and 60),
+  constraint chk_sal   check (monthly_salary       between 0 and 100000),
+  constraint chk_food  check (expense_food         between 0 and 100000),
+  constraint chk_house check (expense_housing      between 0 and 100000),
+  constraint chk_tran  check (expense_transport    between 0 and 100000),
+  constraint chk_subs  check (expense_subscription between 0 and 100000),
+  constraint chk_etc   check (expense_other        between 0 and 100000)
+);
+
+-- 2) RLS + 익명 읽기/쓰기 허용 (수업/실습용)
+alter table submissions enable row level security;
+drop policy if exists "anyone can read"   on submissions;
+drop policy if exists "anyone can insert" on submissions;
+create policy "anyone can read"   on submissions for select using (true);
+create policy "anyone can insert" on submissions for insert with check (true);
+
+-- 3) 통계 함수 (Server 역할) — AVG · COUNT · GROUP BY
+create or replace function get_overall_stats()
+returns json language sql stable as $$
+  select json_build_object(
+    'count',             count(*),
+    'avg_salary',        round(avg(monthly_salary)),
+    'avg_expense_total', round(avg(expense_food + expense_housing + expense_transport + expense_subscription + expense_other)),
+    'avg_food',          round(avg(expense_food)),
+    'avg_housing',       round(avg(expense_housing)),
+    'avg_transport',     round(avg(expense_transport)),
+    'avg_subscription',  round(avg(expense_subscription)),
+    'avg_other',         round(avg(expense_other))
+  ) from submissions;
+$$;
+
+create or replace function get_job_category_stats()
+returns table(job_category text, cnt bigint, avg_salary numeric, avg_expense numeric)
+language sql stable as $$
+  select job_category, count(*) as cnt,
+    round(avg(monthly_salary)) as avg_salary,
+    round(avg(expense_food + expense_housing + expense_transport + expense_subscription + expense_other)) as avg_expense
+  from submissions group by job_category order by round(avg(monthly_salary)) desc;
+$$;
+
+create or replace function get_salary_percentile(p_salary int)
+returns json language sql stable as $$
+  select json_build_object(
+    'total',       count(*),
+    'below',       count(*) filter (where monthly_salary <  p_salary),
+    'at_or_above', count(*) filter (where monthly_salary >= p_salary),
+    'top_percent', case when count(*) = 0 then null
+                        else round(100.0 * count(*) filter (where monthly_salary >= p_salary) / count(*), 1) end
+  ) from submissions;
+$$;
+
+create or replace function get_salary_distribution()
+returns table(bucket text, sort_order int, cnt bigint)
+language sql stable as $$
+  with labeled as (
+    select case
+      when monthly_salary < 200 then 1 when monthly_salary < 300 then 2
+      when monthly_salary < 400 then 3 when monthly_salary < 500 then 4
+      when monthly_salary < 700 then 5 when monthly_salary < 1000 then 6 else 7 end as sort_order
+    from submissions )
+  select case sort_order
+      when 1 then '200 미만' when 2 then '200~299' when 3 then '300~399'
+      when 4 then '400~499' when 5 then '500~699' when 6 then '700~999' else '1000+' end as bucket,
+    sort_order, count(*) as cnt
+  from labeled group by sort_order order by sort_order;
+$$;
+
+-- 4) 익명 사용자도 통계를 볼 수 있도록 실행 권한 부여
+grant execute on function get_overall_stats()        to anon, authenticated;
+grant execute on function get_job_category_stats()   to anon, authenticated;
+grant execute on function get_salary_percentile(int) to anon, authenticated;
+grant execute on function get_salary_distribution()  to anon, authenticated;`;
+
+    // ========================================
+    // 🗂️ 도메인 상수 (직군 / 지출 카테고리 / 월급 구간)
+    // ========================================
+
+    // 직군 목록 (입력 select + 직군별 통계 표에서 공통 사용)
+    const JOB_CATEGORIES = [
+      '개발', '디자인', '기획/PM', '마케팅', '영업', '인사/HR',
+      '재무/회계', '고객지원', '생산/물류', '교육', '의료', '기타',
+    ];
+
+    // 월 지출 카테고리 (입력 폼 + 카테고리별 비교 차트에서 공통 사용)
+    //  key  : submissions 테이블 컬럼명 (insert 시 그대로 사용)
+    //  avg  : get_overall_stats() 가 돌려주는 평균 필드명
+    const EXPENSE_FIELDS = [
+      { key: 'expense_food',         avg: 'avg_food',         emoji: '🍚', label: '식비' },
+      { key: 'expense_housing',      avg: 'avg_housing',      emoji: '🏠', label: '주거' },
+      { key: 'expense_transport',    avg: 'avg_transport',    emoji: '🚇', label: '교통' },
+      { key: 'expense_subscription', avg: 'avg_subscription', emoji: '📺', label: '구독료' },
+      { key: 'expense_other',        avg: 'avg_other',        emoji: '🛍️', label: '기타' },
+    ];
+
+    // 월급 분포 구간 경계 (만원). get_salary_distribution() 의 bucket 라벨과 1:1로 맞춘다.
+    //  ⚠️ 이 임계값/라벨은 DB 함수와 반드시 동일해야 "내 구간 강조"가 어긋나지 않는다.
+    const DIST_BUCKETS = [
+      { order: 1, label: '200 미만', max: 200 },
+      { order: 2, label: '200~299', max: 300 },
+      { order: 3, label: '300~399', max: 400 },
+      { order: 4, label: '400~499', max: 500 },
+      { order: 5, label: '500~699', max: 700 },
+      { order: 6, label: '700~999', max: 1000 },
+      { order: 7, label: '1000+',   max: Infinity },
+    ];
+
+    // 내 월급이 어느 구간(sort_order)에 속하는지 계산 (분포 막대 강조용)
+    function bucketOrderOf(salary) {
+      const s = Number(salary);
+      if (!Number.isFinite(s)) return null;
+      for (const b of DIST_BUCKETS) {
+        if (s < b.max) return b.order;
+      }
+      return 7;
+    }
+
+    // ========================================
+    // 🛠️ 유틸리티
+    // ========================================
+
+    // 숫자를 안전하게 정수로 (빈값/NaN → 0)
+    function toInt(v) {
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    // 천단위 콤마 (null/undefined 는 '-')
+    function comma(n) {
+      if (n === null || n === undefined || n === '' || Number.isNaN(Number(n))) return '-';
+      return Number(n).toLocaleString('ko-KR');
+    }
+
+    // "320만원" 형태
+    function won(n) {
+      if (n === null || n === undefined || Number.isNaN(Number(n))) return '-';
+      return `${comma(Math.round(Number(n)))}만원`;
+    }
+
+    // 연봉 환산 (월급 × 12) → "3,840만원"
+    function yearly(monthly) {
+      if (monthly === null || monthly === undefined || Number.isNaN(Number(monthly))) return '-';
+      return won(Math.round(Number(monthly) * 12));
+    }
+
+    // ========================================
+    // 🎨 Design System Components (순수 표현 — 비즈니스 로직 없음)
+    // ========================================
+
+    // --- Button ---
+    function Button({
+      children, variant = 'primary', size = 'md', type = 'button',
+      disabled = false, onClick, className = '', ...rest
+    }) {
+      const base =
+        'inline-flex items-center justify-center gap-1.5 font-medium rounded-xl transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none';
+      const variants = {
+        primary: 'bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-400',
+        secondary: 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-400',
+      };
+      const sizes = {
+        sm: 'text-sm px-3 py-1.5',
+        md: 'text-sm px-4 py-2.5',
+        lg: 'text-base px-5 py-3',
+      };
+      return (
+        <button
+          type={type}
+          disabled={disabled}
+          onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // --- Input (label + 숫자/텍스트 입력, error/shake 지원) ---
+    function Input({
+      label, type = 'text', value, onChange, placeholder = '', error = '',
+      disabled = false, suffix, shake = false, hint, className = '', id, ...rest
+    }) {
+      const autoId = id || (label ? `in-${label.replace(/\s+/g, '-')}` : undefined);
+      return (
+        <div className={className}>
+          {label && (
+            <label htmlFor={autoId} className="block text-sm font-medium text-slate-700 mb-1.5">
+              {label}
+            </label>
+          )}
+          <div className="relative">
+            <input
+              id={autoId}
+              type={type}
+              value={value}
+              onChange={onChange}
+              placeholder={placeholder}
+              disabled={disabled}
+              aria-invalid={!!error}
+              className={`w-full rounded-xl border bg-white px-4 py-2.5 text-slate-800 placeholder-slate-400 transition-colors focus:outline-none focus:ring-2 disabled:bg-slate-50 ${
+                suffix ? 'pr-14' : ''
+              } ${shake ? 'animate-shake' : ''} ${
+                error
+                  ? 'border-red-400 focus:ring-red-300'
+                  : 'border-slate-300 focus:border-emerald-400 focus:ring-emerald-200'
+              }`}
+              {...rest}
+            />
+            {suffix && (
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-400">
+                {suffix}
+              </span>
+            )}
+          </div>
+          {hint && !error && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+          {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        </div>
+      );
+    }
+
+    // --- Select (label + 네이티브 select) ---
+    function Select({ label, value, onChange, options, placeholder, error = '', shake = false, className = '', id }) {
+      const autoId = id || (label ? `sel-${label.replace(/\s+/g, '-')}` : undefined);
+      return (
+        <div className={className}>
+          {label && (
+            <label htmlFor={autoId} className="block text-sm font-medium text-slate-700 mb-1.5">
+              {label}
+            </label>
+          )}
+          <div className="relative">
+            <select
+              id={autoId}
+              value={value}
+              onChange={onChange}
+              aria-invalid={!!error}
+              className={`w-full appearance-none rounded-xl border bg-white px-4 py-2.5 pr-10 text-slate-800 transition-colors focus:outline-none focus:ring-2 ${
+                shake ? 'animate-shake' : ''
+              } ${
+                error
+                  ? 'border-red-400 focus:ring-red-300'
+                  : 'border-slate-300 focus:border-emerald-400 focus:ring-emerald-200'
+              } ${value ? '' : 'text-slate-400'}`}
+            >
+              {placeholder && <option value="">{placeholder}</option>}
+              {options.map((opt) => {
+                const val = typeof opt === 'string' ? opt : opt.value;
+                const lab = typeof opt === 'string' ? opt : opt.label;
+                return <option key={val} value={val} className="text-slate-800">{lab}</option>;
+              })}
+            </select>
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">▾</span>
+          </div>
+          {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        </div>
+      );
+    }
+
+    // --- Card ---
+    function Card({ children, className = '', ...rest }) {
+      return (
+        <div className={`rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 ${className}`} {...rest}>
+          {children}
+        </div>
+      );
+    }
+
+    // --- Badge ---
+    function Badge({ children, className = '' }) {
+      return (
+        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}>
+          {children}
+        </span>
+      );
+    }
+
+    // --- StatCard (요약 통계 카드) ---
+    function StatCard({ icon, label, value, sub, accent = 'text-emerald-600' }) {
+      return (
+        <Card className="flex flex-col gap-1 p-4 sm:p-5">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+            <span aria-hidden="true">{icon}</span>
+            {label}
+          </div>
+          <div className={`text-xl font-bold sm:text-2xl ${accent}`}>{value}</div>
+          {sub && <div className="text-xs text-slate-400">{sub}</div>}
+        </Card>
+      );
+    }
+
+    // --- Tabs (탭 전환 컨트롤) ---
+    function Tabs({ tabs, active, onChange }) {
+      return (
+        <div className="inline-flex w-full rounded-2xl border border-slate-200 bg-white p-1 shadow-sm sm:w-auto" role="tablist">
+          {tabs.map((t) => {
+            const selected = active === t.value;
+            return (
+              <button
+                key={t.value}
+                role="tab"
+                aria-selected={selected}
+                onClick={() => onChange(t.value)}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors sm:flex-none sm:px-6 ${
+                  selected ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span aria-hidden="true">{t.emoji}</span>
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // --- Modal ---
+    function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => {
+          window.removeEventListener('keydown', onKey);
+          document.body.style.overflow = '';
+        };
+      }, [isOpen, onClose]);
+
+      if (!isOpen) return null;
+      const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl' };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center"
+          role="dialog" aria-modal="true" aria-label={title}>
+          <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} aria-hidden="true" />
+          <Card className={`relative z-10 my-4 w-full ${sizes[size]} p-6 animate-modal-pop`}>
+            <div className="mb-3 flex items-start justify-between gap-3">
+              {title && <h2 className="text-lg font-semibold text-slate-800">{title}</h2>}
+              <button type="button" onClick={onClose} aria-label="닫기"
+                className="-mr-1 -mt-1 rounded-lg px-2 py-1 text-xl leading-none text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                ✕
+              </button>
+            </div>
+            {children}
+          </Card>
+        </div>
+      );
+    }
+
+    // --- Toast 컨테이너 (성공/실패 피드백) ---
+    function ToastContainer({ toasts, onDismiss }) {
+      const styles = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-red-600 text-white',
+        info: 'bg-slate-800 text-white',
+      };
+      const icons = { success: '✓', error: '!', info: '💬' };
+      return (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-[60] flex flex-col items-center gap-2 px-4">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              role="status"
+              aria-live="polite"
+              onClick={() => onDismiss(t.id)}
+              className={`animate-toast-in pointer-events-auto flex max-w-sm cursor-pointer items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-lg ${styles[t.type] || styles.info}`}
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/25 text-xs font-bold">
+                {icons[t.type] || icons.info}
+              </span>
+              <span className="leading-snug">{t.message}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // --- 아이콘 (간단한 인라인 SVG) ---
+    const Icon = {
+      Send: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+        </svg>
+      ),
+      Copy: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      ),
+      Refresh: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+        </svg>
+      ),
+      Settings: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      ),
+      Alert: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      ),
+      Lock: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      ),
+      Up: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+        </svg>
+      ),
+      Down: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <line x1="12" y1="5" x2="12" y2="19" /><polyline points="19 12 12 19 5 12" />
+        </svg>
+      ),
+    };
+
+    // ========================================
+    // 🧩 공통 / 보조 컴포넌트
+    // ========================================
+
+    // --- 로딩 스피너 ---
+    function Spinner({ label = '불러오는 중...' }) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
+          <span className="mb-3 h-8 w-8 animate-spin rounded-full border-[3px] border-emerald-200 border-t-emerald-500" />
+          <p className="text-sm text-slate-500">{label}</p>
+        </div>
+      );
+    }
+
+    // --- 빈 상태 ---
+    function EmptyState() {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
+          <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-3xl">📊</span>
+          <p className="text-base font-medium text-slate-700">아직 데이터가 없어요</p>
+          <p className="mt-1 text-sm text-slate-500">첫 번째 데이터를 입력해보세요! 한 명이 모이면 통계가 시작돼요.</p>
+        </div>
+      );
+    }
+
+    // --- 에러 배너 (재시도 / 닫기) ---
+    //  RLS·테이블·함수 누락 같은 흔한 실패는 SQL 재실행 안내를 함께 보여준다.
+    function ErrorBanner({ message, onRetry, onDismiss }) {
+      const missing = /relation|function|does not exist|schema cache|not find/i.test(message || '');
+      return (
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <Icon.Alert className="mt-0.5 h-5 w-5 shrink-0" />
+          <div className="flex-1 leading-relaxed">
+            <p className="font-medium">문제가 생겼어요</p>
+            <p className="mt-0.5 break-words text-red-600">{message}</p>
+            <p className="mt-1 text-xs text-red-500">
+              {missing
+                ? 'Supabase에 supabase-schema.sql 을 먼저 실행했는지 확인해 주세요. (테이블/통계 함수가 아직 없을 수 있어요.)'
+                : '잠시 후 다시 시도해 주세요. 계속되면 Supabase 설정을 확인해 주세요.'}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {onRetry && (
+              <button type="button" onClick={onRetry}
+                className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">
+                다시 시도
+              </button>
+            )}
+            {onDismiss && (
+              <button type="button" onClick={onDismiss} aria-label="알림 닫기"
+                className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-100">
+                닫기
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // --- SQL 코드 블록 + 복사 버튼 (설정 화면/모달에서 재사용) ---
+    function SqlBlock({ sql, onCopied }) {
+      const [copied, setCopied] = useState(false);
+      const copy = async () => {
+        try {
+          await navigator.clipboard.writeText(sql);
+        } catch (_) {
+          const ta = document.createElement('textarea');
+          ta.value = sql;
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); } catch (e) {}
+          document.body.removeChild(ta);
+        }
+        setCopied(true);
+        if (onCopied) onCopied();
+        setTimeout(() => setCopied(false), 1800);
+      };
+      return (
+        <div className="relative">
+          <button type="button" onClick={copy}
+            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg bg-slate-700 px-2.5 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-600">
+            <Icon.Copy className="h-3.5 w-3.5" />
+            {copied ? '복사됨!' : '복사'}
+          </button>
+          <pre className="preserve-lines max-h-72 overflow-auto rounded-xl bg-slate-900 p-4 pt-11 text-[12px] leading-relaxed text-slate-100">
+            <code>{sql}</code>
+          </pre>
+        </div>
+      );
+    }
+
+    // --- Supabase 자격증명 입력 폼 (설정 화면 + 설정 모달이 공유) ---
+    //  검증: Project URL 은 https://xxxx.supabase.co 형태인지 가볍게 확인.
+    function CredentialForm({ initialUrl = '', initialKey = '', onSaved, submitLabel = '저장하고 시작하기' }) {
+      const [url, setUrl] = useState(initialUrl);
+      const [key, setKey] = useState(initialKey);
+      const [error, setError] = useState('');
+
+      const handleSave = () => {
+        const u = url.trim();
+        const k = key.trim();
+        if (!isConfigured(u, k)) {
+          setError('Project URL과 anon public key를 모두 정확히 붙여넣어 주세요.');
+          return;
+        }
+        if (!/^https:\/\/.+\.supabase\.co/.test(u)) {
+          setError('Project URL은 보통 https://xxxx.supabase.co 형태예요. 다시 확인해 주세요.');
+          return;
+        }
+        try {
+          localStorage.setItem(LS_URL, u);
+          localStorage.setItem(LS_KEY, k);
+        } catch (_) {
+          setError('브라우저 저장소에 접근할 수 없어요. 시크릿 모드라면 일반 창에서 시도해 주세요.');
+          return;
+        }
+        onSaved();
+      };
+
+      return (
+        <div className="space-y-3">
+          <Input
+            label="Project URL"
+            value={url}
+            onChange={(e) => { setUrl(e.target.value); if (error) setError(''); }}
+            placeholder="https://xxxxxxxx.supabase.co"
+            autoComplete="off"
+            spellCheck="false"
+          />
+          <div>
+            <label htmlFor="sb-key" className="block text-sm font-medium text-slate-700 mb-1.5">anon public key</label>
+            <textarea
+              id="sb-key"
+              value={key}
+              onChange={(e) => { setKey(e.target.value); if (error) setError(''); }}
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              rows={3}
+              autoComplete="off"
+              spellCheck="false"
+              className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-xs text-slate-800 placeholder-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+            />
+          </div>
+
+          {error && (
+            <p className="flex items-center gap-1.5 text-sm text-red-600">
+              <Icon.Alert className="h-4 w-4" /> {error}
+            </p>
+          )}
+
+          <div className="flex items-start gap-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-xs leading-relaxed text-emerald-700">
+            <Icon.Lock className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              <b>anon public key</b>는 공개되어도 안전한 키예요. 위 SQL에서 만든 RLS 정책이
+              데이터 접근을 보호하기 때문에 브라우저에 그대로 넣어도 괜찮습니다.
+            </span>
+          </div>
+
+          <Button onClick={handleSave} variant="primary" size="lg" className="w-full">
+            <Icon.Send className="h-4 w-4" /> {submitLabel}
+          </Button>
+          <p className="text-center text-xs text-slate-400">
+            입력한 값은 이 브라우저(localStorage)에만 저장되며, 서버로 따로 전송되지 않아요.
+          </p>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 설정 화면 (Supabase 미설정 시 전체 화면으로 표시)
+    // ========================================
+    function SetupScreen({ onSaved }) {
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-teal-50 to-indigo-50">
+          <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+            <div className="mb-6 text-center">
+              <span className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-3xl text-white shadow-sm">
+                💰
+              </span>
+              <h1 className="text-2xl font-bold text-slate-800">익명 월급·지출 비교소 시작하기</h1>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                이 앱은 <b className="text-emerald-600">Supabase</b>를 서버 &amp; 데이터베이스로 사용해요.<br />
+                여러 명이 모은 데이터로 <b>평균·분포·내 위치</b> 통계를 만들어 보여줍니다.
+              </p>
+            </div>
+
+            <Card className="p-6">
+              <ol className="mb-6 space-y-4">
+                <li className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-600">①</span>
+                  <div className="text-sm leading-relaxed text-slate-700">
+                    <a href="https://supabase.com" target="_blank" rel="noopener noreferrer"
+                      className="font-semibold text-emerald-600 underline">supabase.com</a>
+                    에 접속해 무료 계정을 만들고 <b>새 프로젝트</b>를 생성하세요.
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-600">②</span>
+                  <div className="w-full text-sm leading-relaxed text-slate-700">
+                    좌측 메뉴의 <b>SQL Editor</b>를 열고, 아래 SQL을 붙여넣어 <b>실행(Run)</b>하세요.
+                    <br />
+                    <span className="text-slate-500">(submissions 테이블 + RLS 정책 + 통계 함수 4개가 한 번에 만들어집니다.)</span>
+                    <div className="mt-3"><SqlBlock sql={SETUP_SQL} /></div>
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-600">③</span>
+                  <div className="text-sm leading-relaxed text-slate-700">
+                    <b>Project Settings → API</b> 메뉴에서 <b>Project URL</b>과 <b>anon public</b> key를 복사하세요.
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-600">④</span>
+                  <div className="text-sm leading-relaxed text-slate-700">
+                    아래 입력칸에 붙여넣고 <b>저장하고 시작하기</b>를 누르면 앱이 열려요.
+                  </div>
+                </li>
+              </ol>
+
+              <div className="border-t border-slate-100 pt-5">
+                <CredentialForm onSaved={onSaved} />
+              </div>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 설정 모달 (이미 설정된 뒤에도 ⚙️ 로 다시 열어 수정)
+    // ========================================
+    function SettingsModal({ isOpen, onClose }) {
+      // 현재 저장된 값(있으면)을 미리 채워 보여준다.
+      let curUrl = '';
+      let curKey = '';
+      try {
+        curUrl = localStorage.getItem(LS_URL) || '';
+        curKey = localStorage.getItem(LS_KEY) || '';
+      } catch (_) {}
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="⚙️ Supabase 설정" size="lg">
+          <p className="mb-4 text-sm leading-relaxed text-slate-600">
+            Project URL과 anon public key를 바꾸거나 다시 입력할 수 있어요.
+            아직 테이블/함수를 안 만들었다면 아래 SQL을 <b>SQL Editor</b>에서 먼저 실행하세요.
+          </p>
+          <div className="mb-5">
+            <SqlBlock sql={SETUP_SQL} />
+          </div>
+          <div className="border-t border-slate-100 pt-5">
+            <CredentialForm
+              initialUrl={curUrl}
+              initialKey={curKey}
+              submitLabel="저장하고 새로고침"
+              onSaved={() => window.location.reload()}
+            />
+          </div>
+        </Modal>
+      );
+    }
+
+    // ========================================
+    // 🧩 헤더 (그라데이션 + 참여 N명 배지 + ⚙️ 설정)
+    // ========================================
+    function Header({ count, onOpenSettings }) {
+      return (
+        <header className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-500 to-indigo-500 px-5 py-6 text-white shadow-md sm:px-7 sm:py-7">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl">💰</span>
+              <div>
+                <h1 className="text-xl font-bold sm:text-2xl">익명 월급·지출 비교소</h1>
+                <p className="mt-0.5 text-sm text-emerald-50/90">혼자의 월급은 숫자, 함께 모이면 통계</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Badge className="bg-white/20 text-white backdrop-blur">
+                👥 참여 {comma(count)}명
+              </Badge>
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                aria-label="Supabase 설정 열기"
+                title="Supabase 설정"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white transition-colors hover:bg-white/25"
+              >
+                <Icon.Settings className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 📄 탭1 — 입력하기 (controlled form → INSERT)
+    // ========================================
+    function InputTab({ onSubmit, submitting }) {
+      const [job, setJob] = useState('');
+      const [exp, setExp] = useState('');
+      const [salary, setSalary] = useState('');
+      // 지출 5개 카테고리 입력값 (문자열로 들고 있다가 제출 시 정수 변환)
+      const [expenses, setExpenses] = useState(() =>
+        EXPENSE_FIELDS.reduce((acc, f) => { acc[f.key] = ''; return acc; }, {})
+      );
+      const [errors, setErrors] = useState({}); // { job, salary }
+      const [shake, setShake] = useState(false);
+
+      // 실시간 지출 합계 (만원)
+      const expenseTotal = useMemo(
+        () => EXPENSE_FIELDS.reduce((sum, f) => sum + toInt(expenses[f.key]), 0),
+        [expenses]
+      );
+
+      const setExpense = (key, val) => {
+        // 음수/소수 방지: 숫자만
+        const cleaned = val.replace(/[^\d]/g, '');
+        setExpenses((prev) => ({ ...prev, [key]: cleaned }));
+      };
+
+      const triggerShake = () => {
+        setShake(true);
+        setTimeout(() => setShake(false), 450);
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (submitting) return;
+
+        // 검증: 직군 필수 + 월급 > 0
+        const nextErrors = {};
+        if (!job) nextErrors.job = '직군을 선택해 주세요.';
+        const salaryInt = toInt(salary);
+        if (salaryInt <= 0) nextErrors.salary = '월급(만원)을 0보다 크게 입력해 주세요.';
+
+        if (Object.keys(nextErrors).length > 0) {
+          setErrors(nextErrors);
+          triggerShake();
+          return;
+        }
+        setErrors({});
+
+        // submissions 테이블 컬럼명에 정확히 맞춰 payload 구성 (모두 정수, 단위 만원)
+        const payload = {
+          job_category: job,
+          experience_years: toInt(exp),
+          monthly_salary: salaryInt,
+          expense_food: toInt(expenses.expense_food),
+          expense_housing: toInt(expenses.expense_housing),
+          expense_transport: toInt(expenses.expense_transport),
+          expense_subscription: toInt(expenses.expense_subscription),
+          expense_other: toInt(expenses.expense_other),
+        };
+
+        await onSubmit(payload);
+        // 성공/실패 토스트와 탭 전환은 상위(App)에서 처리한다.
+      };
+
+      return (
+        <div className="space-y-5">
+          {/* 학습 포인트 안내 */}
+          <Card className="border-l-4 border-l-emerald-400 bg-emerald-50/60 p-4">
+            <p className="text-sm leading-relaxed text-emerald-800">
+              📥 입력한 값은 <b>익명</b>으로 저장돼요. 이름·이메일은 묻지 않아요.<br />
+              내 데이터 하나가 더해지면, 전체 <b>평균·분포·내 위치</b> 통계가 함께 업데이트됩니다.
+            </p>
+          </Card>
+
+          <Card className="p-5 sm:p-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* 직군 + 연차 */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Select
+                  label="직군 *"
+                  value={job}
+                  onChange={(e) => { setJob(e.target.value); if (errors.job) setErrors((p) => ({ ...p, job: '' })); }}
+                  options={JOB_CATEGORIES}
+                  placeholder="직군을 선택하세요"
+                  error={errors.job}
+                  shake={shake && !!errors.job}
+                />
+                <Input
+                  label="연차 (년)"
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  value={exp}
+                  onChange={(e) => setExp(e.target.value)}
+                  placeholder="예: 3"
+                  suffix="년"
+                  hint="신입이면 0"
+                />
+              </div>
+
+              {/* 월급 */}
+              <div>
+                <Input
+                  label="월급 (만원) *"
+                  type="number"
+                  min="1"
+                  inputMode="numeric"
+                  value={salary}
+                  onChange={(e) => { setSalary(e.target.value); if (errors.salary) setErrors((p) => ({ ...p, salary: '' })); }}
+                  placeholder="예: 320"
+                  suffix="만원"
+                  error={errors.salary}
+                  shake={shake && !!errors.salary}
+                />
+                {toInt(salary) > 0 && (
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    연봉 환산 약 <b className="text-emerald-600">{yearly(toInt(salary))}</b> (월급 ×12)
+                  </p>
+                )}
+              </div>
+
+              {/* 월 지출 (카테고리별) */}
+              <div>
+                <div className="mb-2 flex items-end justify-between">
+                  <span className="block text-sm font-medium text-slate-700">월 지출 (만원)</span>
+                  <span className="text-xs text-slate-400">비워두면 0으로 저장돼요</span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {EXPENSE_FIELDS.map((f) => (
+                    <Input
+                      key={f.key}
+                      label={`${f.emoji} ${f.label}`}
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={expenses[f.key]}
+                      onChange={(e) => setExpense(f.key, e.target.value)}
+                      placeholder="0"
+                      suffix="만원"
+                    />
+                  ))}
+                </div>
+
+                {/* 실시간 지출 합계 */}
+                <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                  <span className="text-sm font-medium text-slate-600">지출 합계</span>
+                  <span className="text-lg font-bold text-emerald-600">{won(expenseTotal)}</span>
+                </div>
+                {toInt(salary) > 0 && (
+                  <p className="mt-1.5 text-right text-xs text-slate-500">
+                    월급 대비 지출 {Math.round((expenseTotal / toInt(salary)) * 100)}% · 남는 돈{' '}
+                    <b className={toInt(salary) - expenseTotal >= 0 ? 'text-emerald-600' : 'text-red-500'}>
+                      {won(toInt(salary) - expenseTotal)}
+                    </b>
+                  </p>
+                )}
+              </div>
+
+              <Button type="submit" variant="primary" size="lg" disabled={submitting} className="w-full">
+                <Icon.Send className="h-4 w-4" />
+                {submitting ? '저장하는 중...' : '제출하고 내 위치 보기'}
+              </Button>
+            </form>
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📊 차트 컴포넌트 (Chart.js) — canvas 재사용 시 반드시 destroy!
+    // ========================================
+
+    // --- 월급 분포 막대그래프 ---
+    //  내 월급이 속한 구간 막대만 다른 색으로 강조한다.
+    function SalaryDistributionChart({ distribution, myBucketOrder }) {
+      const canvasRef = useRef(null);
+      const chartRef = useRef(null);
+
+      useEffect(() => {
+        if (!canvasRef.current || !window.Chart) return;
+
+        // 모든 구간을 0으로 채운 뒤, DB가 준 값으로 덮어쓴다 (빈 구간도 축에 보이게).
+        const counts = DIST_BUCKETS.map((b) => {
+          const row = (distribution || []).find((d) => d.sort_order === b.order);
+          return row ? Number(row.cnt) : 0;
+        });
+        const labels = DIST_BUCKETS.map((b) => b.label);
+
+        // 내 구간만 진한 색(emerald-600), 나머지는 연한 색(teal-200)
+        const bg = DIST_BUCKETS.map((b) =>
+          b.order === myBucketOrder ? 'rgba(5,150,105,0.95)' : 'rgba(153,246,228,0.9)'
+        );
+        const border = DIST_BUCKETS.map((b) =>
+          b.order === myBucketOrder ? 'rgba(4,120,87,1)' : 'rgba(94,234,212,1)'
+        );
+
+        // ⚠️ 같은 canvas 에 다시 그리기 전, 이전 인스턴스를 반드시 파괴 (안 그러면 "Canvas is already in use" 에러)
+        if (chartRef.current) {
+          chartRef.current.destroy();
+          chartRef.current = null;
+        }
+
+        chartRef.current = new window.Chart(canvasRef.current, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: '인원 수',
+              data: counts,
+              backgroundColor: bg,
+              borderColor: border,
+              borderWidth: 1.5,
+              borderRadius: 8,
+              maxBarThickness: 56,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => ` ${comma(ctx.parsed.y)}명${DIST_BUCKETS[ctx.dataIndex].order === myBucketOrder ? ' (내 구간)' : ''}`,
+                },
+              },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0, color: '#64748b' }, grid: { color: '#f1f5f9' } },
+              x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { display: false } },
+            },
+          },
+        });
+
+        // 정리: 컴포넌트가 사라지거나 재생성 직전에 파괴
+        return () => {
+          if (chartRef.current) {
+            chartRef.current.destroy();
+            chartRef.current = null;
+          }
+        };
+      }, [distribution, myBucketOrder]); // 데이터/내 구간이 바뀌면 다시 그린다
+
+      return (
+        <div className="relative h-64 w-full">
+          <canvas ref={canvasRef} role="img" aria-label="월급 구간별 분포 막대그래프" />
+        </div>
+      );
+    }
+
+    // --- 카테고리별 평균 지출 비교 (그룹 막대: 전체 평균 vs 나) ---
+    function ExpenseCompareChart({ overall, mySubmission }) {
+      const canvasRef = useRef(null);
+      const chartRef = useRef(null);
+
+      useEffect(() => {
+        if (!canvasRef.current || !window.Chart) return;
+
+        const labels = EXPENSE_FIELDS.map((f) => `${f.emoji} ${f.label}`);
+        const avgData = EXPENSE_FIELDS.map((f) => (overall && overall[f.avg] != null ? Number(overall[f.avg]) : 0));
+
+        const datasets = [{
+          label: '전체 평균',
+          data: avgData,
+          backgroundColor: 'rgba(94,234,212,0.85)',
+          borderColor: 'rgba(20,184,166,1)',
+          borderWidth: 1.5,
+          borderRadius: 6,
+          maxBarThickness: 36,
+        }];
+
+        // 내 제출이 있으면 두 번째 시리즈(나)를 추가
+        if (mySubmission) {
+          const myData = EXPENSE_FIELDS.map((f) => toInt(mySubmission[f.key]));
+          datasets.push({
+            label: '나',
+            data: myData,
+            backgroundColor: 'rgba(99,102,241,0.85)',
+            borderColor: 'rgba(79,70,229,1)',
+            borderWidth: 1.5,
+            borderRadius: 6,
+            maxBarThickness: 36,
+          });
+        }
+
+        if (chartRef.current) {
+          chartRef.current.destroy();
+          chartRef.current = null;
+        }
+
+        chartRef.current = new window.Chart(canvasRef.current, {
+          type: 'bar',
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'top', labels: { boxWidth: 14, color: '#475569' } },
+              tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${won(ctx.parsed.y)}` } },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { color: '#64748b', callback: (v) => comma(v) }, grid: { color: '#f1f5f9' } },
+              x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { display: false } },
+            },
+          },
+        });
+
+        return () => {
+          if (chartRef.current) {
+            chartRef.current.destroy();
+            chartRef.current = null;
+          }
+        };
+      }, [overall, mySubmission]);
+
+      return (
+        <div className="relative h-64 w-full">
+          <canvas ref={canvasRef} role="img" aria-label="카테고리별 평균 지출 비교 막대그래프" />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 내 위치 카드 (강조) — get_salary_percentile 결과 사용
+    // ========================================
+    function MyPositionCard({ mySubmission, percentile, overall }) {
+      // 상위 % 가 바뀔 때 통! 애니메이션
+      const [popKey, setPopKey] = useState(0);
+      const top = percentile ? percentile.top_percent : null;
+      const prevTop = useRef(top);
+      useEffect(() => {
+        if (top !== prevTop.current) {
+          prevTop.current = top;
+          setPopKey((k) => k + 1);
+        }
+      }, [top]);
+
+      // 내 제출이 없으면 안내만 보여준다.
+      if (!mySubmission) {
+        return (
+          <Card className="border-l-4 border-l-indigo-400 bg-indigo-50/50 p-5">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🎯</span>
+              <div>
+                <p className="font-semibold text-slate-800">내 위치가 궁금하다면?</p>
+                <p className="mt-0.5 text-sm text-slate-600">
+                  먼저 <b>입력하기</b> 탭에서 내 월급을 입력하면, 상위 몇 %인지 알려드려요.
+                </p>
+              </div>
+            </div>
+          </Card>
+        );
+      }
+
+      const mySalary = toInt(mySubmission.monthly_salary);
+      const avgSalary = overall && overall.avg_salary != null ? Number(overall.avg_salary) : null;
+      const diff = avgSalary != null ? mySalary - avgSalary : null; // 평균 대비 차이(만원)
+      const above = diff != null && diff >= 0;
+
+      return (
+        <Card className="overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-600 p-0 text-white shadow-md">
+          <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium text-emerald-50">
+                <span aria-hidden="true">🎯</span> 내 위치
+              </div>
+              {top != null ? (
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-sm text-emerald-100">월급 기준 상위</span>
+                  <span key={popKey} className={`text-4xl font-extrabold sm:text-5xl ${popKey ? 'animate-count-pop' : ''}`}>
+                    {top}%
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-1 text-emerald-50">아직 비교할 데이터가 부족해요.</p>
+              )}
+              {percentile && percentile.total > 0 && (
+                <p className="mt-1 text-xs text-emerald-100/90">
+                  전체 {comma(percentile.total)}명 중, 나보다 적게 받는 사람 {comma(percentile.below)}명
+                </p>
+              )}
+            </div>
+
+            {/* 나 vs 평균 비교 */}
+            <div className="rounded-2xl bg-white/15 p-4 backdrop-blur">
+              <div className="flex items-end justify-between gap-6">
+                <div>
+                  <p className="text-xs text-emerald-100">내 월급</p>
+                  <p className="text-xl font-bold">{won(mySalary)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-emerald-100">전체 평균</p>
+                  <p className="text-xl font-bold">{won(avgSalary)}</p>
+                </div>
+              </div>
+              {diff != null && (
+                <div className={`mt-2 flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-sm font-semibold ${
+                  above ? 'bg-white/20 text-white' : 'bg-rose-100/90 text-rose-700'
+                }`}>
+                  {above ? <Icon.Up className="h-4 w-4" /> : <Icon.Down className="h-4 w-4" />}
+                  평균보다 {won(Math.abs(diff))} {above ? '많이' : '적게'} 받아요
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 📄 직군별 평균 표 (GROUP BY 결과) — 내 직군 행 강조
+    // ========================================
+    function JobCategoryTable({ rows, myJob }) {
+      if (!rows || rows.length === 0) {
+        return <p className="py-6 text-center text-sm text-slate-400">아직 직군별 데이터가 없어요.</p>;
+      }
+      // 가로 막대 비율 계산용 최댓값
+      const maxSalary = Math.max(...rows.map((r) => Number(r.avg_salary) || 0), 1);
+
+      return (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                <th className="py-2 pr-3 font-medium">직군</th>
+                <th className="py-2 px-3 text-right font-medium">인원</th>
+                <th className="py-2 px-3 text-right font-medium">평균 월급</th>
+                <th className="py-2 pl-3 text-right font-medium">평균 지출</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const isMine = myJob && r.job_category === myJob;
+                const pct = Math.round((Number(r.avg_salary) / maxSalary) * 100);
+                return (
+                  <tr key={r.job_category}
+                    className={`border-b border-slate-100 ${isMine ? 'bg-emerald-50' : ''}`}>
+                    <td className="py-2.5 pr-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`font-medium ${isMine ? 'text-emerald-700' : 'text-slate-700'}`}>
+                          {r.job_category}
+                        </span>
+                        {isMine && (
+                          <Badge className="bg-emerald-600 text-white">나</Badge>
+                        )}
+                      </div>
+                      {/* 평균월급 가로 막대 (시각적 비교) */}
+                      <div className="mt-1 h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-slate-100">
+                        <div className={`h-full rounded-full ${isMine ? 'bg-emerald-500' : 'bg-teal-300'}`}
+                          style={{ width: `${pct}%` }} />
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-slate-600">{comma(r.cnt)}명</td>
+                    <td className="py-2.5 px-3 text-right font-semibold text-slate-800">{won(r.avg_salary)}</td>
+                    <td className="py-2.5 pl-3 text-right text-slate-600">{won(r.avg_expense)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 탭2 — 전체 통계 (대시보드)
+    // ========================================
+    function StatsTab({ stats, loading, error, onRefresh, mySubmission, onGoInput }) {
+      const { overall, jobs, percentile, distribution } = stats;
+      const count = overall ? Number(overall.count) : 0;
+      const myJob = mySubmission ? mySubmission.job_category : null;
+      const myBucketOrder = mySubmission ? bucketOrderOf(mySubmission.monthly_salary) : null;
+
+      // 로딩 (최초)
+      if (loading && !overall) {
+        return <Spinner label="통계를 계산하는 중..." />;
+      }
+
+      // 에러
+      if (error && !overall) {
+        return <ErrorBanner message={error} onRetry={onRefresh} />;
+      }
+
+      // 빈 상태 (데이터 0건)
+      const isEmpty = !loading && overall && count === 0;
+
+      return (
+        <div className="space-y-5">
+          {/* 상단: 새로고침 */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">
+              {count > 0 ? <>지금까지 <b className="text-emerald-600">{comma(count)}명</b>이 참여했어요</> : '통계 대시보드'}
+            </p>
+            <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
+              <Icon.Refresh className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> 새로고침
+            </Button>
+          </div>
+
+          {/* 인라인 에러 (데이터는 있는데 일부 실패한 경우) */}
+          {error && overall && (
+            <ErrorBanner message={error} onRetry={onRefresh} onDismiss={() => {}} />
+          )}
+
+          {isEmpty ? (
+            <>
+              <EmptyState />
+              <div className="text-center">
+                <Button variant="primary" onClick={onGoInput}>
+                  <Icon.Send className="h-4 w-4" /> 첫 데이터 입력하러 가기
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* 요약 카드 3개 */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <StatCard icon="👥" label="참여 인원" value={`${comma(count)}명`} accent="text-indigo-600" />
+                <StatCard icon="💰" label="평균 월급" value={won(overall.avg_salary)}
+                  sub={`연봉 환산 약 ${yearly(overall.avg_salary)}`} accent="text-emerald-600" />
+                <StatCard icon="🧾" label="평균 월 지출" value={won(overall.avg_expense_total)}
+                  sub={overall.avg_salary ? `월급의 ${Math.round((Number(overall.avg_expense_total) / Number(overall.avg_salary)) * 100)}%` : null}
+                  accent="text-teal-600" />
+              </div>
+
+              {/* 내 위치 카드 (강조) */}
+              <MyPositionCard mySubmission={mySubmission} percentile={percentile} overall={overall} />
+
+              {/* 월급 분포 */}
+              <Card className="p-5">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-lg" aria-hidden="true">📊</span>
+                  <h2 className="font-semibold text-slate-800">월급 분포</h2>
+                </div>
+                <p className="mb-4 text-xs text-slate-500">
+                  구간별 인원 수예요.
+                  {myBucketOrder && <> 내가 속한 <b className="text-emerald-600">{DIST_BUCKETS[myBucketOrder - 1].label}</b> 구간은 진한 색으로 강조됩니다.</>}
+                </p>
+                <SalaryDistributionChart distribution={distribution} myBucketOrder={myBucketOrder} />
+              </Card>
+
+              {/* 카테고리별 평균 지출 비교 */}
+              <Card className="p-5">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-lg" aria-hidden="true">🧾</span>
+                  <h2 className="font-semibold text-slate-800">카테고리별 평균 지출 비교</h2>
+                </div>
+                <p className="mb-4 text-xs text-slate-500">
+                  {mySubmission
+                    ? '전체 평균(민트)과 내 지출(보라)을 항목별로 비교해요.'
+                    : '전체 평균 지출이에요. 입력하면 내 지출과 나란히 비교할 수 있어요.'}
+                </p>
+                <ExpenseCompareChart overall={overall} mySubmission={mySubmission} />
+              </Card>
+
+              {/* 직군별 평균 (GROUP BY) */}
+              <Card className="p-5">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="text-lg" aria-hidden="true">🧑‍💼</span>
+                  <h2 className="font-semibold text-slate-800">직군별 평균</h2>
+                </div>
+                <p className="mb-4 text-xs text-slate-500">
+                  평균 월급이 높은 직군 순서예요. (DB의 GROUP BY 결과)
+                  {myJob && <> 내 직군 <b className="text-emerald-600">{myJob}</b> 행은 강조됩니다.</>}
+                </p>
+                <JobCategoryTable rows={jobs} myJob={myJob} />
+              </Card>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App Component (설정 게이트 + 탭 + 데이터 흐름)
+    // ========================================
+    function App() {
+      // 설정 여부에 따라 설정 화면 / 앱 본체를 분기한다.
+      const [ready] = useState(CONFIGURED);
+      const [settingsOpen, setSettingsOpen] = useState(false);
+
+      // 탭 상태 (해시 라우팅 대신 탭 상태로 처리)
+      const [tab, setTab] = useState('input'); // 'input' | 'stats'
+
+      // 통계 4종 결과
+      const [stats, setStats] = useState({ overall: null, jobs: [], percentile: null, distribution: [] });
+      const [statsLoading, setStatsLoading] = useState(false);
+      const [statsError, setStatsError] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+
+      // 내가 마지막으로 제출한 값 (localStorage 에 보관 → 새로고침해도 내 위치 유지)
+      const [mySubmission, setMySubmission] = useState(() => {
+        try {
+          const raw = localStorage.getItem(LS_MY);
+          return raw ? JSON.parse(raw) : null;
+        } catch (_) { return null; }
+      });
+
+      // 토스트
+      const [toasts, setToasts] = useState([]);
+      const toastSeq = useRef(0);
+      const pushToast = useCallback((type, message) => {
+        const id = ++toastSeq.current;
+        setToasts((prev) => [...prev, { id, type, message }]);
+        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2800);
+      }, []);
+      const dismissToast = useCallback((id) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, []);
+
+      // ── 통계 4종을 한 번에 조회 (RPC) ──
+      //  내 제출(p_salary)이 있으면 percentile 도 함께 계산한다.
+      const fetchStats = useCallback(async (myForPercentile) => {
+        if (!db) return;
+        setStatsLoading(true);
+        setStatsError('');
+
+        // 비교 기준이 되는 내 월급 (인자 우선, 없으면 현재 state)
+        const my = myForPercentile !== undefined ? myForPercentile : mySubmission;
+        const mySalary = my ? toInt(my.monthly_salary) : null;
+
+        try {
+          // 4개 RPC 를 병렬 호출 (percentile 은 내 월급이 있을 때만)
+          const calls = [
+            db.rpc('get_overall_stats'),
+            db.rpc('get_job_category_stats'),
+            db.rpc('get_salary_distribution'),
+            mySalary && mySalary > 0
+              ? db.rpc('get_salary_percentile', { p_salary: mySalary })
+              : Promise.resolve({ data: null, error: null }),
+          ];
+          const [overallRes, jobsRes, distRes, pctRes] = await Promise.all(calls);
+
+          // 하나라도 에러면 그 메시지를 노출 (RLS/함수 누락 등)
+          const firstErr = [overallRes, jobsRes, distRes, pctRes].find((r) => r && r.error);
+          if (firstErr) throw firstErr.error;
+
+          setStats({
+            // get_overall_stats 는 객체를 그대로 반환
+            overall: overallRes.data || { count: 0 },
+            jobs: Array.isArray(jobsRes.data) ? jobsRes.data : [],
+            distribution: Array.isArray(distRes.data) ? distRes.data : [],
+            percentile: pctRes ? pctRes.data : null,
+          });
+        } catch (e) {
+          setStatsError(e.message || '통계를 불러오지 못했습니다.');
+        } finally {
+          setStatsLoading(false);
+        }
+      }, [mySubmission]);
+
+      // 최초 마운트 시 통계 1회 조회 (참여 N명 배지 등에 필요)
+      useEffect(() => {
+        if (ready) fetchStats();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [ready]);
+
+      // ── INSERT : 익명 제출 → 내 값 저장 → 통계 탭으로 전환 + 새로고침 ──
+      const handleSubmit = useCallback(async (payload) => {
+        if (!db) return;
+        setSubmitting(true);
+        try {
+          // insert 후 select().single() 로 방금 저장된 행(자동 채워진 id/created_at 포함)을 돌려받는다.
+          const { data, error } = await db
+            .from('submissions')
+            .insert([payload])
+            .select()
+            .single();
+          if (error) throw error;
+
+          // 내 최신 제출값을 state + localStorage 에 저장 (재제출 시 갱신)
+          const saved = data || payload;
+          setMySubmission(saved);
+          try { localStorage.setItem(LS_MY, JSON.stringify(saved)); } catch (_) {}
+
+          // 자동으로 통계 탭으로 전환 후, 방금 값을 기준으로 통계 새로고침
+          setTab('stats');
+          pushToast('success', '제출 완료! 내 위치를 확인해보세요 🎯');
+          await fetchStats(saved);
+        } catch (e) {
+          const msg = e.message || '저장에 실패했어요.';
+          // 테이블/RLS 누락 같은 흔한 실패는 더 친절하게 안내
+          if (/relation|does not exist|schema cache|not find/i.test(msg)) {
+            pushToast('error', 'submissions 테이블이 없어요. supabase-schema.sql 을 먼저 실행했는지 확인하세요.');
+          } else {
+            pushToast('error', msg);
+          }
+        } finally {
+          setSubmitting(false);
+        }
+      }, [fetchStats, pushToast]);
+
+      // ── 설정 안 됨 → 설정 화면 ──
+      if (!ready) {
+        // 저장 후에는 supabase 클라이언트를 새 자격증명으로 다시 만들어야 하므로 새로고침.
+        return <SetupScreen onSaved={() => window.location.reload()} />;
+      }
+
+      const TABS = [
+        { value: 'input', label: '입력하기', emoji: '📝' },
+        { value: 'stats', label: '전체 통계', emoji: '📊' },
+      ];
+      const participantCount = stats.overall ? Number(stats.overall.count) : 0;
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-teal-50 to-indigo-50">
+          <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+          <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+          <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+            <Header count={participantCount} onOpenSettings={() => setSettingsOpen(true)} />
+
+            {/* 탭 전환 */}
+            <div className="mb-6">
+              <Tabs tabs={TABS} active={tab} onChange={setTab} />
+            </div>
+
+            {/* 탭 컨텐츠 */}
+            {tab === 'input' ? (
+              <InputTab onSubmit={handleSubmit} submitting={submitting} />
+            ) : (
+              <StatsTab
+                stats={stats}
+                loading={statsLoading}
+                error={statsError}
+                onRefresh={() => fetchStats()}
+                mySubmission={mySubmission}
+                onGoInput={() => setTab('input')}
+              />
+            )}
+
+            {/* 푸터 */}
+            <footer className="mt-10 text-center text-xs text-slate-400">
+              <p>Supabase(서버+DB)로 만든 익명 통계 앱 · 모든 금액 단위는 만원 💡</p>
+              <p className="mt-1">데이터가 모이면 통계가 됩니다 — 20명만 모여도 의미 있는 분포가 생겨요 📊</p>
+            </footer>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마음 한 조각 💌 익명 고민·칭찬 게시판</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ 중요: 최신 @babel/standalone 은 JSX 를 automatic runtime 으로 변환하면서
+    //    `import { jsx } from "react/jsx-runtime"` 를 코드 맨 위에 삽입한다.
+    //    이 앱은 React 를 UMD(전역 변수)로 불러오므로, 그 import 때문에
+    //    "Cannot use import statement outside a module" 오류가 나고 화면이 하얗게 멈춘다.
+    //    → JSX 를 classic runtime(React.createElement)으로 변환하도록 강제한다.
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+  <!-- Supabase JS 클라이언트: 이 한 줄이 우리 앱의 "서버 + DB" 역할을 해준다.
+       Supabase가 자동 생성하는 PostgREST API가 서버이고, Postgres의 posts 테이블이 DB다. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Tailwind으로 표현하기 어려운 애니메이션만 커스텀 처리 */
+
+    /* 카드가 아래에서 부드럽게 떠오르며 나타나는 효과 */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up { animation: fadeInUp 0.32s ease-out both; }
+
+    /* 모달이 살짝 커지며 등장 */
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .animate-modal-pop { animation: modalPop 0.18s ease-out both; }
+
+    /* 공감(UPDATE) 버튼을 누를 때 숫자가 통! 하고 튀어오르는 효과.
+       이 앱의 핵심 학습 포인트(DB UPDATE)를 시각적으로 강조한다. */
+    @keyframes countPop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.5); }
+      100% { transform: scale(1); }
+    }
+    .animate-count-pop { animation: countPop 0.4s cubic-bezier(.34,1.56,.64,1) both; }
+
+    /* 하트가 살짝 뛰는 효과 */
+    @keyframes heartBeat {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.35) rotate(-8deg); }
+      60%  { transform: scale(0.92); }
+      100% { transform: scale(1); }
+    }
+    .animate-heart-beat { animation: heartBeat 0.45s ease-out both; }
+
+    /* 빈 입력으로 제출했을 때 흔들리는 효과 */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-7px); }
+      40% { transform: translateX(7px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+    .animate-shake { animation: shake 0.4s ease-in-out both; }
+
+    /* 토스트가 위에서 슬라이드되어 내려오는 효과 */
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-toast-in { animation: toastIn 0.25s ease-out both; }
+
+    /* 본문 줄바꿈 보존 */
+    .preserve-lines { white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // ========================================
+    // 🔌 Supabase 설정 (서버 + DB)
+    // ========================================
+    //
+    // ▸ Supabase 는 "백엔드를 코드 한 줄 없이" 제공해 준다.
+    //   - 자동 생성된 REST API(PostgREST) = 우리의 "서버"
+    //   - 아래 posts 테이블(Postgres) = 우리의 "DB"
+    //   별도의 Node 서버(server.js)는 없다. supabase-js 클라이언트로 직접 CRUD 한다.
+    //
+    // ▸ posts 테이블 스키마
+    //   ┌─────────────┬──────────────┬────────────────────────────────────┐
+    //   │ id          │ bigint       │ identity, primary key (자동 증가)     │
+    //   │ category    │ text         │ '고민' | '칭찬' | '응원' 중 하나       │
+    //   │ content     │ text         │ 글 내용                               │
+    //   │ likes       │ int          │ default 0 — 공감(👍) 수               │
+    //   │ created_at  │ timestamptz  │ default now() — 작성 시각             │
+    //   └─────────────┴──────────────┴────────────────────────────────────┘
+    //
+    // ▸ 아래 두 상수를 직접 채워도 되고, 화면의 설정 화면에서 입력해도 된다.
+    //   (입력하면 브라우저 localStorage 에 저장된다.)
+    const SUPABASE_URL = 'https://hxlmolfzsijfvrhtvjko.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4bG1vbGZ6c2lqZnZyaHR2amtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MTIwMDMsImV4cCI6MjA5NzE4ODAwM30.zuoLSRjcvxue6TvOS9S22sNXVWVZMsefhPGKejQ1bt4';
+
+    // localStorage 키
+    const LS_URL = 'sb_url';
+    const LS_KEY = 'sb_key';
+
+    // 플레이스홀더/빈 문자열은 "설정 안 됨" 으로 취급한다.
+    function isConfigured(url, key) {
+      const bad = (v) =>
+        !v ||
+        !v.trim() ||
+        v === 'YOUR_SUPABASE_URL' ||
+        v === 'YOUR_SUPABASE_ANON_KEY';
+      return !bad(url) && !bad(key);
+    }
+
+    // 우선순위: localStorage 값 → 상단 상수
+    function resolveCredentials() {
+      let lsUrl = '';
+      let lsKey = '';
+      try {
+        lsUrl = localStorage.getItem(LS_URL) || '';
+        lsKey = localStorage.getItem(LS_KEY) || '';
+      } catch (_) {
+        // 시크릿 모드 등에서 localStorage 접근이 막힐 수 있다 → 무시
+      }
+      const url = isConfigured(lsUrl, 'x') ? lsUrl.trim() : SUPABASE_URL;
+      const key = isConfigured('x', lsKey) ? lsKey.trim() : SUPABASE_ANON_KEY;
+      return { url, key };
+    }
+
+    // 설정이 되어 있으면 supabase 클라이언트를 1회 생성한다.
+    const CREDS = resolveCredentials();
+    const CONFIGURED = isConfigured(CREDS.url, CREDS.key);
+    // 주의: 전역 UMD 변수도 `supabase` 이므로, 클라이언트는 `db` 로 이름을 달리한다.
+    //       (같은 이름이면 "Identifier 'supabase' has already been declared" 오류)
+    const db = CONFIGURED
+      ? window.supabase.createClient(CREDS.url, CREDS.key)
+      : null;
+
+    // 설정 화면에서 보여줄 / 복사할 SQL (그대로 실행하면 테이블 + RLS 정책까지 완성)
+    const SETUP_SQL = `create table if not exists posts (
+  id bigint generated always as identity primary key,
+  category text not null,
+  content text not null,
+  likes int not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table posts enable row level security;
+create policy "anyone can read"   on posts for select using (true);
+create policy "anyone can insert" on posts for insert with check (true);
+create policy "anyone can update" on posts for update using (true) with check (true);`;
+
+    // ========================================
+    // 🗂️ 카테고리 정의 (색/이모지를 한 곳에서 관리)
+    // ========================================
+    const CATEGORIES = [
+      {
+        value: '고민',
+        emoji: '💭',
+        label: '고민',
+        hint: '털어놓고 싶은 마음',
+        // 배지 색
+        badge: 'bg-indigo-100 text-indigo-700 ring-indigo-200',
+        // 선택된 칩 색
+        chip: 'bg-indigo-600 text-white ring-indigo-600',
+        // 카드 좌측 강조선
+        accent: 'border-l-indigo-400',
+      },
+      {
+        value: '칭찬',
+        emoji: '👏',
+        label: '칭찬',
+        hint: '고마움을 전해요',
+        badge: 'bg-amber-100 text-amber-700 ring-amber-200',
+        chip: 'bg-amber-500 text-white ring-amber-500',
+        accent: 'border-l-amber-400',
+      },
+      {
+        value: '응원',
+        emoji: '💪',
+        label: '응원',
+        hint: '힘이 되는 한마디',
+        badge: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+        chip: 'bg-emerald-600 text-white ring-emerald-600',
+        accent: 'border-l-emerald-400',
+      },
+    ];
+    const CATEGORY_MAP = CATEGORIES.reduce((acc, c) => {
+      acc[c.value] = c;
+      return acc;
+    }, {});
+
+    // ========================================
+    // 🛠️ 유틸리티
+    // ========================================
+
+    // 상대 시간 ("방금 전", "3분 전", "2시간 전", "어제", "3일 전", 그 외 날짜)
+    // 날짜 라이브러리 없이 가볍게 구현한다.
+    function timeAgo(isoString) {
+      if (!isoString) return '';
+      const then = new Date(isoString).getTime();
+      if (Number.isNaN(then)) return '';
+      const diffSec = Math.floor((Date.now() - then) / 1000);
+
+      if (diffSec < 0) return '방금 전';
+      if (diffSec < 60) return '방금 전';
+      const min = Math.floor(diffSec / 60);
+      if (min < 60) return `${min}분 전`;
+      const hour = Math.floor(min / 60);
+      if (hour < 24) return `${hour}시간 전`;
+      const day = Math.floor(hour / 24);
+      if (day === 1) return '어제';
+      if (day < 7) return `${day}일 전`;
+
+      // 일주일 이상이면 날짜로 표시 (예: 2026.06.22)
+      const d = new Date(then);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+    }
+
+    // 정확한 작성 시각 (title 툴팁용)
+    function fullDate(isoString) {
+      const d = new Date(isoString);
+      if (Number.isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+
+    // --- Button ---
+    function Button({
+      children,
+      variant = 'primary',
+      size = 'md',
+      type = 'button',
+      disabled = false,
+      onClick,
+      className = '',
+      ...rest
+    }) {
+      const base =
+        'inline-flex items-center justify-center gap-1.5 font-medium rounded-xl transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none';
+
+      const variants = {
+        primary: 'bg-rose-500 text-white hover:bg-rose-600 focus-visible:ring-rose-400',
+        secondary: 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-400',
+      };
+
+      const sizes = {
+        sm: 'text-sm px-3 py-1.5',
+        md: 'text-sm px-4 py-2.5',
+        lg: 'text-base px-5 py-3',
+      };
+
+      return (
+        <button
+          type={type}
+          disabled={disabled}
+          onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // --- Textarea ---
+    function Textarea({
+      label,
+      value,
+      onChange,
+      placeholder = '',
+      rows = 4,
+      error = '',
+      maxLength,
+      className = '',
+      shake = false,
+      ...rest
+    }) {
+      return (
+        <div className={className}>
+          {label && (
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+          )}
+          <textarea
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            rows={rows}
+            maxLength={maxLength}
+            aria-invalid={!!error}
+            className={`w-full resize-y rounded-xl border bg-white px-4 py-3 text-slate-800 placeholder-slate-400 transition-colors focus:outline-none focus:ring-2 ${
+              shake ? 'animate-shake' : ''
+            } ${
+              error
+                ? 'border-red-400 focus:ring-red-300'
+                : 'border-slate-300 focus:border-rose-400 focus:ring-rose-200'
+            }`}
+            {...rest}
+          />
+          {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        </div>
+      );
+    }
+
+    // --- Card ---
+    function Card({ children, className = '', ...rest }) {
+      return (
+        <div
+          className={`rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 ${className}`}
+          {...rest}
+        >
+          {children}
+        </div>
+      );
+    }
+
+    // --- CategoryBadge (카드/목록에 표시하는 카테고리 배지) ---
+    function CategoryBadge({ category, className = '' }) {
+      const c = CATEGORY_MAP[category] || {
+        emoji: '📝',
+        label: category || '기타',
+        badge: 'bg-slate-100 text-slate-600 ring-slate-200',
+      };
+      return (
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${c.badge} ${className}`}
+        >
+          <span aria-hidden="true">{c.emoji}</span>
+          {c.label}
+        </span>
+      );
+    }
+
+    // --- Modal ---
+    function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => {
+          if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => {
+          window.removeEventListener('keydown', onKey);
+          document.body.style.overflow = '';
+        };
+      }, [isOpen, onClose]);
+
+      if (!isOpen) return null;
+
+      const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl' };
+
+      return (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+        >
+          <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} aria-hidden="true" />
+          <Card className={`relative z-10 w-full ${sizes[size]} p-6 animate-modal-pop`}>
+            {title && <h2 className="mb-3 text-lg font-semibold text-slate-800">{title}</h2>}
+            {children}
+          </Card>
+        </div>
+      );
+    }
+
+    // --- Toast 컨테이너 (성공/실패 피드백) ---
+    // toasts: [{ id, type:'success'|'error'|'info', message }]
+    function ToastContainer({ toasts, onDismiss }) {
+      const styles = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-red-600 text-white',
+        info: 'bg-slate-800 text-white',
+      };
+      const icons = { success: '✓', error: '!', info: '💬' };
+      return (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-[60] flex flex-col items-center gap-2 px-4">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              role="status"
+              aria-live="polite"
+              onClick={() => onDismiss(t.id)}
+              className={`animate-toast-in pointer-events-auto flex max-w-sm cursor-pointer items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-lg ${styles[t.type] || styles.info}`}
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/25 text-xs font-bold">
+                {icons[t.type] || icons.info}
+              </span>
+              <span className="leading-snug">{t.message}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // --- 아이콘 (간단한 인라인 SVG) ---
+    const Icon = {
+      Heart: (p) => (
+        <svg viewBox="0 0 24 24" fill={p.filled ? 'currentColor' : 'none'} stroke="currentColor"
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+        </svg>
+      ),
+      Send: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+        </svg>
+      ),
+      Copy: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      ),
+      Clock: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+        </svg>
+      ),
+      Sort: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 4v16" />
+        </svg>
+      ),
+      Mail: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <rect x="2" y="4" width="20" height="16" rx="2" />
+          <path d="m22 7-10 6L2 7" />
+        </svg>
+      ),
+      Alert: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      ),
+      Lock: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      ),
+    };
+
+    // ========================================
+    // 🧩 공통 / 레이아웃 컴포넌트
+    // ========================================
+
+    // --- 헤더 ---
+    function Header({ count }) {
+      return (
+        <header className="mb-6 text-center sm:text-left">
+          <div className="flex flex-col items-center gap-3 sm:flex-row">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 text-2xl text-white shadow-sm">
+              💌
+            </span>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800">마음 한 조각</h1>
+              <p className="text-sm text-slate-500">
+                이름 없이 남기는 고민·칭찬·응원
+                {count > 0 ? ` · 지금까지 ${count}개의 마음` : ''}
+              </p>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    // --- 로딩 스피너 ---
+    function Spinner({ label = '불러오는 중...' }) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
+          <span className="mb-3 h-8 w-8 animate-spin rounded-full border-[3px] border-rose-200 border-t-rose-500" />
+          <p className="text-sm text-slate-500">{label}</p>
+        </div>
+      );
+    }
+
+    // --- 빈 상태 ---
+    function EmptyState({ filtered }) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
+          <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-3xl">
+            💌
+          </span>
+          {filtered ? (
+            <>
+              <p className="text-base font-medium text-slate-700">이 카테고리에는 아직 글이 없어요</p>
+              <p className="mt-1 text-sm text-slate-500">다른 카테고리를 살펴보거나 첫 글을 남겨보세요.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-base font-medium text-slate-700">아직 글이 없어요</p>
+              <p className="mt-1 text-sm text-slate-500">첫 마음을 남겨보세요 💌</p>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // --- 에러 배너 (재시도 / 닫기) ---
+    function ErrorBanner({ message, onRetry, onDismiss }) {
+      return (
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <Icon.Alert className="mt-0.5 h-5 w-5 shrink-0" />
+          <div className="flex-1 leading-relaxed">
+            <p className="font-medium">불러오기에 문제가 생겼어요</p>
+            <p className="mt-0.5 break-words text-red-600">{message}</p>
+            <p className="mt-1 text-xs text-red-500">
+              테이블이 없거나 RLS 정책이 빠졌을 수 있어요. 아래 SQL을 다시 확인해 주세요.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {onRetry && (
+              <button type="button" onClick={onRetry}
+                className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100">
+                다시 시도
+              </button>
+            )}
+            {onDismiss && (
+              <button type="button" onClick={onDismiss} aria-label="알림 닫기"
+                className="rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-100">
+                닫기
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // --- SQL 코드 블록 + 복사 버튼 (설정 화면에서 재사용) ---
+    function SqlBlock({ sql, onCopied }) {
+      const [copied, setCopied] = useState(false);
+
+      const copy = async () => {
+        try {
+          await navigator.clipboard.writeText(sql);
+        } catch (_) {
+          // clipboard API 가 막힌 환경(비 HTTPS 등) → 수동 복사 fallback
+          const ta = document.createElement('textarea');
+          ta.value = sql;
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); } catch (e) {}
+          document.body.removeChild(ta);
+        }
+        setCopied(true);
+        if (onCopied) onCopied();
+        setTimeout(() => setCopied(false), 1800);
+      };
+
+      return (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={copy}
+            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg bg-slate-700 px-2.5 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-600"
+          >
+            <Icon.Copy className="h-3.5 w-3.5" />
+            {copied ? '복사됨!' : '복사'}
+          </button>
+          <pre className="preserve-lines overflow-x-auto rounded-xl bg-slate-900 p-4 pt-11 text-[12.5px] leading-relaxed text-slate-100">
+            <code>{sql}</code>
+          </pre>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 설정 화면 (Supabase 미설정 시 표시)
+    // ========================================
+    function SetupScreen({ onSaved }) {
+      const [url, setUrl] = useState('');
+      const [key, setKey] = useState('');
+      const [error, setError] = useState('');
+
+      const handleSave = () => {
+        const u = url.trim();
+        const k = key.trim();
+        if (!isConfigured(u, k)) {
+          setError('Project URL과 anon public key를 모두 정확히 붙여넣어 주세요.');
+          return;
+        }
+        if (!/^https:\/\/.+\.supabase\.co/.test(u)) {
+          setError('Project URL은 보통 https://xxxx.supabase.co 형태예요. 다시 확인해 주세요.');
+          return;
+        }
+        try {
+          localStorage.setItem(LS_URL, u);
+          localStorage.setItem(LS_KEY, k);
+        } catch (_) {
+          setError('브라우저 저장소에 접근할 수 없어요. 시크릿 모드라면 일반 창에서 시도해 주세요.');
+          return;
+        }
+        onSaved();
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-rose-50 via-orange-50 to-amber-50">
+          <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+            {/* 헤더 */}
+            <div className="mb-6 text-center">
+              <span className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 text-3xl text-white shadow-sm">
+                💌
+              </span>
+              <h1 className="text-2xl font-bold text-slate-800">마음 한 조각 게시판 시작하기</h1>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                이 게시판은 <b className="text-rose-600">Supabase</b>를 서버 &amp; 데이터베이스로 사용해요.<br />
+                Supabase는 무료로 시작할 수 있고, 코드 없이 백엔드를 만들어 줍니다.
+              </p>
+            </div>
+
+            <Card className="p-6">
+              {/* 단계 안내 */}
+              <ol className="mb-6 space-y-4">
+                <li className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-bold text-rose-600">①</span>
+                  <div className="text-sm leading-relaxed text-slate-700">
+                    <a href="https://supabase.com" target="_blank" rel="noopener noreferrer"
+                      className="font-semibold text-rose-600 underline">supabase.com</a>
+                    에 접속해 무료 계정을 만들고 <b>새 프로젝트</b>를 생성하세요.
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-bold text-rose-600">②</span>
+                  <div className="w-full text-sm leading-relaxed text-slate-700">
+                    좌측 메뉴의 <b>SQL Editor</b>를 열고, 아래 SQL을 붙여넣어 <b>실행(Run)</b>하세요.
+                    <br />
+                    <span className="text-slate-500">(posts 테이블과 익명 접근을 위한 RLS 정책까지 한 번에 만들어집니다.)</span>
+                    <div className="mt-3">
+                      <SqlBlock sql={SETUP_SQL} />
+                    </div>
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-bold text-rose-600">③</span>
+                  <div className="text-sm leading-relaxed text-slate-700">
+                    <b>Project Settings → API</b> 메뉴에서 <b>Project URL</b>과
+                    <b> anon public</b> key를 복사하세요.
+                  </div>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-bold text-rose-600">④</span>
+                  <div className="text-sm leading-relaxed text-slate-700">
+                    아래 입력칸에 붙여넣고 <b>저장하고 시작하기</b>를 누르면 게시판이 열려요.
+                  </div>
+                </li>
+              </ol>
+
+              {/* 입력 폼 */}
+              <div className="space-y-3 border-t border-slate-100 pt-5">
+                <div>
+                  <label htmlFor="sb-url" className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Project URL
+                  </label>
+                  <input
+                    id="sb-url"
+                    type="text"
+                    value={url}
+                    onChange={(e) => { setUrl(e.target.value); if (error) setError(''); }}
+                    placeholder="https://xxxxxxxx.supabase.co"
+                    autoComplete="off"
+                    spellCheck="false"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="sb-key" className="block text-sm font-medium text-slate-700 mb-1.5">
+                    anon public key
+                  </label>
+                  <textarea
+                    id="sb-key"
+                    value={key}
+                    onChange={(e) => { setKey(e.target.value); if (error) setError(''); }}
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    rows={3}
+                    autoComplete="off"
+                    spellCheck="false"
+                    className="w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 font-mono text-xs text-slate-800 placeholder-slate-400 focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-200"
+                  />
+                </div>
+
+                {error && (
+                  <p className="flex items-center gap-1.5 text-sm text-red-600">
+                    <Icon.Alert className="h-4 w-4" /> {error}
+                  </p>
+                )}
+
+                <div className="flex items-start gap-2 rounded-xl bg-emerald-50 px-3.5 py-2.5 text-xs leading-relaxed text-emerald-700">
+                  <Icon.Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    <b>anon public key</b>는 공개되어도 안전한 키예요. 위에서 만든 RLS 정책이
+                    데이터 접근을 보호하기 때문에 브라우저에 그대로 넣어도 괜찮습니다.
+                  </span>
+                </div>
+
+                <Button onClick={handleSave} variant="primary" size="lg" className="w-full">
+                  <Icon.Send className="h-4 w-4" /> 저장하고 시작하기
+                </Button>
+              </div>
+            </Card>
+
+            <p className="mt-4 text-center text-xs text-slate-400">
+              입력한 값은 이 브라우저(localStorage)에만 저장되며, 서버로 따로 전송되지 않아요.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 글쓰기 폼 (INSERT)
+    // ========================================
+    function WriteForm({ onSubmit, submitting }) {
+      const [category, setCategory] = useState('고민');
+      const [content, setContent] = useState('');
+      const [error, setError] = useState('');
+      const [shake, setShake] = useState(false);
+      const MAX = 500;
+
+      const triggerShake = () => {
+        setShake(true);
+        setTimeout(() => setShake(false), 450);
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (submitting) return;
+        const c = content.trim();
+        if (!c) {
+          setError('내용을 입력해 주세요. 짧아도 괜찮아요 :)');
+          triggerShake();
+          return;
+        }
+        const ok = await onSubmit({ category, content: c });
+        if (ok) {
+          // 성공 시에만 초기화 (실패하면 입력 보존)
+          setContent('');
+          setError('');
+        }
+      };
+
+      const activeCat = CATEGORY_MAP[category];
+
+      return (
+        <Card className="p-5 sm:p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 카테고리 선택 (칩 형태) */}
+            <div>
+              <span className="mb-2 block text-sm font-medium text-slate-700">어떤 마음인가요?</span>
+              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="카테고리 선택">
+                {CATEGORIES.map((c) => {
+                  const selected = category === c.value;
+                  return (
+                    <button
+                      key={c.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setCategory(c.value)}
+                      className={`flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-sm font-semibold ring-1 transition-all ${
+                        selected
+                          ? `${c.chip} shadow-sm scale-[1.02]`
+                          : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-xl" aria-hidden="true">{c.emoji}</span>
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-slate-500">{activeCat.hint}</p>
+            </div>
+
+            {/* 내용 입력 */}
+            <div>
+              <Textarea
+                label="내용 (익명으로 남겨져요)"
+                value={content}
+                onChange={(e) => { setContent(e.target.value); if (error) setError(''); }}
+                placeholder="마음에 담아둔 이야기를 편하게 적어보세요..."
+                rows={4}
+                maxLength={MAX}
+                error={error}
+                shake={shake}
+                aria-label="글 내용"
+              />
+              <div className="mt-1 flex justify-end">
+                <span className={`text-xs ${content.length >= MAX ? 'text-red-500' : 'text-slate-400'}`}>
+                  {content.length} / {MAX}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-400">이름·이메일을 묻지 않아요. 완전 익명입니다.</p>
+              <Button type="submit" variant="primary" disabled={submitting}>
+                <Icon.Send className="h-4 w-4" />
+                {submitting ? '남기는 중...' : '마음 남기기'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 📄 글 카드 (목록의 한 항목) + 공감(UPDATE) 버튼
+    // ========================================
+    function PostCard({ post, onLike, liking }) {
+      const cat = CATEGORY_MAP[post.category] || { accent: 'border-l-slate-300' };
+      // 공감 숫자가 바뀔 때 pop 애니메이션을 한 번 재생하기 위한 키
+      const [popKey, setPopKey] = useState(0);
+      const prevLikes = useRef(post.likes);
+
+      useEffect(() => {
+        if (post.likes !== prevLikes.current) {
+          prevLikes.current = post.likes;
+          setPopKey((k) => k + 1);
+        }
+      }, [post.likes]);
+
+      return (
+        <Card
+          className={`animate-fade-in-up flex flex-col border-l-4 p-5 transition-shadow hover:shadow-md ${cat.accent}`}
+        >
+          {/* 상단: 카테고리 배지 + 작성 시간 */}
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <CategoryBadge category={post.category} />
+            <span
+              className="inline-flex items-center gap-1 text-xs text-slate-400"
+              title={fullDate(post.created_at)}
+            >
+              <Icon.Clock className="h-3.5 w-3.5" />
+              {timeAgo(post.created_at)}
+            </span>
+          </div>
+
+          {/* 본문 (줄바꿈 보존) */}
+          <p className="preserve-lines flex-1 text-[15px] leading-relaxed text-slate-700">
+            {post.content}
+          </p>
+
+          {/* 하단: 공감(UPDATE) 버튼 — 이 앱의 핵심 학습 포인트 */}
+          <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              onClick={() => onLike(post)}
+              disabled={liking}
+              aria-label={`공감하기. 현재 공감 ${post.likes}개`}
+              className="group inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-60"
+            >
+              <span
+                key={`heart-${popKey}`}
+                className={popKey ? 'animate-heart-beat' : ''}
+              >
+                <Icon.Heart filled className="h-4 w-4" />
+              </span>
+              <span>공감</span>
+              <span
+                key={`count-${popKey}`}
+                className={`min-w-[1.25rem] rounded-full bg-white px-1.5 text-center text-xs font-bold text-rose-600 ${popKey ? 'animate-count-pop' : ''}`}
+              >
+                {post.likes}
+              </span>
+            </button>
+            <span className="text-xs text-slate-400">
+              버튼을 누르면 DB의 likes 값이 +1 돼요
+            </span>
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 📄 컨트롤 바 (정렬 토글 + 카테고리 필터)
+    // ========================================
+    function ControlBar({ sort, onSortChange, filter, onFilterChange, total }) {
+      // 카테고리 필터 옵션: 전체 + 3개 카테고리
+      const filterOptions = [
+        { value: 'all', label: '전체', emoji: '🗂️' },
+        ...CATEGORIES.map((c) => ({ value: c.value, label: c.label, emoji: c.emoji })),
+      ];
+
+      return (
+        <div className="mb-5 space-y-3">
+          {/* 정렬 토글 */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex items-center rounded-xl border border-slate-300 bg-white p-0.5 text-sm">
+              <span className="flex items-center gap-1 px-2 text-xs text-slate-400">
+                <Icon.Sort className="h-3.5 w-3.5" /> 정렬
+              </span>
+              <button
+                type="button"
+                onClick={() => onSortChange('latest')}
+                aria-pressed={sort === 'latest'}
+                className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                  sort === 'latest' ? 'bg-rose-500 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                최신순
+              </button>
+              <button
+                type="button"
+                onClick={() => onSortChange('popular')}
+                aria-pressed={sort === 'popular'}
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                  sort === 'popular' ? 'bg-rose-500 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Icon.Heart filled className="h-3 w-3" /> 공감순
+              </button>
+            </div>
+            {total > 0 && (
+              <p className="text-sm text-slate-500">{total}개의 글</p>
+            )}
+          </div>
+
+          {/* 카테고리 필터 칩 */}
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((opt) => {
+              const selected = filter === opt.value;
+              const catStyle = CATEGORY_MAP[opt.value];
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => onFilterChange(opt.value)}
+                  aria-pressed={selected}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition-colors ${
+                    selected
+                      ? catStyle
+                        ? `${catStyle.chip} shadow-sm`
+                        : 'bg-slate-800 text-white ring-slate-800 shadow-sm'
+                      : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <span aria-hidden="true">{opt.emoji}</span>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 게시판 메인 (Supabase CRUD 가 모두 여기서 일어남)
+    // ========================================
+    function Board() {
+      const [posts, setPosts] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [submitting, setSubmitting] = useState(false);
+      const [error, setError] = useState('');
+      const [sort, setSort] = useState('latest');   // 'latest' | 'popular'
+      const [filter, setFilter] = useState('all');  // 'all' | '고민' | '칭찬' | '응원'
+      const [likingId, setLikingId] = useState(null); // 공감 처리 중인 글 id
+
+      // 토스트 상태
+      const [toasts, setToasts] = useState([]);
+      const toastSeq = useRef(0);
+      const pushToast = useCallback((type, message) => {
+        const id = ++toastSeq.current;
+        setToasts((prev) => [...prev, { id, type, message }]);
+        setTimeout(() => {
+          setToasts((prev) => prev.filter((t) => t.id !== id));
+        }, 2800);
+      }, []);
+      const dismissToast = useCallback((id) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, []);
+
+      // ── SELECT + ORDER (+ 선택적 EQ 필터) : DB 측에서 정렬/필터한다 ──
+      // 정렬/필터가 바뀔 때마다 다시 질의하므로, "서버(DB)가 정렬한다"는 점이 분명히 드러난다.
+      const fetchPosts = useCallback(async () => {
+        if (!db) return;
+        setLoading(true);
+        setError('');
+        try {
+          let query = db.from('posts').select('*');
+
+          // 카테고리 필터 (.eq) — '전체'가 아니면 해당 카테고리만
+          if (filter !== 'all') {
+            query = query.eq('category', filter);
+          }
+
+          // 정렬 (.order) — DB 측 정렬
+          if (sort === 'popular') {
+            // 공감순: likes 내림차순, 동점이면 최신순
+            query = query
+              .order('likes', { ascending: false })
+              .order('created_at', { ascending: false });
+          } else {
+            // 최신순: created_at 내림차순
+            query = query.order('created_at', { ascending: false });
+          }
+
+          const { data, error: qErr } = await query;
+          if (qErr) throw qErr;
+          setPosts(Array.isArray(data) ? data : []);
+        } catch (e) {
+          setError(e.message || '글을 불러오지 못했습니다.');
+        } finally {
+          setLoading(false);
+        }
+      }, [sort, filter]);
+
+      // 정렬/필터 변경 또는 최초 마운트 시 재질의
+      useEffect(() => {
+        fetchPosts();
+      }, [fetchPosts]);
+
+      // ── INSERT : 새 글을 익명으로 저장 ──
+      const handleCreate = useCallback(async ({ category, content }) => {
+        if (!db) return false;
+        setSubmitting(true);
+        setError('');
+        try {
+          // insert 후 select() 로 방금 저장된 행(자동 채워진 id/created_at/likes 포함)을 돌려받는다.
+          const { data, error: insErr } = await db
+            .from('posts')
+            .insert({ category, content })
+            .select()
+            .single();
+          if (insErr) throw insErr;
+
+          // 새 글이 항상 보이도록: 현재 정렬이 최신순이고 (전체 또는 같은 카테고리 필터)면 맨 앞에 끼워넣는다.
+          const matchesFilter = filter === 'all' || filter === data.category;
+          if (sort === 'latest' && matchesFilter) {
+            setPosts((prev) => [data, ...prev]);
+          } else {
+            // 그 외(공감순 정렬 등)에는 DB 기준으로 다시 정렬해 오기 위해 재질의
+            fetchPosts();
+          }
+          pushToast('success', '마음이 담겼어요 💌');
+          return true;
+        } catch (e) {
+          pushToast('error', e.message || '저장에 실패했어요.');
+          setError(e.message || '글을 저장하지 못했습니다.');
+          return false;
+        } finally {
+          setSubmitting(false);
+        }
+      }, [sort, filter, fetchPosts, pushToast]);
+
+      // ── UPDATE : 공감(likes) +1 — 이 앱의 핵심 (저장된 데이터의 "수정/UPDATE") ──
+      const handleLike = useCallback(async (post) => {
+        if (!db || likingId) return;
+        setLikingId(post.id);
+
+        const nextLikes = (post.likes || 0) + 1;
+
+        // 1) 먼저 화면을 즉시 갱신 (낙관적 업데이트 → 숫자가 통! 튀어오른다)
+        setPosts((prev) =>
+          prev.map((p) => (p.id === post.id ? { ...p, likes: nextLikes } : p))
+        );
+
+        try {
+          // 2) DB UPDATE: 현재 값을 읽어 +1 한 값으로 likes 컬럼을 수정한다.
+          //    where id = post.id 인 행의 likes 를 새 값으로 갱신하고, 갱신된 행을 돌려받는다.
+          const { data, error: updErr } = await db
+            .from('posts')
+            .update({ likes: nextLikes })
+            .eq('id', post.id)
+            .select()
+            .single();
+          if (updErr) throw updErr;
+
+          // 3) DB가 돌려준 권위 있는 값으로 최종 동기화
+          setPosts((prev) => prev.map((p) => (p.id === post.id ? data : p)));
+
+          // 공감순으로 보고 있다면 순서가 바뀌어야 자연스러우므로 살짝 뒤 재정렬
+          if (sort === 'popular') {
+            setPosts((prev) =>
+              [...prev].sort((a, b) => {
+                if (b.likes !== a.likes) return b.likes - a.likes;
+                return new Date(b.created_at) - new Date(a.created_at);
+              })
+            );
+          }
+        } catch (e) {
+          // 실패 시 원래 숫자로 롤백
+          setPosts((prev) =>
+            prev.map((p) => (p.id === post.id ? { ...p, likes: post.likes } : p))
+          );
+          pushToast('error', '공감 저장에 실패했어요. 다시 시도해 주세요.');
+        } finally {
+          setLikingId(null);
+        }
+      }, [likingId, sort, pushToast]);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-rose-50 via-orange-50 to-amber-50">
+          <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+          <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
+            <Header count={posts.length} />
+
+            {/* 글쓰기 폼 */}
+            <div className="mb-6">
+              <WriteForm onSubmit={handleCreate} submitting={submitting} />
+            </div>
+
+            {/* 정렬/필터 컨트롤 */}
+            <ControlBar
+              sort={sort}
+              onSortChange={setSort}
+              filter={filter}
+              onFilterChange={setFilter}
+              total={posts.length}
+            />
+
+            {/* 에러 배너 */}
+            {error && (
+              <ErrorBanner
+                message={error}
+                onRetry={fetchPosts}
+                onDismiss={() => setError('')}
+              />
+            )}
+
+            {/* 로딩 / 목록 / 빈 상태 */}
+            {loading ? (
+              <Spinner label="마음들을 불러오는 중..." />
+            ) : posts.length > 0 ? (
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onLike={handleLike}
+                    liking={likingId === post.id}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState filtered={filter !== 'all'} />
+            )}
+
+            {/* 푸터 */}
+            <footer className="mt-10 text-center text-xs text-slate-400">
+              <p>Supabase로 만든 익명 게시판 · 따뜻한 말 한마디가 누군가에게 힘이 됩니다 🌷</p>
+            </footer>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App Component (설정 게이트)
+    // ========================================
+    function App() {
+      // 설정 여부에 따라 설정 화면 / 게시판을 분기한다.
+      const [ready, setReady] = useState(CONFIGURED);
+
+      if (!ready) {
+        // 저장 후에는 supabase 클라이언트를 새 자격증명으로 다시 만들어야 하므로
+        // 가장 간단하고 확실한 방법으로 페이지를 새로고침한다.
+        return <SetupScreen onSaved={() => window.location.reload()} />;
+      }
+
+      return <Board />;
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

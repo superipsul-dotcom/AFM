@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧊 냉장고 레시피 · 컨트롤 패널</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React 18 UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- ⛔ Babel standalone — 반드시 7.26.4 고정 (latest 사용 시 인라인 JSX가 import 문을 만들어 화면이 빈 채로 뜸) -->
+  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+
+  <style>
+    /* ========================================
+       Tailwind으로 처리 불가한 애니메이션 / 커스텀 스타일만
+       ======================================== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes popIn {
+      0%   { opacity: 0; transform: scale(.92); }
+      60%  { opacity: 1; transform: scale(1.02); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(12px) translateX(-50%); }
+      to   { opacity: 1; transform: translateY(0)    translateX(-50%); }
+    }
+    @keyframes shimmer {
+      0%, 100% { opacity: .55; }
+      50%      { opacity: 1; }
+    }
+    .anim-fade-up { animation: fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
+    .anim-pop     { animation: popIn .35s cubic-bezier(.22,1,.36,1) both; }
+    .anim-toast   { animation: toastIn .28s cubic-bezier(.22,1,.36,1) both; }
+    .anim-shimmer { animation: shimmer 1.6s ease-in-out infinite; }
+
+    /* 진입 지연용 헬퍼 */
+    .delay-1 { animation-delay: .06s; }
+    .delay-2 { animation-delay: .12s; }
+    .delay-3 { animation-delay: .18s; }
+    .delay-4 { animation-delay: .24s; }
+    .delay-5 { animation-delay: .30s; }
+
+    /* number input 스피너 제거 */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+
+    /* 코드블록 가로 스크롤 부드럽게 */
+    .scroll-x { scrollbar-width: thin; }
+  </style>
+</head>
+<body class="bg-emerald-50">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    // ========================================
+    // React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useMemo, useCallback } = React;
+
+    // ========================================
+    // ⚙️ 상수 / 데이터
+    // ========================================
+
+    const LS_CONDITIONS = 'fridge-conditions'; // 조건(인분/시간/난이도/선호)만 브라우저에 저장 — 재료는 Supabase에
+
+    // 한글 → slug 매핑
+    const SLUG_MAP = {
+      '계란': 'egg', '김치': 'kimchi', '대파': 'green-onion', '파': 'green-onion',
+      '라면': 'ramen', '밥': 'rice', '두부': 'tofu', '양파': 'onion', '마늘': 'garlic',
+      '우유': 'milk', '치즈': 'cheese', '돼지고기': 'pork', '소고기': 'beef',
+      '닭고기': 'chicken', '감자': 'potato', '당근': 'carrot', '버섯': 'mushroom',
+      '콩나물': 'bean-sprout', '스팸': 'spam', '햄': 'ham', '양배추': 'cabbage',
+      '애호박': 'zucchini', '토마토': 'tomato', '고추장': 'gochujang',
+      '간장': 'soy-sauce', '참기름': 'sesame-oil', '버터': 'butter', '빵': 'bread',
+    };
+
+    // 보관 카테고리별 스타일
+    const CATEGORY_STYLES = {
+      '냉장': { badge: 'bg-blue-100 text-blue-700 ring-blue-200',  icon: '❄️', label: '냉장' },
+      '냉동': { badge: 'bg-cyan-100 text-cyan-700 ring-cyan-200',  icon: '🧊', label: '냉동' },
+      '실온': { badge: 'bg-amber-100 text-amber-700 ring-amber-200', icon: '🌡️', label: '실온' },
+    };
+    const CATEGORIES = ['냉장', '냉동', '실온'];
+
+    // 조건 기본값 (스킬 기본: 1인분 · 15분 · 자취생)
+    const DEFAULT_CONDITIONS = {
+      servings: 1,
+      time: '15분',
+      difficulty: '자취생',
+      preference: '',
+    };
+    const TIME_OPTIONS = ['10분', '15분', '30분', '제한 없음'];
+    const DIFFICULTY_OPTIONS = ['자취생', '보통', '정성'];
+
+    // ========================================
+    // 📡 서버 통신 — server.js 의 /api 와 1:1 (재료를 Supabase에 저장)
+    // ========================================
+    const API_BASE_URL = '/api';
+
+    // 공통 fetch 래퍼: { success, data, message } 봉투를 풀어 data 만 반환.
+    async function apiRequest(path, options = {}) {
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}${path}`, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options,
+        });
+      } catch (e) {
+        throw new Error('서버에 연결할 수 없어요. 서버가 실행 중인지 확인해 주세요.');
+      }
+      let body = null;
+      try { body = await res.json(); } catch (_) {}
+      if (!res.ok || !body || body.success === false) {
+        throw new Error((body && body.message) || `요청에 실패했어요 (HTTP ${res.status})`);
+      }
+      return body.data;
+    }
+
+    // 재료 API (server.js 의 /api/ingredients 라우트와 1:1)
+    const ingredientApi = {
+      list:   ()        => apiRequest('/ingredients'),
+      create: (payload) => apiRequest('/ingredients', { method: 'POST', body: JSON.stringify(payload) }),
+      remove: (id)      => apiRequest(`/ingredients/${id}`, { method: 'DELETE' }),
+    };
+
+    // ========================================
+    // 🛠️ 순수 유틸 함수
+    // ========================================
+
+    // 한글 재료명을 영문 slug로 변환 (매핑 우선 → 영문/숫자만 남기기)
+    function baseSlug(name) {
+      const trimmed = (name || '').trim();
+      if (SLUG_MAP[trimmed]) return SLUG_MAP[trimmed];
+      // 영문/숫자/공백만 추출해 kebab-case로
+      const ascii = trimmed
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')   // 한글 등 비ASCII 제거
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      return ascii || 'item';
+    }
+
+    // 기존 slug들과 충돌 시 -2, -3 ... 으로 유니크하게
+    function uniqueSlug(name, existingSlugs) {
+      const base = baseSlug(name);
+      if (!existingSlugs.includes(base)) return base;
+      let n = 2;
+      while (existingSlugs.includes(`${base}-${n}`)) n += 1;
+      return `${base}-${n}`;
+    }
+
+    // 서버에서 받은 재료 행들에 다운로드용 slug를 부여한다.
+    // (서버 DB는 slug를 저장하지 않으므로, /recipe 스킬용 {slug}.json 파일명을 위해 이름에서 파생)
+    function attachSlugs(rows) {
+      const used = [];
+      return rows.map((r) => {
+        const slug = uniqueSlug(r.name, used);
+        used.push(slug);
+        return { ...r, slug };
+      });
+    }
+
+    // 재료 1건을 {slug}.json 파일로 다운로드 (slug 필드는 파일명이 담당하므로 제외)
+    function downloadIngredientJson(ing) {
+      const payload = {
+        name: ing.name,
+        quantity: ing.quantity,
+        category: ing.category,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${ing.slug}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // 메모리 정리
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // localStorage 안전 로드
+    function loadLS(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const parsed = JSON.parse(raw);
+        return parsed ?? fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    // 조건 → /recipe 명령 문자열 생성 (기본값과 같은 항목은 생략)
+    function buildRecipeCommand(cond) {
+      const args = [];
+      if (Number(cond.servings) !== DEFAULT_CONDITIONS.servings) {
+        args.push(`${cond.servings}인분`);
+      }
+      if (cond.time !== DEFAULT_CONDITIONS.time) {
+        args.push(cond.time);
+      }
+      if (cond.difficulty !== DEFAULT_CONDITIONS.difficulty) {
+        args.push(cond.difficulty);
+      }
+      const pref = (cond.preference || '').trim();
+      if (pref) {
+        args.push(pref);
+      }
+      return args.length ? `/recipe ${args.join(' ')}` : '/recipe';
+    }
+
+    // ========================================
+    // 🎨 Design System Components (순수 프레젠테이션)
+    // ========================================
+
+    function Button({ variant = 'primary', size = 'md', disabled = false, onClick, className = '', children, type = 'button', ...rest }) {
+      const variants = {
+        primary:   'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20',
+        secondary: 'bg-white hover:bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+        amber:     'bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/25',
+        danger:    'bg-white hover:bg-red-50 text-red-600 ring-1 ring-red-200',
+        ghost:     'bg-transparent hover:bg-emerald-50 text-emerald-700',
+      };
+      const sizes = {
+        sm: 'px-2.5 py-1.5 text-xs rounded-lg',
+        md: 'px-4 py-2 text-sm rounded-xl',
+        lg: 'px-5 py-2.5 text-base rounded-xl',
+      };
+      return (
+        <button
+          type={type}
+          onClick={onClick}
+          disabled={disabled}
+          className={`inline-flex items-center justify-center gap-1.5 font-semibold transition-all
+            active:scale-[.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1
+            ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Card({ className = '', children, ...rest }) {
+      return (
+        <div
+          className={`bg-white/90 backdrop-blur rounded-2xl shadow-lg shadow-emerald-900/5 ring-1 ring-emerald-900/5 ${className}`}
+          {...rest}
+        >
+          {children}
+        </div>
+      );
+    }
+
+    function Field({ label, children, hint }) {
+      return (
+        <label className="block">
+          <span className="block text-xs font-semibold text-emerald-900/70 mb-1.5">{label}</span>
+          {children}
+          {hint && <span className="block text-[11px] text-emerald-900/40 mt-1">{hint}</span>}
+        </label>
+      );
+    }
+
+    function TextInput({ value, onChange, placeholder, className = '', onKeyDown, 'aria-label': ariaLabel }) {
+      return (
+        <input
+          type="text"
+          value={value}
+          onChange={onChange}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
+          aria-label={ariaLabel}
+          className={`w-full px-3 py-2 text-sm rounded-xl bg-white ring-1 ring-emerald-200
+            placeholder:text-emerald-900/30 text-emerald-950
+            focus:outline-none focus:ring-2 focus:ring-emerald-400 transition ${className}`}
+        />
+      );
+    }
+
+    function Chip({ active, onClick, children, activeClass = 'bg-emerald-600 text-white ring-emerald-600', icon }) {
+      return (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-pressed={active}
+          className={`px-3 py-1.5 rounded-full text-sm font-semibold ring-1 transition-all active:scale-95
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1
+            ${active
+              ? `${activeClass} shadow-sm`
+              : 'bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50'}`}
+        >
+          {icon && <span className="mr-1">{icon}</span>}
+          {children}
+        </button>
+      );
+    }
+
+    // 상태 요약 칩 (읽기 전용)
+    function SummaryChip({ children, tone = 'emerald' }) {
+      const tones = {
+        emerald: 'bg-white/20 text-white ring-white/30',
+        amber:   'bg-amber-300/30 text-amber-50 ring-amber-200/40',
+      };
+      return (
+        <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold
+          ring-1 backdrop-blur whitespace-nowrap ${tones[tone]}`}>
+          {children}
+        </span>
+      );
+    }
+
+    // ========================================
+    // 🔔 Toast (전역 알림)
+    // ========================================
+    function Toast({ message }) {
+      if (!message) return null;
+      return (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-1/2 z-50 anim-toast
+            bg-emerald-900 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-2xl
+            ring-1 ring-white/10 max-w-[90vw] text-center"
+        >
+          {message}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 Header
+    // ========================================
+    function Header() {
+      return (
+        <header className="text-center anim-fade-up">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-emerald-950">
+            🧊 냉장고 레시피 <span className="text-emerald-500">·</span> 컨트롤 패널
+          </h1>
+          <p className="mt-2 text-sm sm:text-base text-emerald-800/70 max-w-xl mx-auto">
+            냉장고에 뭐가 있는지 보고, 조건을 정해서{' '}
+            <code className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-semibold text-[13px]">/recipe</code>{' '}
+            명령으로 보내세요.
+          </p>
+        </header>
+      );
+    }
+
+    // ========================================
+    // ⭐ 상태 요약 바
+    // ========================================
+    function StatusBar({ ingredients, conditions }) {
+      const pref = (conditions.preference || '').trim();
+      return (
+        <div className="anim-fade-up delay-1 rounded-2xl p-4 sm:p-5
+          bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500
+          shadow-lg shadow-emerald-600/25 ring-1 ring-white/10">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-white/90 text-xs font-bold uppercase tracking-wider">현재 상태</span>
+            <span className="anim-shimmer h-1.5 w-1.5 rounded-full bg-white/80"></span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <SummaryChip>🧺 재료 {ingredients.length}개</SummaryChip>
+            <SummaryChip>🍽️ {conditions.servings}인분</SummaryChip>
+            <SummaryChip>⏱️ {conditions.time === '제한 없음' ? '시간 제한 없음' : `${conditions.time} 이내`}</SummaryChip>
+            <SummaryChip>🔥 {conditions.difficulty}</SummaryChip>
+            {pref && <SummaryChip tone="amber">✨ {pref}</SummaryChip>}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🏷️ 재료 태그 (칩) — 태그처럼 추가/삭제
+    // ========================================
+    function IngredientTag({ ing, index, onDelete }) {
+      const style = CATEGORY_STYLES[ing.category] || CATEGORY_STYLES['실온'];
+      return (
+        <span
+          className={`anim-pop inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full
+            text-sm font-semibold ring-1 ${style.badge}`}
+          style={{ animationDelay: `${0.03 * index}s` }}
+        >
+          <span aria-hidden="true">{style.icon}</span>
+          <span>{ing.name}</span>
+          {ing.quantity && <span className="text-xs font-bold opacity-60">{ing.quantity}</span>}
+          <button
+            type="button"
+            onClick={() => onDelete(ing.id)}
+            aria-label={`${ing.name} 삭제`}
+            title="삭제"
+            className="ml-0.5 rounded-full p-0.5 opacity-50 hover:opacity-100 hover:text-red-600
+              transition active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </span>
+      );
+    }
+
+    // ========================================
+    // 🧺 재료 추가 폼
+    // ========================================
+    function AddIngredientForm({ onAdd, existingSlugs }) {
+      const [name, setName] = useState('');
+      const [quantity, setQuantity] = useState('');
+      const [category, setCategory] = useState('냉장');
+
+      const trimmedName = name.trim();
+      const previewSlug = trimmedName ? uniqueSlug(trimmedName, existingSlugs) : '…';
+
+      const submit = () => {
+        if (!trimmedName) return; // 재료명 비면 차단
+        onAdd({
+          name: trimmedName,
+          quantity: quantity.trim(),
+          category,
+          slug: uniqueSlug(trimmedName, existingSlugs),
+        });
+        setName('');
+        setQuantity('');
+        setCategory('냉장');
+      };
+
+      const onKey = (e) => { if (e.key === 'Enter') submit(); };
+
+      return (
+        <Card className="p-4 anim-fade-up">
+          <p className="text-sm font-bold text-emerald-900 mb-3">➕ 재료 추가</p>
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div className="sm:col-span-5">
+              <Field label="재료명">
+                <TextInput
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={onKey}
+                  placeholder="예: 두부"
+                  aria-label="재료명"
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-3">
+              <Field label="수량">
+                <TextInput
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  onKeyDown={onKey}
+                  placeholder="예: 1모"
+                  aria-label="수량"
+                />
+              </Field>
+            </div>
+            <div className="sm:col-span-4">
+              <Field label="보관">
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  aria-label="보관 방법"
+                  className="w-full px-3 py-2 text-sm rounded-xl bg-white ring-1 ring-emerald-200 text-emerald-950
+                    focus:outline-none focus:ring-2 focus:ring-emerald-400 transition cursor-pointer"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{CATEGORY_STYLES[c].icon} {c}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-[11px] text-emerald-900/50">
+              파일명 미리보기:{' '}
+              <code className="font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                {previewSlug}.json
+              </code>
+            </span>
+            <Button onClick={submit} disabled={!trimmedName} variant="primary" size="md">
+              추가하기
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧺 재료 패널 (좌측)
+    // ========================================
+    function IngredientPanel({ ingredients, loading, connError, onRetry, onAdd, onDelete, onExportAll }) {
+      const existingSlugs = useMemo(() => ingredients.map((i) => i.slug), [ingredients]);
+
+      return (
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-xl font-black text-emerald-950 flex items-center gap-2">
+                🧺 재료 패널
+                <span className="text-sm font-bold text-emerald-500">{ingredients.length}개</span>
+              </h2>
+              <p className="text-xs text-emerald-800/60 mt-0.5">
+                태그처럼 추가하고 ✕로 삭제하세요. <code className="font-mono text-emerald-700">Supabase</code>에 저장됩니다.
+              </p>
+            </div>
+            <Button
+              variant="amber"
+              size="md"
+              onClick={onExportAll}
+              disabled={ingredients.length === 0}
+              title="모든 재료를 개별 JSON 파일로 다운로드"
+            >
+              📦 전체 내보내기
+            </Button>
+          </div>
+
+          {/* 재료 그리드 — 로딩 / 연결오류 / 빈상태 / 목록 */}
+          {loading ? (
+            <Card className="p-8 text-center anim-fade-up">
+              <p className="text-3xl mb-2 anim-shimmer">⏳</p>
+              <p className="text-sm font-semibold text-emerald-900">불러오는 중…</p>
+            </Card>
+          ) : connError ? (
+            <Card className="p-8 text-center anim-fade-up">
+              <p className="text-4xl mb-2">🔌</p>
+              <p className="text-sm font-semibold text-emerald-900">아직 서버에 연결되지 않았어요</p>
+              <p className="text-xs text-emerald-800/60 mt-1 mb-3">
+                <code className="font-mono text-emerald-700">npm start</code> 로 server.js를 실행하면 Supabase에서 재료를 불러옵니다.
+              </p>
+              <Button variant="secondary" size="sm" onClick={onRetry}>🔄 다시 시도</Button>
+            </Card>
+          ) : ingredients.length === 0 ? (
+            <Card className="p-8 text-center anim-fade-up">
+              <p className="text-4xl mb-2">🥲</p>
+              <p className="text-sm font-semibold text-emerald-900">냉장고가 비었어요</p>
+              <p className="text-xs text-emerald-800/60 mt-1">아래에서 재료를 추가해 보세요.</p>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {CATEGORIES.map((cat) => {
+                const items = ingredients.filter(
+                  (i) => (CATEGORY_STYLES[i.category] ? i.category : '실온') === cat
+                );
+                if (items.length === 0) return null;
+                const style = CATEGORY_STYLES[cat];
+                return (
+                  <div key={cat}>
+                    <p className="text-xs font-bold text-emerald-900/55 mb-2 flex items-center gap-1.5">
+                      <span aria-hidden="true">{style.icon}</span>
+                      {style.label}
+                      <span className="text-emerald-500">{items.length}</span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {items.map((ing, idx) => (
+                        <IngredientTag key={ing.id} ing={ing} index={idx} onDelete={onDelete} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 추가 폼 */}
+          <AddIngredientForm onAdd={onAdd} existingSlugs={existingSlugs} />
+        </section>
+      );
+    }
+
+    // ========================================
+    // ⭐ 조건 패널 — 인분 / 시간 / 난이도 / 선호
+    // ========================================
+    function ServingsStepper({ value, onChange }) {
+      const dec = () => onChange(Math.max(1, value - 1));
+      const inc = () => onChange(Math.min(6, value + 1));
+      return (
+        <div className="inline-flex items-center rounded-xl ring-1 ring-emerald-200 bg-white overflow-hidden">
+          <button
+            onClick={dec}
+            disabled={value <= 1}
+            aria-label="인분 줄이기"
+            className="px-3.5 py-2 text-lg font-bold text-emerald-700 hover:bg-emerald-50
+              disabled:opacity-30 disabled:cursor-not-allowed transition
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+          >
+            −
+          </button>
+          <span className="px-4 min-w-[3.5rem] text-center text-base font-extrabold text-emerald-950 tabular-nums select-none"
+                aria-live="polite">
+            {value}<span className="text-xs font-bold text-emerald-500 ml-0.5">인분</span>
+          </span>
+          <button
+            onClick={inc}
+            disabled={value >= 6}
+            aria-label="인분 늘리기"
+            className="px-3.5 py-2 text-lg font-bold text-emerald-700 hover:bg-emerald-50
+              disabled:opacity-30 disabled:cursor-not-allowed transition
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+          >
+            +
+          </button>
+        </div>
+      );
+    }
+
+    function ConditionPanel({ conditions, onChange, onReset, isDefault }) {
+      const set = (patch) => onChange({ ...conditions, ...patch });
+
+      return (
+        <Card className="p-5 anim-fade-up delay-2">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <h2 className="text-xl font-black text-emerald-950 flex items-center gap-2">⚙️ 조건 패널</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onReset}
+              disabled={isDefault}
+              title="기본값(1인분·15분·자취생)으로 되돌리기"
+            >
+              ↺ 기본값
+            </Button>
+          </div>
+
+          <div className="space-y-5">
+            {/* 인분 */}
+            <div>
+              <p className="text-xs font-semibold text-emerald-900/70 mb-2">🍽️ 인분 <span className="text-emerald-900/40">(1~6)</span></p>
+              <ServingsStepper value={conditions.servings} onChange={(v) => set({ servings: v })} />
+            </div>
+
+            {/* 시간 제한 */}
+            <div>
+              <p className="text-xs font-semibold text-emerald-900/70 mb-2">⏱️ 시간 제한</p>
+              <div className="flex flex-wrap gap-2">
+                {TIME_OPTIONS.map((t) => (
+                  <Chip key={t} active={conditions.time === t} onClick={() => set({ time: t })}>
+                    {t}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+
+            {/* 난이도 */}
+            <div>
+              <p className="text-xs font-semibold text-emerald-900/70 mb-2">🔥 난이도</p>
+              <div className="flex flex-wrap gap-2">
+                {DIFFICULTY_OPTIONS.map((d) => (
+                  <Chip
+                    key={d}
+                    active={conditions.difficulty === d}
+                    onClick={() => set({ difficulty: d })}
+                    activeClass="bg-amber-500 text-white ring-amber-500"
+                  >
+                    {d}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+
+            {/* 추가 선호 */}
+            <div>
+              <Field label="✨ 추가 선호 (선택)" hint="자유롭게 적으면 명령 끝에 그대로 붙습니다.">
+                <TextInput
+                  value={conditions.preference}
+                  onChange={(e) => set({ preference: e.target.value })}
+                  placeholder="예: 매콤하게, 야식, 다이어트"
+                  aria-label="추가 선호"
+                />
+              </Field>
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // ⭐ /recipe 명령 생성기
+    // ========================================
+    function CommandGenerator({ command, onCopy }) {
+      return (
+        <Card className="p-5 anim-fade-up delay-3 ring-emerald-200/70
+          bg-gradient-to-br from-white to-emerald-50/60">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h2 className="text-xl font-black text-emerald-950 flex items-center gap-2">
+              🪄 <code className="font-mono">/recipe</code> 명령 생성기
+            </h2>
+            <Button variant="primary" size="sm" onClick={onCopy} title="명령 복사">
+              📋 명령 복사
+            </Button>
+          </div>
+
+          {/* 코드블록 */}
+          <div className="rounded-xl bg-emerald-950 text-emerald-50 p-4 shadow-inner overflow-x-auto scroll-x">
+            <div className="flex items-center gap-1.5 mb-2.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-400/80"></span>
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80"></span>
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80"></span>
+              <span className="ml-2 text-[10px] uppercase tracking-widest text-emerald-300/60 font-bold">Claude Code</span>
+            </div>
+            <code className="block font-mono text-base sm:text-lg font-semibold whitespace-pre-wrap break-words">
+              <span className="text-emerald-400 select-none">$ </span>{command}
+            </code>
+          </div>
+
+          <p className="text-xs text-emerald-800/70 mt-3 leading-relaxed">
+            이 명령을 Claude Code에 붙여넣으면, 위 재료를 읽어 조건에 맞는 레시피를 만들어{' '}
+            <code className="font-mono text-emerald-700">recipes/</code> 폴더에 저장합니다.
+          </p>
+
+          {/* 파이프라인 */}
+          <div className="mt-4 flex items-center gap-2 flex-wrap text-[11px] font-semibold">
+            <PipeStep>📂 ingredients/ 읽기</PipeStep>
+            <Arrow />
+            <PipeStep>⚙️ 조건 적용</PipeStep>
+            <Arrow />
+            <PipeStep>🍳 레시피</PipeStep>
+            <Arrow />
+            <PipeStep tone="amber">📝 recipes/*.md</PipeStep>
+          </div>
+        </Card>
+      );
+    }
+
+    function PipeStep({ children, tone = 'emerald' }) {
+      const tones = {
+        emerald: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+        amber:   'bg-amber-100 text-amber-700 ring-amber-200',
+      };
+      return (
+        <span className={`px-2.5 py-1 rounded-lg ring-1 whitespace-nowrap ${tones[tone]}`}>{children}</span>
+      );
+    }
+
+    function Arrow() {
+      return <span className="text-emerald-400 font-bold select-none">→</span>;
+    }
+
+    // ========================================
+    // 🦶 Footer
+    // ========================================
+    function Footer() {
+      return (
+        <footer className="text-center text-xs text-emerald-800/50 pt-2 pb-1 anim-fade-up delay-4">
+          <p>
+            🧊 냉장고 레시피 컨트롤 패널 · 재료는 <span className="font-semibold text-emerald-700">Supabase</span>에 저장됩니다 · 조건은 이 브라우저에 보관
+          </p>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // 🚀 App — 루트 (상태 + 영속화 + 조립)
+    // ========================================
+    function App() {
+      // 재료 상태 — Supabase(서버)에서 불러온다
+      const [ingredients, setIngredients] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [connError, setConnError] = useState(false);
+
+      // 조건 상태 (기본값과 병합해 누락 키 방어) — 이건 브라우저(localStorage)에 보관
+      const [conditions, setConditions] = useState(() => ({
+        ...DEFAULT_CONDITIONS,
+        ...loadLS(LS_CONDITIONS, {}),
+      }));
+
+      const [toast, setToast] = useState('');
+
+      // 서버에서 재료 목록 로드 (마운트 시 + '다시 시도')
+      const loadIngredients = useCallback(async () => {
+        setLoading(true);
+        setConnError(false);
+        try {
+          const rows = await ingredientApi.list();
+          setIngredients(attachSlugs(Array.isArray(rows) ? rows : []));
+        } catch (e) {
+          setConnError(true);
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => { loadIngredients(); }, [loadIngredients]);
+
+      // 조건만 영속화 (재료는 서버 DB가 담당)
+      useEffect(() => {
+        try { localStorage.setItem(LS_CONDITIONS, JSON.stringify(conditions)); } catch (e) {}
+      }, [conditions]);
+
+      // 토스트 자동 사라짐
+      useEffect(() => {
+        if (!toast) return;
+        const id = setTimeout(() => setToast(''), 2600);
+        return () => clearTimeout(id);
+      }, [toast]);
+
+      const showToast = (msg) => setToast(msg);
+
+      // 명령 문자열 (조건 변화에 실시간 연동)
+      const command = useMemo(() => buildRecipeCommand(conditions), [conditions]);
+
+      const isDefaultConditions = useMemo(
+        () =>
+          Number(conditions.servings) === DEFAULT_CONDITIONS.servings &&
+          conditions.time === DEFAULT_CONDITIONS.time &&
+          conditions.difficulty === DEFAULT_CONDITIONS.difficulty &&
+          !(conditions.preference || '').trim(),
+        [conditions]
+      );
+
+      // --- 재료 핸들러 (서버 /api 와 연동) ---
+      const addIngredient = async ({ name, quantity, category }) => {
+        try {
+          const created = await ingredientApi.create({ name, quantity, category });
+          // 서버가 만든 row(id 포함)로 상태 갱신. 다운로드용 slug는 클라이언트에서 파생.
+          setIngredients((prev) => {
+            const slug = uniqueSlug(created.name, prev.map((i) => i.slug));
+            return [{ ...created, slug }, ...prev];
+          });
+          showToast(`✅ "${name}" 추가됨`);
+        } catch (e) {
+          showToast(`⚠️ ${e.message}`);
+        }
+      };
+
+      const deleteIngredient = async (id) => {
+        const target = ingredients.find((i) => i.id === id);
+        const snapshot = ingredients;
+        setIngredients((prev) => prev.filter((i) => i.id !== id)); // 낙관적 삭제
+        try {
+          await ingredientApi.remove(id);
+          if (target) showToast(`🗑️ "${target.name}" 삭제됨`);
+        } catch (e) {
+          setIngredients(snapshot); // 실패 시 복원
+          showToast(`⚠️ ${e.message}`);
+        }
+      };
+
+      const exportAll = () => {
+        if (ingredients.length === 0) return;
+        // 브라우저 다중 다운로드 차단 회피용으로 약간 간격을 두고 순차 다운로드
+        ingredients.forEach((ing, idx) => {
+          setTimeout(() => downloadIngredientJson(ing), idx * 180);
+        });
+        showToast(`📦 ${ingredients.length}개 JSON 다운로드 — ingredients/ 폴더에 넣으면 /recipe가 읽습니다`);
+      };
+
+      // --- 조건 핸들러 ---
+      const resetConditions = () => {
+        setConditions({ ...DEFAULT_CONDITIONS });
+        showToast('↺ 조건을 기본값으로 되돌렸어요');
+      };
+
+      // --- 명령 복사 ---
+      const copyCommand = async () => {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(command);
+          } else {
+            // file:// 등 비보안 컨텍스트 폴백
+            const ta = document.createElement('textarea');
+            ta.value = command;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          showToast('📋 명령이 복사됨!');
+        } catch (e) {
+          showToast('⚠️ 복사 실패 — 코드블록을 직접 선택해 복사하세요');
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-teal-50 to-amber-50">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+            <Header />
+            <StatusBar ingredients={ingredients} conditions={conditions} />
+
+            {/* 데스크탑 2열 / 모바일 1열 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* 좌: 재료 패널 */}
+              <IngredientPanel
+                ingredients={ingredients}
+                loading={loading}
+                connError={connError}
+                onRetry={loadIngredients}
+                onAdd={addIngredient}
+                onDelete={deleteIngredient}
+                onExportAll={exportAll}
+              />
+
+              {/* 우: 조건 + 명령 생성기 */}
+              <div className="space-y-6">
+                <ConditionPanel
+                  conditions={conditions}
+                  onChange={setConditions}
+                  onReset={resetConditions}
+                  isDefault={isDefaultConditions}
+                />
+                <CommandGenerator command={command} onCopy={copyCommand} />
+              </div>
+            </div>
+
+            <Footer />
+          </div>
+
+          <Toast message={toast} />
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

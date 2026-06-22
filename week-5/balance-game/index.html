@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  ⚖️ 실시간 밸런스 게임 (Realtime Balance Game)
+  ============================================================
+  단일 index.html · React 18 (CDN) + Tailwind (CDN) + Supabase JS (CDN)
+  백엔드 = Supabase (Server + DB): PostgREST 자동 API + Realtime + Postgres 집계 뷰
+  별도 Node 서버 없음.
+
+  ▼▼▼ Supabase 셋업: 아래 SQL 전체를 Supabase 대시보드 → SQL Editor 에 붙여넣고 RUN 하세요 ▼▼▼
+
+-- ============================================================
+-- Supabase 셋업: SQL Editor 에 아래 전체를 붙여넣고 RUN 하세요
+-- ============================================================
+-- 1) 테이블
+create table if not exists public.questions (
+  id bigint generated always as identity primary key,
+  option_a text not null,
+  option_b text not null,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.votes (
+  id bigint generated always as identity primary key,
+  question_id bigint not null references public.questions(id) on delete cascade,
+  choice text not null check (choice in ('A','B')),
+  created_at timestamptz not null default now()
+);
+create index if not exists votes_question_id_idx on public.votes(question_id);
+
+-- 2) 서버측 집계 뷰 (투표율 계산 API 역할)
+create or replace view public.vote_stats as
+select
+  q.id as question_id,
+  q.option_a,
+  q.option_b,
+  count(v.id) filter (where v.choice = 'A') as votes_a,
+  count(v.id) filter (where v.choice = 'B') as votes_b,
+  count(v.id) as total_votes
+from public.questions q
+left join public.votes v on v.question_id = q.id
+group by q.id, q.option_a, q.option_b;
+
+-- 3) RLS (수업/데모용: 익명 읽기+쓰기 허용)
+alter table public.questions enable row level security;
+alter table public.votes enable row level security;
+create policy "questions read"   on public.questions for select using (true);
+create policy "questions insert" on public.questions for insert with check (true);
+create policy "votes read"   on public.votes for select using (true);
+create policy "votes insert" on public.votes for insert with check (true);
+grant select on public.vote_stats to anon, authenticated;
+
+-- 4) Realtime 활성화
+alter publication supabase_realtime add table public.votes;
+alter publication supabase_realtime add table public.questions;
+
+-- 5) (선택) 샘플 질문
+insert into public.questions (option_a, option_b) values
+  ('월급 500 + 주7일 출근', '월급 300 + 주4일 출근'),
+  ('월세 50만원 깔끔하게', '전세 대출 이자 갚기'),
+  ('매일 커피 사먹기', '회사 탕비실 공짜 커피'),
+  ('매달 적금 100만원', '매달 여행 100만원'),
+  ('지금 당장 현금 10억', '평생 매달 500만원'),
+  ('평생 점심값 무료', '평생 교통비 무료');
+-- ============================================================
+
+  ▲▲▲ 여기까지 복붙 ▲▲▲
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚖️ 실시간 밸런스 게임</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+  <!-- Supabase JS 클라이언트 (window.supabase 로 노출됨) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* Tailwind 로 표현하기 어려운 것들만 */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeInUp { animation: fadeInUp 0.4s ease-out both; }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+    .animate-pop { animation: pop 0.35s ease-out; }
+
+    /* 퍼센티지 바 width 전환 (부드럽게) */
+    .bar-fill { transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+
+    /* 그라데이션 배경 살짝 움직임 */
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .bg-animated {
+      background-size: 200% 200%;
+      animation: gradientShift 14s ease infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    // ========================================
+    // React Hooks 구조분해
+    // ========================================
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    // ========================================
+    // ⚙️ Supabase 설정(Config)
+    //  - 아래 상수를 채우면 그 값을 사용 (배포/공유용)
+    //  - 비어있으면 localStorage('balance_game_supabase') 에서 불러옴
+    //  - 둘 다 없으면 설정(Setup) 화면 표시
+    // ========================================
+    const SUPABASE_URL = "https://hxlmolfzsijfvrhtvjko.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4bG1vbGZ6c2lqZnZyaHR2amtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2MTIwMDMsImV4cCI6MjA5NzE4ODAwM30.zuoLSRjcvxue6TvOS9S22sNXVWVZMsefhPGKejQ1bt4"; // anon public — RLS로 보호됨(클라이언트 노출 안전)
+
+    const LS_CONFIG_KEY = "balance_game_supabase"; // { url, key }
+    const LS_VOTED_KEY = "balance_game_voted";     // { [question_id]: 'A' | 'B' }
+
+    // 샘플 질문 (4주차 = 돈 주제)
+    const SAMPLE_QUESTIONS = [
+      { option_a: "월급 500 + 주7일 출근", option_b: "월급 300 + 주4일 출근" },
+      { option_a: "월세 50만원 깔끔하게", option_b: "전세 대출 이자 갚기" },
+      { option_a: "매일 커피 사먹기", option_b: "회사 탕비실 공짜 커피" },
+      { option_a: "매달 적금 100만원", option_b: "매달 여행 100만원" },
+      { option_a: "지금 당장 현금 10억", option_b: "평생 매달 500만원" },
+      { option_a: "평생 점심값 무료", option_b: "평생 교통비 무료" },
+    ];
+
+    // localStorage 안전 헬퍼
+    function readJSON(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+    function writeJSON(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+    }
+
+    // 유효 자격증명 해석: 상수 > localStorage. placeholder/빈값은 미설정으로 간주.
+    function resolveConfig() {
+      const isFilled = (v) => typeof v === "string" && v.trim().length > 0;
+      if (isFilled(SUPABASE_URL) && isFilled(SUPABASE_ANON_KEY)) {
+        return { url: SUPABASE_URL.trim(), key: SUPABASE_ANON_KEY.trim(), source: "const" };
+      }
+      const saved = readJSON(LS_CONFIG_KEY, null);
+      if (saved && isFilled(saved.url) && isFilled(saved.key)) {
+        return { url: saved.url.trim(), key: saved.key.trim(), source: "localStorage" };
+      }
+      return null;
+    }
+
+    // Supabase 클라이언트 생성 (변수명 sb — CDN 전역 window.supabase 와 충돌 방지)
+    function makeClient(cfg) {
+      if (!cfg) return null;
+      try {
+        return window.supabase.createClient(cfg.url, cfg.key);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // 셋업 SQL 텍스트 (설정 화면 복사용)
+    const SETUP_SQL = `-- 1) 테이블
+create table if not exists public.questions (
+  id bigint generated always as identity primary key,
+  option_a text not null,
+  option_b text not null,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.votes (
+  id bigint generated always as identity primary key,
+  question_id bigint not null references public.questions(id) on delete cascade,
+  choice text not null check (choice in ('A','B')),
+  created_at timestamptz not null default now()
+);
+create index if not exists votes_question_id_idx on public.votes(question_id);
+
+-- 2) 서버측 집계 뷰
+create or replace view public.vote_stats as
+select
+  q.id as question_id, q.option_a, q.option_b,
+  count(v.id) filter (where v.choice = 'A') as votes_a,
+  count(v.id) filter (where v.choice = 'B') as votes_b,
+  count(v.id) as total_votes
+from public.questions q
+left join public.votes v on v.question_id = q.id
+group by q.id, q.option_a, q.option_b;
+
+-- 3) RLS (데모용: 익명 읽기+쓰기)
+alter table public.questions enable row level security;
+alter table public.votes enable row level security;
+create policy "questions read"   on public.questions for select using (true);
+create policy "questions insert" on public.questions for insert with check (true);
+create policy "votes read"   on public.votes for select using (true);
+create policy "votes insert" on public.votes for insert with check (true);
+grant select on public.vote_stats to anon, authenticated;
+
+-- 4) Realtime 활성화
+alter publication supabase_realtime add table public.votes;
+alter publication supabase_realtime add table public.questions;`;
+
+    // ========================================
+    // 🎨 디자인 시스템 컴포넌트
+    // ========================================
+
+    // Button
+    function Button({ variant = "primary", size = "md", disabled = false, onClick, className = "", type = "button", children }) {
+      const base =
+        "inline-flex items-center justify-center gap-2 font-bold rounded-2xl transition-all duration-200 focus:outline-none focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95";
+      const variants = {
+        primary:
+          "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-fuchsia-500/30 hover:from-violet-500 hover:to-fuchsia-500 focus:ring-fuchsia-300",
+        secondary:
+          "bg-white text-slate-700 border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 focus:ring-slate-200",
+        danger:
+          "bg-rose-500 text-white shadow-lg shadow-rose-500/30 hover:bg-rose-600 focus:ring-rose-300",
+        ghost:
+          "bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-200",
+      };
+      const sizes = {
+        sm: "px-3 py-1.5 text-sm",
+        md: "px-5 py-2.5 text-base",
+        lg: "px-7 py-3.5 text-lg",
+      };
+      return (
+        <button
+          type={type}
+          onClick={onClick}
+          disabled={disabled}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // Input
+    function Input({ label, value, onChange, placeholder, error, disabled = false, maxLength, className = "", accentColor = "violet" }) {
+      const ring = {
+        violet: "focus:border-violet-500 focus:ring-violet-200",
+        indigo: "focus:border-indigo-500 focus:ring-indigo-200",
+        rose: "focus:border-rose-500 focus:ring-rose-200",
+      }[accentColor] || "focus:border-violet-500 focus:ring-violet-200";
+      return (
+        <div className={`w-full ${className}`}>
+          {label && <label className="block text-sm font-semibold text-slate-600 mb-1.5">{label}</label>}
+          <input
+            type="text"
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            maxLength={maxLength}
+            className={`w-full px-4 py-3 rounded-2xl border-2 bg-white text-slate-800 placeholder-slate-400 outline-none transition-all focus:ring-4 ${ring} ${
+              error ? "border-rose-400" : "border-slate-200"
+            } disabled:bg-slate-100`}
+          />
+          {error && <p className="mt-1 text-sm text-rose-500 font-medium">{error}</p>}
+        </div>
+      );
+    }
+
+    // Card
+    function Card({ className = "", children }) {
+      return (
+        <div className={`bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    // Spinner
+    function Spinner({ size = "md", className = "" }) {
+      const sizes = { sm: "w-5 h-5", md: "w-8 h-8", lg: "w-12 h-12" };
+      return (
+        <div
+          className={`${sizes[size]} border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin ${className}`}
+          role="status"
+          aria-label="로딩 중"
+        />
+      );
+    }
+
+    // PercentBar — 애니메이션 퍼센티지 바
+    // side: 'A' | 'B' , percent: 0~100 , count: 표수 , label: 옵션 텍스트 , mine: 내가 고른 쪽 , winning: 더 받은 쪽
+    function PercentBar({ side, percent, count, label, mine, winning }) {
+      const isA = side === "A";
+      const fillClass = isA
+        ? "bg-gradient-to-r from-indigo-500 to-blue-500"
+        : "bg-gradient-to-r from-rose-500 to-pink-500";
+      const textClass = isA ? "text-indigo-600" : "text-rose-600";
+      const ringClass = mine
+        ? isA
+          ? "ring-4 ring-indigo-300"
+          : "ring-4 ring-rose-300"
+        : "";
+      return (
+        <div className={`relative rounded-2xl overflow-hidden bg-slate-100 ${ringClass} transition-all`}>
+          {/* 채워지는 바 */}
+          <div
+            className={`bar-fill absolute inset-y-0 left-0 ${fillClass} opacity-90`}
+            style={{ width: `${percent}%` }}
+            aria-hidden="true"
+          />
+          {/* 내용 */}
+          <div className="relative flex items-center justify-between px-4 py-3.5 min-h-[64px]">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold ${
+                percent > 14 ? "bg-white/90 " + textClass : (isA ? "bg-indigo-100 text-indigo-600" : "bg-rose-100 text-rose-600")
+              }`}>
+                {side}
+              </span>
+              <span className={`font-bold truncate ${percent > 30 ? "text-white" : "text-slate-700"}`} title={label}>
+                {label}
+              </span>
+              {mine && (
+                <span className="flex-shrink-0 text-xs font-bold bg-white/90 text-slate-700 px-2 py-0.5 rounded-full">
+                  ✓ 내 선택
+                </span>
+              )}
+              {winning && count > 0 && (
+                <span className="flex-shrink-0 text-base" title="더 많이 받았어요">👑</span>
+              )}
+            </div>
+            <div className={`flex-shrink-0 text-right font-extrabold ${percent > 60 ? "text-white" : "text-slate-700"}`}>
+              <div className="text-lg leading-none">{percent}%</div>
+              <div className={`text-xs font-semibold mt-0.5 ${percent > 60 ? "text-white/80" : "text-slate-400"}`}>{count}표</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 큰 투표 버튼 (아직 투표 안 한 상태)
+    function VoteButton({ side, label, onClick, disabled }) {
+      const isA = side === "A";
+      const cls = isA
+        ? "from-indigo-500 to-blue-600 shadow-indigo-500/30 hover:from-indigo-400 hover:to-blue-500 focus:ring-indigo-300"
+        : "from-rose-500 to-pink-600 shadow-rose-500/30 hover:from-rose-400 hover:to-pink-500 focus:ring-rose-300";
+      return (
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          className={`group w-full text-left rounded-2xl p-4 sm:p-5 min-h-[88px] bg-gradient-to-br ${cls} text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.98] focus:outline-none focus:ring-4 disabled:opacity-60 disabled:cursor-wait`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex-shrink-0 w-9 h-9 rounded-full bg-white/25 flex items-center justify-center text-lg font-extrabold backdrop-blur">
+              {side}
+            </span>
+            <span className="font-extrabold text-base sm:text-lg leading-snug break-keep">{label}</span>
+          </div>
+          <div className="mt-2 text-xs font-semibold text-white/80 group-hover:text-white transition-colors">
+            👉 이걸로 투표하기
+          </div>
+        </button>
+      );
+    }
+
+    // 토스트 (간단 알림)
+    function Toast({ message, type = "info" }) {
+      if (!message) return null;
+      const colors = {
+        info: "bg-slate-800",
+        error: "bg-rose-600",
+        success: "bg-emerald-600",
+      };
+      return (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-fadeInUp">
+          <div className={`${colors[type]} text-white px-5 py-3 rounded-2xl shadow-2xl font-semibold text-sm max-w-[90vw]`}>
+            {message}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 설정(Setup) 화면 — Supabase 미설정 / 연결 실패 시
+    // ========================================
+    function SetupScreen({ onSave, initial, connectError }) {
+      const [url, setUrl] = useState(initial?.url || "");
+      const [key, setKey] = useState(initial?.key || "");
+      const [errors, setErrors] = useState({});
+      const [copied, setCopied] = useState(false);
+
+      const handleCopy = async () => {
+        try {
+          await navigator.clipboard.writeText(SETUP_SQL);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1800);
+        } catch {
+          setCopied(false);
+        }
+      };
+
+      const handleSubmit = () => {
+        const e = {};
+        if (!url.trim()) e.url = "Project URL 을 입력하세요.";
+        else if (!/^https?:\/\/.+/.test(url.trim())) e.url = "https:// 로 시작하는 URL 이어야 해요.";
+        if (!key.trim()) e.key = "anon public key 를 입력하세요.";
+        setErrors(e);
+        if (Object.keys(e).length === 0) {
+          onSave({ url: url.trim(), key: key.trim() });
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-violet-600 via-fuchsia-600 to-rose-500 bg-animated px-4 py-10 flex items-center justify-center">
+          <div className="w-full max-w-2xl">
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-2">⚖️</div>
+              <h1 className="text-3xl font-extrabold text-white">실시간 밸런스 게임</h1>
+              <p className="text-white/80 mt-1">시작하려면 Supabase 연결이 필요해요</p>
+            </div>
+
+            <Card className="p-6 sm:p-8">
+              {connectError && (
+                <div className="mb-5 p-4 rounded-2xl bg-rose-50 border border-rose-200">
+                  <p className="font-bold text-rose-700">🚫 연결에 실패했어요</p>
+                  <p className="text-sm text-rose-600 mt-1 break-all">{connectError}</p>
+                  <p className="text-xs text-rose-500 mt-1">URL/Key 를 다시 확인하거나, 아래 SQL 로 테이블이 만들어졌는지 점검하세요.</p>
+                </div>
+              )}
+
+              <h2 className="text-xl font-extrabold text-slate-800 mb-1">⚙️ 1단계 · 테이블 만들기</h2>
+              <p className="text-sm text-slate-500 mb-3 leading-relaxed">
+                Supabase 대시보드 → <b>SQL Editor</b> 에서 아래 전체를 붙여넣고 <b>RUN</b> 하세요.
+                (테이블 · 집계 뷰 · RLS · Realtime 이 한 번에 만들어져요)
+              </p>
+              <div className="relative">
+                <pre className="bg-slate-900 text-slate-100 text-xs rounded-2xl p-4 overflow-auto max-h-52 leading-relaxed">{SETUP_SQL}</pre>
+                <button
+                  onClick={handleCopy}
+                  className="absolute top-3 right-3 text-xs font-bold bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  {copied ? "✓ 복사됨" : "📋 복사"}
+                </button>
+              </div>
+
+              <hr className="my-6 border-slate-100" />
+
+              <h2 className="text-xl font-extrabold text-slate-800 mb-1">🔑 2단계 · 키 붙여넣기</h2>
+              <p className="text-sm text-slate-500 mb-4 leading-relaxed">
+                Supabase 대시보드 → <b>Project Settings → API</b> 에서
+                <b> Project URL</b> 과 <b>anon public</b> key 를 복사하세요.
+                여러 사람과 공유하려면 이 값들을 <code className="bg-slate-100 px-1 rounded">index.html</code> 상단 상수에 직접 넣어 배포하세요.
+              </p>
+
+              <div className="space-y-4">
+                <Input
+                  label="Project URL"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://xxxxxxxx.supabase.co"
+                  error={errors.url}
+                  accentColor="indigo"
+                />
+                <Input
+                  label="anon public key"
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                  error={errors.key}
+                  accentColor="rose"
+                />
+              </div>
+
+              <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                <p className="text-xs text-emerald-700 leading-relaxed">
+                  🔒 <b>anon key 는 브라우저에 노출되어도 안전</b>해요. 비밀 키가 아니라 공개용 키이고,
+                  데이터는 <b>RLS(행 수준 보안) 정책</b>으로 보호됩니다. (service_role 키는 절대 넣지 마세요)
+                </p>
+              </div>
+
+              <Button onClick={handleSubmit} size="lg" className="w-full mt-5">
+                🚀 저장하고 시작하기
+              </Button>
+              <p className="text-center text-xs text-slate-400 mt-3">
+                저장하면 브라우저(localStorage)에 보관되고 새로고침돼요.
+              </p>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 공통/레이아웃 컴포넌트
+    // ========================================
+    function Header({ onOpenSettings, configSource }) {
+      return (
+        <header className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-rose-500 bg-animated">
+          <div className="max-w-3xl mx-auto px-4 py-7 sm:py-9 flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+                ⚖️ 실시간 밸런스 게임
+              </h1>
+              <p className="text-white/85 mt-1 text-sm sm:text-base font-medium">
+                둘 중 하나만 고른다면? 🤔 지금 바로 투표!
+              </p>
+            </div>
+            <button
+              onClick={onOpenSettings}
+              title="Supabase 설정 다시 열기"
+              className="flex-shrink-0 inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-sm px-3.5 py-2 rounded-2xl backdrop-blur transition-colors focus:outline-none focus:ring-4 focus:ring-white/30"
+            >
+              ⚙️ <span className="hidden sm:inline">설정</span>
+            </button>
+          </div>
+        </header>
+      );
+    }
+
+    function StatBadge({ icon, value, label }) {
+      return (
+        <div className="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3 text-center">
+          <div className="text-2xl font-extrabold text-slate-800 leading-none">
+            {icon} {value}
+          </div>
+          <div className="text-xs font-semibold text-slate-400 mt-1">{label}</div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 질문 등록 폼
+    // ========================================
+    function CreateQuestionForm({ onCreate, busy }) {
+      const [a, setA] = useState("");
+      const [b, setB] = useState("");
+      const [errors, setErrors] = useState({});
+
+      const submit = async () => {
+        const e = {};
+        if (!a.trim()) e.a = "A 선택지를 입력하세요.";
+        if (!b.trim()) e.b = "B 선택지를 입력하세요.";
+        setErrors(e);
+        if (Object.keys(e).length > 0) return;
+
+        const ok = await onCreate(a.trim(), b.trim());
+        if (ok) {
+          setA("");
+          setB("");
+          setErrors({});
+        }
+      };
+
+      return (
+        <Card className="p-5 sm:p-6">
+          <h2 className="text-lg font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+            ➕ 새 질문 등록하기
+          </h2>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+            <div className="flex-1">
+              <Input
+                label="A 선택지"
+                value={a}
+                onChange={(e) => setA(e.target.value)}
+                placeholder="예: 월급 500 + 주7일 출근"
+                error={errors.a}
+                disabled={busy}
+                maxLength={80}
+                accentColor="indigo"
+              />
+            </div>
+            <div className="flex-shrink-0 flex justify-center sm:pb-3">
+              <span className="text-lg font-black text-fuchsia-500 bg-fuchsia-50 rounded-full w-11 h-11 flex items-center justify-center">
+                VS
+              </span>
+            </div>
+            <div className="flex-1">
+              <Input
+                label="B 선택지"
+                value={b}
+                onChange={(e) => setB(e.target.value)}
+                placeholder="예: 월급 300 + 주4일 출근"
+                error={errors.b}
+                disabled={busy}
+                maxLength={80}
+                accentColor="rose"
+              />
+            </div>
+          </div>
+          <Button onClick={submit} disabled={busy} size="lg" className="w-full mt-4">
+            {busy ? <><Spinner size="sm" className="border-white/40 border-t-white" /> 등록 중...</> : "질문 등록하기 🎉"}
+          </Button>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 📄 질문 카드
+    //  q: { id, option_a, option_b, votes_a, votes_b, total_votes }
+    //  myChoice: 'A' | 'B' | undefined
+    // ========================================
+    function QuestionCard({ q, myChoice, onVote, voting }) {
+      const total = q.total_votes || 0;
+      const voted = !!myChoice;
+
+      // 0 나누기 방지: total 0 이면 0%
+      const pctA = total > 0 ? Math.round((q.votes_a / total) * 100) : 0;
+      // B 는 100 - A 로 맞춰서 합이 100 되게 (양쪽 다 0이면 0)
+      const pctB = total > 0 ? 100 - pctA : 0;
+
+      const winA = total > 0 && q.votes_a > q.votes_b;
+      const winB = total > 0 && q.votes_b > q.votes_a;
+
+      // 카운트 변화 시 pop 애니메이션 트리거
+      const [popKey, setPopKey] = useState(0);
+      const prevTotal = useRef(total);
+      useEffect(() => {
+        if (total !== prevTotal.current) {
+          setPopKey((k) => k + 1);
+          prevTotal.current = total;
+        }
+      }, [total]);
+
+      return (
+        <Card className="p-5 sm:p-6 animate-fadeInUp">
+          {/* 결과/투표 영역 */}
+          {voted ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <PercentBar side="A" percent={pctA} count={q.votes_a || 0} label={q.option_a} mine={myChoice === "A"} winning={winA} />
+              <PercentBar side="B" percent={pctB} count={q.votes_b || 0} label={q.option_b} mine={myChoice === "B"} winning={winB} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <VoteButton side="A" label={q.option_a} onClick={() => onVote(q.id, "A")} disabled={voting} />
+              <div className="flex sm:hidden items-center justify-center -my-1">
+                <span className="text-sm font-black text-fuchsia-400">VS</span>
+              </div>
+              <VoteButton side="B" label={q.option_b} onClick={() => onVote(q.id, "B")} disabled={voting} />
+            </div>
+          )}
+
+          {/* 하단 정보 */}
+          <div className="mt-4 flex items-center justify-between">
+            {total > 0 ? (
+              <span key={popKey} className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 animate-pop">
+                <span className="text-fuchsia-500">👥</span> 총 {total}명 참여
+              </span>
+            ) : (
+              <span className="text-sm font-semibold text-slate-400">
+                🥇 첫 투표의 주인공이 되어보세요!
+              </span>
+            )}
+            {voted && (
+              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+                ✅ 투표 완료
+              </span>
+            )}
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 📄 메인 게임 화면
+    // ========================================
+    function GameScreen({ sb, onOpenSettings, configSource, onConnectError }) {
+      const [questions, setQuestions] = useState([]); // 각 항목: q + votes_a/votes_b/total_votes
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [creating, setCreating] = useState(false);
+      const [voting, setVoting] = useState(false);
+      const [seeding, setSeeding] = useState(false);
+      const [voted, setVoted] = useState(() => readJSON(LS_VOTED_KEY, {})); // { [id]: 'A'|'B' }
+      const [toast, setToast] = useState({ msg: "", type: "info" });
+
+      // 내가 만든 vote 행의 id 집합. Realtime INSERT 이벤트는 내 화면에도 들어오는데,
+      // 내 투표는 이미 낙관적으로 +1 했으므로 여기 담긴 id 는 Realtime 핸들러에서 건너뛴다(이중 카운트 방지).
+      const myVoteIds = useRef(new Set());
+      // insert 응답(=id 확보)보다 Realtime 이벤트가 먼저 도착하는 짧은 구간을 위한 보강 카운터.
+      // 키: `${questionId}|${choice}` → 아직 id 를 모르는 "내 투표" 개수.
+      const pendingMine = useRef(new Map());
+
+      const showToast = useCallback((msg, type = "info") => {
+        setToast({ msg, type });
+        setTimeout(() => setToast({ msg: "", type: "info" }), 2600);
+      }, []);
+
+      // ---- 데이터 로드: 질문 목록 + 집계(vote_stats, 실패 시 votes 폴백) ----
+      const loadData = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          // 1) 질문 목록 (최신순)
+          const { data: qs, error: qErr } = await sb
+            .from("questions")
+            .select("*")
+            .order("created_at", { ascending: false });
+          if (qErr) throw qErr;
+
+          const list = qs || [];
+
+          // 2) 집계: vote_stats 뷰 시도 → 실패하면 votes 폴백
+          const statsMap = {}; // id -> { votes_a, votes_b, total_votes }
+          let usedFallback = false;
+          try {
+            const { data: stats, error: sErr } = await sb.from("vote_stats").select("*");
+            if (sErr) throw sErr;
+            (stats || []).forEach((s) => {
+              statsMap[s.question_id] = {
+                votes_a: Number(s.votes_a) || 0,
+                votes_b: Number(s.votes_b) || 0,
+                total_votes: Number(s.total_votes) || 0,
+              };
+            });
+          } catch (viewErr) {
+            // 폴백: votes 전체를 받아 클라이언트에서 카운트
+            usedFallback = true;
+            const { data: rawVotes, error: vErr } = await sb
+              .from("votes")
+              .select("question_id, choice");
+            if (vErr) throw vErr;
+            (rawVotes || []).forEach((v) => {
+              const m = statsMap[v.question_id] || { votes_a: 0, votes_b: 0, total_votes: 0 };
+              if (v.choice === "A") m.votes_a += 1;
+              else if (v.choice === "B") m.votes_b += 1;
+              m.total_votes += 1;
+              statsMap[v.question_id] = m;
+            });
+          }
+
+          const merged = list.map((q) => ({
+            ...q,
+            votes_a: statsMap[q.id]?.votes_a || 0,
+            votes_b: statsMap[q.id]?.votes_b || 0,
+            total_votes: statsMap[q.id]?.total_votes || 0,
+          }));
+
+          setQuestions(merged);
+          if (usedFallback) {
+            console.info("[balance-game] vote_stats 뷰가 없어 votes 폴백 집계를 사용했어요. SQL 의 2)번 뷰를 만들면 더 빨라져요.");
+          }
+        } catch (e) {
+          const msg = e?.message || String(e);
+          setError(msg);
+          // 자격증명 자체가 틀린 경우(JWT 등) 설정 화면으로 유도
+          if (/JWT|api key|Invalid|Failed to fetch|apikey/i.test(msg)) {
+            onConnectError(msg);
+          }
+        } finally {
+          setLoading(false);
+        }
+      }, [sb, onConnectError]);
+
+      useEffect(() => {
+        loadData();
+      }, [loadData]);
+
+      // ---- Realtime 구독: votes INSERT(로컬 +1), questions INSERT(목록 맨 위 추가) ----
+      useEffect(() => {
+        const channel = sb
+          .channel("balance-game-rt")
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "votes" },
+            (payload) => {
+              const v = payload.new;
+              if (!v) return;
+              // 내가 만든 투표는 이미 낙관적으로 반영했으므로 건너뜀(이중 카운트 방지).
+              // 1순위: id 매칭 (insert 응답으로 id 를 이미 확보한 경우)
+              if (v.id != null && myVoteIds.current.has(v.id)) {
+                myVoteIds.current.delete(v.id); // 1회성 소비
+                return;
+              }
+              // 2순위: id 확보 전(응답보다 이벤트가 먼저 온 경우) → 내용 키로 매칭
+              const pk = `${v.question_id}|${v.choice}`;
+              const pendingCount = pendingMine.current.get(pk) || 0;
+              if (pendingCount > 0) {
+                pendingMine.current.set(pk, pendingCount - 1);
+                if (v.id != null) myVoteIds.current.delete(v.id); // 혹시 모를 중복 방지
+                return;
+              }
+              // 다른 사람의 투표 → 실시간으로 +1
+              setQuestions((prev) =>
+                prev.map((q) => {
+                  if (q.id !== v.question_id) return q;
+                  const next = { ...q, total_votes: (q.total_votes || 0) + 1 };
+                  if (v.choice === "A") next.votes_a = (q.votes_a || 0) + 1;
+                  else if (v.choice === "B") next.votes_b = (q.votes_b || 0) + 1;
+                  return next;
+                })
+              );
+            }
+          )
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "questions" },
+            (payload) => {
+              const nq = payload.new;
+              if (!nq) return;
+              setQuestions((prev) => {
+                if (prev.some((q) => q.id === nq.id)) return prev; // 중복 방지(내가 만든 것 등)
+                return [
+                  { ...nq, votes_a: 0, votes_b: 0, total_votes: 0 },
+                  ...prev,
+                ];
+              });
+            }
+          )
+          .subscribe();
+
+        // cleanup
+        return () => {
+          sb.removeChannel(channel);
+        };
+      }, [sb]);
+
+      // ---- 질문 등록 ----
+      const handleCreate = useCallback(
+        async (option_a, option_b) => {
+          setCreating(true);
+          try {
+            const { data, error: insErr } = await sb
+              .from("questions")
+              .insert({ option_a, option_b })
+              .select()
+              .single();
+            if (insErr) throw insErr;
+            // 낙관적 추가 (Realtime 이 중복 방지로 무시)
+            if (data) {
+              setQuestions((prev) => {
+                if (prev.some((q) => q.id === data.id)) return prev;
+                return [{ ...data, votes_a: 0, votes_b: 0, total_votes: 0 }, ...prev];
+              });
+            }
+            showToast("질문이 등록됐어요! 🎉", "success");
+            return true;
+          } catch (e) {
+            showToast("등록 실패: " + (e?.message || e), "error");
+            return false;
+          } finally {
+            setCreating(false);
+          }
+        },
+        [sb, showToast]
+      );
+
+      // ---- 투표 ----
+      const handleVote = useCallback(
+        async (questionId, choice) => {
+          // 이미 투표한 질문이면 막기 (UX 중복 방지)
+          if (voted[questionId]) {
+            showToast("이미 투표한 질문이에요 🙅", "info");
+            return;
+          }
+          setVoting(true);
+
+          // 낙관적 UI: 내 선택 기록 + 로컬 카운트 +1
+          const nextVoted = { ...voted, [questionId]: choice };
+          setVoted(nextVoted);
+          writeJSON(LS_VOTED_KEY, nextVoted);
+          setQuestions((prev) =>
+            prev.map((q) => {
+              if (q.id !== questionId) return q;
+              const next = { ...q, total_votes: (q.total_votes || 0) + 1 };
+              if (choice === "A") next.votes_a = (q.votes_a || 0) + 1;
+              else next.votes_b = (q.votes_b || 0) + 1;
+              return next;
+            })
+          );
+
+          // insert 응답보다 Realtime 이벤트가 먼저 와도 건너뛰도록, 내용 키로 미리 +1.
+          const pk = `${questionId}|${choice}`;
+          pendingMine.current.set(pk, (pendingMine.current.get(pk) || 0) + 1);
+
+          try {
+            // .select().single() 로 방금 만든 vote 행의 id 를 받아 둔다.
+            const { data: inserted, error: vErr } = await sb
+              .from("votes")
+              .insert({ question_id: questionId, choice })
+              .select()
+              .single();
+            if (vErr) throw vErr;
+            // 이 id 의 Realtime INSERT 이벤트가 내 화면에도 도착하면 건너뛰도록 등록.
+            // (낙관적 +1 이 최종값이고, 다른 사람들은 Realtime 으로 +1 받음)
+            if (inserted && inserted.id != null) {
+              myVoteIds.current.add(inserted.id);
+            }
+            // id 를 확보했으면 내용 키 보강분은 더 이상 필요 없다(다른 사람 표를 잘못 무시하지 않도록 정리).
+            // 짧은 지연 후 정리: 그 사이 도착한 내 이벤트는 위 id 경로가 처리.
+            setTimeout(() => {
+              const cur = pendingMine.current.get(pk) || 0;
+              if (cur > 0) pendingMine.current.set(pk, cur - 1);
+            }, 1500);
+          } catch (e) {
+            // 롤백: 보강 카운터 정리 + 내 선택 취소 + 카운트 -1
+            const cur = pendingMine.current.get(pk) || 0;
+            if (cur > 0) pendingMine.current.set(pk, cur - 1);
+            const revert = { ...nextVoted };
+            delete revert[questionId];
+            setVoted(revert);
+            writeJSON(LS_VOTED_KEY, revert);
+            setQuestions((prev) =>
+              prev.map((q) => {
+                if (q.id !== questionId) return q;
+                const next = { ...q, total_votes: Math.max(0, (q.total_votes || 0) - 1) };
+                if (choice === "A") next.votes_a = Math.max(0, (q.votes_a || 0) - 1);
+                else next.votes_b = Math.max(0, (q.votes_b || 0) - 1);
+                return next;
+              })
+            );
+            showToast("투표 실패: " + (e?.message || e), "error");
+          } finally {
+            setVoting(false);
+          }
+        },
+        [sb, voted, showToast]
+      );
+
+      // ---- 샘플 질문 일괄 추가 ----
+      const handleSeed = useCallback(async () => {
+        setSeeding(true);
+        try {
+          const { data, error: sErr } = await sb
+            .from("questions")
+            .insert(SAMPLE_QUESTIONS)
+            .select();
+          if (sErr) throw sErr;
+          if (data && data.length) {
+            setQuestions((prev) => {
+              const existing = new Set(prev.map((q) => q.id));
+              const fresh = data
+                .filter((q) => !existing.has(q.id))
+                .map((q) => ({ ...q, votes_a: 0, votes_b: 0, total_votes: 0 }));
+              return [...fresh, ...prev];
+            });
+          }
+          showToast("샘플 질문 6개를 추가했어요! 🎲", "success");
+        } catch (e) {
+          showToast("샘플 추가 실패: " + (e?.message || e), "error");
+        } finally {
+          setSeeding(false);
+        }
+      }, [sb, showToast]);
+
+      // ---- 요약 통계 ----
+      const totalVotesAll = useMemo(
+        () => questions.reduce((acc, q) => acc + (q.total_votes || 0), 0),
+        [questions]
+      );
+
+      return (
+        <div className="min-h-screen bg-slate-50">
+          <Header onOpenSettings={onOpenSettings} configSource={configSource} />
+
+          <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+            {/* 요약 통계 */}
+            <div className="flex gap-3">
+              <StatBadge icon="📋" value={questions.length} label="전체 질문" />
+              <StatBadge icon="🗳️" value={totalVotesAll} label="총 투표 수" />
+              <StatBadge icon="⚡" value="실시간" label="자동 갱신" />
+            </div>
+
+            {/* 질문 등록 폼 */}
+            <CreateQuestionForm onCreate={handleCreate} busy={creating} />
+
+            {/* 본문 상태 분기 */}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <Spinner size="lg" />
+                <p className="text-slate-400 font-semibold">질문을 불러오는 중...</p>
+              </div>
+            ) : error ? (
+              <Card className="p-8 text-center">
+                <div className="text-4xl mb-3">😵</div>
+                <p className="font-extrabold text-slate-800 text-lg">데이터를 불러오지 못했어요</p>
+                <p className="text-sm text-rose-500 mt-2 break-all">{error}</p>
+                <p className="text-xs text-slate-400 mt-2">
+                  테이블/RLS 정책이 없을 수 있어요. 설정 화면의 SQL 을 실행했는지 확인하세요.
+                </p>
+                <div className="flex gap-2 justify-center mt-5">
+                  <Button variant="secondary" onClick={loadData}>🔄 다시 시도</Button>
+                  <Button variant="ghost" onClick={onOpenSettings}>⚙️ 설정 열기</Button>
+                </div>
+              </Card>
+            ) : questions.length === 0 ? (
+              <Card className="p-10 text-center">
+                <div className="text-5xl mb-3">🎈</div>
+                <p className="font-extrabold text-slate-800 text-lg">아직 질문이 없어요</p>
+                <p className="text-sm text-slate-500 mt-1 mb-5">
+                  위에서 직접 만들거나, 돈 주제 샘플 질문을 한 번에 추가해보세요!
+                </p>
+                <Button onClick={handleSeed} disabled={seeding} size="lg">
+                  {seeding ? <><Spinner size="sm" className="border-white/40 border-t-white" /> 추가 중...</> : "🎲 샘플 질문 추가"}
+                </Button>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {/* 질문이 있어도 샘플 더 넣을 수 있게 (간단히 허용) */}
+                <div className="flex justify-end">
+                  <Button variant="secondary" size="sm" onClick={handleSeed} disabled={seeding}>
+                    {seeding ? "추가 중..." : "🎲 샘플 질문 더 추가"}
+                  </Button>
+                </div>
+                {questions.map((q) => (
+                  <QuestionCard
+                    key={q.id}
+                    q={q}
+                    myChoice={voted[q.id]}
+                    onVote={handleVote}
+                    voting={voting}
+                  />
+                ))}
+              </div>
+            )}
+
+            <footer className="text-center text-xs text-slate-400 py-6">
+              ⚖️ 실시간 밸런스 게임 · Powered by Supabase Realtime
+              {configSource === "const" && <span className="block mt-1">🔧 상단 상수 자격증명 사용 중</span>}
+            </footer>
+          </main>
+
+          <Toast message={toast.msg} type={toast.type} />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App — 자격증명 해석 → 설정/게임 화면 분기
+    // ========================================
+    function App() {
+      const [cfg, setCfg] = useState(() => resolveConfig());
+      const [sb, setSb] = useState(() => makeClient(resolveConfig()));
+      const [forceSetup, setForceSetup] = useState(false); // ⚙️ 설정 버튼으로 강제 열기
+      const [connectError, setConnectError] = useState(null);
+
+      // 설정 저장 → localStorage 쓰고 새로고침 (가장 확실한 클라이언트 재생성)
+      const handleSaveConfig = useCallback((newCfg) => {
+        writeJSON(LS_CONFIG_KEY, newCfg);
+        window.location.reload();
+      }, []);
+
+      const openSettings = useCallback(() => {
+        setForceSetup(true);
+        setConnectError(null);
+      }, []);
+
+      const handleConnectError = useCallback((msg) => {
+        setConnectError(msg);
+        setForceSetup(true);
+      }, []);
+
+      // 설정 화면을 보여줄 조건: 자격증명 없음 / 클라이언트 생성 실패 / 강제 열기
+      const needSetup = !cfg || !sb || forceSetup;
+
+      if (needSetup) {
+        return (
+          <SetupScreen
+            onSave={handleSaveConfig}
+            initial={cfg}
+            connectError={connectError}
+          />
+        );
+      }
+
+      return (
+        <GameScreen
+          sb={sb}
+          onOpenSettings={openSettings}
+          configSource={cfg.source}
+          onConnectError={handleConnectError}
+        />
+      );
+    }
+
+    // ========================================
+    // 렌더링
+    // ========================================
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
