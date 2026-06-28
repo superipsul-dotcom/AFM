@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>스윗박스 SWEETBOX · 디저트/베이커리 쇼핑몰</title>
+
+  <!-- 폰트: 본문 Pretendard, 로고 Gaegu -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // 디저트/베이커리 파스텔 팔레트 (크림 / 딸기핑크 / 초콜릿브라운)
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:      { 50:'#FFFDFB', 100:'#FFF8F3', 200:'#FBEFE4', 300:'#F4E2D2' },
+            strawberry: { 50:'#FFF1F5', 100:'#FFE3EC', 200:'#FFC2D6', 300:'#FF9CBC', 400:'#FB6F92', 500:'#F2547A', 600:'#DC3A62', 700:'#B82B4E' },
+            choco:      { 50:'#FBF7F4', 100:'#F2E9E2', 200:'#E3D2C3', 300:'#CBB09A', 400:'#A97E5E', 500:'#8B5E3C', 600:'#6F4A2F', 700:'#553826', 800:'#3D281C' },
+          },
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+            logo: ['Gaegu', 'cursive'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- React 18 (UMD) + Babel standalone -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ 흰 화면(blank) 방지: @babel/standalone 기본값은 automatic JSX 런타임이라
+    // UMD React 환경에서 `import 'react/jsx-runtime'` 를 주입 → 에러로 렌더 중단됨.
+    // classic 런타임 프리셋을 등록해 React.createElement 변환으로 강제한다.
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+
+  <style>
+    /* Tailwind 유틸로 표현하기 어려운 키프레임/세부만 정의 */
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pop { from { opacity: 0; transform: scale(.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .animate-fade  { animation: fadeIn .2s ease-out; }
+    .animate-pop   { animation: pop .26s cubic-bezier(.2,.85,.25,1); }
+    .animate-toast { animation: toastIn .25s ease-out; }
+    .animate-floaty{ animation: floaty 3.2s ease-in-out infinite; }
+    /* 부드러운 스크롤 + 기본 배경 */
+    html { scroll-behavior: smooth; }
+    body { background: #FFF8F3; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- classic 프리셋 명시 (data-presets="app-react") -->
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // ⚛️ React Hooks
+    // ========================================
+    const { useState, useEffect, useCallback, useMemo, useContext, useRef, useId, createContext } = React;
+
+    // ========================================
+    // 🌐 API 설정 (Express + Supabase 백엔드 연동)
+    //   서버 응답 봉투: { success, data, message } → apiRequest 가 data 만 풀어서 반환.
+    //   인증이 필요한 호출은 Authorization: Bearer <token> 헤더를 함께 보냄.
+    // ========================================
+    const API_BASE_URL = '/api'; // 상대경로(절대 localhost 하드코딩 금지)
+
+    const formatPrice = (n) => (n ?? 0).toLocaleString('ko-KR') + '원';
+
+    // 인증 세션(토큰/유저)만 localStorage 에 보관 — 상품/장바구니는 서버가 진실원본.
+    const STORE = { token: 'sweetbox_token', user: 'sweetbox_user' };
+
+    // 공통 fetch 래퍼: 성공이면 봉투를 벗긴 data 를 반환, 실패면 서버 message 로 throw.
+    async function apiRequest(path, { method = 'GET', body, token } = {}) {
+      const headers = {};
+      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}${path}`, {
+          method,
+          headers,
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+      } catch (_e) {
+        throw new Error('네트워크 연결을 확인해주세요.');
+      }
+      let json = null;
+      try { json = await res.json(); } catch (_e) { /* 비-JSON 응답 방어 */ }
+      if (!res.ok || !json || json.success === false) {
+        throw new Error((json && json.message) || `요청에 실패했어요 (${res.status})`);
+      }
+      return json.data;
+    }
+
+    // ========================================
+    // 🔌 API 계층 — 서버 REST 엔드포인트 호출 (반환 형태는 UI 가 기대하는 그대로)
+    // ========================================
+    const api = {
+      // GET /api/products (공개) → [{ id, name, price, image_url, description, emoji, gradient }]
+      getProducts() {
+        return apiRequest('/products');
+      },
+
+      // POST /api/auth/signup {email,password,nickname} → { token, user:{id,email,nickname} }
+      signup({ email, password, nickname }) {
+        return apiRequest('/auth/signup', { method: 'POST', body: { email, password, nickname } });
+      },
+
+      // POST /api/auth/login {email,password} → { token, user }
+      login({ email, password }) {
+        return apiRequest('/auth/login', { method: 'POST', body: { email, password } });
+      },
+
+      // GET /api/cart (Bearer) → [{ id, quantity, product:{id,name,price,image_url,emoji,gradient} }]
+      getCart(token) {
+        return apiRequest('/cart', { token });
+      },
+
+      // POST /api/cart {product_id, quantity} (이미 담긴 상품이면 서버가 수량 증가)
+      addToCart(token, { product_id, quantity = 1 }) {
+        return apiRequest('/cart', { method: 'POST', token, body: { product_id, quantity } });
+      },
+
+      // PATCH /api/cart/:id {quantity}
+      updateCartItem(token, id, { quantity }) {
+        return apiRequest(`/cart/${id}`, { method: 'PATCH', token, body: { quantity } });
+      },
+
+      // DELETE /api/cart/:id
+      removeCartItem(token, id) {
+        return apiRequest(`/cart/${id}`, { method: 'DELETE', token });
+      },
+    };
+
+    // ========================================
+    // 🎨 디자인 시스템 (순수 프레젠테이션, 비즈니스 로직 없음)
+    // ========================================
+    function Spinner({ size = 'md', className = '' }) {
+      const sizes = { sm: 'w-4 h-4 border-2', md: 'w-6 h-6 border-2', lg: 'w-10 h-10 border-[3px]' };
+      return <span role="status" aria-label="로딩 중" className={`inline-block rounded-full border-current border-t-transparent animate-spin ${sizes[size]} ${className}`} />;
+    }
+
+    function Button({ variant = 'primary', size = 'md', className = '', disabled, loading, children, ...props }) {
+      const base = 'inline-flex items-center justify-center gap-1.5 font-bold rounded-full transition-all duration-200 select-none focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+      const variants = {
+        primary:   'bg-strawberry-400 text-white hover:bg-strawberry-500 focus:ring-strawberry-200 shadow-sm hover:shadow-md active:scale-95',
+        secondary: 'bg-white text-choco-700 border border-choco-200 hover:bg-cream-100 focus:ring-choco-200',
+        ghost:     'bg-transparent text-choco-600 hover:bg-choco-50 focus:ring-choco-200',
+        danger:    'bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 focus:ring-rose-200',
+      };
+      const sizes = { sm: 'text-xs px-3 py-1.5', md: 'text-sm px-5 py-2.5', lg: 'text-base px-7 py-3' };
+      return (
+        <button disabled={disabled || loading} className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
+          {loading && <Spinner size="sm" />}
+          {children}
+        </button>
+      );
+    }
+
+    function Input({ label, error, className = '', id, ...props }) {
+      const autoId = useId();
+      const inputId = id || autoId;
+      return (
+        <div className="w-full">
+          {label && <label htmlFor={inputId} className="block text-sm font-semibold text-choco-700 mb-1.5">{label}</label>}
+          <input
+            id={inputId}
+            className={`w-full rounded-xl border px-4 py-2.5 bg-white text-choco-800 placeholder-choco-300 transition focus:outline-none focus:ring-2 ${error ? 'border-rose-300 focus:ring-rose-200' : 'border-choco-200 focus:border-strawberry-300 focus:ring-strawberry-100'} ${className}`}
+            aria-invalid={!!error}
+            {...props}
+          />
+          {error && <p className="mt-1 text-xs text-rose-500">{error}</p>}
+        </div>
+      );
+    }
+
+    function Card({ className = '', children, ...props }) {
+      return <div className={`bg-white rounded-2xl shadow-sm ${className}`} {...props}>{children}</div>;
+    }
+
+    function Badge({ children, className = '' }) {
+      return <span className={`inline-flex items-center justify-center text-[11px] leading-none font-extrabold rounded-full ${className}`}>{children}</span>;
+    }
+
+    function Modal({ isOpen, onClose, title, children, footer }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => e.key === 'Escape' && onClose && onClose();
+        window.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+      }, [isOpen, onClose]);
+      if (!isOpen) return null;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-choco-800/40 backdrop-blur-sm animate-fade" onClick={onClose} />
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-xl p-6 animate-pop">
+            {title && <h3 className="text-lg font-extrabold text-choco-800 mb-2">{title}</h3>}
+            <div className="text-sm text-choco-600 leading-relaxed">{children}</div>
+            {footer && <div className="mt-6 flex gap-2 justify-end">{footer}</div>}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🔔 토스트 (전역 알림)
+    // ========================================
+    const ToastContext = createContext(null);
+    function ToastProvider({ children }) {
+      const [toasts, setToasts] = useState([]);
+      const show = useCallback((message, type = 'success') => {
+        const id = Date.now() + Math.random();
+        setToasts((prev) => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2600);
+      }, []);
+      return (
+        <ToastContext.Provider value={{ show }}>
+          {children}
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none w-full px-4">
+            {toasts.map((t) => (
+              <div key={t.id} className={`animate-toast pointer-events-auto max-w-xs text-center px-5 py-3 rounded-full shadow-lg text-sm font-bold ${t.type === 'error' ? 'bg-rose-500 text-white' : 'bg-choco-800 text-white'}`}>
+                {t.message}
+              </div>
+            ))}
+          </div>
+        </ToastContext.Provider>
+      );
+    }
+    const useToast = () => useContext(ToastContext);
+
+    // ========================================
+    // 🔐 인증 컨텍스트 (token + user, localStorage 영속)
+    // ========================================
+    const AuthContext = createContext(null);
+    function AuthProvider({ children }) {
+      const [token, setToken] = useState(() => localStorage.getItem(STORE.token));
+      const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem(STORE.user) || 'null'); } catch { return null; } });
+
+      const persist = (token, user) => {
+        localStorage.setItem(STORE.token, token);
+        localStorage.setItem(STORE.user, JSON.stringify(user));
+        setToken(token); setUser(user);
+      };
+
+      const login = useCallback(async (creds) => { const r = await api.login(creds); persist(r.token, r.user); return r.user; }, []);
+      const signup = useCallback(async (data) => { const r = await api.signup(data); persist(r.token, r.user); return r.user; }, []);
+      const logout = useCallback(() => {
+        localStorage.removeItem(STORE.token); localStorage.removeItem(STORE.user);
+        setToken(null); setUser(null);
+      }, []);
+
+      const value = useMemo(() => ({ token, user, isAuthed: !!token, login, signup, logout }), [token, user, login, signup, logout]);
+      return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    }
+    const useAuth = () => useContext(AuthContext);
+
+    // ========================================
+    // 🛒 장바구니 컨텍스트 (api 호출 + 로컬 상태 동기화)
+    // ========================================
+    const CartContext = createContext(null);
+    function CartProvider({ children }) {
+      const { token } = useAuth();
+      const toast = useToast();
+      const [items, setItems] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
+
+      const refresh = useCallback(async () => {
+        if (!token) { setItems([]); return; }
+        setLoading(true); setError(null);
+        try { setItems(await api.getCart(token)); }
+        catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+      }, [token]);
+
+      // 로그인 상태가 바뀌면 장바구니 재조회
+      useEffect(() => { refresh(); }, [refresh]);
+
+      const add = useCallback(async (product_id, quantity = 1) => {
+        await api.addToCart(token, { product_id, quantity }); // 서버가 수량 합산
+        await refresh();
+      }, [token, refresh]);
+
+      const updateQty = useCallback(async (id, quantity) => {
+        const next = Math.max(1, quantity);
+        setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity: next } : i))); // optimistic
+        try { await api.updateCartItem(token, id, { quantity: next }); }
+        catch (e) { toast && toast.show(e.message || '수량 변경 실패', 'error'); await refresh(); }
+      }, [token, refresh, toast]);
+
+      const remove = useCallback(async (id) => {
+        setItems((prev) => prev.filter((i) => i.id !== id)); // optimistic
+        try { await api.removeCartItem(token, id); }
+        catch (e) { toast && toast.show(e.message || '삭제 실패', 'error'); await refresh(); }
+      }, [token, refresh, toast]);
+
+      const count = useMemo(() => items.reduce((s, i) => s + i.quantity, 0), [items]);
+      const total = useMemo(() => items.reduce((s, i) => s + i.quantity * (i.product ? i.product.price : 0), 0), [items]);
+
+      const value = useMemo(() => ({ items, loading, error, refresh, add, updateQty, remove, count, total }),
+        [items, loading, error, refresh, add, updateQty, remove, count, total]);
+      return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+    }
+    const useCart = () => useContext(CartContext);
+
+    // ========================================
+    // 🔀 해시 라우터 (간단한 hash 기반)
+    // ========================================
+    function useHashRoute() {
+      const [hash, setHash] = useState(() => window.location.hash || '#/');
+      useEffect(() => {
+        const onChange = () => setHash(window.location.hash || '#/');
+        window.addEventListener('hashchange', onChange);
+        return () => window.removeEventListener('hashchange', onChange);
+      }, []);
+      return hash.replace(/^#/, '') || '/';
+    }
+    const navigate = (path) => { window.location.hash = path; };
+    function Link({ to, className = '', children, ...props }) {
+      return <a href={'#' + to} className={className} {...props}>{children}</a>;
+    }
+
+    // ========================================
+    // 🧩 공통 레이아웃: Header / Footer
+    // ========================================
+    function Header() {
+      const { isAuthed, user, logout } = useAuth();
+      const { count } = useCart();
+      const toast = useToast();
+      const path = useHashRoute();
+
+      const isActive = (p) => (p === '/' ? path === '/' : path.startsWith(p));
+      const navClass = (p) => `px-3 py-2 rounded-full text-sm font-semibold transition ${isActive(p) ? 'text-strawberry-500 bg-strawberry-50' : 'text-choco-600 hover:bg-white'}`;
+
+      const handleLogout = () => { logout(); toast.show('로그아웃 되었어요. 또 들러주세요! 🍪'); navigate('/'); };
+
+      return (
+        <header className="sticky top-0 z-40 bg-cream-100/90 backdrop-blur border-b border-choco-100">
+          <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-2">
+            <Link to="/" className="flex items-center gap-2 shrink-0">
+              <span className="text-2xl">🧁</span>
+              <span className="font-logo text-2xl leading-none text-strawberry-500">스윗박스</span>
+              <span className="hidden sm:inline text-[10px] tracking-[0.25em] font-bold text-choco-300 mt-1">SWEETBOX</span>
+            </Link>
+
+            <nav className="flex items-center gap-1 sm:gap-2">
+              <Link to="/" className={navClass('/')}>상품</Link>
+              <Link to="/cart" className={`relative ${navClass('/cart')}`}>
+                장바구니
+                {count > 0 && (
+                  <Badge className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-strawberry-500 text-white">{count > 99 ? '99+' : count}</Badge>
+                )}
+              </Link>
+              {isAuthed ? (
+                <div className="flex items-center gap-1 sm:gap-2 pl-1 sm:pl-2">
+                  <span className="hidden sm:inline text-sm text-choco-500">안녕하세요, <b className="text-choco-700">{user && user.nickname}</b>님</span>
+                  <Button variant="ghost" size="sm" onClick={handleLogout}>로그아웃</Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Link to="/login" className={navClass('/login')}>로그인</Link>
+                  <Link to="/signup"><Button size="sm">회원가입</Button></Link>
+                </div>
+              )}
+            </nav>
+          </div>
+        </header>
+      );
+    }
+
+    function Footer() {
+      return (
+        <footer className="mt-auto border-t border-choco-100 bg-cream-50">
+          <div className="max-w-6xl mx-auto px-4 py-8 text-center">
+            <div className="font-logo text-xl text-strawberry-400">스윗박스 SWEETBOX</div>
+            <p className="mt-1 text-sm text-choco-400">매일 굽는 따뜻한 디저트 · 데모용 UI (백엔드 연동 예정)</p>
+            <p className="mt-2 text-xs text-choco-300">© 2026 SWEETBOX · 상품 이미지 출처: Unsplash</p>
+          </div>
+        </footer>
+      );
+    }
+
+    // 이미지 + onError 폴백 (이모지 + 그라데이션 카드)
+    function ProductImage({ product, className = '' }) {
+      const [error, setError] = useState(false);
+      if (error || !product.image_url) {
+        return (
+          <div className={`flex items-center justify-center bg-gradient-to-br ${product.gradient} ${className}`}>
+            <span className="text-6xl drop-shadow-sm">{product.emoji}</span>
+          </div>
+        );
+      }
+      return (
+        <img
+          src={product.image_url}
+          alt={product.name}
+          loading="lazy"
+          onError={() => setError(true)}
+          className={`object-cover ${className}`}
+        />
+      );
+    }
+
+    // ========================================
+    // 📄 페이지: 상품 목록 (공개)  /#/
+    // ========================================
+    function ProductCard({ product, onRequireLogin }) {
+      const { isAuthed } = useAuth();
+      const { add } = useCart();
+      const toast = useToast();
+      const [adding, setAdding] = useState(false);
+
+      const onAdd = async () => {
+        if (!isAuthed) { onRequireLogin(); return; } // 비로그인 → 부드러운 안내 모달
+        setAdding(true);
+        try { await add(product.id, 1); toast.show(`${product.name} 담았어요! 🛒`); }
+        catch (e) { toast.show(e.message || '담기에 실패했어요.', 'error'); }
+        finally { setAdding(false); }
+      };
+
+      return (
+        <Card className="group flex flex-col overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+          <div className="relative aspect-[4/3] overflow-hidden bg-cream-200">
+            <ProductImage product={product} className="w-full h-full transition-transform duration-500 group-hover:scale-105" />
+            <span className="absolute top-2 left-2 text-xl bg-white/80 rounded-full w-9 h-9 flex items-center justify-center shadow-sm backdrop-blur">{product.emoji}</span>
+          </div>
+          <div className="flex flex-col flex-1 p-4">
+            <h3 className="font-bold text-choco-800 line-clamp-1">{product.name}</h3>
+            <p className="mt-1 text-sm text-choco-400 line-clamp-2 flex-1">{product.description}</p>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <span className="text-lg font-extrabold text-strawberry-500">{formatPrice(product.price)}</span>
+              <Button size="sm" onClick={onAdd} loading={adding} aria-label={`${product.name} 장바구니 담기`}>
+                {!adding && <span aria-hidden="true">🛒</span>} 담기
+              </Button>
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
+    function CardSkeleton() {
+      return (
+        <Card className="overflow-hidden">
+          <div className="aspect-[4/3] bg-cream-200 animate-pulse" />
+          <div className="p-4 space-y-3">
+            <div className="h-4 bg-cream-200 rounded animate-pulse w-3/4" />
+            <div className="h-3 bg-cream-200 rounded animate-pulse" />
+            <div className="h-3 bg-cream-200 rounded animate-pulse w-1/2" />
+            <div className="h-8 bg-cream-200 rounded-full animate-pulse mt-2" />
+          </div>
+        </Card>
+      );
+    }
+
+    function ProductListPage() {
+      const [products, setProducts] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [loginPrompt, setLoginPrompt] = useState(false);
+
+      const fetchProducts = useCallback(async () => {
+        setLoading(true); setError(null);
+        try { setProducts(await api.getProducts()); }
+        catch (e) { setError(e.message || '상품을 불러오지 못했어요.'); }
+        finally { setLoading(false); }
+      }, []);
+
+      useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+      return (
+        <div>
+          {/* Hero */}
+          <section className="bg-gradient-to-br from-strawberry-50 via-cream-100 to-amber-50 border-b border-choco-100">
+            <div className="max-w-6xl mx-auto px-4 py-10 sm:py-14 flex items-center justify-between gap-6">
+              <div>
+                <p className="text-sm font-bold text-strawberry-400 mb-2">오늘도 갓 구운, 달콤한 하루 🌷</p>
+                <h1 className="text-2xl sm:text-4xl font-extrabold text-choco-800 leading-snug">
+                  매일이 디저트 타임,<br /><span className="text-strawberry-500">스윗박스</span>에 오신 걸 환영해요.
+                </h1>
+                <p className="mt-3 text-sm sm:text-base text-choco-500">케이크부터 쿠키, 마카롱, 음료까지 — 정성껏 준비했어요.</p>
+              </div>
+              <div className="hidden md:block text-8xl animate-floaty select-none" aria-hidden="true">🧁</div>
+            </div>
+          </section>
+
+          {/* 상품 그리드 */}
+          <section className="max-w-6xl mx-auto px-4 py-8">
+            <div className="flex items-end justify-between mb-5">
+              <h2 className="text-xl font-extrabold text-choco-800">전체 상품</h2>
+              {!loading && !error && <span className="text-sm text-choco-400">{products.length}개의 달콤함</span>}
+            </div>
+
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}
+              </div>
+            ) : error ? (
+              <div className="text-center py-20">
+                <div className="text-5xl mb-3">😢</div>
+                <p className="text-choco-600 font-semibold mb-4">{error}</p>
+                <Button onClick={fetchProducts}>다시 시도</Button>
+              </div>
+            ) : products.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-5xl mb-3">🫙</div>
+                <p className="text-choco-500">아직 등록된 상품이 없어요.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                {products.map((p) => <ProductCard key={p.id} product={p} onRequireLogin={() => setLoginPrompt(true)} />)}
+              </div>
+            )}
+          </section>
+
+          {/* 비로그인 담기 → 로그인 유도 */}
+          <Modal
+            isOpen={loginPrompt}
+            onClose={() => setLoginPrompt(false)}
+            title="로그인이 필요해요 🥐"
+            footer={(
+              <>
+                <Button variant="secondary" onClick={() => setLoginPrompt(false)}>더 둘러볼게요</Button>
+                <Button onClick={() => { setLoginPrompt(false); navigate('/login'); }}>로그인하러 가기</Button>
+              </>
+            )}
+          >
+            달콤한 디저트를 장바구니에 담으려면 로그인이 필요해요.<br />금방 끝나니 함께 시작해볼까요?
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 페이지: 회원가입  /#/signup
+    // ========================================
+    function AuthShell({ icon, title, subtitle, children }) {
+      return (
+        <div className="max-w-md mx-auto px-4 py-12">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-2">{icon}</div>
+            <h1 className="text-2xl font-extrabold text-choco-800">{title}</h1>
+            {subtitle && <p className="mt-1 text-sm text-choco-400">{subtitle}</p>}
+          </div>
+          <Card className="p-6 sm:p-8">{children}</Card>
+        </div>
+      );
+    }
+
+    function SignupPage() {
+      const { signup, isAuthed } = useAuth();
+      const toast = useToast();
+      const [form, setForm] = useState({ email: '', password: '', nickname: '' });
+      const [errors, setErrors] = useState({});
+      const [serverError, setServerError] = useState(null);
+      const [submitting, setSubmitting] = useState(false);
+
+      useEffect(() => { if (isAuthed) navigate('/'); }, [isAuthed]);
+
+      const onChange = (key) => (e) => {
+        setForm((f) => ({ ...f, [key]: e.target.value }));
+        setErrors((er) => ({ ...er, [key]: undefined }));
+      };
+
+      const validate = () => {
+        const e = {};
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = '올바른 이메일 형식을 입력해주세요.';
+        if (form.password.length < 6) e.password = '비밀번호는 6자 이상이어야 해요.';
+        if (!form.nickname.trim()) e.nickname = '닉네임을 입력해주세요.';
+        setErrors(e);
+        return Object.keys(e).length === 0;
+      };
+
+      const onSubmit = async (ev) => {
+        ev.preventDefault();
+        setServerError(null);
+        if (!validate()) return;
+        setSubmitting(true);
+        try {
+          const user = await signup({ ...form, nickname: form.nickname.trim() });
+          toast.show(`${user.nickname}님, 가입을 환영해요! 🎉`);
+          navigate('/');
+        } catch (err) { setServerError(err.message); }
+        finally { setSubmitting(false); }
+      };
+
+      return (
+        <AuthShell icon="🎀" title="회원가입" subtitle="스윗박스의 멤버가 되어보세요">
+          <form onSubmit={onSubmit} noValidate className="space-y-4">
+            <Input label="이메일" type="email" placeholder="sweet@example.com" value={form.email} onChange={onChange('email')} error={errors.email} autoComplete="email" />
+            <Input label="비밀번호" type="password" placeholder="6자 이상" value={form.password} onChange={onChange('password')} error={errors.password} autoComplete="new-password" />
+            <Input label="닉네임" type="text" placeholder="달콤한 닉네임" value={form.nickname} onChange={onChange('nickname')} error={errors.nickname} />
+            {serverError && <p className="text-sm text-rose-500 bg-rose-50 rounded-lg px-3 py-2">{serverError}</p>}
+            <Button type="submit" size="lg" className="w-full" loading={submitting}>가입하기</Button>
+          </form>
+          <p className="mt-5 text-center text-sm text-choco-400">
+            이미 회원이신가요? <Link to="/login" className="font-bold text-strawberry-500 hover:underline">로그인</Link>
+          </p>
+        </AuthShell>
+      );
+    }
+
+    // ========================================
+    // 📄 페이지: 로그인  /#/login
+    // ========================================
+    function LoginPage() {
+      const { login, isAuthed } = useAuth();
+      const toast = useToast();
+      const [form, setForm] = useState({ email: '', password: '' });
+      const [errors, setErrors] = useState({});
+      const [serverError, setServerError] = useState(null);
+      const [submitting, setSubmitting] = useState(false);
+
+      useEffect(() => { if (isAuthed) navigate('/'); }, [isAuthed]);
+
+      const onChange = (key) => (e) => {
+        setForm((f) => ({ ...f, [key]: e.target.value }));
+        setErrors((er) => ({ ...er, [key]: undefined }));
+      };
+
+      const validate = () => {
+        const e = {};
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = '올바른 이메일 형식을 입력해주세요.';
+        if (!form.password) e.password = '비밀번호를 입력해주세요.';
+        setErrors(e);
+        return Object.keys(e).length === 0;
+      };
+
+      const onSubmit = async (ev) => {
+        ev.preventDefault();
+        setServerError(null);
+        if (!validate()) return;
+        setSubmitting(true);
+        try {
+          const user = await login(form);
+          toast.show(`${user.nickname}님, 어서오세요! 🍓`);
+          navigate('/');
+        } catch (err) { setServerError(err.message); }
+        finally { setSubmitting(false); }
+      };
+
+      const fillDemo = () => { setForm({ email: 'demo@sweetbox.com', password: '123456' }); setErrors({}); setServerError(null); };
+
+      return (
+        <AuthShell icon="🍰" title="로그인" subtitle="다시 만나서 반가워요">
+          <form onSubmit={onSubmit} noValidate className="space-y-4">
+            <Input label="이메일" type="email" placeholder="sweet@example.com" value={form.email} onChange={onChange('email')} error={errors.email} autoComplete="email" />
+            <Input label="비밀번호" type="password" placeholder="비밀번호" value={form.password} onChange={onChange('password')} error={errors.password} autoComplete="current-password" />
+            {serverError && <p className="text-sm text-rose-500 bg-rose-50 rounded-lg px-3 py-2">{serverError}</p>}
+            <Button type="submit" size="lg" className="w-full" loading={submitting}>로그인</Button>
+          </form>
+
+          <div className="mt-4 rounded-xl bg-cream-100 border border-cream-300 px-4 py-3 text-xs text-choco-500">
+            <div className="flex items-center justify-between gap-2">
+              <span>🔑 데모 계정 <b className="text-choco-700">demo@sweetbox.com</b> / <b className="text-choco-700">123456</b></span>
+              <button type="button" onClick={fillDemo} className="font-bold text-strawberry-500 hover:underline shrink-0">자동입력</button>
+            </div>
+          </div>
+
+          <p className="mt-5 text-center text-sm text-choco-400">
+            아직 회원이 아니신가요? <Link to="/signup" className="font-bold text-strawberry-500 hover:underline">회원가입</Link>
+          </p>
+        </AuthShell>
+      );
+    }
+
+    // ========================================
+    // 📄 페이지: 장바구니 (로그인 필수)  /#/cart
+    // ========================================
+    function QtyStepper({ quantity, onDec, onInc }) {
+      const btn = 'w-8 h-8 flex items-center justify-center text-choco-600 hover:bg-cream-100 disabled:opacity-40 disabled:cursor-not-allowed transition';
+      return (
+        <div className="inline-flex items-center rounded-full border border-choco-200 bg-white overflow-hidden">
+          <button type="button" onClick={onDec} disabled={quantity <= 1} className={btn} aria-label="수량 줄이기">−</button>
+          <span className="w-9 text-center text-sm font-bold text-choco-800" aria-live="polite">{quantity}</span>
+          <button type="button" onClick={onInc} className={btn} aria-label="수량 늘리기">+</button>
+        </div>
+      );
+    }
+
+    function CartItemRow({ item, onQty, onRemove }) {
+      const { product, quantity } = item;
+      return (
+        <Card className="p-3 sm:p-4 flex gap-3 sm:gap-4">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shrink-0 bg-cream-200">
+            <ProductImage product={product} className="w-full h-full" />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-bold text-choco-800 line-clamp-1">{product.name}</h3>
+              <button type="button" onClick={() => onRemove(item.id)} className="text-choco-300 hover:text-rose-500 transition shrink-0 text-sm" aria-label={`${product.name} 삭제`}>✕</button>
+            </div>
+            <p className="text-sm text-choco-400 mt-0.5">{formatPrice(product.price)} / 개</p>
+            <div className="mt-auto pt-2 flex items-center justify-between">
+              <QtyStepper quantity={quantity} onDec={() => onQty(item.id, quantity - 1)} onInc={() => onQty(item.id, quantity + 1)} />
+              <span className="font-extrabold text-choco-800">{formatPrice(product.price * quantity)}</span>
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
+    function CartPage() {
+      const { isAuthed } = useAuth();
+      const { items, loading, error, updateQty, remove, total, count, refresh } = useCart();
+      const toast = useToast();
+
+      // 로그인 필수: 비로그인 시 로그인으로 리다이렉트
+      useEffect(() => { if (!isAuthed) navigate('/login'); }, [isAuthed]);
+      if (!isAuthed) {
+        return (
+          <div className="max-w-md mx-auto px-4 py-20 text-center">
+            <Spinner size="lg" className="text-strawberry-400" />
+            <p className="mt-4 text-choco-500">로그인 페이지로 이동 중...</p>
+          </div>
+        );
+      }
+
+      const checkout = () => toast.show('데모 버전이에요. 결제는 백엔드 연동 후 열려요! 🍰');
+
+      return (
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <h1 className="text-2xl font-extrabold text-choco-800 mb-6">
+            장바구니 {count > 0 && <span className="text-strawberry-500">({count})</span>}
+          </h1>
+
+          {loading ? (
+            <div className="py-20 text-center"><Spinner size="lg" className="text-strawberry-400" /><p className="mt-4 text-choco-500">장바구니를 불러오는 중...</p></div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <div className="text-5xl mb-3">😢</div>
+              <p className="text-choco-600 font-semibold mb-4">{error}</p>
+              <Button onClick={refresh}>다시 시도</Button>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-6xl mb-4 animate-floaty">🛒</div>
+              <p className="text-lg font-bold text-choco-700">장바구니가 비어있어요</p>
+              <p className="text-sm text-choco-400 mt-1 mb-6">달콤한 디저트를 담으러 가볼까요?</p>
+              <Link to="/"><Button size="lg">상품 둘러보기</Button></Link>
+            </div>
+          ) : (
+            <div className="grid lg:grid-cols-3 gap-6 items-start">
+              {/* 담긴 상품 목록 */}
+              <div className="lg:col-span-2 space-y-3">
+                {items.map((item) => (
+                  <CartItemRow key={item.id} item={item} onQty={updateQty} onRemove={remove} />
+                ))}
+              </div>
+
+              {/* 합계 요약 */}
+              <Card className="lg:sticky lg:top-20 p-6">
+                <h2 className="font-extrabold text-choco-800 mb-4">결제 정보</h2>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-choco-500"><span>총 상품금액</span><span className="font-semibold text-choco-700">{formatPrice(total)}</span></div>
+                  <div className="flex justify-between text-choco-500"><span>배송비</span><span className="font-semibold text-emerald-500">무료</span></div>
+                </div>
+                <div className="border-t border-choco-100 my-4" />
+                <div className="flex justify-between items-baseline mb-5">
+                  <span className="font-bold text-choco-800">총 결제금액</span>
+                  <span className="text-2xl font-extrabold text-strawberry-500">{formatPrice(total)}</span>
+                </div>
+                <Button size="lg" className="w-full" onClick={checkout}>주문하기</Button>
+                <Link to="/" className="block text-center mt-3 text-sm text-choco-400 hover:text-choco-600">← 쇼핑 계속하기</Link>
+              </Card>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 페이지: Not Found
+    // ========================================
+    function NotFoundPage() {
+      return (
+        <div className="max-w-md mx-auto px-4 py-24 text-center">
+          <div className="text-6xl mb-4">🧐</div>
+          <h1 className="text-2xl font-extrabold text-choco-800 mb-2">페이지를 찾을 수 없어요</h1>
+          <p className="text-choco-400 mb-6">주소가 바뀌었거나 사라진 페이지예요.</p>
+          <Link to="/"><Button size="lg">홈으로 가기</Button></Link>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App (Provider 조합 + 라우팅)
+    // ========================================
+    function Shell() {
+      const path = useHashRoute();
+      useEffect(() => { window.scrollTo(0, 0); }, [path]); // 라우트 변경 시 상단으로
+
+      let page;
+      switch (path) {
+        case '/':       page = <ProductListPage />; break;
+        case '/signup': page = <SignupPage />; break;
+        case '/login':  page = <LoginPage />; break;
+        case '/cart':   page = <CartPage />; break;
+        default:        page = <NotFoundPage />;
+      }
+
+      return (
+        <div className="min-h-screen flex flex-col bg-cream-100 text-choco-800 font-sans">
+          <Header />
+          <main className="flex-1 w-full">{page}</main>
+          <Footer />
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <ToastProvider>
+          <AuthProvider>
+            <CartProvider>
+              <Shell />
+            </CartProvider>
+          </AuthProvider>
+        </ToastProvider>
+      );
+    }
+
+    // ========================================
+    // 🖼️ Render
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

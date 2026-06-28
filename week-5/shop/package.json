@@ -1,0 +1,16 @@
+{
+  "name": "shop-sweetbox-supabase",
+  "version": "1.0.0",
+  "description": "디저트 쇼핑몰 스윗박스 앱 (Express + pg + dotenv + JWT 인증, Supabase PostgreSQL 영속화) — 공개 상품 목록 + 로그인 사용자별 장바구니",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}
