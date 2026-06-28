@@ -1,0 +1,2633 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e5]:
+    - link [ref=e6] [cursor=pointer]:
+      - /url: /np/campaigns/82?adType=DA&eventId=jKyLsrhOPwp6V4G1
+    - link [ref=e7] [cursor=pointer]:
+      - /url: https://shop.coupang.com/wellife/245479?source=brandstore_display_ads&adType=DA&eventId=VleTqbZicoZxtpi2
+  - generic [ref=e8]:
+    - generic [ref=e10]:
+      - list [ref=e11]:
+        - listitem [ref=e12]:
+          - link "판매자 가입" [ref=e13] [cursor=pointer]:
+            - /url: https://wing.coupang.com/tenants/vendor-signup/signup?utm_source=button_pc_coupang_top_right_cta&utm_medium=non_paid&utm_campaign=seller_registration
+        - listitem [ref=e14]:
+          - link "고객센터" [ref=e15] [cursor=pointer]:
+            - /url: https://mc.coupang.com/ssr/desktop/contact/faq
+        - listitem [ref=e16]:
+          - link "회원가입" [ref=e17] [cursor=pointer]:
+            - /url: https://login.coupang.com/login/memberJoinFrm.pang
+        - listitem [ref=e18]:
+          - link "로그인" [ref=e19] [cursor=pointer]:
+            - /url: https://login.coupang.com/login/login.pang?rtnUrl=https%3A%2F%2Fwww.coupang.com%2Fnp%2Fpost%2Flogin%3Fr%3Dhttp%253A%252F%252Fwww.coupang.com%252Fnp%252Fsearch%253Fq%253D%2525EB%2525AC%2525B4%2525EC%252584%2525A0%2525EC%25259D%2525B4%2525EC%252596%2525B4%2525ED%25258F%2525B0%2526minPrice%253D50000%2526maxPrice%253D100000%2526sorter%253DscoreDesc%2526listSize%253D36
+      - list [ref=e20]:
+        - listitem [ref=e21]: 즐겨찾기
+        - listitem [ref=e22]:
+          - generic [ref=e23] [cursor=pointer]: 입점신청
+    - generic [ref=e26]:
+      - generic [ref=e32] [cursor=pointer]: 카테고리
+      - generic [ref=e33]:
+        - generic [ref=e34]:
+          - link "Coupang" [ref=e35] [cursor=pointer]:
+            - /url: https://www.coupang.com
+            - img "Coupang" [ref=e36]
+          - generic [ref=e37]:
+            - link "전체" [ref=e40] [cursor=pointer]:
+              - /url: "#"
+            - textbox "쿠팡 상품 검색" [ref=e42]:
+              - /placeholder: 찾고 싶은 상품을 검색해보세요!
+              - text: 무선이어폰
+            - button "검색" [ref=e44] [cursor=pointer]
+          - list [ref=e45]:
+            - listitem [ref=e46]:
+              - link "마이쿠팡" [ref=e47] [cursor=pointer]:
+                - /url: https://mc.coupang.com/ssr/desktop/order/list
+                - generic [ref=e48]: 마이쿠팡
+            - listitem [ref=e49]:
+              - link "장바구니" [ref=e50] [cursor=pointer]:
+                - /url: //cart.coupang.com/cartView.pang
+                - emphasis [ref=e51]
+                - generic [ref=e52]: 장바구니
+        - list [ref=e57]:
+          - listitem [ref=e58]:
+            - link "쿠팡플레이 쿠팡플레이" [ref=e59] [cursor=pointer]:
+              - /url: https://www.coupangplay.com/catalog
+              - img "쿠팡플레이" [ref=e60]
+              - generic [ref=e61]: 쿠팡플레이
+          - listitem [ref=e62]:
+            - link "로켓배송 로켓배송" [ref=e63] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/campaigns/82
+              - img "로켓배송" [ref=e64]
+              - generic [ref=e65]: 로켓배송
+          - listitem [ref=e66]:
+            - link "로켓프레시 로켓프레시" [ref=e67] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/categories/393760
+              - img "로켓프레시" [ref=e68]
+              - generic [ref=e69]: 로켓프레시
+          - listitem [ref=e70]:
+            - link "다시 구매 다시 구매" [ref=e71] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/fbi?sourceType=home_section_fbi
+              - img "다시 구매" [ref=e72]
+              - generic [ref=e73]: 다시 구매
+          - listitem [ref=e75]:
+            - link "쿠팡비즈 쿠팡비즈" [ref=e76] [cursor=pointer]:
+              - /url: https://login.coupang.com/corporation/member/landing-page
+              - img "쿠팡비즈" [ref=e77]
+              - generic [ref=e78]: 쿠팡비즈
+          - listitem [ref=e79]:
+            - link "로켓직구 로켓직구" [ref=e80] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/coupangglobal
+              - img "로켓직구" [ref=e81]
+              - generic [ref=e82]: 로켓직구
+          - listitem [ref=e83]:
+            - link "골드박스 골드박스" [ref=e84] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/121237?sourceType=gm_crm_goldbox&subSourceType=gm_crm_gwsrtcut
+              - img "골드박스" [ref=e85]
+              - generic [ref=e86]: 골드박스
+          - listitem [ref=e87]:
+            - link "이달의신상 이달의신상" [ref=e88] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/136938
+              - img "이달의신상" [ref=e89]
+              - generic [ref=e90]: 이달의신상
+          - listitem [ref=e91]:
+            - link "판매자특가 판매자특가" [ref=e92] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/omp
+              - img "판매자특가" [ref=e93]
+              - generic [ref=e94]: 판매자특가
+          - listitem [ref=e95]:
+            - link "와우회원할인 와우회원할인" [ref=e96] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/campaigns/83
+              - img "와우회원할인" [ref=e97]
+              - generic [ref=e98]: 와우회원할인
+          - listitem [ref=e99]:
+            - link "이벤트/쿠폰 이벤트/쿠폰" [ref=e100] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/coupangbenefit
+              - img "이벤트/쿠폰" [ref=e101]
+              - generic [ref=e102]: 이벤트/쿠폰
+          - listitem [ref=e103]:
+            - link "반품마켓 반품마켓" [ref=e104] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/54908
+              - img "반품마켓" [ref=e105]
+              - generic [ref=e106]: 반품마켓
+          - listitem [ref=e107]:
+            - link "착한상점 착한상점" [ref=e108] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/63240
+              - img "착한상점" [ref=e109]
+              - generic [ref=e110]: 착한상점
+          - listitem [ref=e112]:
+            - link "기획전 기획전" [ref=e113] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/bep?sourceType=gm_crm_oms&subSourceType=gm_crm_gwsrtcut
+              - img "기획전" [ref=e114]
+              - generic [ref=e115]: 기획전
+          - listitem [ref=e116]:
+            - link "쿠팡트래블 쿠팡트래블" [ref=e117] [cursor=pointer]:
+              - /url: https://trip.coupang.com/?channel=gnb
+              - img "쿠팡트래블" [ref=e118]
+              - generic [ref=e119]: 쿠팡트래블
+          - listitem [ref=e121]:
+            - link "입점신청 입점신청" [ref=e122] [cursor=pointer]:
+              - /url: https://wing.coupang.com/tenants/vendor-signup/signup?utm_source=button_pc_coupang_shortcut_1&utm_medium=non_paid&utm_id=onsite_ca&utm_content=202411
+              - img "입점신청" [ref=e123]
+              - generic [ref=e124]: 입점신청
+  - generic [ref=e128]:
+    - generic [ref=e131]:
+      - list [ref=e132]:
+        - listitem [ref=e133]:
+          - link "전체" [ref=e134] [cursor=pointer]:
+            - /url: /np/search?q=%EB%AC%B4%EC%84%A0%EC%9D%B4%EC%96%B4%ED%8F%B0&minPrice=50000&maxPrice=100000&sorter=scoreDesc&listSize=36
+          - img [ref=e135]
+      - strong [ref=e138]: "'무선이어폰'"
+    - generic [ref=e141]:
+      - generic [ref=e142]:
+        - generic [ref=e145]:
+          - generic [ref=e146]:
+            - heading "필터" [level=4] [ref=e147]
+            - button "전체해제" [ref=e149] [cursor=pointer]
+          - list [ref=e152]:
+            - listitem [ref=e153]:
+              - img "rocket_luxury,rocket,coupang_global" [ref=e157] [cursor=pointer]
+              - list [ref=e159]:
+                - listitem [ref=e160]:
+                  - generic [ref=e161] [cursor=pointer]:
+                    - img "rocket_luxury" [ref=e164]
+                    - text: 만 보기
+                - listitem [ref=e165]:
+                  - generic [ref=e166] [cursor=pointer]:
+                    - img "rocket" [ref=e169]
+                    - text: 만 보기
+                - listitem [ref=e170]:
+                  - generic [ref=e171] [cursor=pointer]:
+                    - img "coupang_global" [ref=e174]
+                    - text: 만 보기
+            - listitem [ref=e175]:
+              - img "top_brand" [ref=e179] [cursor=pointer]
+            - listitem [ref=e180]:
+              - generic [ref=e181] [cursor=pointer]: 무료배송
+          - separator [ref=e183]
+          - generic [ref=e184]:
+            - heading "카테고리" [level=5] [ref=e185]
+            - generic [ref=e186]:
+              - list [ref=e187]:
+                - listitem [ref=e188]:
+                  - link "전체" [ref=e190] [cursor=pointer]:
+                    - /url: https://www.coupang.com
+                - listitem [ref=e191]:
+                  - link "가전디지털" [ref=e193] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/178255
+                - listitem [ref=e194]:
+                  - link "로켓직구" [ref=e196] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/coupangglobal
+                - listitem [ref=e197]:
+                  - link "쿠팡수입" [ref=e199] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/510691
+                - listitem [ref=e200]:
+                  - link "자동차용품" [ref=e202] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/184060
+                - listitem:
+                  - link "생활용품" [ref=e204] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/115673
+                - listitem:
+                  - link "완구/취미" [ref=e206] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/317779
+                - listitem:
+                  - link "패션의류/잡화" [ref=e208] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/564653
+                - listitem:
+                  - link "홈인테리어" [ref=e210] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/184555
+                - listitem:
+                  - link "결혼준비" [ref=e212] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/416130
+                - listitem:
+                  - link "헬스/건강식품" [ref=e214] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/305798
+                - listitem:
+                  - link "스포츠/레저" [ref=e216] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/317778
+                - listitem:
+                  - link "아트/공예" [ref=e218] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/410273
+                - listitem:
+                  - link "문구/오피스" [ref=e220] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/177295
+                - listitem:
+                  - link "싱글라이프" [ref=e222] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/433784
+                - listitem:
+                  - link "실버스토어" [ref=e224] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/383370
+                - listitem:
+                  - link "미세먼지용품" [ref=e226] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/campaigns/17593
+                - listitem:
+                  - link "주방용품" [ref=e228] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/185669
+                - listitem:
+                  - link "뷰티" [ref=e230] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/176522
+                - listitem:
+                  - link "출산/유아동" [ref=e232] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/221934
+                - listitem:
+                  - link "안전전문관" [ref=e234] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/568926
+                - listitem:
+                  - link "식품" [ref=e236] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/194276
+                - listitem:
+                  - link "R.LUX" [ref=e238] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/campaigns/18530
+                - listitem:
+                  - link "홈카페" [ref=e240] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/316168
+                - listitem:
+                  - link "도서/음반/DVD" [ref=e242] [cursor=pointer]:
+                    - /url: https://www.coupang.com/np/categories/317777
+              - generic [ref=e243] [cursor=pointer]: + 더보기
+          - separator [ref=e244]
+          - generic [ref=e245]:
+            - heading "브랜드" [level=5] [ref=e246]
+            - generic [ref=e247]:
+              - list [ref=e248]:
+                - listitem [ref=e249]:
+                  - generic [ref=e250] [cursor=pointer]: 필립스
+                - listitem [ref=e252]:
+                  - generic [ref=e253] [cursor=pointer]: 콘리
+                - listitem [ref=e255]:
+                  - generic [ref=e256] [cursor=pointer]: 다이쿠
+                - listitem [ref=e258]:
+                  - generic [ref=e259] [cursor=pointer]: QCY
+                - listitem [ref=e261]:
+                  - generic [ref=e262] [cursor=pointer]: 샤오미
+                - listitem:
+                  - generic [ref=e264] [cursor=pointer]: 오미야
+                - listitem:
+                  - generic [ref=e266] [cursor=pointer]: 아이리버
+                - listitem:
+                  - generic [ref=e268] [cursor=pointer]: PLEIGO
+                - listitem:
+                  - generic [ref=e270] [cursor=pointer]: 블라우풍트
+                - listitem:
+                  - generic [ref=e272] [cursor=pointer]: 맨큐
+                - listitem:
+                  - generic [ref=e274] [cursor=pointer]: 어반사운드
+                - listitem:
+                  - generic [ref=e276] [cursor=pointer]: 인티
+                - listitem:
+                  - generic [ref=e278] [cursor=pointer]: 삼성전자
+                - listitem:
+                  - generic [ref=e280] [cursor=pointer]: 펜톤
+                - listitem:
+                  - generic [ref=e282] [cursor=pointer]: 모즈온
+                - listitem:
+                  - generic [ref=e284] [cursor=pointer]: 베이스어스
+                - listitem:
+                  - generic [ref=e286] [cursor=pointer]: 스위코
+                - listitem:
+                  - generic [ref=e288] [cursor=pointer]: 사운독스
+                - listitem:
+                  - generic [ref=e290] [cursor=pointer]: 브리츠
+                - listitem:
+                  - generic [ref=e292] [cursor=pointer]: PANTONE
+              - generic [ref=e294] [cursor=pointer]: + 더보기
+          - separator [ref=e295]
+          - generic [ref=e296]:
+            - heading "상품 상태" [level=5] [ref=e297]
+            - generic [ref=e298]:
+              - list [ref=e299]:
+                - listitem [ref=e300]:
+                  - generic [ref=e301] [cursor=pointer]: 새 상품
+                - listitem [ref=e303]:
+                  - generic [ref=e304] [cursor=pointer]: 박스 훼손
+                - listitem [ref=e306]:
+                  - generic [ref=e307] [cursor=pointer]: 패키지 훼손
+                - listitem [ref=e309]:
+                  - generic [ref=e310] [cursor=pointer]: 재포장
+                - listitem [ref=e312]:
+                  - generic [ref=e313] [cursor=pointer]: 리퍼
+                - listitem:
+                  - generic [ref=e315] [cursor=pointer]: 반품
+                - listitem:
+                  - generic [ref=e317] [cursor=pointer]: 중고
+              - generic [ref=e319] [cursor=pointer]: + 더보기
+          - separator [ref=e320]
+          - generic [ref=e321]:
+            - heading "최대사용시간" [level=5] [ref=e322]
+            - generic [ref=e323]:
+              - list [ref=e324]:
+                - listitem [ref=e325]:
+                  - generic [ref=e326] [cursor=pointer]: 5시간 이하
+                - listitem [ref=e328]:
+                  - generic [ref=e329] [cursor=pointer]: 5시간 이상 ~ 10시간 이하
+                - listitem [ref=e331]:
+                  - generic [ref=e332] [cursor=pointer]: 10시간 이상 ~ 15시간 이하
+                - listitem [ref=e334]:
+                  - generic [ref=e335] [cursor=pointer]: 15시간 이상 ~ 30시간 이하
+                - listitem [ref=e337]:
+                  - generic [ref=e338] [cursor=pointer]: 30시간 이상 ~ 50시간 이하
+                - listitem:
+                  - generic [ref=e340] [cursor=pointer]: 50시간 이상 ~ 100시간 이하
+                - listitem:
+                  - generic [ref=e342] [cursor=pointer]: 100시간 이상
+              - generic [ref=e344] [cursor=pointer]: + 더보기
+          - separator [ref=e345]
+          - generic [ref=e346]:
+            - heading "모델" [level=5] [ref=e347]
+            - generic [ref=e348]:
+              - list [ref=e349]:
+                - listitem [ref=e350]:
+                  - generic: AirPods Max 2
+                - listitem [ref=e351]:
+                  - generic [ref=e352] [cursor=pointer]: Galaxy Buds4
+                - listitem [ref=e354]:
+                  - generic [ref=e355] [cursor=pointer]: Galaxy Buds4 Pro
+                - listitem [ref=e357]:
+                  - generic: AirPods Pro3
+                - listitem [ref=e358]:
+                  - generic: AirPods 1세대
+                - listitem:
+                  - generic: AirPods 2세대
+                - listitem:
+                  - generic: AirPods 3세대
+                - listitem:
+                  - generic [ref=e359] [cursor=pointer]: AirPods 4세대
+                - listitem:
+                  - generic: AirPods Pro 1세대
+                - listitem:
+                  - generic: AirPods Pro 2세대
+                - listitem:
+                  - generic [ref=e361] [cursor=pointer]: AirPods Pro 3세대
+                - listitem:
+                  - generic: AirPods Pro 4세대
+                - listitem:
+                  - generic: AirPods Max
+                - listitem:
+                  - generic: AirPods Max 1세대
+                - listitem:
+                  - generic: AirPods Max 2세대
+                - listitem:
+                  - generic: Galaxy Buds Pro2
+                - listitem:
+                  - generic: Galaxy Buds2
+                - listitem:
+                  - generic: Galaxy Buds Pro
+                - listitem:
+                  - generic [ref=e363] [cursor=pointer]: Galaxy Buds Live
+                - listitem:
+                  - generic: Galaxy Buds
+                - listitem:
+                  - generic [ref=e365] [cursor=pointer]: Galaxy Buds+
+                - listitem:
+                  - generic: Studio Buds
+                - listitem:
+                  - generic: Beats Fit Pro
+                - listitem:
+                  - generic: Powerbeats Pro
+                - listitem:
+                  - generic [ref=e367] [cursor=pointer]: Apple Beats Flex
+                - listitem:
+                  - generic: Galaxy Buds3
+              - generic [ref=e369] [cursor=pointer]: + 더보기
+          - separator [ref=e370]
+          - generic [ref=e371]:
+            - heading "유무선 여부" [level=5] [ref=e372]
+            - list [ref=e374]:
+              - listitem [ref=e375]:
+                - generic [ref=e376] [cursor=pointer]: 무선
+              - listitem [ref=e378]:
+                - generic [ref=e379] [cursor=pointer]: 유선
+          - separator [ref=e381]
+          - generic [ref=e382]:
+            - heading "내장마이크 탑재여부" [level=5] [ref=e383]
+            - list [ref=e385]:
+              - listitem [ref=e386]:
+                - generic [ref=e387] [cursor=pointer]: 내장마이크
+          - separator [ref=e389]
+          - generic [ref=e390]:
+            - heading "유닛형태" [level=5] [ref=e391]
+            - list [ref=e393]:
+              - listitem [ref=e394]:
+                - generic [ref=e395] [cursor=pointer]: 커널형
+              - listitem [ref=e397]:
+                - generic [ref=e398] [cursor=pointer]: 오픈형
+              - listitem [ref=e400]:
+                - generic [ref=e401] [cursor=pointer]: 골전도형
+              - listitem [ref=e403]:
+                - generic [ref=e404] [cursor=pointer]: 스피커형
+          - separator [ref=e406]
+          - generic [ref=e407]:
+            - heading "블루투스 버전" [level=5] [ref=e408]
+            - list [ref=e410]:
+              - listitem [ref=e411]:
+                - generic [ref=e412] [cursor=pointer]: 5.0미만
+              - listitem [ref=e414]:
+                - generic [ref=e415] [cursor=pointer]: 5.0이상
+          - separator [ref=e417]
+          - generic [ref=e418]:
+            - heading "충전단자" [level=5] [ref=e419]
+            - list [ref=e421]:
+              - listitem [ref=e422]:
+                - generic [ref=e423] [cursor=pointer]: 마이크로5핀
+              - listitem [ref=e425]:
+                - generic: 애플30핀
+              - listitem [ref=e426]:
+                - generic [ref=e427] [cursor=pointer]: 애플8핀
+              - listitem [ref=e429]:
+                - generic [ref=e430] [cursor=pointer]: C타입
+          - separator [ref=e432]
+          - generic [ref=e433]:
+            - heading "오토페어링 가능여부" [level=5] [ref=e434]
+            - list [ref=e436]:
+              - listitem [ref=e437]:
+                - generic [ref=e438] [cursor=pointer]: 오토페어링 가능
+          - separator [ref=e440]
+          - generic [ref=e441]:
+            - heading "방수 여부" [level=5] [ref=e442]
+            - list [ref=e444]:
+              - listitem [ref=e445]:
+                - generic [ref=e446] [cursor=pointer]: 방수
+          - separator [ref=e448]
+          - generic [ref=e449]:
+            - heading "착용방식" [level=5] [ref=e450]
+            - generic [ref=e451]:
+              - list [ref=e452]:
+                - listitem [ref=e453]:
+                  - generic [ref=e454] [cursor=pointer]: 넥밴드형
+                - listitem [ref=e456]:
+                  - generic [ref=e457] [cursor=pointer]: 목걸이형
+                - listitem [ref=e459]:
+                  - generic [ref=e460] [cursor=pointer]: 클립형
+                - listitem [ref=e462]:
+                  - generic [ref=e463] [cursor=pointer]: 독립형
+                - listitem [ref=e465]:
+                  - generic [ref=e466] [cursor=pointer]: 헤드밴드형
+                - listitem:
+                  - generic [ref=e468] [cursor=pointer]: 백헤드형
+                - listitem:
+                  - generic [ref=e470] [cursor=pointer]: 헬멧부착형
+                - listitem:
+                  - generic [ref=e472] [cursor=pointer]: 귀걸이형
+                - listitem:
+                  - generic [ref=e474] [cursor=pointer]: 일반형(Y형)
+              - generic [ref=e476] [cursor=pointer]: + 더보기
+          - separator [ref=e477]
+          - generic [ref=e478]:
+            - heading "케이스종류" [level=5] [ref=e479]
+            - list [ref=e481]:
+              - listitem [ref=e482]:
+                - generic [ref=e483] [cursor=pointer]: 무선충전
+              - listitem [ref=e485]:
+                - generic [ref=e486] [cursor=pointer]: 유선충전
+          - separator [ref=e488]
+          - generic [ref=e489]:
+            - heading "배터리 용량" [level=5] [ref=e490]
+            - list [ref=e492]:
+              - listitem [ref=e493]:
+                - generic [ref=e494] [cursor=pointer]: 3000mAh 이하
+              - listitem [ref=e496]:
+                - generic [ref=e497] [cursor=pointer]: 3000mAh 이상 ~ 3500mAh 이하
+              - listitem [ref=e499]:
+                - generic: 3500mAh 이상 ~ 4000mAh 이하
+              - listitem [ref=e500]:
+                - generic [ref=e501] [cursor=pointer]: 4000mAh 이상
+          - separator [ref=e503]
+          - generic [ref=e504]:
+            - heading "음성 인식" [level=5] [ref=e505]
+            - list [ref=e507]:
+              - listitem [ref=e508]:
+                - generic [ref=e509] [cursor=pointer]: 음성 인식 지원
+          - separator [ref=e511]
+          - generic [ref=e512]:
+            - heading "무선충전 여부" [level=5] [ref=e513]
+            - list [ref=e515]:
+              - listitem [ref=e516]:
+                - generic [ref=e517] [cursor=pointer]: 무선충전
+              - listitem [ref=e519]:
+                - generic [ref=e520] [cursor=pointer]: 유선충전
+          - separator [ref=e522]
+          - generic [ref=e523]:
+            - heading "노이즈캔슬링 여부" [level=5] [ref=e524]
+            - list [ref=e526]:
+              - listitem [ref=e527]:
+                - generic [ref=e528] [cursor=pointer]: 액티브노이즈캔슬링(ANC)
+              - listitem [ref=e530]:
+                - generic [ref=e531] [cursor=pointer]: 패시브노이즈캔슬링(PNC)
+          - separator [ref=e533]
+          - generic [ref=e534]:
+            - heading "별점" [level=5] [ref=e535]
+            - list [ref=e537]:
+              - listitem [ref=e538]:
+                - generic "전체" [ref=e539]: 별점전체
+              - listitem [ref=e540]:
+                - generic "4점 이상" [ref=e541]: 4점 이상
+              - listitem [ref=e543]:
+                - generic "3점 이상" [ref=e544]: 3점 이상
+              - listitem [ref=e546]:
+                - generic "2점 이상" [ref=e547]: 2점 이상
+              - listitem [ref=e549]:
+                - generic "1점 이상" [ref=e550]: 1점 이상
+          - separator [ref=e552]
+          - generic [ref=e553]:
+            - heading "가격" [level=5] [ref=e554]
+            - list [ref=e556]:
+              - listitem [ref=e557]:
+                - generic "priceFilter" [ref=e558]: 가격 전체
+              - listitem [ref=e559]:
+                - generic "priceFilter" [ref=e560]: 2만원 이하
+              - listitem [ref=e561]:
+                - generic "priceFilter" [ref=e562]: 2만원~4만원
+              - listitem [ref=e563]:
+                - generic "priceFilter" [ref=e564]: 4만원~6만원
+              - listitem [ref=e565]:
+                - generic "priceFilter" [ref=e566]: 6만원~8만원
+              - listitem [ref=e567]:
+                - generic "priceFilter" [ref=e568]: 8만원 이상
+            - generic [ref=e569]:
+              - generic [ref=e570]:
+                - textbox "minPrice" [ref=e571]
+                - generic [ref=e572]: ~
+                - textbox "maxPrice" [ref=e573]
+                - text: 원
+              - generic "priceFilter" [ref=e574]: 검색
+          - separator [ref=e575]
+        - generic [ref=e578]:
+          - generic [ref=e579]: 현재 검색 결과에 만족하셨나요?
+          - button [ref=e580] [cursor=pointer]
+          - button [ref=e581] [cursor=pointer]
+          - generic [ref=e582]:
+            - paragraph [ref=e583]: 어떤 문제가 있었나요?
+            - list [ref=e584]:
+              - listitem [ref=e585] [cursor=pointer]: 이미지나 정보가 부정확해요
+              - listitem [ref=e586] [cursor=pointer]: 추천해준 검색어가 도움이 안 돼요
+              - listitem [ref=e587] [cursor=pointer]: 필터가 도움이 안 돼요
+              - listitem [ref=e588] [cursor=pointer]: 관련 없는 상품이 있어요
+              - listitem [ref=e589] [cursor=pointer]: 기타 원하는 옵션이 없어요
+      - generic [ref=e590]:
+        - generic [ref=e591]:
+          - heading "'무선이어폰'에 대한 검색결과" [level=1] [ref=e592]:
+            - strong [ref=e593]: "'무선이어폰'"
+            - text: 에 대한 검색결과
+          - generic [ref=e594]:
+            - text: "선택한 필터:"
+            - link "50,000원~100,000원 삭제" [ref=e596] [cursor=pointer]:
+              - /url: "#"
+              - text: 50,000원~100,000원
+              - generic [ref=e597]: 삭제
+          - generic [ref=e598]:
+            - generic [ref=e601]:
+              - checkbox "배송비 포함" [ref=e602] [cursor=pointer]
+              - generic [ref=e606]: 배송비 포함
+            - list [ref=e609]:
+              - listitem [ref=e610]:
+                - radio "쿠팡 랭킹순" [checked] [ref=e611]
+                - generic [ref=e612] [cursor=pointer]: 쿠팡 랭킹순
+                - generic [ref=e613]: 설명
+              - listitem [ref=e614]:
+                - radio "낮은가격순" [ref=e615]
+                - generic [ref=e616] [cursor=pointer]: 낮은가격순
+              - listitem [ref=e617]:
+                - radio "높은가격순" [ref=e618]
+                - generic [ref=e619] [cursor=pointer]: 높은가격순
+              - listitem [ref=e620]:
+                - radio "판매량순" [ref=e621]
+                - generic [ref=e622] [cursor=pointer]: 판매량순
+              - listitem [ref=e623]:
+                - radio "최신순" [ref=e624]
+                - generic [ref=e625] [cursor=pointer]: 최신순
+        - generic [ref=e630]:
+          - link "11735692" [ref=e632] [cursor=pointer]:
+            - /url: https://shop.coupang.com/lgegram/520843?source=brandstore_display_ads&adType=DA&eventId=heiwM005muWP7XnO
+            - img "11735692" [ref=e633]
+          - link "11736651" [ref=e635] [cursor=pointer]:
+            - /url: https://shop.coupang.com/sennheiserhearing?source=brandstore_display_ads&adType=DA&eventId=kzwCoocrjRlsla3Z
+            - img "11736651" [ref=e636]
+          - generic:
+            - link "11732457":
+              - /url: https://shop.coupang.com/A01321495/520089?source=brandstore_display_ads&adType=DA&eventId=S8UyIgjdQQhs83V4
+              - img "11732457"
+          - generic:
+            - link "11649511":
+              - /url: https://shop.coupang.com/apple/349645?adType=DA&eventId=7MFqD41g8GIBCsqx
+              - img "11649511"
+        - generic [ref=e642]:
+          - list [ref=e644]:
+            - listitem [ref=e645] [cursor=pointer]:
+              - link "피스넷 올웨이즈 오픈형 블루투스 이어폰, PISnet Always, 블랙 99,000원 29% 69,900원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (1,136) 최대 3,495원 적립 최대 3,495원 적립 광고 Ad information" [ref=e646]:
+                - /url: /vp/products/7405352847?itemId=19175885600&vendorItemId=91394006979&sourceType=srp_product_ads&clickEventId=bb9ab370-6f0a-11f1-95d7-d430cd706a0a&korePlacement=15&koreSubPlacement=1&clickEventId=bb9ab370-6f0a-11f1-95d7-d430cd706a0a&korePlacement=15&koreSubPlacement=1
+                - figure [ref=e647]:
+                  - img "피스넷 올웨이즈 오픈형 블루투스 이어폰, PISnet Always, 블랙" [ref=e648]
+                - generic [ref=e649]:
+                  - generic [ref=e651]: 피스넷 올웨이즈 오픈형 블루투스 이어폰, PISnet Always, 블랙
+                  - generic [ref=e652]:
+                    - deletion [ref=e654]: 99,000원
+                    - generic [ref=e656]:
+                      - generic [ref=e657]: 29%
+                      - generic [ref=e658]: 69,900원
+                  - generic [ref=e659]:
+                    - generic [ref=e661]: 모레(목) 도착 예정
+                    - generic [ref=e662]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e664]:
+                    - generic "4.5" [ref=e665]
+                    - generic [ref=e672]: (1,136)
+                  - generic [ref=e674]:
+                    - img "최대 3,495원 적립" [ref=e675]
+                    - generic [ref=e676]: 최대 3,495원 적립
+                  - generic [ref=e678]:
+                    - generic [ref=e679]: 광고
+                    - button "Ad information" [ref=e680]:
+                      - img [ref=e681]
+            - listitem [ref=e683] [cursor=pointer]:
+              - link "Hmusic 초경량 ENC 노이즈캔슬링 180도 회전 좌우겸용 귀걸이형 모노 블루투스 이어폰, 블랙, I6 쿠폰할인 · 6일 남음 69,900원 42% 39,900원 내일(수) 도착 무료배송 새 상품, 반품 (3) 4.5 (51) 최대 1,995원 적립 최대 1,995원 적립 1" [ref=e684]:
+                - /url: /vp/products/9442112601?itemId=28084738677&vendorItemId=95041163545&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=1&rank=1
+                - figure [ref=e685]:
+                  - img "Hmusic 초경량 ENC 노이즈캔슬링 180도 회전 좌우겸용 귀걸이형 모노 블루투스 이어폰, 블랙, I6" [ref=e686]
+                - generic [ref=e687]:
+                  - generic [ref=e689]: Hmusic 초경량 ENC 노이즈캔슬링 180도 회전 좌우겸용 귀걸이형 모노 블루투스 이어폰, 블랙, I6
+                  - generic [ref=e690]:
+                    - generic [ref=e691]:
+                      - generic [ref=e692]: 쿠폰할인
+                      - generic [ref=e693]: · 6일 남음
+                      - deletion [ref=e694]: 69,900원
+                    - generic [ref=e696]:
+                      - generic [ref=e697]:
+                        - generic [ref=e699]: 42%
+                        - img [ref=e700]
+                      - generic [ref=e702]: 39,900원
+                  - generic [ref=e703]:
+                    - generic [ref=e707]: 내일(수) 도착
+                    - generic [ref=e708]: 무료배송
+                  - generic [ref=e710]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e711]: (3)
+                  - generic [ref=e713]:
+                    - generic "4.5" [ref=e714]
+                    - generic [ref=e721]: (51)
+                  - generic [ref=e723]:
+                    - img "최대 1,995원 적립" [ref=e724]
+                    - generic [ref=e725]: 최대 1,995원 적립
+                  - generic [ref=e726]: "1"
+            - listitem [ref=e727] [cursor=pointer]:
+              - link "블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰 BLP-OE383K 블랙 37시간 259,470원 76% 61,180원 내일(수) 도착 무료배송 새 상품, 반품 (9) 최저53,220원 4.5 (5,739) 최대 3,059원 적립 최대 3,059원 적립 2" [ref=e728]:
+                - /url: /vp/products/8298433306?itemId=23936897970&vendorItemId=90958820204&pickType=COU_PICK&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=2&rank=2
+                - figure [ref=e729]:
+                  - img "블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰 BLP-OE383K 블랙 37시간" [ref=e730]
+                - generic [ref=e731]:
+                  - img [ref=e735]
+                  - generic [ref=e736]: 블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰 BLP-OE383K 블랙 37시간
+                  - generic [ref=e737]:
+                    - deletion [ref=e739]: 259,470원
+                    - generic [ref=e741]:
+                      - generic [ref=e742]: 76%
+                      - generic [ref=e743]: 61,180원
+                  - generic [ref=e744]:
+                    - generic [ref=e748]: 내일(수) 도착
+                    - generic [ref=e749]: 무료배송
+                  - generic [ref=e750]:
+                    - generic [ref=e751]:
+                      - text: 새 상품, 반품
+                      - strong [ref=e752]: (9)
+                    - generic [ref=e753]:
+                      - text: 최저
+                      - strong [ref=e754]: 53,220
+                      - text: 원
+                  - generic [ref=e756]:
+                    - generic "4.5" [ref=e757]
+                    - generic [ref=e764]: (5,739)
+                  - generic [ref=e766]:
+                    - img "최대 3,059원 적립" [ref=e767]
+                    - generic [ref=e768]: 최대 3,059원 적립
+                  - generic [ref=e769]: "2"
+            - listitem [ref=e770] [cursor=pointer]:
+              - link "블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰, BLP-OE383P, 퍼플 259,470원 76% 61,180원 내일(수) 도착 무료배송 새 상품, 반품 (3) 4.5 (5,739) 최대 3,059원 적립 최대 3,059원 적립 3" [ref=e771]:
+                - /url: /vp/products/8298433306?itemId=23936897974&vendorItemId=90958820241&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=3&rank=3
+                - figure [ref=e772]:
+                  - img "블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰, BLP-OE383P, 퍼플" [ref=e773]
+                - generic [ref=e774]:
+                  - generic [ref=e776]: 블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰, BLP-OE383P, 퍼플
+                  - generic [ref=e777]:
+                    - deletion [ref=e779]: 259,470원
+                    - generic [ref=e781]:
+                      - generic [ref=e782]: 76%
+                      - generic [ref=e783]: 61,180원
+                  - generic [ref=e784]:
+                    - generic [ref=e788]: 내일(수) 도착
+                    - generic [ref=e789]: 무료배송
+                  - generic [ref=e791]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e792]: (3)
+                  - generic [ref=e794]:
+                    - generic "4.5" [ref=e795]
+                    - generic [ref=e802]: (5,739)
+                  - generic [ref=e804]:
+                    - img "최대 3,059원 적립" [ref=e805]
+                    - generic [ref=e806]: 최대 3,059원 적립
+                  - generic [ref=e807]: "3"
+            - listitem [ref=e808] [cursor=pointer]:
+              - link "비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 블랙, T6 할인 129,000원 53% 59,800원 내일(수) 도착 무료배송 새 상품, 반품 (2) 5 (695) 최대 2,990원 적립 최대 2,990원 적립 광고 Ad information" [ref=e809]:
+                - /url: /vp/products/8194892791?itemId=23466618559&vendorItemId=90767302163&sourceType=srp_product_ads&clickEventId=bb9ada80-6f0a-11f1-b7ea-ec94f81a9d05&korePlacement=15&koreSubPlacement=5&clickEventId=bb9ada80-6f0a-11f1-b7ea-ec94f81a9d05&korePlacement=15&koreSubPlacement=5
+                - figure [ref=e810]:
+                  - img "비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 블랙, T6" [ref=e811]
+                - generic [ref=e812]:
+                  - generic [ref=e814]: 비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 블랙, T6
+                  - generic [ref=e815]:
+                    - generic [ref=e816]:
+                      - generic [ref=e817]: 할인
+                      - deletion [ref=e818]: 129,000원
+                    - generic [ref=e820]:
+                      - generic [ref=e821]: 53%
+                      - generic [ref=e822]: 59,800원
+                  - generic [ref=e823]:
+                    - generic [ref=e827]: 내일(수) 도착
+                    - generic [ref=e828]: 무료배송
+                  - generic [ref=e830]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e831]: (2)
+                  - generic [ref=e833]:
+                    - generic "5" [ref=e834]
+                    - generic [ref=e841]: (695)
+                  - generic [ref=e843]:
+                    - img "최대 2,990원 적립" [ref=e844]
+                    - generic [ref=e845]: 최대 2,990원 적립
+                  - generic [ref=e847]:
+                    - generic [ref=e848]: 광고
+                    - button "Ad information" [ref=e849]:
+                      - img [ref=e850]
+            - listitem [ref=e852] [cursor=pointer]:
+              - link "람쏘 노이즈캔슬링 듀얼 빔포밍 마이크 생활방수 27시간사용 블루투스 무선 이어셋, LS-SL70, 블랙 250,000원 73% 65,400원 내일(수) 도착 무료배송 4.5 (515) 최대 2,943원 적립 최대 2,943원 적립 광고 Ad information" [ref=e853]:
+                - /url: /vp/products/9344162869?itemId=27714338403&vendorItemId=95108949105&sourceType=srp_product_ads&clickEventId=bb9ada80-6f0a-11f1-9816-62934233b334&korePlacement=15&koreSubPlacement=6&clickEventId=bb9ada80-6f0a-11f1-9816-62934233b334&korePlacement=15&koreSubPlacement=6
+                - figure [ref=e854]:
+                  - img "람쏘 노이즈캔슬링 듀얼 빔포밍 마이크 생활방수 27시간사용 블루투스 무선 이어셋, LS-SL70, 블랙" [ref=e855]
+                - generic [ref=e856]:
+                  - generic [ref=e858]: 람쏘 노이즈캔슬링 듀얼 빔포밍 마이크 생활방수 27시간사용 블루투스 무선 이어셋, LS-SL70, 블랙
+                  - generic [ref=e859]:
+                    - deletion [ref=e861]: 250,000원
+                    - generic [ref=e863]:
+                      - generic [ref=e864]: 73%
+                      - generic [ref=e865]: 65,400원
+                  - generic [ref=e866]:
+                    - generic [ref=e870]: 내일(수) 도착
+                    - generic [ref=e871]: 무료배송
+                  - generic [ref=e873]:
+                    - generic "4.5" [ref=e874]
+                    - generic [ref=e881]: (515)
+                  - generic [ref=e883]:
+                    - img "최대 2,943원 적립" [ref=e884]
+                    - generic [ref=e885]: 최대 2,943원 적립
+                  - generic [ref=e887]:
+                    - generic [ref=e888]: 광고
+                    - button "Ad information" [ref=e889]:
+                      - img [ref=e890]
+            - listitem [ref=e892] [cursor=pointer]:
+              - link "삼성공식파트너 JBL WAVE BEAM 블루투스이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱 가성비 이어폰, JBLWBEAMBLK, 블랙 할인 · 12:17:46 69,000원 24% 52,200원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (2,894) 최대 2,610원 적립 최대 2,610원 적립 4" [ref=e893]:
+                - /url: /vp/products/8404942764?itemId=19726970158&vendorItemId=91891730192&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=6&rank=6
+                - figure [ref=e894]:
+                  - img "삼성공식파트너 JBL WAVE BEAM 블루투스이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱 가성비 이어폰, JBLWBEAMBLK, 블랙" [ref=e895]
+                - generic [ref=e896]:
+                  - generic [ref=e898]: 삼성공식파트너 JBL WAVE BEAM 블루투스이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱 가성비 이어폰, JBLWBEAMBLK, 블랙
+                  - generic [ref=e899]:
+                    - generic [ref=e900]:
+                      - generic [ref=e901]: 할인
+                      - generic [ref=e902]: · 12:17:46
+                      - deletion [ref=e903]: 69,000원
+                    - generic [ref=e905]:
+                      - generic [ref=e906]:
+                        - generic [ref=e908]: 24%
+                        - img [ref=e909]
+                      - generic [ref=e911]: 52,200원
+                  - generic [ref=e912]:
+                    - generic [ref=e914]: 모레(목) 도착 예정
+                    - generic [ref=e915]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e917]:
+                    - generic "4.5" [ref=e918]
+                    - generic [ref=e925]: (2,894)
+                  - generic [ref=e927]:
+                    - img "최대 2,610원 적립" [ref=e928]
+                    - generic [ref=e929]: 최대 2,610원 적립
+                  - generic [ref=e930]: "4"
+            - listitem [ref=e931] [cursor=pointer]:
+              - link "삼성공식파트너 JBL WAVE BEAM2 액티브 노이즈캔슬링 무선 블루투스이어폰, 블랙 할인 · 12:17:46 54,900원 5% 52,100원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (2,894) 최대 2,605원 적립 최대 2,605원 적립 5" [ref=e932]:
+                - /url: /vp/products/8404942764?itemId=24881426831&vendorItemId=86542545148&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=7&rank=7
+                - figure [ref=e933]:
+                  - img "삼성공식파트너 JBL WAVE BEAM2 액티브 노이즈캔슬링 무선 블루투스이어폰, 블랙" [ref=e934]
+                - generic [ref=e935]:
+                  - generic [ref=e937]: 삼성공식파트너 JBL WAVE BEAM2 액티브 노이즈캔슬링 무선 블루투스이어폰, 블랙
+                  - generic [ref=e938]:
+                    - generic [ref=e939]:
+                      - generic [ref=e940]: 할인
+                      - generic [ref=e941]: · 12:17:46
+                      - deletion [ref=e942]: 54,900원
+                    - generic [ref=e944]:
+                      - generic [ref=e945]:
+                        - generic [ref=e947]: 5%
+                        - img [ref=e948]
+                      - generic [ref=e950]: 52,100원
+                  - generic [ref=e951]:
+                    - generic [ref=e953]: 모레(목) 도착 예정
+                    - generic [ref=e954]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e956]:
+                    - generic "4.5" [ref=e957]
+                    - generic [ref=e964]: (2,894)
+                  - generic [ref=e966]:
+                    - img "최대 2,605원 적립" [ref=e967]
+                    - generic [ref=e968]: 최대 2,605원 적립
+                  - generic [ref=e969]: "5"
+            - listitem [ref=e970] [cursor=pointer]:
+              - link "브리츠 Ai ENC 노이즈캔슬링 듀얼마이크 오픈형 블루투스 이어폰, Fit9 Pro, 블랙 262,150원 70% 78,540원 내일(수) 도착 무료배송 새 상품, 반품 (23) 4.5 (146) 최대 3,927원 적립 최대 3,927원 적립 광고 Ad information" [ref=e971]:
+                - /url: /vp/products/8425270128?itemId=24568807155&vendorItemId=91580841824&sourceType=srp_product_ads&clickEventId=bb9ada80-6f0a-11f1-9c47-f10d97dd5039&korePlacement=15&koreSubPlacement=9&clickEventId=bb9ada80-6f0a-11f1-9c47-f10d97dd5039&korePlacement=15&koreSubPlacement=9
+                - figure [ref=e972]:
+                  - img "브리츠 Ai ENC 노이즈캔슬링 듀얼마이크 오픈형 블루투스 이어폰, Fit9 Pro, 블랙" [ref=e973]
+                - generic [ref=e974]:
+                  - generic [ref=e976]: 브리츠 Ai ENC 노이즈캔슬링 듀얼마이크 오픈형 블루투스 이어폰, Fit9 Pro, 블랙
+                  - generic [ref=e977]:
+                    - deletion [ref=e979]: 262,150원
+                    - generic [ref=e981]:
+                      - generic [ref=e982]: 70%
+                      - generic [ref=e983]: 78,540원
+                  - generic [ref=e984]:
+                    - generic [ref=e988]: 내일(수) 도착
+                    - generic [ref=e989]: 무료배송
+                  - generic [ref=e991]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e992]: (23)
+                  - generic [ref=e994]:
+                    - generic "4.5" [ref=e995]
+                    - generic [ref=e1002]: (146)
+                  - generic [ref=e1004]:
+                    - img "최대 3,927원 적립" [ref=e1005]
+                    - generic [ref=e1006]: 최대 3,927원 적립
+                  - generic [ref=e1008]:
+                    - generic [ref=e1009]: 광고
+                    - button "Ad information" [ref=e1010]:
+                      - img [ref=e1011]
+            - listitem [ref=e1013] [cursor=pointer]:
+              - link "삼성공식파트너 JBL 블루투스이어폰, JBLWBEAM2BLK, 블랙 할인 · 12:17:46 79,000원 33% 52,200원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (2,894) 최대 2,610원 적립 최대 2,610원 적립 6" [ref=e1014]:
+                - /url: /vp/products/8404942764?itemId=20130883372&vendorItemId=91898975401&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=9&rank=9
+                - figure [ref=e1015]:
+                  - img "삼성공식파트너 JBL 블루투스이어폰, JBLWBEAM2BLK, 블랙" [ref=e1016]
+                - generic [ref=e1017]:
+                  - generic [ref=e1019]: 삼성공식파트너 JBL 블루투스이어폰, JBLWBEAM2BLK, 블랙
+                  - generic [ref=e1020]:
+                    - generic [ref=e1021]:
+                      - generic [ref=e1022]: 할인
+                      - generic [ref=e1023]: · 12:17:46
+                      - deletion [ref=e1024]: 79,000원
+                    - generic [ref=e1026]:
+                      - generic [ref=e1027]:
+                        - generic [ref=e1029]: 33%
+                        - img [ref=e1030]
+                      - generic [ref=e1032]: 52,200원
+                  - generic [ref=e1033]:
+                    - generic [ref=e1035]: 모레(목) 도착 예정
+                    - generic [ref=e1036]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e1038]:
+                    - generic "4.5" [ref=e1039]
+                    - generic [ref=e1046]: (2,894)
+                  - generic [ref=e1048]:
+                    - img "최대 2,610원 적립" [ref=e1049]
+                    - generic [ref=e1050]: 최대 2,610원 적립
+                  - generic [ref=e1051]: "6"
+            - listitem [ref=e1052] [cursor=pointer]:
+              - link "필립스 Hi-Fi ENC 노이즈캔슬링 무선 오픈 귀걸이형 블루투스 5.4 이어폰, TAA6709, 화이트 쿠폰할인 148,300원 60% 58,000원 내일(수) 도착 무료배송 새 상품, 반품 (12) 4.5 (1,456) 최대 2,900원 적립 최대 2,900원 적립 광고 Ad information" [ref=e1053]:
+                - /url: /vp/products/8732687870?itemId=25375852190&vendorItemId=92369927743&sourceType=srp_product_ads&clickEventId=bb9ada80-6f0a-11f1-bb47-3666c06f78af&korePlacement=15&koreSubPlacement=11&clickEventId=bb9ada80-6f0a-11f1-bb47-3666c06f78af&korePlacement=15&koreSubPlacement=11
+                - figure [ref=e1054]:
+                  - img "필립스 Hi-Fi ENC 노이즈캔슬링 무선 오픈 귀걸이형 블루투스 5.4 이어폰, TAA6709, 화이트" [ref=e1055]
+                - generic [ref=e1056]:
+                  - generic [ref=e1058]: 필립스 Hi-Fi ENC 노이즈캔슬링 무선 오픈 귀걸이형 블루투스 5.4 이어폰, TAA6709, 화이트
+                  - generic [ref=e1059]:
+                    - generic [ref=e1060]:
+                      - generic [ref=e1061]: 쿠폰할인
+                      - deletion [ref=e1062]: 148,300원
+                    - generic [ref=e1064]:
+                      - generic [ref=e1065]:
+                        - generic [ref=e1067]: 60%
+                        - img [ref=e1068]
+                      - generic [ref=e1070]: 58,000원
+                  - generic [ref=e1071]:
+                    - generic [ref=e1075]: 내일(수) 도착
+                    - generic [ref=e1076]: 무료배송
+                  - generic [ref=e1078]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1079]: (12)
+                  - generic [ref=e1081]:
+                    - generic "4.5" [ref=e1082]
+                    - generic [ref=e1089]: (1,456)
+                  - generic [ref=e1091]:
+                    - img "최대 2,900원 적립" [ref=e1092]
+                    - generic [ref=e1093]: 최대 2,900원 적립
+                  - generic [ref=e1095]:
+                    - generic [ref=e1096]: 광고
+                    - button "Ad information" [ref=e1097]:
+                      - img [ref=e1098]
+            - listitem [ref=e1100] [cursor=pointer]:
+              - link "프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 아이보리, TBE-701IV 할인 164,090원 64% 58,900원 내일(수) 도착 무료배송 새 상품, 반품 (5) 4.5 (447) 최대 2,945원 적립 최대 2,945원 적립 광고 Ad information" [ref=e1101]:
+                - /url: /vp/products/9309574140?itemId=27584072680&vendorItemId=94547774345&sourceType=srp_product_ads&clickEventId=bb9ada80-6f0a-11f1-a8ac-3acc67066e1e&korePlacement=15&koreSubPlacement=12&clickEventId=bb9ada80-6f0a-11f1-a8ac-3acc67066e1e&korePlacement=15&koreSubPlacement=12
+                - figure [ref=e1102]:
+                  - img "프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 아이보리, TBE-701IV" [ref=e1103]
+                - generic [ref=e1104]:
+                  - generic [ref=e1106]: 프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 아이보리, TBE-701IV
+                  - generic [ref=e1107]:
+                    - generic [ref=e1108]:
+                      - generic [ref=e1109]: 할인
+                      - deletion [ref=e1110]: 164,090원
+                    - generic [ref=e1112]:
+                      - generic [ref=e1113]:
+                        - generic [ref=e1115]: 64%
+                        - img [ref=e1116]
+                      - generic [ref=e1118]: 58,900원
+                  - generic [ref=e1119]:
+                    - generic [ref=e1123]: 내일(수) 도착
+                    - generic [ref=e1124]: 무료배송
+                  - generic [ref=e1126]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1127]: (5)
+                  - generic [ref=e1129]:
+                    - generic "4.5" [ref=e1130]
+                    - generic [ref=e1137]: (447)
+                  - generic [ref=e1139]:
+                    - img "최대 2,945원 적립" [ref=e1140]
+                    - generic [ref=e1141]: 최대 2,945원 적립
+                  - generic [ref=e1143]:
+                    - generic [ref=e1144]: 광고
+                    - button "Ad information" [ref=e1145]:
+                      - img [ref=e1146]
+            - listitem [ref=e1148] [cursor=pointer]:
+              - link "블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰 BLP-OE383I 아이보리 37시간 259,470원 76% 61,180원 내일(수) 도착 무료배송 새 상품, 반품-미개봉 (3) 최저58,730원 4.5 (5,739) 최대 3,059원 적립 최대 3,059원 적립 7" [ref=e1149]:
+                - /url: /vp/products/8298433306?itemId=23936897972&vendorItemId=90958820221&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=12&rank=12
+                - figure [ref=e1150]:
+                  - img "블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰 BLP-OE383I 아이보리 37시간" [ref=e1151]
+                - generic [ref=e1152]:
+                  - generic [ref=e1154]: 블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰 BLP-OE383I 아이보리 37시간
+                  - generic [ref=e1155]:
+                    - deletion [ref=e1157]: 259,470원
+                    - generic [ref=e1159]:
+                      - generic [ref=e1160]: 76%
+                      - generic [ref=e1161]: 61,180원
+                  - generic [ref=e1162]:
+                    - generic [ref=e1166]: 내일(수) 도착
+                    - generic [ref=e1167]: 무료배송
+                  - generic [ref=e1168]:
+                    - generic [ref=e1169]:
+                      - text: 새 상품, 반품-미개봉
+                      - strong [ref=e1170]: (3)
+                    - generic [ref=e1171]:
+                      - text: 최저
+                      - strong [ref=e1172]: 58,730
+                      - text: 원
+                  - generic [ref=e1174]:
+                    - generic "4.5" [ref=e1175]
+                    - generic [ref=e1182]: (5,739)
+                  - generic [ref=e1184]:
+                    - img "최대 3,059원 적립" [ref=e1185]
+                    - generic [ref=e1186]: 최대 3,059원 적립
+                  - generic [ref=e1187]: "7"
+            - listitem [ref=e1188] [cursor=pointer]:
+              - link "프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 블랙, TBE-701K 할인 164,090원 64% 58,900원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 새 상품, 반품 (5) 4.5 (447) 최대 2,945원 적립 최대 2,945원 적립 8" [ref=e1189]:
+                - /url: /vp/products/9309574140?itemId=27584072682&vendorItemId=94547774346&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=13&rank=13
+                - figure [ref=e1190]:
+                  - img "프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 블랙, TBE-701K" [ref=e1191]
+                - generic [ref=e1192]:
+                  - generic [ref=e1194]: 프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 블랙, TBE-701K
+                  - generic [ref=e1195]:
+                    - generic [ref=e1196]:
+                      - generic [ref=e1197]: 할인
+                      - deletion [ref=e1198]: 164,090원
+                    - generic [ref=e1200]:
+                      - generic [ref=e1201]:
+                        - generic [ref=e1203]: 64%
+                        - img [ref=e1204]
+                      - generic [ref=e1206]: 58,900원
+                  - generic [ref=e1207]:
+                    - generic [ref=e1209]: 모레(목) 도착 예정
+                    - generic [ref=e1210]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e1212]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1213]: (5)
+                  - generic [ref=e1215]:
+                    - generic "4.5" [ref=e1216]
+                    - generic [ref=e1223]: (447)
+                  - generic [ref=e1225]:
+                    - img "최대 2,945원 적립" [ref=e1226]
+                    - generic [ref=e1227]: 최대 2,945원 적립
+                  - generic [ref=e1228]: "8"
+            - listitem [ref=e1229] [cursor=pointer]:
+              - link "낫싱 이어 Ear (a) 노이즈캔슬링 블루투스 이어폰 멀티포인트 LDAC, 화이트 119,000원 16% 99,000원 내일(수) 도착 무료배송 새 상품, 반품 (2) 5 (292) 최대 4,950원 적립 최대 4,950원 적립 9" [ref=e1230]:
+                - /url: /vp/products/8499384169?itemId=24602583169&vendorItemId=91614039846&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=14&rank=14
+                - figure [ref=e1231]:
+                  - img "낫싱 이어 Ear (a) 노이즈캔슬링 블루투스 이어폰 멀티포인트 LDAC, 화이트" [ref=e1232]
+                - generic [ref=e1233]:
+                  - generic [ref=e1235]: 낫싱 이어 Ear (a) 노이즈캔슬링 블루투스 이어폰 멀티포인트 LDAC, 화이트
+                  - generic [ref=e1236]:
+                    - deletion [ref=e1238]: 119,000원
+                    - generic [ref=e1240]:
+                      - generic [ref=e1241]: 16%
+                      - generic [ref=e1242]: 99,000원
+                  - generic [ref=e1243]:
+                    - generic [ref=e1247]: 내일(수) 도착
+                    - generic [ref=e1248]: 무료배송
+                  - generic [ref=e1250]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1251]: (2)
+                  - generic [ref=e1253]:
+                    - generic "5" [ref=e1254]
+                    - generic [ref=e1261]: (292)
+                  - generic [ref=e1263]:
+                    - img "최대 4,950원 적립" [ref=e1264]
+                    - generic [ref=e1265]: 최대 4,950원 적립
+                  - generic [ref=e1266]: "9"
+            - listitem [ref=e1267] [cursor=pointer]:
+              - link "블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 블랙, BLP-OE663K 139,800원 45% 75,800원 내일(수) 도착 무료배송 새 상품, 반품 (3) 4.5 (313) 최대 3,032원 적립 최대 3,032원 적립 10" [ref=e1268]:
+                - /url: /vp/products/9467998678?itemId=28178335946&vendorItemId=95133013944&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=15&rank=15
+                - figure [ref=e1269]:
+                  - img "블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 블랙, BLP-OE663K" [ref=e1270]
+                - generic [ref=e1271]:
+                  - generic [ref=e1273]: 블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 블랙, BLP-OE663K
+                  - generic [ref=e1274]:
+                    - deletion [ref=e1276]: 139,800원
+                    - generic [ref=e1278]:
+                      - generic [ref=e1279]: 45%
+                      - generic [ref=e1280]: 75,800원
+                  - generic [ref=e1281]:
+                    - generic [ref=e1285]: 내일(수) 도착
+                    - generic [ref=e1286]: 무료배송
+                  - generic [ref=e1288]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1289]: (3)
+                  - generic [ref=e1291]:
+                    - generic "4.5" [ref=e1292]
+                    - generic [ref=e1299]: (313)
+                  - generic [ref=e1301]:
+                    - img "최대 3,032원 적립" [ref=e1302]
+                    - generic [ref=e1303]: 최대 3,032원 적립
+                  - generic [ref=e1304]: "10"
+            - listitem [ref=e1305] [cursor=pointer]:
+              - link "앤커 사운드코어 스페이스 A40 노이즈캔슬링 블루투스 이어폰, A3936012, 블랙 할인 109,000원 45% 59,900원 내일(수) 도착 무료배송 새 상품, 반품 (4) 5 (1,945) 최대 2,995원 적립 최대 2,995원 적립" [ref=e1306]:
+                - /url: /vp/products/6760670592?itemId=15843492896&vendorItemId=92575281858&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=16&rank=16
+                - figure [ref=e1307]:
+                  - img "앤커 사운드코어 스페이스 A40 노이즈캔슬링 블루투스 이어폰, A3936012, 블랙" [ref=e1308]
+                - generic [ref=e1309]:
+                  - generic [ref=e1311]: 앤커 사운드코어 스페이스 A40 노이즈캔슬링 블루투스 이어폰, A3936012, 블랙
+                  - generic [ref=e1312]:
+                    - generic [ref=e1313]:
+                      - generic [ref=e1314]: 할인
+                      - deletion [ref=e1315]: 109,000원
+                    - generic [ref=e1317]:
+                      - generic [ref=e1318]:
+                        - generic [ref=e1320]: 45%
+                        - img [ref=e1321]
+                      - generic [ref=e1323]: 59,900원
+                  - generic [ref=e1324]:
+                    - generic [ref=e1328]: 내일(수) 도착
+                    - generic [ref=e1329]: 무료배송
+                  - generic [ref=e1331]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1332]: (4)
+                  - generic [ref=e1334]:
+                    - generic "5" [ref=e1335]
+                    - generic [ref=e1342]: (1,945)
+                  - generic [ref=e1344]:
+                    - img "최대 2,995원 적립" [ref=e1345]
+                    - generic [ref=e1346]: 최대 2,995원 적립
+            - listitem [ref=e1347] [cursor=pointer]:
+              - link "로켓직구 무상보증 삼성전자 갤럭시 버즈 코어 SM-R410, 블랙 55,510원 홍콩 6/26(금) 도착 예정 무료배송 4.5 (886) 최대 2,775원 적립 최대 2,775원 적립" [ref=e1348]:
+                - /url: /vp/products/9115997535?itemId=26812414340&vendorItemId=93782718646&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=17&rank=17
+                - figure [ref=e1349]:
+                  - img "삼성전자 갤럭시 버즈 코어 SM-R410, 블랙" [ref=e1350]
+                - generic [ref=e1351]:
+                  - generic [ref=e1354]: 로켓직구 무상보증
+                  - generic [ref=e1355]: 삼성전자 갤럭시 버즈 코어 SM-R410, 블랙
+                  - generic [ref=e1359]: 55,510원
+                  - generic [ref=e1360]:
+                    - generic [ref=e1361]:
+                      - generic [ref=e1363]: 홍콩
+                      - generic [ref=e1365]: 6/26(금) 도착 예정
+                    - generic [ref=e1366]: 무료배송
+                  - generic [ref=e1368]:
+                    - generic "4.5" [ref=e1369]
+                    - generic [ref=e1376]: (886)
+                  - generic [ref=e1378]:
+                    - img "최대 2,775원 적립" [ref=e1379]
+                    - generic [ref=e1380]: 최대 2,775원 적립
+            - listitem [ref=e1381] [cursor=pointer]:
+              - link "필립스 Hi-Fi ENC 노이즈캔슬링 무선 오픈 귀걸이형 블루투스 5.4 이어폰, TAA6709, 화이트 쿠폰할인 148,300원 60% 58,000원 내일(수) 도착 무료배송 새 상품, 반품 (12) 4.5 (1,456) 최대 2,900원 적립 최대 2,900원 적립" [ref=e1382]:
+                - /url: /vp/products/8732687870?itemId=25375852190&vendorItemId=92369927743&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=18&rank=18
+                - figure [ref=e1383]:
+                  - img "필립스 Hi-Fi ENC 노이즈캔슬링 무선 오픈 귀걸이형 블루투스 5.4 이어폰, TAA6709, 화이트" [ref=e1384]
+                - generic [ref=e1385]:
+                  - generic [ref=e1387]: 필립스 Hi-Fi ENC 노이즈캔슬링 무선 오픈 귀걸이형 블루투스 5.4 이어폰, TAA6709, 화이트
+                  - generic [ref=e1388]:
+                    - generic [ref=e1389]:
+                      - generic [ref=e1390]: 쿠폰할인
+                      - deletion [ref=e1391]: 148,300원
+                    - generic [ref=e1393]:
+                      - generic [ref=e1394]:
+                        - generic [ref=e1396]: 60%
+                        - img [ref=e1397]
+                      - generic [ref=e1399]: 58,000원
+                  - generic [ref=e1400]:
+                    - generic [ref=e1404]: 내일(수) 도착
+                    - generic [ref=e1405]: 무료배송
+                  - generic [ref=e1407]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1408]: (12)
+                  - generic [ref=e1410]:
+                    - generic "4.5" [ref=e1411]
+                    - generic [ref=e1418]: (1,456)
+                  - generic [ref=e1420]:
+                    - img "최대 2,900원 적립" [ref=e1421]
+                    - generic [ref=e1422]: 최대 2,900원 적립
+            - listitem [ref=e1423] [cursor=pointer]:
+              - link "잇펠 블루투스 골전도 이어폰 무선 IPX8 방수 수영장 런닝 러닝 헬스 스포츠 운동 운전기사 배달 핸즈프리 귀 귀걸이형 노이즈캔슬링 오픈형 넥밴드 불루투스 4세대 프로2 프로3, 블랙, 잇펠 골전도 블루투스 이어폰 X8 MAX 할인 · 2일 남음 100,990원 13% 87,190원 내일(수) 도착 무료배송 새 상품, 반품 (4) 4.5 (411) 최대 4,360원 적립 최대 4,360원 적립" [ref=e1424]:
+                - /url: /vp/products/9217314286?itemId=27233358127&vendorItemId=94200486532&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=19&rank=19
+                - figure [ref=e1425]:
+                  - img "잇펠 블루투스 골전도 이어폰 무선 IPX8 방수 수영장 런닝 러닝 헬스 스포츠 운동 운전기사 배달 핸즈프리 귀 귀걸이형 노이즈캔슬링 오픈형 넥밴드 불루투스 4세대 프로2 프로3, 블랙, 잇펠 골전도 블루투스 이어폰 X8 MAX" [ref=e1426]
+                - generic [ref=e1427]:
+                  - generic [ref=e1429]: 잇펠 블루투스 골전도 이어폰 무선 IPX8 방수 수영장 런닝 러닝 헬스 스포츠 운동 운전기사 배달 핸즈프리 귀 귀걸이형 노이즈캔슬링 오픈형 넥밴드 불루투스 4세대 프로2 프로3, 블랙, 잇펠 골전도 블루투스 이어폰 X8 MAX
+                  - generic [ref=e1430]:
+                    - generic [ref=e1431]:
+                      - generic [ref=e1432]: 할인
+                      - generic [ref=e1433]: · 2일 남음
+                      - deletion [ref=e1434]: 100,990원
+                    - generic [ref=e1436]:
+                      - generic [ref=e1437]:
+                        - generic [ref=e1439]: 13%
+                        - img [ref=e1440]
+                      - generic [ref=e1442]: 87,190원
+                  - generic [ref=e1443]:
+                    - generic [ref=e1447]: 내일(수) 도착
+                    - generic [ref=e1448]: 무료배송
+                  - generic [ref=e1450]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1451]: (4)
+                  - generic [ref=e1453]:
+                    - generic "4.5" [ref=e1454]
+                    - generic [ref=e1461]: (411)
+                  - generic [ref=e1463]:
+                    - img "최대 4,360원 적립" [ref=e1464]
+                    - generic [ref=e1465]: 최대 4,360원 적립
+            - listitem [ref=e1466] [cursor=pointer]:
+              - link "블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 아이보리, BLP-OE663IV 139,800원 45% 75,800원 내일(수) 도착 무료배송 새 상품, 반품 (2) 4.5 (313) 최대 3,032원 적립 최대 3,032원 적립 광고 Ad information" [ref=e1467]:
+                - /url: /vp/products/9467998678?itemId=28178335948&vendorItemId=95133013945&sourceType=srp_product_ads&clickEventId=bb9ada80-6f0a-11f1-a1d8-efb141da15b8&korePlacement=15&koreSubPlacement=21&clickEventId=bb9ada80-6f0a-11f1-a1d8-efb141da15b8&korePlacement=15&koreSubPlacement=21
+                - figure [ref=e1468]:
+                  - img "블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 아이보리, BLP-OE663IV" [ref=e1469]
+                - generic [ref=e1470]:
+                  - generic [ref=e1472]: 블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 아이보리, BLP-OE663IV
+                  - generic [ref=e1473]:
+                    - deletion [ref=e1475]: 139,800원
+                    - generic [ref=e1477]:
+                      - generic [ref=e1478]: 45%
+                      - generic [ref=e1479]: 75,800원
+                  - generic [ref=e1480]:
+                    - generic [ref=e1484]: 내일(수) 도착
+                    - generic [ref=e1485]: 무료배송
+                  - generic [ref=e1487]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1488]: (2)
+                  - generic [ref=e1490]:
+                    - generic "4.5" [ref=e1491]
+                    - generic [ref=e1498]: (313)
+                  - generic [ref=e1500]:
+                    - img "최대 3,032원 적립" [ref=e1501]
+                    - generic [ref=e1502]: 최대 3,032원 적립
+                  - generic [ref=e1504]:
+                    - generic [ref=e1505]: 광고
+                    - button "Ad information" [ref=e1506]:
+                      - img [ref=e1507]
+            - listitem [ref=e1509] [cursor=pointer]:
+              - link "에이투 오픈이어7 오픈형 무선 블루투스 이어폰 ATWO OPENEAR 7 미드나잇 블랙 12시간 방수가능 쿠폰할인 90,900원 39% 54,900원 내일(수) 도착 무료배송 새 상품, 반품 (2) 4.5 (278) 최대 2,745원 적립 최대 2,745원 적립 광고 Ad information" [ref=e1510]:
+                - /url: /vp/products/8583504498?itemId=24881759953&vendorItemId=91888520443&sourceType=srp_product_ads&clickEventId=bb9ada80-6f0a-11f1-b15e-24f2e3575108&korePlacement=15&koreSubPlacement=22&clickEventId=bb9ada80-6f0a-11f1-b15e-24f2e3575108&korePlacement=15&koreSubPlacement=22
+                - figure [ref=e1511]:
+                  - img "에이투 오픈이어7 오픈형 무선 블루투스 이어폰 ATWO OPENEAR 7 미드나잇 블랙 12시간 방수가능" [ref=e1512]
+                - generic [ref=e1513]:
+                  - generic [ref=e1515]: 에이투 오픈이어7 오픈형 무선 블루투스 이어폰 ATWO OPENEAR 7 미드나잇 블랙 12시간 방수가능
+                  - generic [ref=e1516]:
+                    - generic [ref=e1517]:
+                      - generic [ref=e1518]: 쿠폰할인
+                      - deletion [ref=e1519]: 90,900원
+                    - generic [ref=e1521]:
+                      - generic [ref=e1522]:
+                        - generic [ref=e1524]: 39%
+                        - img [ref=e1525]
+                      - generic [ref=e1527]: 54,900원
+                  - generic [ref=e1528]:
+                    - generic [ref=e1532]: 내일(수) 도착
+                    - generic [ref=e1533]: 무료배송
+                  - generic [ref=e1535]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e1536]: (2)
+                  - generic [ref=e1538]:
+                    - generic "4.5" [ref=e1539]
+                    - generic [ref=e1546]: (278)
+                  - generic [ref=e1548]:
+                    - img "최대 2,745원 적립" [ref=e1549]
+                    - generic [ref=e1550]: 최대 2,745원 적립
+                  - generic [ref=e1552]:
+                    - generic [ref=e1553]: 광고
+                    - button "Ad information" [ref=e1554]:
+                      - img [ref=e1555]
+            - listitem [ref=e1557] [cursor=pointer]:
+              - link "ONIKUMA 고양이귀 오픈형 노이즈캔슬링 무선 블루투스 이어폰 Hi-Fi 고음질 최신형, 핑크, TX603 98,000원 33% 64,800원 내일(수) 도착 무료배송 5 (4) 최대 3,240원 적립 최대 3,240원 적립" [ref=e1558]:
+                - /url: /vp/products/9468911386?itemId=28181970815&vendorItemId=95136551179&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=22&rank=22
+                - figure [ref=e1559]:
+                  - img "ONIKUMA 고양이귀 오픈형 노이즈캔슬링 무선 블루투스 이어폰 Hi-Fi 고음질 최신형, 핑크, TX603" [ref=e1560]
+                - generic [ref=e1561]:
+                  - generic [ref=e1563]: ONIKUMA 고양이귀 오픈형 노이즈캔슬링 무선 블루투스 이어폰 Hi-Fi 고음질 최신형, 핑크, TX603
+                  - generic [ref=e1564]:
+                    - deletion [ref=e1566]: 98,000원
+                    - generic [ref=e1568]:
+                      - generic [ref=e1569]: 33%
+                      - generic [ref=e1570]: 64,800원
+                  - generic [ref=e1571]:
+                    - generic [ref=e1573]: 내일(수) 도착
+                    - generic [ref=e1574]: 무료배송
+                  - generic [ref=e1576]:
+                    - generic "5" [ref=e1577]
+                    - generic [ref=e1584]: (4)
+                  - generic [ref=e1586]:
+                    - img "최대 3,240원 적립" [ref=e1587]
+                    - generic [ref=e1588]: 최대 3,240원 적립
+            - listitem [ref=e1589] [cursor=pointer]:
+              - link "로켓직구 무상보증 삼성전자 갤럭시 버즈 코어 SM-R410, 화이트 57,700원 홍콩 6/26(금) 도착 예정 무료배송 4.5 (886) 최대 2,885원 적립 최대 2,885원 적립" [ref=e1590]:
+                - /url: /vp/products/9115997535?itemId=26812414342&vendorItemId=93782718647&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=23&rank=23
+                - figure [ref=e1591]:
+                  - img "삼성전자 갤럭시 버즈 코어 SM-R410, 화이트" [ref=e1592]
+                - generic [ref=e1593]:
+                  - generic [ref=e1596]: 로켓직구 무상보증
+                  - generic [ref=e1597]: 삼성전자 갤럭시 버즈 코어 SM-R410, 화이트
+                  - generic [ref=e1601]: 57,700원
+                  - generic [ref=e1602]:
+                    - generic [ref=e1603]:
+                      - generic [ref=e1605]: 홍콩
+                      - generic [ref=e1607]: 6/26(금) 도착 예정
+                    - generic [ref=e1608]: 무료배송
+                  - generic [ref=e1610]:
+                    - generic "4.5" [ref=e1611]
+                    - generic [ref=e1618]: (886)
+                  - generic [ref=e1620]:
+                    - img "최대 2,885원 적립" [ref=e1621]
+                    - generic [ref=e1622]: 최대 2,885원 적립
+            - listitem [ref=e1623]:
+              - heading "한정 시간 특가 상품" [level=2] [ref=e1625]
+              - generic [ref=e1627]:
+                - list [ref=e1629]:
+                  - listitem [ref=e1630]:
+                    - link "베이스어스 32시간 재생 방수 블루투스 무선 이어폰 Baseus Bowie E20s 클러스터 블랙 할인|65%34,900원 11,960원 내일(수) 도착 4.5 (810) 최대 598원 적립 최대 598원 적립" [ref=e1631] [cursor=pointer]:
+                      - /url: /vp/products/8090406570?itemId=22847803524&vendorItemId=89882493303&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1632]:
+                        - img "베이스어스 32시간 재생 방수 블루투스 무선 이어폰 Baseus Bowie E20s 클러스터 블랙" [ref=e1633]
+                      - generic [ref=e1634]:
+                        - generic [ref=e1636]: 베이스어스 32시간 재생 방수 블루투스 무선 이어폰 Baseus Bowie E20s 클러스터 블랙
+                        - generic [ref=e1637]:
+                          - generic [ref=e1638]:
+                            - text: 할인|
+                            - generic [ref=e1639]: 65%
+                            - deletion [ref=e1640]: 34,900원
+                          - strong [ref=e1643]: 11,960원
+                        - generic [ref=e1645]: 내일(수) 도착
+                        - generic [ref=e1647]:
+                          - generic "4.5" [ref=e1648]
+                          - generic [ref=e1655]: (810)
+                        - generic [ref=e1658]:
+                          - img "최대 598원 적립" [ref=e1659]
+                          - generic [ref=e1660]: 최대 598원 적립
+                  - listitem [ref=e1661]:
+                    - link "베이스어스 TWS 32시간 재생 방수 무선 이어폰 Baseus Bowie E20s 스텔라 화이트 할인|66%34,900원 11,760원 내일(수) 도착 4.5 (810) 최대 588원 적립 최대 588원 적립" [ref=e1662] [cursor=pointer]:
+                      - /url: /vp/products/8090406570?itemId=22847803523&vendorItemId=89882493281&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1663]:
+                        - img "베이스어스 TWS 32시간 재생 방수 무선 이어폰 Baseus Bowie E20s 스텔라 화이트" [ref=e1664]
+                      - generic [ref=e1665]:
+                        - generic [ref=e1667]: 베이스어스 TWS 32시간 재생 방수 무선 이어폰 Baseus Bowie E20s 스텔라 화이트
+                        - generic [ref=e1668]:
+                          - generic [ref=e1669]:
+                            - text: 할인|
+                            - generic [ref=e1670]: 66%
+                            - deletion [ref=e1671]: 34,900원
+                          - strong [ref=e1674]: 11,760원
+                        - generic [ref=e1676]: 내일(수) 도착
+                        - generic [ref=e1678]:
+                          - generic "4.5" [ref=e1679]
+                          - generic [ref=e1686]: (810)
+                        - generic [ref=e1689]:
+                          - img "최대 588원 적립" [ref=e1690]
+                          - generic [ref=e1691]: 최대 588원 적립
+                  - listitem [ref=e1692]:
+                    - link "컴스 베이스강화 무압박 블루투스 5.3 무선 이어폰 YN453 블랙 5시간 방수가능 할인|57%30,000원 12,770원 내일(수) 도착 새 상품, 반품 (18) 4.5 (58) 최대 639원 적립 최대 639원 적립" [ref=e1693] [cursor=pointer]:
+                      - /url: /vp/products/7685053202?itemId=20535446074&vendorItemId=87720893240&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1694]:
+                        - img "컴스 베이스강화 무압박 블루투스 5.3 무선 이어폰 YN453 블랙 5시간 방수가능" [ref=e1695]
+                      - generic [ref=e1696]:
+                        - generic [ref=e1698]: 컴스 베이스강화 무압박 블루투스 5.3 무선 이어폰 YN453 블랙 5시간 방수가능
+                        - generic [ref=e1699]:
+                          - generic [ref=e1700]:
+                            - text: 할인|
+                            - generic [ref=e1701]: 57%
+                            - deletion [ref=e1702]: 30,000원
+                          - strong [ref=e1705]: 12,770원
+                        - generic [ref=e1707]: 내일(수) 도착
+                        - generic [ref=e1709]:
+                          - text: 새 상품, 반품
+                          - strong [ref=e1710]: (18)
+                        - generic [ref=e1712]:
+                          - generic "4.5" [ref=e1713]
+                          - generic [ref=e1720]: (58)
+                        - generic [ref=e1723]:
+                          - img "최대 639원 적립" [ref=e1724]
+                          - generic [ref=e1725]: 최대 639원 적립
+                  - listitem [ref=e1726]:
+                    - link "뉴클 레인보우 LED 블루투스 무선 이어폰, NCTW-CL-12-XT, 화이트 + 투명 할인|45%33,000원 18,130원 내일(수) 도착 4.5 (52) 최대 906원 적립 최대 906원 적립" [ref=e1727] [cursor=pointer]:
+                      - /url: /vp/products/8191943470?itemId=23447403383&vendorItemId=90474185083&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1728]:
+                        - img "뉴클 레인보우 LED 블루투스 무선 이어폰, NCTW-CL-12-XT, 화이트 + 투명" [ref=e1729]
+                      - generic [ref=e1730]:
+                        - generic [ref=e1732]: 뉴클 레인보우 LED 블루투스 무선 이어폰, NCTW-CL-12-XT, 화이트 + 투명
+                        - generic [ref=e1733]:
+                          - generic [ref=e1734]:
+                            - text: 할인|
+                            - generic [ref=e1735]: 45%
+                            - deletion [ref=e1736]: 33,000원
+                          - strong [ref=e1739]: 18,130원
+                        - generic [ref=e1741]: 내일(수) 도착
+                        - generic [ref=e1743]:
+                          - generic "4.5" [ref=e1744]
+                          - generic [ref=e1751]: (52)
+                        - generic [ref=e1754]:
+                          - img "최대 906원 적립" [ref=e1755]
+                          - generic [ref=e1756]: 최대 906원 적립
+                  - listitem [ref=e1757]:
+                    - link "아이리버 블루투스 5.3 LED 충전케이스 무선이어폰, IHT-SP31, 화이트 할인|44%39,900원 21,960원 내일(수) 도착 새 상품, 반품 (10) 4.5 (293) 최대 1,098원 적립 최대 1,098원 적립" [ref=e1758] [cursor=pointer]:
+                      - /url: /vp/products/8230693101?itemId=23687882403&vendorItemId=91372788834&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1759]:
+                        - img "아이리버 블루투스 5.3 LED 충전케이스 무선이어폰, IHT-SP31, 화이트" [ref=e1760]
+                      - generic [ref=e1761]:
+                        - generic [ref=e1763]: 아이리버 블루투스 5.3 LED 충전케이스 무선이어폰, IHT-SP31, 화이트
+                        - generic [ref=e1764]:
+                          - generic [ref=e1765]:
+                            - text: 할인|
+                            - generic [ref=e1766]: 44%
+                            - deletion [ref=e1767]: 39,900원
+                          - strong [ref=e1770]: 21,960원
+                        - generic [ref=e1772]: 내일(수) 도착
+                        - generic [ref=e1774]:
+                          - text: 새 상품, 반품
+                          - strong [ref=e1775]: (10)
+                        - generic [ref=e1777]:
+                          - generic "4.5" [ref=e1778]
+                          - generic [ref=e1785]: (293)
+                        - generic [ref=e1788]:
+                          - img "최대 1,098원 적립" [ref=e1789]
+                          - generic [ref=e1790]: 최대 1,098원 적립
+                  - listitem [ref=e1791]:
+                    - link "PANTONE 미니 무선 오픈형 블루투스 5.3 이어폰 PTB-30 Calm Gray 4시간 쿠폰할인|50%39,800원 19,600원 내일(수) 도착 4 (83) 최대 980원 적립 최대 980원 적립" [ref=e1792] [cursor=pointer]:
+                      - /url: /vp/products/7944699967?itemId=21900343424&vendorItemId=88948377284&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1793]:
+                        - img "PANTONE 미니 무선 오픈형 블루투스 5.3 이어폰 PTB-30 Calm Gray 4시간" [ref=e1794]
+                      - generic [ref=e1795]:
+                        - generic [ref=e1797]: PANTONE 미니 무선 오픈형 블루투스 5.3 이어폰 PTB-30 Calm Gray 4시간
+                        - generic [ref=e1798]:
+                          - generic [ref=e1799]:
+                            - text: 쿠폰할인|
+                            - generic [ref=e1800]: 50%
+                            - deletion [ref=e1801]: 39,800원
+                          - strong [ref=e1804]: 19,600원
+                        - generic [ref=e1806]: 내일(수) 도착
+                        - generic [ref=e1808]:
+                          - generic "4" [ref=e1809]
+                          - generic [ref=e1816]: (83)
+                        - generic [ref=e1819]:
+                          - img "최대 980원 적립" [ref=e1820]
+                          - generic [ref=e1821]: 최대 980원 적립
+                  - listitem [ref=e1822]:
+                    - link "카카오프렌즈 춘식이 얼굴형 무선 블루투스 이어폰 XDB-EKC2 혼합색상 6시간 할인|4%39,000원 37,440원 내일(수) 도착 4.5 (56) 최대 1,872원 적립 최대 1,872원 적립" [ref=e1823] [cursor=pointer]:
+                      - /url: /vp/products/6516667109?itemId=14418671412&vendorItemId=81662553525&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1824]:
+                        - img "카카오프렌즈 춘식이 얼굴형 무선 블루투스 이어폰 XDB-EKC2 혼합색상 6시간" [ref=e1825]
+                      - generic [ref=e1826]:
+                        - generic [ref=e1828]: 카카오프렌즈 춘식이 얼굴형 무선 블루투스 이어폰 XDB-EKC2 혼합색상 6시간
+                        - generic [ref=e1829]:
+                          - generic [ref=e1830]:
+                            - text: 할인|
+                            - generic [ref=e1831]: 4%
+                            - deletion [ref=e1832]: 39,000원
+                          - strong [ref=e1835]: 37,440원
+                        - generic [ref=e1837]: 내일(수) 도착
+                        - generic [ref=e1839]:
+                          - generic "4.5" [ref=e1840]
+                          - generic [ref=e1847]: (56)
+                        - generic [ref=e1850]:
+                          - img "최대 1,872원 적립" [ref=e1851]
+                          - generic [ref=e1852]: 최대 1,872원 적립
+                  - listitem [ref=e1853]:
+                    - link "크리에이티브 ZEN AIR PRO 무선 블루투스 이어폰 51EF1090AA000 WHITE 9시간 액티브노이즈캔슬링(ANC) 방수가능 할인|16%89,000원 74,760원 내일(수) 도착 새 상품, 반품 (4) 4.5 (36) 최대 3,738원 적립 최대 3,738원 적립" [ref=e1854] [cursor=pointer]:
+                      - /url: /vp/products/8164249552?itemId=23288500032&vendorItemId=90320738722&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1855]:
+                        - img "크리에이티브 ZEN AIR PRO 무선 블루투스 이어폰 51EF1090AA000 WHITE 9시간 액티브노이즈캔슬링(ANC) 방수가능" [ref=e1856]
+                      - generic [ref=e1857]:
+                        - generic [ref=e1859]: 크리에이티브 ZEN AIR PRO 무선 블루투스 이어폰 51EF1090AA000 WHITE 9시간 액티브노이즈캔슬링(ANC) 방수가능
+                        - generic [ref=e1860]:
+                          - generic [ref=e1861]:
+                            - text: 할인|
+                            - generic [ref=e1862]: 16%
+                            - deletion [ref=e1863]: 89,000원
+                          - strong [ref=e1866]: 74,760원
+                        - generic [ref=e1868]: 내일(수) 도착
+                        - generic [ref=e1870]:
+                          - text: 새 상품, 반품
+                          - strong [ref=e1871]: (4)
+                        - generic [ref=e1873]:
+                          - generic "4.5" [ref=e1874]
+                          - generic [ref=e1881]: (36)
+                        - generic [ref=e1884]:
+                          - img "최대 3,738원 적립" [ref=e1885]
+                          - generic [ref=e1886]: 최대 3,738원 적립
+                  - listitem [ref=e1887]:
+                    - link "아남 오픈타입 귀걸이형 V5.4 블루투스 이어폰 BTAIR Star2 블랙 5시간 할인|52%41,180원 19,760원 내일(수) 도착 3 (3) 최대 988원 적립 최대 988원 적립" [ref=e1888] [cursor=pointer]:
+                      - /url: /vp/products/8760758283?itemId=25474116061&vendorItemId=92466562141&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1889]:
+                        - img "아남 오픈타입 귀걸이형 V5.4 블루투스 이어폰 BTAIR Star2 블랙 5시간" [ref=e1890]
+                      - generic [ref=e1891]:
+                        - generic [ref=e1893]: 아남 오픈타입 귀걸이형 V5.4 블루투스 이어폰 BTAIR Star2 블랙 5시간
+                        - generic [ref=e1894]:
+                          - generic [ref=e1895]:
+                            - text: 할인|
+                            - generic [ref=e1896]: 52%
+                            - deletion [ref=e1897]: 41,180원
+                          - strong [ref=e1900]: 19,760원
+                        - generic [ref=e1902]: 내일(수) 도착
+                        - generic [ref=e1904]:
+                          - generic "3" [ref=e1905]
+                          - generic [ref=e1912]: (3)
+                        - generic [ref=e1915]:
+                          - img "최대 988원 적립" [ref=e1916]
+                          - generic [ref=e1917]: 최대 988원 적립
+                  - listitem [ref=e1918]:
+                    - link "아이리버 블루투스 5.3 LED 충전케이스 무선이어폰 IHT-SP31 그레이 4시간 생활방수 할인|46%39,900원 21,270원 내일(수) 도착 새 상품, 반품 (4) 4.5 (293) 최대 1,064원 적립 최대 1,064원 적립" [ref=e1919] [cursor=pointer]:
+                      - /url: /vp/products/8230693101?itemId=23687882405&vendorItemId=91372788853&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1920]:
+                        - img "아이리버 블루투스 5.3 LED 충전케이스 무선이어폰 IHT-SP31 그레이 4시간 생활방수" [ref=e1921]
+                      - generic [ref=e1922]:
+                        - generic [ref=e1924]: 아이리버 블루투스 5.3 LED 충전케이스 무선이어폰 IHT-SP31 그레이 4시간 생활방수
+                        - generic [ref=e1925]:
+                          - generic [ref=e1926]:
+                            - text: 할인|
+                            - generic [ref=e1927]: 46%
+                            - deletion [ref=e1928]: 39,900원
+                          - strong [ref=e1931]: 21,270원
+                        - generic [ref=e1933]: 내일(수) 도착
+                        - generic [ref=e1935]:
+                          - text: 새 상품, 반품
+                          - strong [ref=e1936]: (4)
+                        - generic [ref=e1938]:
+                          - generic "4.5" [ref=e1939]
+                          - generic [ref=e1946]: (293)
+                        - generic [ref=e1949]:
+                          - img "최대 1,064원 적립" [ref=e1950]
+                          - generic [ref=e1951]: 최대 1,064원 적립
+                  - listitem [ref=e1952]:
+                    - link "지니큐 5.3 무선 스테레오 블루투스 이어폰, ZQ-G10, 화이트 할인|44%28,900원 16,090원 내일(수) 도착 최대 805원 적립 최대 805원 적립" [ref=e1953] [cursor=pointer]:
+                      - /url: /vp/products/7942182294?itemId=21878891938&vendorItemId=89716711184&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1954]:
+                        - img "지니큐 5.3 무선 스테레오 블루투스 이어폰, ZQ-G10, 화이트" [ref=e1955]
+                      - generic [ref=e1956]:
+                        - generic [ref=e1958]: 지니큐 5.3 무선 스테레오 블루투스 이어폰, ZQ-G10, 화이트
+                        - generic [ref=e1959]:
+                          - generic [ref=e1960]:
+                            - text: 할인|
+                            - generic [ref=e1961]: 44%
+                            - deletion [ref=e1962]: 28,900원
+                          - strong [ref=e1965]: 16,090원
+                        - generic [ref=e1967]: 내일(수) 도착
+                        - generic [ref=e1970]:
+                          - img "최대 805원 적립" [ref=e1971]
+                          - generic [ref=e1972]: 최대 805원 적립
+                  - listitem [ref=e1973]:
+                    - link "PLEIGO TWS 무선 충전 LED 디스플레이 블루투스 이어폰 N660 블랙 12.6시간 할인|4%38,480원 36,940원 내일(수) 도착 새 상품, 반품-미개봉 (8) 최저35,460원 5 (44) 최대 1,847원 적립 최대 1,847원 적립" [ref=e1974] [cursor=pointer]:
+                      - /url: /vp/products/8457718418?itemId=24464340463&vendorItemId=91477968104&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e1975]:
+                        - img "PLEIGO TWS 무선 충전 LED 디스플레이 블루투스 이어폰 N660 블랙 12.6시간" [ref=e1976]
+                      - generic [ref=e1977]:
+                        - generic [ref=e1979]: PLEIGO TWS 무선 충전 LED 디스플레이 블루투스 이어폰 N660 블랙 12.6시간
+                        - generic [ref=e1980]:
+                          - generic [ref=e1981]:
+                            - text: 할인|
+                            - generic [ref=e1982]: 4%
+                            - deletion [ref=e1983]: 38,480원
+                          - strong [ref=e1986]: 36,940원
+                        - generic [ref=e1988]: 내일(수) 도착
+                        - generic [ref=e1989]:
+                          - generic [ref=e1990]:
+                            - text: 새 상품, 반품-미개봉
+                            - strong [ref=e1991]: (8)
+                          - generic [ref=e1992]:
+                            - text: 최저
+                            - strong [ref=e1993]: 35,460
+                            - text: 원
+                        - generic [ref=e1995]:
+                          - generic "5" [ref=e1996]
+                          - generic [ref=e2003]: (44)
+                        - generic [ref=e2006]:
+                          - img "최대 1,847원 적립" [ref=e2007]
+                          - generic [ref=e2008]: 최대 1,847원 적립
+                  - listitem [ref=e2009]:
+                    - link "맥스틸 공기전도 블루투스 이어폰 GM-EB101S 블랙 6시간 할인|45%19,500원 10,700원 내일(수) 도착 새 상품, 반품 (2) 3.5 (7) 최대 535원 적립 최대 535원 적립" [ref=e2010] [cursor=pointer]:
+                      - /url: /vp/products/8653602084?itemId=25122352897&vendorItemId=92121665818&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e2011]:
+                        - img "맥스틸 공기전도 블루투스 이어폰 GM-EB101S 블랙 6시간" [ref=e2012]
+                      - generic [ref=e2013]:
+                        - generic [ref=e2015]: 맥스틸 공기전도 블루투스 이어폰 GM-EB101S 블랙 6시간
+                        - generic [ref=e2016]:
+                          - generic [ref=e2017]:
+                            - text: 할인|
+                            - generic [ref=e2018]: 45%
+                            - deletion [ref=e2019]: 19,500원
+                          - strong [ref=e2022]: 10,700원
+                        - generic [ref=e2024]: 내일(수) 도착
+                        - generic [ref=e2026]:
+                          - text: 새 상품, 반품
+                          - strong [ref=e2027]: (2)
+                        - generic [ref=e2029]:
+                          - generic "3.5" [ref=e2030]
+                          - generic [ref=e2037]: (7)
+                        - generic [ref=e2040]:
+                          - img "최대 535원 적립" [ref=e2041]
+                          - generic [ref=e2042]: 최대 535원 적립
+                  - listitem [ref=e2043]:
+                    - link "펭카 블루투스 이어폰, PO100, 퍼플 할인|68%59,000원 18,620원 내일(수) 도착 새 상품, 반품 (2) 4.5 (129) 최대 931원 적립 최대 931원 적립" [ref=e2044] [cursor=pointer]:
+                      - /url: /vp/products/8057358817?itemId=22619845767&vendorItemId=89661400251&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e2045]:
+                        - img "펭카 블루투스 이어폰, PO100, 퍼플" [ref=e2046]
+                      - generic [ref=e2047]:
+                        - generic [ref=e2049]: 펭카 블루투스 이어폰, PO100, 퍼플
+                        - generic [ref=e2050]:
+                          - generic [ref=e2051]:
+                            - text: 할인|
+                            - generic [ref=e2052]: 68%
+                            - deletion [ref=e2053]: 59,000원
+                          - strong [ref=e2056]: 18,620원
+                        - generic [ref=e2058]: 내일(수) 도착
+                        - generic [ref=e2060]:
+                          - text: 새 상품, 반품
+                          - strong [ref=e2061]: (2)
+                        - generic [ref=e2063]:
+                          - generic "4.5" [ref=e2064]
+                          - generic [ref=e2071]: (129)
+                        - generic [ref=e2074]:
+                          - img "최대 931원 적립" [ref=e2075]
+                          - generic [ref=e2076]: 최대 931원 적립
+                  - listitem [ref=e2077]:
+                    - link "DOXX USB-C타입 블루투스 이어폰 DX-TWS200 5시간 할인|16%30,000원 25,110원 내일(수) 도착 4.5 (68) 최대 1,255원 적립 최대 1,255원 적립" [ref=e2078] [cursor=pointer]:
+                      - /url: /vp/products/7665243377?itemId=20432163437&vendorItemId=87733914119&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e2079]:
+                        - img "DOXX USB-C타입 블루투스 이어폰 DX-TWS200 5시간" [ref=e2080]
+                      - generic [ref=e2081]:
+                        - generic [ref=e2083]: DOXX USB-C타입 블루투스 이어폰 DX-TWS200 5시간
+                        - generic [ref=e2084]:
+                          - generic [ref=e2085]:
+                            - text: 할인|
+                            - generic [ref=e2086]: 16%
+                            - deletion [ref=e2087]: 30,000원
+                          - strong [ref=e2090]: 25,110원
+                        - generic [ref=e2092]: 내일(수) 도착
+                        - generic [ref=e2094]:
+                          - generic "4.5" [ref=e2095]
+                          - generic [ref=e2102]: (68)
+                        - generic [ref=e2105]:
+                          - img "최대 1,255원 적립" [ref=e2106]
+                          - generic [ref=e2107]: 최대 1,255원 적립
+                  - listitem [ref=e2108]:
+                    - link "에어숨 버즈스타일 에그클립 블루투스 이어폰, BUDSTYLE EGGCLIP, 블랙 할인|66%39,800원 13,150원 내일(수) 도착 3.5 (7) 최대 658원 적립 최대 658원 적립" [ref=e2109] [cursor=pointer]:
+                      - /url: /vp/products/7828383890?itemId=21283968563&vendorItemId=88343978450&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e2110]:
+                        - img "에어숨 버즈스타일 에그클립 블루투스 이어폰, BUDSTYLE EGGCLIP, 블랙" [ref=e2111]
+                      - generic [ref=e2112]:
+                        - generic [ref=e2114]: 에어숨 버즈스타일 에그클립 블루투스 이어폰, BUDSTYLE EGGCLIP, 블랙
+                        - generic [ref=e2115]:
+                          - generic [ref=e2116]:
+                            - text: 할인|
+                            - generic [ref=e2117]: 66%
+                            - deletion [ref=e2118]: 39,800원
+                          - strong [ref=e2121]: 13,150원
+                        - generic [ref=e2123]: 내일(수) 도착
+                        - generic [ref=e2125]:
+                          - generic "3.5" [ref=e2126]
+                          - generic [ref=e2133]: (7)
+                        - generic [ref=e2136]:
+                          - img "최대 658원 적립" [ref=e2137]
+                          - generic [ref=e2138]: 최대 658원 적립
+                  - listitem [ref=e2139]:
+                    - link "지니큐 HIFI 이어커프 오픈형 블루투스 무선 이어폰 ZQ-G90 화이트 6시간 할인|33%35,600원 23,850원 내일(수) 도착 최대 1,193원 적립 최대 1,193원 적립" [ref=e2140] [cursor=pointer]:
+                      - /url: /vp/products/7717070681?itemId=20700449428&vendorItemId=87771678923&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e2141]:
+                        - img "지니큐 HIFI 이어커프 오픈형 블루투스 무선 이어폰 ZQ-G90 화이트 6시간" [ref=e2142]
+                      - generic [ref=e2143]:
+                        - generic [ref=e2145]: 지니큐 HIFI 이어커프 오픈형 블루투스 무선 이어폰 ZQ-G90 화이트 6시간
+                        - generic [ref=e2146]:
+                          - generic [ref=e2147]:
+                            - text: 할인|
+                            - generic [ref=e2148]: 33%
+                            - deletion [ref=e2149]: 35,600원
+                          - strong [ref=e2152]: 23,850원
+                        - generic [ref=e2154]: 내일(수) 도착
+                        - generic [ref=e2157]:
+                          - img "최대 1,193원 적립" [ref=e2158]
+                          - generic [ref=e2159]: 최대 1,193원 적립
+                  - listitem [ref=e2160]:
+                    - link "아남 비티에어 피어싱 블루투스 이어버드셋, BTAIR Piercing, 화이트 할인|66%99,000원 33,040원 내일(수) 도착 새 상품, 반품 (9) 4 (315) 최대 1,652원 적립 최대 1,652원 적립" [ref=e2161] [cursor=pointer]:
+                      - /url: /vp/products/7063503659?itemId=17520713057&vendorItemId=86702517184&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e2162]:
+                        - img "아남 비티에어 피어싱 블루투스 이어버드셋, BTAIR Piercing, 화이트" [ref=e2163]
+                      - generic [ref=e2164]:
+                        - generic [ref=e2166]: 아남 비티에어 피어싱 블루투스 이어버드셋, BTAIR Piercing, 화이트
+                        - generic [ref=e2167]:
+                          - generic [ref=e2168]:
+                            - text: 할인|
+                            - generic [ref=e2169]: 66%
+                            - deletion [ref=e2170]: 99,000원
+                          - strong [ref=e2173]: 33,040원
+                        - generic [ref=e2175]: 내일(수) 도착
+                        - generic [ref=e2177]:
+                          - text: 새 상품, 반품
+                          - strong [ref=e2178]: (9)
+                        - generic [ref=e2180]:
+                          - generic "4" [ref=e2181]
+                          - generic [ref=e2188]: (315)
+                        - generic [ref=e2191]:
+                          - img "최대 1,652원 적립" [ref=e2192]
+                          - generic [ref=e2193]: 최대 1,652원 적립
+                  - listitem [ref=e2194]:
+                    - link "HAVIT 블루투스 이어폰, G1pro W, 블랙 할인|81%163,340원 30,030원 내일(수) 도착 4.5 (26) 최대 1,501원 적립 최대 1,501원 적립" [ref=e2195] [cursor=pointer]:
+                      - /url: /vp/products/1105216369?itemId=2066389366&vendorItemId=70065571002&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e2196]:
+                        - img "HAVIT 블루투스 이어폰, G1pro W, 블랙" [ref=e2197]
+                      - generic [ref=e2198]:
+                        - generic [ref=e2200]: HAVIT 블루투스 이어폰, G1pro W, 블랙
+                        - generic [ref=e2201]:
+                          - generic [ref=e2202]:
+                            - text: 할인|
+                            - generic [ref=e2203]: 81%
+                            - deletion [ref=e2204]: 163,340원
+                          - strong [ref=e2207]: 30,030원
+                        - generic [ref=e2209]: 내일(수) 도착
+                        - generic [ref=e2211]:
+                          - generic "4.5" [ref=e2212]
+                          - generic [ref=e2219]: (26)
+                        - generic [ref=e2222]:
+                          - img "최대 1,501원 적립" [ref=e2223]
+                          - generic [ref=e2224]: 최대 1,501원 적립
+                  - listitem [ref=e2225]:
+                    - link "캔디 방수 골전도 블루투스 이어폰, BE-11WM, 블랙 할인|70%119,000원 35,490원 내일(수) 도착 새 상품, 반품 (6) 4 (170) 최대 1,775원 적립 최대 1,775원 적립" [ref=e2226] [cursor=pointer]:
+                      - /url: /vp/products/7492987436?itemId=19596808855&vendorItemId=86940361933&sourceType=SDW_AGING_PRODUCTS_WIDGET_PC&searchId=c9d917b26293596&q=무선이어폰
+                      - figure [ref=e2227]:
+                        - img "캔디 방수 골전도 블루투스 이어폰, BE-11WM, 블랙" [ref=e2228]
+                      - generic [ref=e2229]:
+                        - generic [ref=e2231]: 캔디 방수 골전도 블루투스 이어폰, BE-11WM, 블랙
+                        - generic [ref=e2232]:
+                          - generic [ref=e2233]:
+                            - text: 할인|
+                            - generic [ref=e2234]: 70%
+                            - deletion [ref=e2235]: 119,000원
+                          - strong [ref=e2238]: 35,490원
+                        - generic [ref=e2240]: 내일(수) 도착
+                        - generic [ref=e2242]:
+                          - text: 새 상품, 반품
+                          - strong [ref=e2243]: (6)
+                        - generic [ref=e2245]:
+                          - generic "4" [ref=e2246]
+                          - generic [ref=e2253]: (170)
+                        - generic [ref=e2256]:
+                          - img "최대 1,775원 적립" [ref=e2257]
+                          - generic [ref=e2258]: 최대 1,775원 적립
+                - button "다음 상품 보기" [ref=e2259] [cursor=pointer]
+            - listitem [ref=e2260] [cursor=pointer]:
+              - link "BOACE 골전도 블루투스 이어폰 IPX8 방수 무선 스포츠 러닝 수영 내장 MP3모드 32GB 블루투스6.0, 바다색, y60 할인 238,000원 78% 50,780원 내일(수) 도착 무료배송 5 (436) 최대 2,539원 적립 최대 2,539원 적립" [ref=e2261]:
+                - /url: /vp/products/9609719752?itemId=28689693974&vendorItemId=94312397980&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=24&rank=24
+                - figure [ref=e2262]:
+                  - img "BOACE 골전도 블루투스 이어폰 IPX8 방수 무선 스포츠 러닝 수영 내장 MP3모드 32GB 블루투스6.0, 바다색, y60" [ref=e2263]
+                - generic [ref=e2264]:
+                  - generic [ref=e2266]: BOACE 골전도 블루투스 이어폰 IPX8 방수 무선 스포츠 러닝 수영 내장 MP3모드 32GB 블루투스6.0, 바다색, y60
+                  - generic [ref=e2267]:
+                    - generic [ref=e2268]:
+                      - generic [ref=e2269]: 할인
+                      - deletion [ref=e2270]: 238,000원
+                    - generic [ref=e2272]:
+                      - generic [ref=e2273]:
+                        - generic [ref=e2275]: 78%
+                        - img [ref=e2276]
+                      - generic [ref=e2278]: 50,780원
+                  - generic [ref=e2279]:
+                    - generic [ref=e2283]: 내일(수) 도착
+                    - generic [ref=e2284]: 무료배송
+                  - generic [ref=e2286]:
+                    - generic "5" [ref=e2287]
+                    - generic [ref=e2294]: (436)
+                  - generic [ref=e2296]:
+                    - img "최대 2,539원 적립" [ref=e2297]
+                    - generic [ref=e2298]: 최대 2,539원 적립
+            - listitem [ref=e2299] [cursor=pointer]:
+              - link "앤커 사운드코어 리버티 4 NC 블루투스 이어폰, A3947, 블랙 쿠폰할인 64,900원 3% 62,950원 내일(수) 도착 무료배송 5 (1,311) 최대 3,148원 적립 최대 3,148원 적립" [ref=e2300]:
+                - /url: /vp/products/7464900475?itemId=19465765106&vendorItemId=86576143822&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=25&rank=25
+                - figure [ref=e2301]:
+                  - img "앤커 사운드코어 리버티 4 NC 블루투스 이어폰, A3947, 블랙" [ref=e2302]
+                - generic [ref=e2303]:
+                  - generic [ref=e2305]: 앤커 사운드코어 리버티 4 NC 블루투스 이어폰, A3947, 블랙
+                  - generic [ref=e2306]:
+                    - generic [ref=e2307]:
+                      - generic [ref=e2308]: 쿠폰할인
+                      - deletion [ref=e2309]: 64,900원
+                    - generic [ref=e2311]:
+                      - generic [ref=e2312]:
+                        - generic [ref=e2314]: 3%
+                        - img [ref=e2315]
+                      - generic [ref=e2317]: 62,950원
+                  - generic [ref=e2318]:
+                    - generic [ref=e2322]: 내일(수) 도착
+                    - generic [ref=e2323]: 무료배송
+                  - generic [ref=e2325]:
+                    - generic "5" [ref=e2326]
+                    - generic [ref=e2333]: (1,311)
+                  - generic [ref=e2335]:
+                    - img "최대 3,148원 적립" [ref=e2336]
+                    - generic [ref=e2337]: 최대 3,148원 적립
+            - listitem [ref=e2338] [cursor=pointer]:
+              - link "브리츠 완전무선 블루투스 이어폰, 블랙, AcousticSnap5 64,000원 모레(목) 도착 예정 무료배송 4.5 (37) 최대 3,200원 적립 최대 3,200원 적립" [ref=e2339]:
+                - /url: /vp/products/8279085496?itemId=23867361786&vendorItemId=92774909684&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=26&rank=26
+                - figure [ref=e2340]:
+                  - img "브리츠 완전무선 블루투스 이어폰, 블랙, AcousticSnap5" [ref=e2341]
+                - generic [ref=e2342]:
+                  - generic [ref=e2344]: 브리츠 완전무선 블루투스 이어폰, 블랙, AcousticSnap5
+                  - generic [ref=e2348]: 64,000원
+                  - generic [ref=e2349]:
+                    - generic [ref=e2351]: 모레(목) 도착 예정
+                    - generic [ref=e2352]: 무료배송
+                  - generic [ref=e2354]:
+                    - generic "4.5" [ref=e2355]
+                    - generic [ref=e2362]: (37)
+                  - generic [ref=e2364]:
+                    - img "최대 3,200원 적립" [ref=e2365]
+                    - generic [ref=e2366]: 최대 3,200원 적립
+            - listitem [ref=e2367] [cursor=pointer]:
+              - link "와피크 귀걸이형 블루투스 이어폰 RS7 오픈형 귀찌 ENC 노이즈 캔슬링 초경량 LED C타입, 블루 할인 159,000원 37% 99,000원 6/26(금) 도착 예정 무료배송 최대 4,950원 적립 최대 4,950원 적립" [ref=e2368]:
+                - /url: /vp/products/9607568524?itemId=28682436016&vendorItemId=95624048850&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=27&rank=27
+                - figure [ref=e2369]:
+                  - img "와피크 귀걸이형 블루투스 이어폰 RS7 오픈형 귀찌 ENC 노이즈 캔슬링 초경량 LED C타입, 블루" [ref=e2370]
+                - generic [ref=e2371]:
+                  - generic [ref=e2373]: 와피크 귀걸이형 블루투스 이어폰 RS7 오픈형 귀찌 ENC 노이즈 캔슬링 초경량 LED C타입, 블루
+                  - generic [ref=e2374]:
+                    - generic [ref=e2375]:
+                      - generic [ref=e2376]: 할인
+                      - deletion [ref=e2377]: 159,000원
+                    - generic [ref=e2379]:
+                      - generic [ref=e2380]:
+                        - generic [ref=e2382]: 37%
+                        - img [ref=e2383]
+                      - generic [ref=e2385]: 99,000원
+                  - generic [ref=e2386]:
+                    - generic [ref=e2388]: 6/26(금) 도착 예정
+                    - generic [ref=e2389]: 무료배송
+                  - generic [ref=e2391]:
+                    - img "최대 4,950원 적립" [ref=e2392]
+                    - generic [ref=e2393]: 최대 4,950원 적립
+            - listitem [ref=e2394] [cursor=pointer]:
+              - link "프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 아이보리, TBE-701IV 할인 164,090원 64% 58,900원 내일(수) 도착 무료배송 새 상품, 반품 (5) 4.5 (447) 최대 2,945원 적립 최대 2,945원 적립" [ref=e2395]:
+                - /url: /vp/products/9309574140?itemId=27584072680&vendorItemId=94547774345&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=28&rank=28
+                - figure [ref=e2396]:
+                  - img "프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 아이보리, TBE-701IV" [ref=e2397]
+                - generic [ref=e2398]:
+                  - generic [ref=e2400]: 프랑스 톰슨 블루투스 6.0 ENC 노이즈 캔슬링 생활 방수 오픈형 귀걸이 무선 블루투스 이어폰, 아이보리, TBE-701IV
+                  - generic [ref=e2401]:
+                    - generic [ref=e2402]:
+                      - generic [ref=e2403]: 할인
+                      - deletion [ref=e2404]: 164,090원
+                    - generic [ref=e2406]:
+                      - generic [ref=e2407]:
+                        - generic [ref=e2409]: 64%
+                        - img [ref=e2410]
+                      - generic [ref=e2412]: 58,900원
+                  - generic [ref=e2413]:
+                    - generic [ref=e2417]: 내일(수) 도착
+                    - generic [ref=e2418]: 무료배송
+                  - generic [ref=e2420]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e2421]: (5)
+                  - generic [ref=e2423]:
+                    - generic "4.5" [ref=e2424]
+                    - generic [ref=e2431]: (447)
+                  - generic [ref=e2433]:
+                    - img "최대 2,945원 적립" [ref=e2434]
+                    - generic [ref=e2435]: 최대 2,945원 적립
+            - listitem [ref=e2436] [cursor=pointer]:
+              - link "앤커 사운드코어 A40 노이즈캔슬링 블루투스 이어폰, A3936021, 화이트 할인 109,000원 45% 59,900원 내일(수) 도착 무료배송 새 상품, 반품 (5) 5 (1,945) 최대 2,995원 적립 최대 2,995원 적립" [ref=e2437]:
+                - /url: /vp/products/6760670592?itemId=16010544632&vendorItemId=93196944005&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=29&rank=29
+                - figure [ref=e2438]:
+                  - img "앤커 사운드코어 A40 노이즈캔슬링 블루투스 이어폰, A3936021, 화이트" [ref=e2439]
+                - generic [ref=e2440]:
+                  - generic [ref=e2442]: 앤커 사운드코어 A40 노이즈캔슬링 블루투스 이어폰, A3936021, 화이트
+                  - generic [ref=e2443]:
+                    - generic [ref=e2444]:
+                      - generic [ref=e2445]: 할인
+                      - deletion [ref=e2446]: 109,000원
+                    - generic [ref=e2448]:
+                      - generic [ref=e2449]:
+                        - generic [ref=e2451]: 45%
+                        - img [ref=e2452]
+                      - generic [ref=e2454]: 59,900원
+                  - generic [ref=e2455]:
+                    - generic [ref=e2459]: 내일(수) 도착
+                    - generic [ref=e2460]: 무료배송
+                  - generic [ref=e2462]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e2463]: (5)
+                  - generic [ref=e2465]:
+                    - generic "5" [ref=e2466]
+                    - generic [ref=e2473]: (1,945)
+                  - generic [ref=e2475]:
+                    - img "최대 2,995원 적립" [ref=e2476]
+                    - generic [ref=e2477]: 최대 2,995원 적립
+            - listitem [ref=e2478] [cursor=pointer]:
+              - link "비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 블랙, T6 할인 129,000원 53% 59,800원 내일(수) 도착 무료배송 새 상품, 반품 (2) 5 (695) 최대 2,990원 적립 최대 2,990원 적립" [ref=e2479]:
+                - /url: /vp/products/8194892791?itemId=23466618559&vendorItemId=90767302163&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=30&rank=30
+                - figure [ref=e2480]:
+                  - img "비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 블랙, T6" [ref=e2481]
+                - generic [ref=e2482]:
+                  - generic [ref=e2484]: 비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 블랙, T6
+                  - generic [ref=e2485]:
+                    - generic [ref=e2486]:
+                      - generic [ref=e2487]: 할인
+                      - deletion [ref=e2488]: 129,000원
+                    - generic [ref=e2490]:
+                      - generic [ref=e2491]: 53%
+                      - generic [ref=e2492]: 59,800원
+                  - generic [ref=e2493]:
+                    - generic [ref=e2497]: 내일(수) 도착
+                    - generic [ref=e2498]: 무료배송
+                  - generic [ref=e2500]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e2501]: (2)
+                  - generic [ref=e2503]:
+                    - generic "5" [ref=e2504]
+                    - generic [ref=e2511]: (695)
+                  - generic [ref=e2513]:
+                    - img "최대 2,990원 적립" [ref=e2514]
+                    - generic [ref=e2515]: 최대 2,990원 적립
+            - listitem [ref=e2516] [cursor=pointer]:
+              - link "앤커 사운드코어 스페이스 A40 노이즈캔슬링 블루투스 이어폰, A3936032, 네이비 할인 109,000원 45% 59,900원 내일(수) 도착 무료배송 5 (1,945) 최대 2,995원 적립 최대 2,995원 적립" [ref=e2517]:
+                - /url: /vp/products/6760670592?itemId=15843492893&vendorItemId=92410791621&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=31&rank=31
+                - figure [ref=e2518]:
+                  - img "앤커 사운드코어 스페이스 A40 노이즈캔슬링 블루투스 이어폰, A3936032, 네이비" [ref=e2519]
+                - generic [ref=e2520]:
+                  - generic [ref=e2522]: 앤커 사운드코어 스페이스 A40 노이즈캔슬링 블루투스 이어폰, A3936032, 네이비
+                  - generic [ref=e2523]:
+                    - generic [ref=e2524]:
+                      - generic [ref=e2525]: 할인
+                      - deletion [ref=e2526]: 109,000원
+                    - generic [ref=e2528]:
+                      - generic [ref=e2529]:
+                        - generic [ref=e2531]: 45%
+                        - img [ref=e2532]
+                      - generic [ref=e2534]: 59,900원
+                  - generic [ref=e2535]:
+                    - generic [ref=e2539]: 내일(수) 도착
+                    - generic [ref=e2540]: 무료배송
+                  - generic [ref=e2542]:
+                    - generic "5" [ref=e2543]
+                    - generic [ref=e2550]: (1,945)
+                  - generic [ref=e2552]:
+                    - img "최대 2,995원 적립" [ref=e2553]
+                    - generic [ref=e2554]: 최대 2,995원 적립
+            - listitem [ref=e2555] [cursor=pointer]:
+              - link "삼성공식파트너 JBL WAVE BEAM2 노이즈캔슬링 무선 블루투스이어폰, JBLWBEAM2, 핑크 할인 · 1일 남음 53,190원 1% 52,190원 모레(목) 도착 예정 무료배송 4.5 (2,894) 최대 2,610원 적립 최대 2,610원 적립" [ref=e2556]:
+                - /url: /vp/products/8404942764?itemId=24891176252&vendorItemId=91897809901&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=32&rank=32
+                - figure [ref=e2557]:
+                  - img "삼성공식파트너 JBL WAVE BEAM2 노이즈캔슬링 무선 블루투스이어폰, JBLWBEAM2, 핑크" [ref=e2558]
+                - generic [ref=e2559]:
+                  - generic [ref=e2561]: 삼성공식파트너 JBL WAVE BEAM2 노이즈캔슬링 무선 블루투스이어폰, JBLWBEAM2, 핑크
+                  - generic [ref=e2562]:
+                    - generic [ref=e2563]:
+                      - generic [ref=e2564]: 할인
+                      - generic [ref=e2565]: · 1일 남음
+                      - deletion [ref=e2566]: 53,190원
+                    - generic [ref=e2568]:
+                      - generic [ref=e2569]:
+                        - generic [ref=e2571]: 1%
+                        - img [ref=e2572]
+                      - generic [ref=e2574]: 52,190원
+                  - generic [ref=e2575]:
+                    - generic [ref=e2577]: 모레(목) 도착 예정
+                    - generic [ref=e2578]: 무료배송
+                  - generic [ref=e2580]:
+                    - generic "4.5" [ref=e2581]
+                    - generic [ref=e2588]: (2,894)
+                  - generic [ref=e2590]:
+                    - img "최대 2,610원 적립" [ref=e2591]
+                    - generic [ref=e2592]: 최대 2,610원 적립
+            - listitem [ref=e2593] [cursor=pointer]:
+              - link "블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 아이보리, BLP-OE663IV 139,800원 45% 75,800원 내일(수) 도착 무료배송 새 상품, 반품 (2) 4.5 (313) 최대 3,032원 적립 최대 3,032원 적립" [ref=e2594]:
+                - /url: /vp/products/9467998678?itemId=28178335948&vendorItemId=95133013945&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=33&rank=33
+                - figure [ref=e2595]:
+                  - img "블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 아이보리, BLP-OE663IV" [ref=e2596]
+                - generic [ref=e2597]:
+                  - generic [ref=e2599]: 블라우풍트 블루닷 프로 ENC 노이즈 캔슬링 오픈 귀걸이형 블루투스 6.0 이어폰, 아이보리, BLP-OE663IV
+                  - generic [ref=e2600]:
+                    - deletion [ref=e2602]: 139,800원
+                    - generic [ref=e2604]:
+                      - generic [ref=e2605]: 45%
+                      - generic [ref=e2606]: 75,800원
+                  - generic [ref=e2607]:
+                    - generic [ref=e2611]: 내일(수) 도착
+                    - generic [ref=e2612]: 무료배송
+                  - generic [ref=e2614]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e2615]: (2)
+                  - generic [ref=e2617]:
+                    - generic "4.5" [ref=e2618]
+                    - generic [ref=e2625]: (313)
+                  - generic [ref=e2627]:
+                    - img "최대 3,032원 적립" [ref=e2628]
+                    - generic [ref=e2629]: 최대 3,032원 적립
+            - listitem [ref=e2630] [cursor=pointer]:
+              - link "삼성공식파트너 JBL TUNE BEAM2 노이즈캔슬링 무선 블루투스이어폰, JBLTBEAM2, 고스트블랙 할인 · 12:17:46 119,000원 29% 83,700원 모레(목) 도착 예정 무료배송 5 (472) 최대 4,185원 적립 최대 4,185원 적립" [ref=e2631]:
+                - /url: /vp/products/8583364831?itemId=24881278266&vendorItemId=91899149936&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=34&rank=34
+                - figure [ref=e2632]:
+                  - img "삼성공식파트너 JBL TUNE BEAM2 노이즈캔슬링 무선 블루투스이어폰, JBLTBEAM2, 고스트블랙" [ref=e2633]
+                - generic [ref=e2634]:
+                  - generic [ref=e2636]: 삼성공식파트너 JBL TUNE BEAM2 노이즈캔슬링 무선 블루투스이어폰, JBLTBEAM2, 고스트블랙
+                  - generic [ref=e2637]:
+                    - generic [ref=e2638]:
+                      - generic [ref=e2639]: 할인
+                      - generic [ref=e2640]: · 12:17:46
+                      - deletion [ref=e2641]: 119,000원
+                    - generic [ref=e2643]:
+                      - generic [ref=e2644]:
+                        - generic [ref=e2646]: 29%
+                        - img [ref=e2647]
+                      - generic [ref=e2649]: 83,700원
+                  - generic [ref=e2650]:
+                    - generic [ref=e2652]: 모레(목) 도착 예정
+                    - generic [ref=e2653]: 무료배송
+                  - generic [ref=e2655]:
+                    - generic "5" [ref=e2656]
+                    - generic [ref=e2663]: (472)
+                  - generic [ref=e2665]:
+                    - img "최대 4,185원 적립" [ref=e2666]
+                    - generic [ref=e2667]: 최대 4,185원 적립
+            - listitem [ref=e2668] [cursor=pointer]:
+              - link "삼성공식파트너 JBL WAVE BUDS2 블루투스이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱 가성비 이어폰, JBLWBUDS2, JBL WAVE BUDS2 핑크 79,000원 30% 54,900원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (2,894) 최대 2,745원 적립 최대 2,745원 적립" [ref=e2669]:
+                - /url: /vp/products/8404942764?itemId=24893156971&vendorItemId=91898975409&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=35&rank=35
+                - figure [ref=e2670]:
+                  - img "삼성공식파트너 JBL WAVE BUDS2 블루투스이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱 가성비 이어폰, JBLWBUDS2, JBL WAVE BUDS2 핑크" [ref=e2671]
+                - generic [ref=e2672]:
+                  - generic [ref=e2674]: 삼성공식파트너 JBL WAVE BUDS2 블루투스이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱 가성비 이어폰, JBLWBUDS2, JBL WAVE BUDS2 핑크
+                  - generic [ref=e2675]:
+                    - deletion [ref=e2677]: 79,000원
+                    - generic [ref=e2679]:
+                      - generic [ref=e2680]: 30%
+                      - generic [ref=e2681]: 54,900원
+                  - generic [ref=e2682]:
+                    - generic [ref=e2684]: 모레(목) 도착 예정
+                    - generic [ref=e2685]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e2687]:
+                    - generic "4.5" [ref=e2688]
+                    - generic [ref=e2695]: (2,894)
+                  - generic [ref=e2697]:
+                    - img "최대 2,745원 적립" [ref=e2698]
+                    - generic [ref=e2699]: 최대 2,745원 적립
+            - listitem [ref=e2700] [cursor=pointer]:
+              - link "지노바 오픈형 AI ENC 노이즈캔슬링 블루투스 무선이어폰 OpenRide-BK 블랙 8시간 방수가능 쿠폰할인 142,900원 58% 58,900원 내일(수) 도착 무료배송 새 상품, 반품 (4) 4.5 (137) 최대 2,945원 적립 최대 2,945원 적립 광고 Ad information" [ref=e2701]:
+                - /url: /vp/products/9045617343?itemId=26926716180&vendorItemId=94034585762&sourceType=srp_product_ads&clickEventId=bb9ada80-6f0a-11f1-8f87-a03b3681de8b&korePlacement=15&koreSubPlacement=24&clickEventId=bb9ada80-6f0a-11f1-8f87-a03b3681de8b&korePlacement=15&koreSubPlacement=24
+                - figure [ref=e2702]:
+                  - img "지노바 오픈형 AI ENC 노이즈캔슬링 블루투스 무선이어폰 OpenRide-BK 블랙 8시간 방수가능" [ref=e2703]
+                - generic [ref=e2704]:
+                  - generic [ref=e2706]: 지노바 오픈형 AI ENC 노이즈캔슬링 블루투스 무선이어폰 OpenRide-BK 블랙 8시간 방수가능
+                  - generic [ref=e2707]:
+                    - generic [ref=e2708]:
+                      - generic [ref=e2709]: 쿠폰할인
+                      - deletion [ref=e2710]: 142,900원
+                    - generic [ref=e2712]:
+                      - generic [ref=e2713]:
+                        - generic [ref=e2715]: 58%
+                        - img [ref=e2716]
+                      - generic [ref=e2718]: 58,900원
+                  - generic [ref=e2719]:
+                    - generic [ref=e2723]: 내일(수) 도착
+                    - generic [ref=e2724]: 무료배송
+                  - generic [ref=e2726]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e2727]: (4)
+                  - generic [ref=e2729]:
+                    - generic "4.5" [ref=e2730]
+                    - generic [ref=e2737]: (137)
+                  - generic [ref=e2739]:
+                    - img "최대 2,945원 적립" [ref=e2740]
+                    - generic [ref=e2741]: 최대 2,945원 적립
+                  - generic [ref=e2743]:
+                    - generic [ref=e2744]: 광고
+                    - button "Ad information" [ref=e2745]:
+                      - img [ref=e2746]
+            - listitem [ref=e2748] [cursor=pointer]:
+              - link "베이스어스 MC1 PRO 무선 노이즈캔슬링 블루투스 이어폰, PM144, 블랙 75,900원 17% 62,980원 내일(수) 도착 무료배송 새 상품, 반품 (3) 4.5 (254) 최대 3,149원 적립 최대 3,149원 적립" [ref=e2749]:
+                - /url: /vp/products/9239577683?itemId=27320210227&vendorItemId=94657214868&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=37&rank=37
+                - figure [ref=e2750]:
+                  - img "베이스어스 MC1 PRO 무선 노이즈캔슬링 블루투스 이어폰, PM144, 블랙" [ref=e2751]
+                - generic [ref=e2752]:
+                  - generic [ref=e2754]: 베이스어스 MC1 PRO 무선 노이즈캔슬링 블루투스 이어폰, PM144, 블랙
+                  - generic [ref=e2755]:
+                    - deletion [ref=e2757]: 75,900원
+                    - generic [ref=e2759]:
+                      - generic [ref=e2760]: 17%
+                      - generic [ref=e2761]: 62,980원
+                  - generic [ref=e2762]:
+                    - generic [ref=e2766]: 내일(수) 도착
+                    - generic [ref=e2767]: 무료배송
+                  - generic [ref=e2769]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e2770]: (3)
+                  - generic [ref=e2772]:
+                    - generic "4.5" [ref=e2773]
+                    - generic [ref=e2780]: (254)
+                  - generic [ref=e2782]:
+                    - img "최대 3,149원 적립" [ref=e2783]
+                    - generic [ref=e2784]: 최대 3,149원 적립
+            - listitem [ref=e2785] [cursor=pointer]:
+              - link "삼성 엘지 호환 넥밴드 목걸이형 블루투스 이어폰, 그레이 할인 97,900원 33% 65,590원 내일(수) 도착 무료배송 4 (500) 최대 3,280원 적립 최대 3,280원 적립" [ref=e2786]:
+                - /url: /vp/products/8924934570?itemId=26084526366&vendorItemId=92928747055&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=38&rank=38
+                - figure [ref=e2787]:
+                  - img "삼성 엘지 호환 넥밴드 목걸이형 블루투스 이어폰, 그레이" [ref=e2788]
+                - generic [ref=e2789]:
+                  - generic [ref=e2791]: 삼성 엘지 호환 넥밴드 목걸이형 블루투스 이어폰, 그레이
+                  - generic [ref=e2792]:
+                    - generic [ref=e2793]:
+                      - generic [ref=e2794]: 할인
+                      - deletion [ref=e2795]: 97,900원
+                    - generic [ref=e2797]:
+                      - generic [ref=e2798]:
+                        - generic [ref=e2800]: 33%
+                        - img [ref=e2801]
+                      - generic [ref=e2803]: 65,590원
+                  - generic [ref=e2804]:
+                    - generic [ref=e2808]: 내일(수) 도착
+                    - generic [ref=e2809]: 무료배송
+                  - generic [ref=e2811]:
+                    - generic "4" [ref=e2812]
+                    - generic [ref=e2819]: (500)
+                  - generic [ref=e2821]:
+                    - img "최대 3,280원 적립" [ref=e2822]
+                    - generic [ref=e2823]: 최대 3,280원 적립
+            - listitem [ref=e2824] [cursor=pointer]:
+              - link "삼성공식파트너 JBL WAVE BEAM2 무선 블루투스 이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱, 핑크 할인 · 1일 남음 54,900원 1% 53,900원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (2,894) 최대 2,695원 적립 최대 2,695원 적립" [ref=e2825]:
+                - /url: /vp/products/8404942764?itemId=24881426808&vendorItemId=91888197039&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=39&rank=39
+                - figure [ref=e2826]:
+                  - img "삼성공식파트너 JBL WAVE BEAM2 무선 블루투스 이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱, 핑크" [ref=e2827]
+                - generic [ref=e2828]:
+                  - generic [ref=e2830]: 삼성공식파트너 JBL WAVE BEAM2 무선 블루투스 이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱, 핑크
+                  - generic [ref=e2831]:
+                    - generic [ref=e2832]:
+                      - generic [ref=e2833]: 할인
+                      - generic [ref=e2834]: · 1일 남음
+                      - deletion [ref=e2835]: 54,900원
+                    - generic [ref=e2837]:
+                      - generic [ref=e2838]:
+                        - generic [ref=e2840]: 1%
+                        - img [ref=e2841]
+                      - generic [ref=e2843]: 53,900원
+                  - generic [ref=e2844]:
+                    - generic [ref=e2846]: 모레(목) 도착 예정
+                    - generic [ref=e2847]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e2849]:
+                    - generic "4.5" [ref=e2850]
+                    - generic [ref=e2857]: (2,894)
+                  - generic [ref=e2859]:
+                    - img "최대 2,695원 적립" [ref=e2860]
+                    - generic [ref=e2861]: 최대 2,695원 적립
+            - listitem [ref=e2862] [cursor=pointer]:
+              - link "앤커 사운드코어 리버티5 노이즈캔슬링 블루투스이어폰, 화이트, A3957 할인 139,990원 35% 89,900원 내일(수) 도착 무료배송 4.5 (359) 최대 4,495원 적립 최대 4,495원 적립" [ref=e2863]:
+                - /url: /vp/products/8783331149?itemId=25557127562&vendorItemId=92548502463&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=40&rank=40
+                - figure [ref=e2864]:
+                  - img "앤커 사운드코어 리버티5 노이즈캔슬링 블루투스이어폰, 화이트, A3957" [ref=e2865]
+                - generic [ref=e2866]:
+                  - generic [ref=e2868]: 앤커 사운드코어 리버티5 노이즈캔슬링 블루투스이어폰, 화이트, A3957
+                  - generic [ref=e2869]:
+                    - generic [ref=e2870]:
+                      - generic [ref=e2871]: 할인
+                      - deletion [ref=e2872]: 139,990원
+                    - generic [ref=e2874]:
+                      - generic [ref=e2875]:
+                        - generic [ref=e2877]: 35%
+                        - img [ref=e2878]
+                      - generic [ref=e2880]: 89,900원
+                  - generic [ref=e2881]:
+                    - generic [ref=e2885]: 내일(수) 도착
+                    - generic [ref=e2886]: 무료배송
+                  - generic [ref=e2888]:
+                    - generic "4.5" [ref=e2889]
+                    - generic [ref=e2896]: (359)
+                  - generic [ref=e2898]:
+                    - img "최대 4,495원 적립" [ref=e2899]
+                    - generic [ref=e2900]: 최대 4,495원 적립
+            - listitem [ref=e2901] [cursor=pointer]:
+              - link "앤커 사운드코어 리버티 4 NC 블루투스 이어폰, A3947Z21, 화이트 쿠폰할인 64,900원 3% 62,950원 내일(수) 도착 무료배송 새 상품, 반품 (3) 5 (1,311) 최대 3,148원 적립 최대 3,148원 적립" [ref=e2902]:
+                - /url: /vp/products/7464900475?itemId=19465765102&vendorItemId=86576143811&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=41&rank=41
+                - figure [ref=e2903]:
+                  - img "앤커 사운드코어 리버티 4 NC 블루투스 이어폰, A3947Z21, 화이트" [ref=e2904]
+                - generic [ref=e2905]:
+                  - generic [ref=e2907]: 앤커 사운드코어 리버티 4 NC 블루투스 이어폰, A3947Z21, 화이트
+                  - generic [ref=e2908]:
+                    - generic [ref=e2909]:
+                      - generic [ref=e2910]: 쿠폰할인
+                      - deletion [ref=e2911]: 64,900원
+                    - generic [ref=e2913]:
+                      - generic [ref=e2914]:
+                        - generic [ref=e2916]: 3%
+                        - img [ref=e2917]
+                      - generic [ref=e2919]: 62,950원
+                  - generic [ref=e2920]:
+                    - generic [ref=e2924]: 내일(수) 도착
+                    - generic [ref=e2925]: 무료배송
+                  - generic [ref=e2927]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e2928]: (3)
+                  - generic [ref=e2930]:
+                    - generic "5" [ref=e2931]
+                    - generic [ref=e2938]: (1,311)
+                  - generic [ref=e2940]:
+                    - img "최대 3,148원 적립" [ref=e2941]
+                    - generic [ref=e2942]: 최대 3,148원 적립
+            - listitem [ref=e2943] [cursor=pointer]:
+              - link "삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, JBLTBEAM2, 터쿼이즈 할인 · 12:17:46 119,000원 29% 83,700원 모레(목) 도착 예정 무료배송 5 (472) 최대 4,185원 적립 최대 4,185원 적립 단 1개 남음 빨리 주문하세요!" [ref=e2944]:
+                - /url: /vp/products/8583364831?itemId=24881278273&vendorItemId=91899149949&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=42&rank=42
+                - figure [ref=e2945]:
+                  - img "삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, JBLTBEAM2, 터쿼이즈" [ref=e2946]
+                - generic [ref=e2947]:
+                  - generic [ref=e2949]: 삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, JBLTBEAM2, 터쿼이즈
+                  - generic [ref=e2950]:
+                    - generic [ref=e2951]:
+                      - generic [ref=e2952]: 할인
+                      - generic [ref=e2953]: · 12:17:46
+                      - deletion [ref=e2954]: 119,000원
+                    - generic [ref=e2956]:
+                      - generic [ref=e2957]:
+                        - generic [ref=e2959]: 29%
+                        - img [ref=e2960]
+                      - generic [ref=e2962]: 83,700원
+                  - generic [ref=e2963]:
+                    - generic [ref=e2965]: 모레(목) 도착 예정
+                    - generic [ref=e2966]: 무료배송
+                  - generic [ref=e2968]:
+                    - generic "5" [ref=e2969]
+                    - generic [ref=e2976]: (472)
+                  - generic [ref=e2978]:
+                    - img "최대 4,185원 적립" [ref=e2979]
+                    - generic [ref=e2980]: 최대 4,185원 적립
+                  - generic [ref=e2981]:
+                    - strong [ref=e2982]: 단 1개 남음
+                    - generic [ref=e2983]: 빨리 주문하세요!
+            - listitem [ref=e2984] [cursor=pointer]:
+              - link "삼성공식파트너 JBL TUNE BUDS2 노이즈캔슬링 IP54 방수방진 등급 블루투스 무선 이어폰, 고스트블랙 109,000원 18% 89,000원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (2,894) 최대 4,450원 적립 최대 4,450원 적립" [ref=e2985]:
+                - /url: /vp/products/8404942764?itemId=24893156945&vendorItemId=91953978462&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=43&rank=43
+                - figure [ref=e2986]:
+                  - img "삼성공식파트너 JBL TUNE BUDS2 노이즈캔슬링 IP54 방수방진 등급 블루투스 무선 이어폰, 고스트블랙" [ref=e2987]
+                - generic [ref=e2988]:
+                  - generic [ref=e2990]: 삼성공식파트너 JBL TUNE BUDS2 노이즈캔슬링 IP54 방수방진 등급 블루투스 무선 이어폰, 고스트블랙
+                  - generic [ref=e2991]:
+                    - deletion [ref=e2993]: 109,000원
+                    - generic [ref=e2995]:
+                      - generic [ref=e2996]: 18%
+                      - generic [ref=e2997]: 89,000원
+                  - generic [ref=e2998]:
+                    - generic [ref=e3000]: 모레(목) 도착 예정
+                    - generic [ref=e3001]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e3003]:
+                    - generic "4.5" [ref=e3004]
+                    - generic [ref=e3011]: (2,894)
+                  - generic [ref=e3013]:
+                    - img "최대 4,450원 적립" [ref=e3014]
+                    - generic [ref=e3015]: 최대 4,450원 적립
+            - listitem [ref=e3016] [cursor=pointer]:
+              - 'link "삼성공식파트너 JBL TUNE BUDS2 노이즈캔슬링 무선 블루투스이어폰, 고스트화이트, {GHOSTWHT} 할인 · 12:17:46 119,000원 29% 83,700원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (298) 최대 4,185원 적립 최대 4,185원 적립" [ref=e3017]':
+                - /url: /vp/products/9581239063?itemId=28600145486&vendorItemId=91885404153&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=44&rank=44
+                - figure [ref=e3018]:
+                  - 'img "삼성공식파트너 JBL TUNE BUDS2 노이즈캔슬링 무선 블루투스이어폰, 고스트화이트, {GHOSTWHT}" [ref=e3019]'
+                - generic [ref=e3020]:
+                  - generic [ref=e3022]: "삼성공식파트너 JBL TUNE BUDS2 노이즈캔슬링 무선 블루투스이어폰, 고스트화이트, {GHOSTWHT}"
+                  - generic [ref=e3023]:
+                    - generic [ref=e3024]:
+                      - generic [ref=e3025]: 할인
+                      - generic [ref=e3026]: · 12:17:46
+                      - deletion [ref=e3027]: 119,000원
+                    - generic [ref=e3029]:
+                      - generic [ref=e3030]:
+                        - generic [ref=e3032]: 29%
+                        - img [ref=e3033]
+                      - generic [ref=e3035]: 83,700원
+                  - generic [ref=e3036]:
+                    - generic [ref=e3038]: 모레(목) 도착 예정
+                    - generic [ref=e3039]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e3041]:
+                    - generic "4.5" [ref=e3042]
+                    - generic [ref=e3049]: (298)
+                  - generic [ref=e3051]:
+                    - img "최대 4,185원 적립" [ref=e3052]
+                    - generic [ref=e3053]: 최대 4,185원 적립
+            - listitem [ref=e3054] [cursor=pointer]:
+              - link "ONIKUMA 피규어 노이즈캔슬링 무선 커널형 블루투스 이어폰 Hi-Fi 고음질 최신형, 블랙, T20 쿠폰할인 88,000원 51% 42,800원 내일(수) 도착 무료배송 5 (8) 최대 2,140원 적립 최대 2,140원 적립" [ref=e3055]:
+                - /url: /vp/products/9470204843?itemId=28186705141&vendorItemId=95141207523&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=45&rank=45
+                - figure [ref=e3056]:
+                  - img "ONIKUMA 피규어 노이즈캔슬링 무선 커널형 블루투스 이어폰 Hi-Fi 고음질 최신형, 블랙, T20" [ref=e3057]
+                - generic [ref=e3058]:
+                  - generic [ref=e3060]: ONIKUMA 피규어 노이즈캔슬링 무선 커널형 블루투스 이어폰 Hi-Fi 고음질 최신형, 블랙, T20
+                  - generic [ref=e3061]:
+                    - generic [ref=e3062]:
+                      - generic [ref=e3063]: 쿠폰할인
+                      - deletion [ref=e3064]: 88,000원
+                    - generic [ref=e3066]:
+                      - generic [ref=e3067]:
+                        - generic [ref=e3069]: 51%
+                        - img [ref=e3070]
+                      - generic [ref=e3072]: 42,800원
+                  - generic [ref=e3073]:
+                    - generic [ref=e3077]: 내일(수) 도착
+                    - generic [ref=e3078]: 무료배송
+                  - generic [ref=e3080]:
+                    - generic "5" [ref=e3081]
+                    - generic [ref=e3088]: (8)
+                  - generic [ref=e3090]:
+                    - img "최대 2,140원 적립" [ref=e3091]
+                    - generic [ref=e3092]: 최대 2,140원 적립
+            - listitem [ref=e3093] [cursor=pointer]:
+              - link "비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 아이보리, T6 할인 129,000원 53% 59,800원 내일(수) 도착 무료배송 5 (695) 최대 2,990원 적립 최대 2,990원 적립" [ref=e3094]:
+                - /url: /vp/products/8194892791?itemId=23466618557&vendorItemId=90767302182&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=46&rank=46
+                - figure [ref=e3095]:
+                  - img "비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 아이보리, T6" [ref=e3096]
+                - generic [ref=e3097]:
+                  - generic [ref=e3099]: 비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 아이보리, T6
+                  - generic [ref=e3100]:
+                    - generic [ref=e3101]:
+                      - generic [ref=e3102]: 할인
+                      - deletion [ref=e3103]: 129,000원
+                    - generic [ref=e3105]:
+                      - generic [ref=e3106]: 53%
+                      - generic [ref=e3107]: 59,800원
+                  - generic [ref=e3108]:
+                    - generic [ref=e3112]: 내일(수) 도착
+                    - generic [ref=e3113]: 무료배송
+                  - generic [ref=e3115]:
+                    - generic "5" [ref=e3116]
+                    - generic [ref=e3123]: (695)
+                  - generic [ref=e3125]:
+                    - img "최대 2,990원 적립" [ref=e3126]
+                    - generic [ref=e3127]: 최대 2,990원 적립
+            - listitem [ref=e3128] [cursor=pointer]:
+              - link "브리츠 오픈형 이어폰 귀걸이형 무선 노이즈 캔슬링 블루투스 이어폰, 블랙, BZ-XT5 59,800원 모레(목) 도착 예정 무료배송 새 상품, 반품 (5) 4.5 (38) 최대 2,990원 적립 최대 2,990원 적립" [ref=e3129]:
+                - /url: /vp/products/9371905305?itemId=27816380526&vendorItemId=94985411120&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=47&rank=47
+                - figure [ref=e3130]:
+                  - img "브리츠 오픈형 이어폰 귀걸이형 무선 노이즈 캔슬링 블루투스 이어폰, 블랙, BZ-XT5" [ref=e3131]
+                - generic [ref=e3132]:
+                  - generic [ref=e3134]: 브리츠 오픈형 이어폰 귀걸이형 무선 노이즈 캔슬링 블루투스 이어폰, 블랙, BZ-XT5
+                  - generic [ref=e3138]: 59,800원
+                  - generic [ref=e3139]:
+                    - generic [ref=e3141]: 모레(목) 도착 예정
+                    - generic [ref=e3142]: 무료배송
+                  - generic [ref=e3144]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e3145]: (5)
+                  - generic [ref=e3147]:
+                    - generic "4.5" [ref=e3148]
+                    - generic [ref=e3155]: (38)
+                  - generic [ref=e3157]:
+                    - img "최대 2,990원 적립" [ref=e3158]
+                    - generic [ref=e3159]: 최대 2,990원 적립
+            - listitem [ref=e3160] [cursor=pointer]:
+              - link "삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, 화이트 89,000원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 5 (77) 최대 4,450원 적립 최대 4,450원 적립" [ref=e3161]:
+                - /url: /vp/products/9584590418?itemId=28610753511&vendorItemId=91888049840&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=48&rank=48
+                - figure [ref=e3162]:
+                  - img "삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, 화이트" [ref=e3163]
+                - generic [ref=e3164]:
+                  - generic [ref=e3166]: 삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, 화이트
+                  - generic [ref=e3170]: 89,000원
+                  - generic [ref=e3171]:
+                    - generic [ref=e3173]: 모레(목) 도착 예정
+                    - generic [ref=e3174]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e3176]:
+                    - generic "5" [ref=e3177]
+                    - generic [ref=e3184]: (77)
+                  - generic [ref=e3186]:
+                    - img "최대 4,450원 적립" [ref=e3187]
+                    - generic [ref=e3188]: 최대 4,450원 적립
+            - listitem [ref=e3189] [cursor=pointer]:
+              - link "삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, 블랙 89,000원 모레(목) 도착 예정 무료배송 5 (77) 최대 4,450원 적립 최대 4,450원 적립" [ref=e3190]:
+                - /url: /vp/products/9584590418?itemId=28610753508&vendorItemId=91888049862&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=49&rank=49
+                - figure [ref=e3191]:
+                  - img "삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, 블랙" [ref=e3192]
+                - generic [ref=e3193]:
+                  - generic [ref=e3195]: 삼성공식파트너 JBL TUNE BEAM2 무선 블루투스 이어폰 커널형 노이즈캔슬링 사운드 최대 48시간 IP54 Google Fast Pair 전용앱 가성비 무선이어폰, 블랙
+                  - generic [ref=e3199]: 89,000원
+                  - generic [ref=e3200]:
+                    - generic [ref=e3202]: 모레(목) 도착 예정
+                    - generic [ref=e3203]: 무료배송
+                  - generic [ref=e3205]:
+                    - generic "5" [ref=e3206]
+                    - generic [ref=e3213]: (77)
+                  - generic [ref=e3215]:
+                    - img "최대 4,450원 적립" [ref=e3216]
+                    - generic [ref=e3217]: 최대 4,450원 적립
+            - listitem [ref=e3218] [cursor=pointer]:
+              - link "브리츠 무선 골전도 블루투스 이어폰 러닝 운동 스포츠 오픈형 이어폰 헤드셋 블랙 54,900원 모레(목) 도착 예정 무료배송 최대 2,745원 적립 최대 2,745원 적립" [ref=e3219]:
+                - /url: /vp/products/8397943030?itemId=24274360478&vendorItemId=91290788173&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=50&rank=50
+                - figure [ref=e3220]:
+                  - img "브리츠 무선 골전도 블루투스 이어폰 러닝 운동 스포츠 오픈형 이어폰 헤드셋 블랙" [ref=e3221]
+                - generic [ref=e3222]:
+                  - generic [ref=e3224]: 브리츠 무선 골전도 블루투스 이어폰 러닝 운동 스포츠 오픈형 이어폰 헤드셋 블랙
+                  - generic [ref=e3228]: 54,900원
+                  - generic [ref=e3229]:
+                    - generic [ref=e3231]: 모레(목) 도착 예정
+                    - generic [ref=e3232]: 무료배송
+                  - generic [ref=e3234]:
+                    - img "최대 2,745원 적립" [ref=e3235]
+                    - generic [ref=e3236]: 최대 2,745원 적립
+            - listitem [ref=e3237] [cursor=pointer]:
+              - link "비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 핑크, T6 할인 129,000원 53% 59,800원 내일(수) 도착 무료배송 5 (695) 최대 2,990원 적립 최대 2,990원 적립" [ref=e3238]:
+                - /url: /vp/products/8194892791?itemId=25604159882&vendorItemId=92594775366&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=51&rank=51
+                - figure [ref=e3239]:
+                  - img "비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 핑크, T6" [ref=e3240]
+                - generic [ref=e3241]:
+                  - generic [ref=e3243]: 비파노 ACC ENC 노이즈캔슬링 HI-FI 오픈 귀걸이형 6.0 블루투스 이어폰, 핑크, T6
+                  - generic [ref=e3244]:
+                    - generic [ref=e3245]:
+                      - generic [ref=e3246]: 할인
+                      - deletion [ref=e3247]: 129,000원
+                    - generic [ref=e3249]:
+                      - generic [ref=e3250]:
+                        - generic [ref=e3252]: 53%
+                        - img [ref=e3253]
+                      - generic [ref=e3255]: 59,800원
+                  - generic [ref=e3256]:
+                    - generic [ref=e3260]: 내일(수) 도착
+                    - generic [ref=e3261]: 무료배송
+                  - generic [ref=e3263]:
+                    - generic "5" [ref=e3264]
+                    - generic [ref=e3271]: (695)
+                  - generic [ref=e3273]:
+                    - img "최대 2,990원 적립" [ref=e3274]
+                    - generic [ref=e3275]: 최대 2,990원 적립
+            - listitem [ref=e3276] [cursor=pointer]:
+              - link "베이스어스 MC1 PRO 무선 노이즈캔슬링 블루투스 이어폰 PM144 화이트 40시간 방수가능 75,900원 17% 62,980원 내일(수) 도착 무료배송 새 상품, 반품 (2) 4.5 (254) 최대 3,149원 적립 최대 3,149원 적립" [ref=e3277]:
+                - /url: /vp/products/9239577683?itemId=27320210230&vendorItemId=94657214860&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=52&rank=52
+                - figure [ref=e3278]:
+                  - img "베이스어스 MC1 PRO 무선 노이즈캔슬링 블루투스 이어폰 PM144 화이트 40시간 방수가능" [ref=e3279]
+                - generic [ref=e3280]:
+                  - generic [ref=e3282]: 베이스어스 MC1 PRO 무선 노이즈캔슬링 블루투스 이어폰 PM144 화이트 40시간 방수가능
+                  - generic [ref=e3283]:
+                    - deletion [ref=e3285]: 75,900원
+                    - generic [ref=e3287]:
+                      - generic [ref=e3288]: 17%
+                      - generic [ref=e3289]: 62,980원
+                  - generic [ref=e3290]:
+                    - generic [ref=e3294]: 내일(수) 도착
+                    - generic [ref=e3295]: 무료배송
+                  - generic [ref=e3297]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e3298]: (2)
+                  - generic [ref=e3300]:
+                    - generic "4.5" [ref=e3301]
+                    - generic [ref=e3308]: (254)
+                  - generic [ref=e3310]:
+                    - img "최대 3,149원 적립" [ref=e3311]
+                    - generic [ref=e3312]: 최대 3,149원 적립
+            - listitem [ref=e3313] [cursor=pointer]:
+              - link "브리츠 Ai ENC 노이즈캔슬링 듀얼마이크 오픈형 블루투스 이어폰, Fit9 Pro, 블랙 262,150원 70% 78,540원 내일(수) 도착 무료배송 새 상품, 반품 (23) 4.5 (146) 최대 3,927원 적립 최대 3,927원 적립" [ref=e3314]:
+                - /url: /vp/products/8425270128?itemId=24568807155&vendorItemId=91580841824&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=53&rank=53
+                - figure [ref=e3315]:
+                  - img "브리츠 Ai ENC 노이즈캔슬링 듀얼마이크 오픈형 블루투스 이어폰, Fit9 Pro, 블랙" [ref=e3316]
+                - generic [ref=e3317]:
+                  - generic [ref=e3319]: 브리츠 Ai ENC 노이즈캔슬링 듀얼마이크 오픈형 블루투스 이어폰, Fit9 Pro, 블랙
+                  - generic [ref=e3320]:
+                    - deletion [ref=e3322]: 262,150원
+                    - generic [ref=e3324]:
+                      - generic [ref=e3325]: 70%
+                      - generic [ref=e3326]: 78,540원
+                  - generic [ref=e3327]:
+                    - generic [ref=e3331]: 내일(수) 도착
+                    - generic [ref=e3332]: 무료배송
+                  - generic [ref=e3334]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e3335]: (23)
+                  - generic [ref=e3337]:
+                    - generic "4.5" [ref=e3338]
+                    - generic [ref=e3345]: (146)
+                  - generic [ref=e3347]:
+                    - img "최대 3,927원 적립" [ref=e3348]
+                    - generic [ref=e3349]: 최대 3,927원 적립
+            - listitem [ref=e3350] [cursor=pointer]:
+              - link "하루종일 착용해도 편안한 오픈형 블루투스 이어폰 피스넷 사운드핏 / 강력한 통화품질 / 골전도 대체, 피스넷 사운드핏 블랙 138,900원 28% 99,000원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (764) 최대 4,950원 적립 최대 4,950원 적립" [ref=e3351]:
+                - /url: /vp/products/7789874399?itemId=24607691276&vendorItemId=88135202207&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=54&rank=54
+                - figure [ref=e3352]:
+                  - img "하루종일 착용해도 편안한 오픈형 블루투스 이어폰 피스넷 사운드핏 / 강력한 통화품질 / 골전도 대체, 피스넷 사운드핏 블랙" [ref=e3353]
+                - generic [ref=e3354]:
+                  - generic [ref=e3356]: 하루종일 착용해도 편안한 오픈형 블루투스 이어폰 피스넷 사운드핏 / 강력한 통화품질 / 골전도 대체, 피스넷 사운드핏 블랙
+                  - generic [ref=e3357]:
+                    - deletion [ref=e3359]: 138,900원
+                    - generic [ref=e3361]:
+                      - generic [ref=e3362]: 28%
+                      - generic [ref=e3363]: 99,000원
+                  - generic [ref=e3364]:
+                    - generic [ref=e3366]: 모레(목) 도착 예정
+                    - generic [ref=e3367]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e3369]:
+                    - generic "4.5" [ref=e3370]
+                    - generic [ref=e3377]: (764)
+                  - generic [ref=e3379]:
+                    - img "최대 4,950원 적립" [ref=e3380]
+                    - generic [ref=e3381]: 최대 4,950원 적립
+            - listitem [ref=e3382] [cursor=pointer]:
+              - link "피스넷 올웨이즈 오픈형 블루투스 이어폰, PISnet Always, 블랙 99,000원 29% 69,900원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 4.5 (1,136) 최대 3,495원 적립 최대 3,495원 적립" [ref=e3383]:
+                - /url: /vp/products/7405352847?itemId=19175885600&vendorItemId=91394006979&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=55&rank=55
+                - figure [ref=e3384]:
+                  - img "피스넷 올웨이즈 오픈형 블루투스 이어폰, PISnet Always, 블랙" [ref=e3385]
+                - generic [ref=e3386]:
+                  - generic [ref=e3388]: 피스넷 올웨이즈 오픈형 블루투스 이어폰, PISnet Always, 블랙
+                  - generic [ref=e3389]:
+                    - deletion [ref=e3391]: 99,000원
+                    - generic [ref=e3393]:
+                      - generic [ref=e3394]: 29%
+                      - generic [ref=e3395]: 69,900원
+                  - generic [ref=e3396]:
+                    - generic [ref=e3398]: 모레(목) 도착 예정
+                    - generic [ref=e3399]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e3401]:
+                    - generic "4.5" [ref=e3402]
+                    - generic [ref=e3409]: (1,136)
+                  - generic [ref=e3411]:
+                    - img "최대 3,495원 적립" [ref=e3412]
+                    - generic [ref=e3413]: 최대 3,495원 적립
+            - listitem [ref=e3414] [cursor=pointer]:
+              - link "제이비엘 Tune Beam2 이어폰, JBLTBEAM2BLKAS, 블랙 할인 · 12:17:46 119,000원 33% 78,930원 모레(목) 도착 예정 무료배송 ∙ 오늘출발 5 (472) 최대 3,946원 적립 최대 3,946원 적립" [ref=e3415]:
+                - /url: /vp/products/8583364831?itemId=24881278275&vendorItemId=91885403645&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=56&rank=56
+                - figure [ref=e3416]:
+                  - img "제이비엘 Tune Beam2 이어폰, JBLTBEAM2BLKAS, 블랙" [ref=e3417]
+                - generic [ref=e3418]:
+                  - generic [ref=e3420]: 제이비엘 Tune Beam2 이어폰, JBLTBEAM2BLKAS, 블랙
+                  - generic [ref=e3421]:
+                    - generic [ref=e3422]:
+                      - generic [ref=e3423]: 할인
+                      - generic [ref=e3424]: · 12:17:46
+                      - deletion [ref=e3425]: 119,000원
+                    - generic [ref=e3427]:
+                      - generic [ref=e3428]:
+                        - generic [ref=e3430]: 33%
+                        - img [ref=e3431]
+                      - generic [ref=e3433]: 78,930원
+                  - generic [ref=e3434]:
+                    - generic [ref=e3436]: 모레(목) 도착 예정
+                    - generic [ref=e3437]: 무료배송 ∙ 오늘출발
+                  - generic [ref=e3439]:
+                    - generic "5" [ref=e3440]
+                    - generic [ref=e3447]: (472)
+                  - generic [ref=e3449]:
+                    - img "최대 3,946원 적립" [ref=e3450]
+                    - generic [ref=e3451]: 최대 3,946원 적립
+            - listitem [ref=e3452] [cursor=pointer]:
+              - link "브리츠 오픈형 이어폰 귀걸이형 무선 노이즈 캔슬링 블루투스 이어폰, 블랙기본형, BZ-XT5 54,470원 모레(목) 도착 예정 무료배송 최대 2,724원 적립 최대 2,724원 적립 단 5개 남음 빨리 주문하세요!" [ref=e3453]:
+                - /url: /vp/products/9587581003?itemId=28598562809&vendorItemId=95542262959&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=57&rank=57
+                - figure [ref=e3454]:
+                  - img "브리츠 오픈형 이어폰 귀걸이형 무선 노이즈 캔슬링 블루투스 이어폰, 블랙기본형, BZ-XT5" [ref=e3455]
+                - generic [ref=e3456]:
+                  - generic [ref=e3458]: 브리츠 오픈형 이어폰 귀걸이형 무선 노이즈 캔슬링 블루투스 이어폰, 블랙기본형, BZ-XT5
+                  - generic [ref=e3462]: 54,470원
+                  - generic [ref=e3463]:
+                    - generic [ref=e3465]: 모레(목) 도착 예정
+                    - generic [ref=e3466]: 무료배송
+                  - generic [ref=e3468]:
+                    - img "최대 2,724원 적립" [ref=e3469]
+                    - generic [ref=e3470]: 최대 2,724원 적립
+                  - generic [ref=e3471]:
+                    - strong [ref=e3472]: 단 5개 남음
+                    - generic [ref=e3473]: 빨리 주문하세요!
+            - listitem [ref=e3474] [cursor=pointer]:
+              - link "ONIKUMA 피규어 노이즈캔슬링 무선 커널형 블루투스 이어폰 Hi-Fi 고음질 최신형, 화이트, T20 쿠폰할인 88,000원 53% 40,800원 내일(수) 도착 무료배송 5 (8) 최대 2,040원 적립 최대 2,040원 적립" [ref=e3475]:
+                - /url: /vp/products/9470204843?itemId=28186705150&vendorItemId=95141207525&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=58&rank=58
+                - figure [ref=e3476]:
+                  - img "ONIKUMA 피규어 노이즈캔슬링 무선 커널형 블루투스 이어폰 Hi-Fi 고음질 최신형, 화이트, T20" [ref=e3477]
+                - generic [ref=e3478]:
+                  - generic [ref=e3480]: ONIKUMA 피규어 노이즈캔슬링 무선 커널형 블루투스 이어폰 Hi-Fi 고음질 최신형, 화이트, T20
+                  - generic [ref=e3481]:
+                    - generic [ref=e3482]:
+                      - generic [ref=e3483]: 쿠폰할인
+                      - deletion [ref=e3484]: 88,000원
+                    - generic [ref=e3486]:
+                      - generic [ref=e3487]: 53%
+                      - generic [ref=e3488]: 40,800원
+                  - generic [ref=e3489]:
+                    - generic [ref=e3493]: 내일(수) 도착
+                    - generic [ref=e3494]: 무료배송
+                  - generic [ref=e3496]:
+                    - generic "5" [ref=e3497]
+                    - generic [ref=e3504]: (8)
+                  - generic [ref=e3506]:
+                    - img "최대 2,040원 적립" [ref=e3507]
+                    - generic [ref=e3508]: 최대 2,040원 적립
+            - listitem [ref=e3509] [cursor=pointer]:
+              - link "앤커 사운드코어 C50i 오픈형 블루투스이어폰, 블랙, D1101 할인 119,900원 54% 54,900원 내일(수) 도착 무료배송 새 상품, 반품 (3) 4.5 (108) 최대 2,745원 적립 최대 2,745원 적립" [ref=e3510]:
+                - /url: /vp/products/9232580055?itemId=27292914516&vendorItemId=94259510432&q=무선이어폰&searchId=c9d917b26293596&sourceType=search&itemsCount=60&searchRank=59&rank=59
+                - figure [ref=e3511]:
+                  - img "앤커 사운드코어 C50i 오픈형 블루투스이어폰, 블랙, D1101" [ref=e3512]
+                - generic [ref=e3513]:
+                  - generic [ref=e3515]: 앤커 사운드코어 C50i 오픈형 블루투스이어폰, 블랙, D1101
+                  - generic [ref=e3516]:
+                    - generic [ref=e3517]:
+                      - generic [ref=e3518]: 할인
+                      - deletion [ref=e3519]: 119,900원
+                    - generic [ref=e3521]:
+                      - generic [ref=e3522]:
+                        - generic [ref=e3524]: 54%
+                        - img [ref=e3525]
+                      - generic [ref=e3527]: 54,900원
+                  - generic [ref=e3528]:
+                    - generic [ref=e3532]: 내일(수) 도착
+                    - generic [ref=e3533]: 무료배송
+                  - generic [ref=e3535]:
+                    - text: 새 상품, 반품
+                    - strong [ref=e3536]: (3)
+                  - generic [ref=e3538]:
+                    - generic "4.5" [ref=e3539]
+                    - generic [ref=e3546]: (108)
+                  - generic [ref=e3548]:
+                    - img "최대 2,745원 적립" [ref=e3549]
+                    - generic [ref=e3550]: 최대 2,745원 적립
+          - region "찾는 상품이 없나요?" [ref=e3551]:
+            - generic [ref=e3552]:
+              - heading "찾는 상품이 없나요?" [level=2] [ref=e3553]
+              - paragraph [ref=e3554]: 로그인하고 더 많은 상품을 확인해보세요
+            - button "로그인" [ref=e3555] [cursor=pointer]:
+              - generic [ref=e3556]: 로그인
+  - contentinfo [ref=e3557]:
+    - generic [ref=e3558]:
+      - generic [ref=e3559]:
+        - link "회사소개" [ref=e3560] [cursor=pointer]:
+          - /url: https://news.coupang.com/
+        - link "Investor Relations" [ref=e3561] [cursor=pointer]:
+          - /url: https://ir.aboutcoupang.com/overview/default.aspx
+        - link "인재채용" [ref=e3562] [cursor=pointer]:
+          - /url: https://rocketyourcareer.kr.coupang.com
+        - link "입점/제휴문의" [ref=e3563] [cursor=pointer]:
+          - /url: https://marketplace.coupangcorp.com/s/?utm_source=button_pc&utm_medium=non_paid&utm_campaign=onsite_ca&utm_id=coupang_app?inflow=WEB_FOOTER_B
+        - link "공지사항" [ref=e3564] [cursor=pointer]:
+          - /url: https://mc.coupang.com/ssr/desktop/contact/notice
+        - link "고객의 소리" [ref=e3565] [cursor=pointer]:
+          - /url: https://mc.coupang.com/ssr/desktop/contact/voc
+        - link "이용약관" [ref=e3566] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/policies/terms
+        - link "개인정보 처리방침" [ref=e3567] [cursor=pointer]:
+          - /url: https://privacy.coupang.com/ko/center/coupang
+          - strong [ref=e3568]: 개인정보 처리방침
+        - link "정보보호/개인정보보호 인증" [ref=e3569] [cursor=pointer]:
+          - /url: https://privacy.coupang.com/ko/security/status
+        - link "쿠팡페이 이용약관" [ref=e3570] [cursor=pointer]:
+          - /url: https://rocketpay.coupang.com/rocketpay/operationTerms/coupangPcFooter
+        - link "신뢰관리센터" [ref=e3571] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/safety
+        - link "제휴마케팅" [ref=e3572] [cursor=pointer]:
+          - /url: https://partners.coupang.com/
+        - link "광고안내" [ref=e3573] [cursor=pointer]:
+          - /url: https://ads.coupang.com
+      - paragraph [ref=e3577] [cursor=pointer]: Global Site
+    - generic [ref=e3579]:
+      - generic [ref=e3580]:
+        - link "COUPANG" [ref=e3581] [cursor=pointer]:
+          - /url: https://www.coupang.com/
+        - generic [ref=e3582]:
+          - text: "상호명 및 호스팅 서비스 제공 : 쿠팡(주)"
+          - text: "대표이사 : 로저스 해롤드 린(Rogers Harold Lynn)"
+          - text: 서울시 송파구 송파대로 570
+          - text: "사업자 등록번호 : 120-88-00767"
+          - text: "통신판매업신고 : 2017-서울송파-0680"
+          - link "사업자정보 확인 >" [ref=e3583] [cursor=pointer]:
+            - /url: http://www.ftc.go.kr/info/bizinfo/communicationViewPopup.jsp?wrkr_no=1208800767
+      - 'link "365고객센터 | 전자금융거래분쟁처리담당 1577-7011 (유료) 서울시 송파구 송파대로 570 email : help@coupang.com" [ref=e3585] [cursor=pointer]':
+        - /url: https://mc.coupang.com/ssr/desktop/contact/inquiry
+        - strong [ref=e3586]: 365고객센터
+        - text: "| 전자금융거래분쟁처리담당"
+        - emphasis [ref=e3587]: 1577-7011 (유료)
+        - text: 서울시 송파구 송파대로 570
+        - text: "email : help@coupang.com"
+      - paragraph [ref=e3588]:
+        - strong [ref=e3589]: 채무지급보증 안내
+        - generic [ref=e3590]:
+          - text: 당사는 고객님이 현금 결제한 금액에 대해
+          - text: 채무지급보증 계약을 체결하여
+          - text: 안전거래를 보장하고 있습니다.
+        - link "서비스 가입사실 확인 >" [ref=e3591] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/etc/popWooriService
+    - generic [ref=e3597]:
+      - paragraph [ref=e3598]:
+        - text: 사이버몰 내 판매되는 상품 중에는 쿠팡에 등록한 개별 판매자가 판매하는 마켓플레이스(오픈마켓) 상품이 포함되어 있습니다.
+        - text: 마켓플레이스(오픈마켓) 상품의 경우 쿠팡은 통신판매중개자이며 통신판매의 당사자가 아닙니다.
+        - text: 쿠팡은 마켓플레이스(오픈마켓) 상품, 거래정보 및 거래 등에 대하여 책임을 지지 않습니다.
+        - text: 쿠팡은 소비자 보호와 안전거래를 위해 신뢰관리센터(CM112@coupang.com)를 운영하고 있으며, 관련 분쟁이 발생할 경우 별도의 분쟁 처리절차에 의거 분쟁이 처리됩니다.
+        - text: Copyright © Coupang Corp. 2010-2025 All Rights Reserved.
+      - list [ref=e3599]:
+        - listitem [ref=e3600]:
+          - link [ref=e3601] [cursor=pointer]:
+            - /url: https://www.facebook.com/Coupang.korea
+        - listitem [ref=e3602]:
+          - link [ref=e3603] [cursor=pointer]:
+            - /url: https://news.coupang.com/
+        - listitem [ref=e3604]:
+          - link [ref=e3605] [cursor=pointer]:
+            - /url: https://www.instagram.com/coupang
+  - alert [ref=e3606]

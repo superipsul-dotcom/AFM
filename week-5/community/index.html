@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>커뮤니티 게시판</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React 18 UMD (development) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Babel standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!--
+    ★ CRITICAL: @babel/standalone defaults to the *automatic* JSX runtime and
+    injects `import { jsx } from "react/jsx-runtime"`, which blows up when React
+    is loaded as a UMD global (blank white page + "Cannot use import statement
+    outside a module"). Register a *classic* runtime preset to avoid it.
+  -->
+  <script>
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+
+  <!-- Day.js for human-friendly timestamps (relative time + Korean locale) -->
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/locale/ko.js"></script>
+  <script>
+    // Guard: never let a CDN miss break the app — timestamps fall back to native.
+    try {
+      if (window.dayjs && window.dayjs_plugin_relativeTime) {
+        dayjs.extend(dayjs_plugin_relativeTime);
+        dayjs.locale('ko');
+      }
+    } catch (_) {}
+  </script>
+
+  <style>
+    /* Tailwind cannot express keyframes inline — keep these minimal. */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(12px) translateX(-50%); }
+      to   { opacity: 1; transform: translateY(0)    translateX(-50%); }
+    }
+    .toast-in { animation: toast-in 0.22s ease-out; }
+
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .fade-in { animation: fade-in 0.15s ease-out; }
+
+    @keyframes modal-in {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-in { animation: modal-in 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useContext, useCallback, useRef, createContext } = React;
+
+    // ========================================
+    // Config & API client
+    // ========================================
+    // Relative path only — the server statically serves index.html from the
+    // same origin. NEVER hardcode http://localhost:PORT.
+    const API_BASE_URL = '/api';
+    const TOKEN_KEY = 'community_token';
+
+    const tokenStore = {
+      get: () => localStorage.getItem(TOKEN_KEY),
+      set: (t) => localStorage.setItem(TOKEN_KEY, t),
+      clear: () => localStorage.removeItem(TOKEN_KEY),
+    };
+
+    // Generic API failure carrying the HTTP status so callers can branch (404, …).
+    class ApiError extends Error {
+      constructor(message, status) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+      }
+    }
+    // Raised when a protected request comes back 401 so callers can sign out.
+    class UnauthorizedError extends ApiError {
+      constructor(message) {
+        super(message, 401);
+        this.name = 'UnauthorizedError';
+      }
+    }
+
+    /**
+     * Calls the API and unwraps the shared response envelope.
+     * Success: { success:true, data, message }
+     * Failure: { success:false, data:null, message }  (+ HTTP status)
+     * Returns the `data` payload on success; throws on failure.
+     */
+    async function apiRequest(endpoint, { method = 'GET', body, auth = false } = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (auth) {
+        const token = tokenStore.get();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method,
+          headers,
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+      } catch (networkErr) {
+        throw new ApiError('서버에 연결할 수 없어요. 잠시 후 다시 시도해 주세요.', 0);
+      }
+
+      // Tolerate empty / non-JSON bodies without crashing.
+      let envelope = null;
+      try {
+        envelope = await res.json();
+      } catch (_) {
+        envelope = null;
+      }
+
+      if (res.status === 401) {
+        throw new UnauthorizedError(
+          (envelope && envelope.message) || '인증이 만료되었어요. 다시 로그인해 주세요.'
+        );
+      }
+
+      if (!res.ok || !envelope || envelope.success === false) {
+        const message =
+          (envelope && envelope.message) || `요청에 실패했어요. (HTTP ${res.status})`;
+        throw new ApiError(message, res.status);
+      }
+
+      return envelope.data;
+    }
+
+    const authApi = {
+      signup: (email, password, nickname) =>
+        apiRequest('/auth/signup', { method: 'POST', body: { email, password, nickname } }),
+      login: (email, password) =>
+        apiRequest('/auth/login', { method: 'POST', body: { email, password } }),
+      me: () => apiRequest('/auth/me', { auth: true }),
+    };
+
+    const postsApi = {
+      list: () => apiRequest('/posts', { auth: true }),
+      get: (id) => apiRequest(`/posts/${id}`, { auth: true }),
+      create: (title, content) =>
+        apiRequest('/posts', { method: 'POST', body: { title, content }, auth: true }),
+      update: (id, patch) =>
+        apiRequest(`/posts/${id}`, { method: 'PUT', body: patch, auth: true }),
+      remove: (id) => apiRequest(`/posts/${id}`, { method: 'DELETE', auth: true }),
+    };
+
+    // ========================================
+    // 🕒 Time helpers (Day.js with native fallback)
+    // ========================================
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    function formatAbsolute(iso) {
+      const dt = new Date(iso);
+      if (isNaN(dt.getTime())) return '';
+      return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())} ` +
+             `${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
+    }
+
+    // Relative ("3분 전") within a week, absolute date beyond that.
+    function formatTime(iso) {
+      if (!iso) return '';
+      try {
+        if (window.dayjs && typeof dayjs(iso).fromNow === 'function') {
+          const d = dayjs(iso);
+          if (!d.isValid()) return '';
+          const diffMin = dayjs().diff(d, 'minute');
+          if (diffMin < 1) return '방금 전';
+          if (diffMin < 60 * 24 * 7) return d.fromNow();
+          return d.format('YYYY-MM-DD HH:mm');
+        }
+      } catch (_) {}
+      return formatAbsolute(iso);
+    }
+
+    // A post counts as "edited" only when updated_at is meaningfully later.
+    function isEdited(post) {
+      if (!post || !post.createdAt || !post.updatedAt) return false;
+      const c = new Date(post.createdAt).getTime();
+      const u = new Date(post.updatedAt).getTime();
+      return Number.isFinite(c) && Number.isFinite(u) && u - c > 1000;
+    }
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+    function Spinner({ className = '', size = 'md' }) {
+      const sizes = { sm: 'h-4 w-4 border-2', md: 'h-6 w-6 border-2', lg: 'h-10 w-10 border-[3px]' };
+      return (
+        <span
+          role="status"
+          aria-label="로딩 중"
+          className={`spinner inline-block rounded-full border-current border-t-transparent ${sizes[size]} ${className}`}
+        />
+      );
+    }
+
+    function Button({
+      children,
+      variant = 'primary',
+      size = 'md',
+      type = 'button',
+      disabled = false,
+      loading = false,
+      className = '',
+      ...rest
+    }) {
+      const base =
+        'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors ' +
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ' +
+        'disabled:opacity-50 disabled:cursor-not-allowed select-none';
+      const variants = {
+        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500',
+        secondary:
+          'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus-visible:ring-indigo-500',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:ring-indigo-500',
+      };
+      const sizes = {
+        sm: 'text-sm px-3 py-1.5',
+        md: 'text-sm px-4 py-2.5',
+        lg: 'text-base px-5 py-3',
+      };
+      return (
+        <button
+          type={type}
+          disabled={disabled || loading}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {loading && <Spinner size="sm" />}
+          {children}
+        </button>
+      );
+    }
+
+    function Input({
+      id,
+      label,
+      type = 'text',
+      value,
+      onChange,
+      placeholder = '',
+      error = '',
+      disabled = false,
+      autoComplete,
+      required = false,
+      className = '',
+      inputRef,
+      hint,
+      ...rest
+    }) {
+      const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+      return (
+        <div className={className}>
+          {label && (
+            <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1.5">
+              {label}
+              {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
+            </label>
+          )}
+          <input
+            id={id}
+            ref={inputRef}
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            required={required}
+            autoComplete={autoComplete}
+            aria-invalid={!!error}
+            aria-describedby={describedBy}
+            className={
+              'w-full rounded-lg border px-3.5 py-2.5 text-slate-900 placeholder-slate-400 ' +
+              'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ' +
+              'disabled:bg-slate-50 disabled:text-slate-400 ' +
+              (error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : 'border-slate-300')
+            }
+            {...rest}
+          />
+          {error ? (
+            <p id={describedBy} className="mt-1.5 text-sm text-red-600">{error}</p>
+          ) : hint ? (
+            <p id={describedBy} className="mt-1.5 text-sm text-slate-400">{hint}</p>
+          ) : null}
+        </div>
+      );
+    }
+
+    function Textarea({
+      id,
+      label,
+      value,
+      onChange,
+      placeholder = '',
+      error = '',
+      disabled = false,
+      required = false,
+      rows = 10,
+      className = '',
+      ...rest
+    }) {
+      const describedBy = error ? `${id}-error` : undefined;
+      return (
+        <div className={className}>
+          {label && (
+            <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1.5">
+              {label}
+              {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
+            </label>
+          )}
+          <textarea
+            id={id}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            required={required}
+            rows={rows}
+            aria-invalid={!!error}
+            aria-describedby={describedBy}
+            className={
+              'w-full rounded-lg border px-3.5 py-2.5 text-slate-900 placeholder-slate-400 leading-relaxed resize-y ' +
+              'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ' +
+              'disabled:bg-slate-50 disabled:text-slate-400 ' +
+              (error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : 'border-slate-300')
+            }
+            {...rest}
+          />
+          {error && <p id={describedBy} className="mt-1.5 text-sm text-red-600">{error}</p>}
+        </div>
+      );
+    }
+
+    function Card({ children, className = '' }) {
+      return (
+        <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function Badge({ children, color = 'indigo', className = '' }) {
+      const colors = {
+        indigo: 'bg-indigo-50 text-indigo-600',
+        slate: 'bg-slate-100 text-slate-500',
+        emerald: 'bg-emerald-50 text-emerald-600',
+      };
+      return (
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors[color] || colors.slate} ${className}`}>
+          {children}
+        </span>
+      );
+    }
+
+    // Inline error banner — shows the server's `message` verbatim.
+    function ErrorBanner({ message, onDismiss, className = '' }) {
+      if (!message) return null;
+      return (
+        <div
+          role="alert"
+          className={`flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 ${className}`}
+        >
+          <svg className="h-5 w-5 flex-shrink-0 mt-px" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-8-4a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+          </svg>
+          <span className="flex-1">{message}</span>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="에러 메시지 닫기"
+              className="text-red-400 hover:text-red-600 focus:outline-none"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // Accessible confirmation/dialog modal (replaces window.confirm).
+    function Modal({ isOpen, onClose, title, children, footer, size = 'sm' }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose && onClose(); };
+        window.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => {
+          window.removeEventListener('keydown', onKey);
+          document.body.style.overflow = '';
+        };
+      }, [isOpen, onClose]);
+
+      if (!isOpen) return null;
+      const widths = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg' };
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-slate-900/50 fade-in" onClick={onClose} />
+          <div className={`modal-in relative w-full ${widths[size] || widths.sm} bg-white rounded-2xl shadow-xl p-6`}>
+            {title && <h2 className="text-lg font-bold text-slate-800">{title}</h2>}
+            <div className="mt-2 text-sm text-slate-600">{children}</div>
+            {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🔔 Toast (action-failure feedback)
+    // ========================================
+    const ToastContext = createContext(null);
+    const useToast = () => useContext(ToastContext);
+
+    function ToastProvider({ children }) {
+      const [toast, setToast] = useState(null); // { message, variant }
+      const timerRef = useRef(null);
+
+      const showToast = useCallback((message, variant = 'error') => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setToast({ message, variant });
+        timerRef.current = setTimeout(() => setToast(null), 3500);
+      }, []);
+
+      useEffect(() => () => timerRef.current && clearTimeout(timerRef.current), []);
+
+      const palette = {
+        error: 'bg-red-600',
+        success: 'bg-emerald-600',
+        info: 'bg-slate-800',
+      };
+
+      return (
+        <ToastContext.Provider value={showToast}>
+          {children}
+          {toast && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`toast-in fixed bottom-6 left-1/2 z-[60] max-w-[90vw] rounded-lg px-4 py-3 text-sm text-white shadow-lg ${palette[toast.variant] || palette.info}`}
+            >
+              {toast.message}
+            </div>
+          )}
+        </ToastContext.Provider>
+      );
+    }
+
+    // ========================================
+    // 🔀 Router (hash-based, with :param matching)
+    // ========================================
+    const RouterContext = createContext(null);
+    const useRouter = () => useContext(RouterContext);
+
+    function getHashPath() {
+      const raw = window.location.hash.replace(/^#/, '');
+      return raw === '' ? '/' : raw;
+    }
+
+    // Returns a params object when `pattern` matches `path`, else null.
+    // e.g. matchPath('/posts/:id', '/posts/42') -> { id: '42' }
+    function matchPath(pattern, path) {
+      const pp = pattern.split('/').filter(Boolean);
+      const ap = path.split('/').filter(Boolean);
+      if (pp.length !== ap.length) return null;
+      const params = {};
+      for (let i = 0; i < pp.length; i++) {
+        if (pp[i].startsWith(':')) {
+          params[pp[i].slice(1)] = decodeURIComponent(ap[i]);
+        } else if (pp[i] !== ap[i]) {
+          return null;
+        }
+      }
+      return params;
+    }
+
+    function Router({ children }) {
+      const [path, setPath] = useState(getHashPath());
+
+      useEffect(() => {
+        const onHashChange = () => setPath(getHashPath());
+        window.addEventListener('hashchange', onHashChange);
+        // Normalize empty hash to /#/ on first load.
+        if (window.location.hash === '') window.location.hash = '#/';
+        return () => window.removeEventListener('hashchange', onHashChange);
+      }, []);
+
+      const navigate = useCallback((to) => {
+        const target = to.startsWith('#') ? to : `#${to}`;
+        if (window.location.hash === target) {
+          setPath(getHashPath()); // force re-eval (e.g. redirect to current path)
+        } else {
+          window.location.hash = target;
+        }
+      }, []);
+
+      return (
+        <RouterContext.Provider value={{ path, navigate }}>
+          {children}
+        </RouterContext.Provider>
+      );
+    }
+
+    function Link({ to, children, className = '', ...rest }) {
+      const { navigate } = useRouter();
+      const href = to.startsWith('#') ? to : `#${to}`;
+      return (
+        <a
+          href={href}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate(to);
+          }}
+          className={className}
+          {...rest}
+        >
+          {children}
+        </a>
+      );
+    }
+
+    // ========================================
+    // 🔐 Auth Context + Provider
+    // ========================================
+    const AuthContext = createContext(null);
+    const useAuth = () => useContext(AuthContext);
+
+    function AuthProvider({ children }) {
+      const [user, setUser] = useState(null);
+      const [initializing, setInitializing] = useState(true); // session-restore in flight
+
+      // On mount: if a token exists, restore the session via GET /auth/me.
+      useEffect(() => {
+        let cancelled = false;
+        const token = tokenStore.get();
+        if (!token) {
+          setInitializing(false);
+          return;
+        }
+        authApi
+          .me()
+          .then((data) => {
+            if (!cancelled) setUser(data.user);
+          })
+          .catch(() => {
+            // Invalid/expired token (401) or any failure → drop it.
+            tokenStore.clear();
+            if (!cancelled) setUser(null);
+          })
+          .finally(() => {
+            if (!cancelled) setInitializing(false);
+          });
+        return () => {
+          cancelled = true;
+        };
+      }, []);
+
+      const login = useCallback(async (email, password) => {
+        const data = await authApi.login(email, password); // { token, user }
+        tokenStore.set(data.token);
+        setUser(data.user);
+        return data.user;
+      }, []);
+
+      const signup = useCallback(async (email, password, nickname) => {
+        const data = await authApi.signup(email, password, nickname); // { token, user }
+        tokenStore.set(data.token);
+        setUser(data.user);
+        return data.user;
+      }, []);
+
+      const logout = useCallback(() => {
+        tokenStore.clear();
+        setUser(null);
+      }, []);
+
+      const value = { user, initializing, isAuthenticated: !!user, login, signup, logout };
+      return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    }
+
+    // Shared 401 handler for protected pages: sign out + bounce to login.
+    function useAuthFailure() {
+      const { logout } = useAuth();
+      const { navigate } = useRouter();
+      return useCallback(() => {
+        logout();
+        navigate('/login');
+      }, [logout, navigate]);
+    }
+
+    // ========================================
+    // 🧩 Layout — App Header
+    // ========================================
+    function AppHeader() {
+      const { user, logout } = useAuth();
+      const { navigate } = useRouter();
+
+      const handleLogout = () => {
+        logout();
+        navigate('/login');
+      };
+
+      const initial = (user && user.nickname && user.nickname.trim().charAt(0).toUpperCase()) || '?';
+
+      return (
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+            <Link to="/" className="flex items-center gap-2 min-w-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded-lg">
+              <span className="text-2xl" aria-hidden="true">💬</span>
+              <h1 className="text-lg font-bold text-slate-800 truncate">커뮤니티 게시판</h1>
+            </Link>
+            {user && (
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="hidden xs:flex sm:flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-sm font-bold"
+                    aria-hidden="true"
+                  >
+                    {initial}
+                  </span>
+                  <span
+                    className="text-sm text-slate-600 truncate max-w-[28vw] sm:max-w-[12rem]"
+                    title={user.nickname}
+                  >
+                    <span className="font-semibold text-slate-800">{user.nickname}</span>
+                    <span className="text-slate-400">님</span>
+                  </span>
+                </div>
+                <Button variant="secondary" size="sm" onClick={handleLogout}>
+                  로그아웃
+                </Button>
+              </div>
+            )}
+          </div>
+        </header>
+      );
+    }
+
+    // Shared centered card layout for auth pages.
+    function AuthLayout({ title, subtitle, children }) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <div className="text-4xl mb-2" aria-hidden="true">💬</div>
+              <h1 className="text-2xl font-bold text-slate-800">{title}</h1>
+              {subtitle && <p className="mt-1.5 text-sm text-slate-500">{subtitle}</p>}
+            </div>
+            <Card className="p-6 sm:p-8">{children}</Card>
+          </div>
+        </div>
+      );
+    }
+
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // ========================================
+    // 📄 Page — Login
+    // ========================================
+    function LoginPage() {
+      const { login } = useAuth();
+      const { navigate } = useRouter();
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+      const [serverError, setServerError] = useState('');
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setServerError('');
+        setSubmitting(true);
+        try {
+          await login(email.trim(), password);
+          navigate('/'); // only on success
+        } catch (err) {
+          setServerError(err.message);
+          setSubmitting(false);
+        }
+      };
+
+      return (
+        <AuthLayout title="로그인" subtitle="커뮤니티 게시판에 오신 걸 환영해요.">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <ErrorBanner message={serverError} onDismiss={() => setServerError('')} />
+            <Input
+              id="login-email"
+              label="이메일"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+              disabled={submitting}
+            />
+            <Input
+              id="login-password"
+              label="비밀번호"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호를 입력하세요"
+              autoComplete="current-password"
+              required
+              disabled={submitting}
+            />
+            <Button type="submit" size="lg" className="w-full" loading={submitting}>
+              {submitting ? '로그인 중…' : '로그인'}
+            </Button>
+          </form>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            계정이 없으신가요?{' '}
+            <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
+              회원가입으로
+            </Link>
+          </p>
+        </AuthLayout>
+      );
+    }
+
+    // ========================================
+    // 📄 Page — Signup
+    // ========================================
+    function SignupPage() {
+      const { signup } = useAuth();
+      const { navigate } = useRouter();
+      const [nickname, setNickname] = useState('');
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [errors, setErrors] = useState({}); // { nickname, email, password }
+      const [submitting, setSubmitting] = useState(false);
+      const [serverError, setServerError] = useState('');
+
+      const validate = () => {
+        const next = {};
+        const nick = nickname.trim();
+        if (!nick) next.nickname = '닉네임을 입력해 주세요.';
+        else if (nick.length < 2) next.nickname = '닉네임은 2자 이상이어야 해요.';
+        else if (nick.length > 20) next.nickname = '닉네임은 20자 이하로 입력해 주세요.';
+
+        const trimmedEmail = email.trim();
+        if (!trimmedEmail) next.email = '이메일을 입력해 주세요.';
+        else if (!EMAIL_RE.test(trimmedEmail)) next.email = '올바른 이메일 형식이 아니에요.';
+
+        if (!password) next.password = '비밀번호를 입력해 주세요.';
+        else if (password.length < 6) next.password = '비밀번호는 6자 이상이어야 해요.';
+
+        setErrors(next);
+        return Object.keys(next).length === 0;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setServerError('');
+        if (!validate()) return;
+        setSubmitting(true);
+        try {
+          await signup(email.trim(), password, nickname.trim());
+          navigate('/'); // only on success
+        } catch (err) {
+          setServerError(err.message);
+          setSubmitting(false);
+        }
+      };
+
+      return (
+        <AuthLayout title="회원가입" subtitle="새 계정을 만들고 글을 남겨보세요.">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <ErrorBanner message={serverError} onDismiss={() => setServerError('')} />
+            <Input
+              id="signup-nickname"
+              label="닉네임"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="게시글에 표시될 이름"
+              autoComplete="nickname"
+              required
+              disabled={submitting}
+              error={errors.nickname}
+            />
+            <Input
+              id="signup-email"
+              label="이메일"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+              disabled={submitting}
+              error={errors.email}
+            />
+            <Input
+              id="signup-password"
+              label="비밀번호"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="6자 이상 입력하세요"
+              autoComplete="new-password"
+              required
+              disabled={submitting}
+              error={errors.password}
+              hint={errors.password ? undefined : '비밀번호는 6자 이상이어야 해요.'}
+            />
+            <Button type="submit" size="lg" className="w-full" loading={submitting}>
+              {submitting ? '가입 중…' : '회원가입'}
+            </Button>
+          </form>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            이미 계정이 있으신가요?{' '}
+            <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
+              로그인으로
+            </Link>
+          </p>
+        </AuthLayout>
+      );
+    }
+
+    // ========================================
+    // 🧩 Shared — page shell + states
+    // ========================================
+    function PageShell({ children }) {
+      return (
+        <div className="min-h-screen">
+          <AppHeader />
+          <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">{children}</main>
+        </div>
+      );
+    }
+
+    function FullScreenLoader({ label = '불러오는 중…' }) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center text-slate-400">
+          <Spinner size="lg" className="text-indigo-500" />
+          <p className="mt-4 text-sm">{label}</p>
+        </div>
+      );
+    }
+
+    function InlineLoader({ label = '불러오는 중…' }) {
+      return (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+          <Spinner size="lg" className="text-indigo-500" />
+          <p className="mt-4 text-sm">{label}</p>
+        </div>
+      );
+    }
+
+    // Redirects to `to` as a side effect, renders nothing.
+    function Redirect({ to }) {
+      const { navigate } = useRouter();
+      useEffect(() => {
+        navigate(to);
+      }, [navigate, to]);
+      return null;
+    }
+
+    // ========================================
+    // 📄 Page — Post List (protected)
+    // ========================================
+    function PostListPage() {
+      const { navigate } = useRouter();
+      const handleAuthFailure = useAuthFailure();
+
+      const [posts, setPosts] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [loadError, setLoadError] = useState('');
+
+      const fetchPosts = useCallback(async () => {
+        setLoading(true);
+        setLoadError('');
+        try {
+          const data = await postsApi.list();
+          setPosts(Array.isArray(data) ? data : []);
+        } catch (err) {
+          if (err instanceof UnauthorizedError) return handleAuthFailure();
+          setLoadError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, [handleAuthFailure]);
+
+      useEffect(() => {
+        fetchPosts();
+      }, [fetchPosts]);
+
+      return (
+        <PageShell>
+          <div className="flex items-end justify-between gap-3 mb-5">
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-slate-800">자유게시판</h2>
+              {!loading && !loadError && (
+                <p className="text-sm text-slate-500 mt-0.5">전체 {posts.length}개의 글</p>
+              )}
+            </div>
+            <Button onClick={() => navigate('/write')} className="flex-shrink-0">
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+              </svg>
+              글쓰기
+            </Button>
+          </div>
+
+          {loading ? (
+            <InlineLoader label="게시글을 불러오는 중…" />
+          ) : loadError ? (
+            <div className="space-y-4">
+              <ErrorBanner message={loadError} />
+              <div className="text-center">
+                <Button variant="secondary" onClick={fetchPosts}>다시 시도</Button>
+              </div>
+            </div>
+          ) : posts.length === 0 ? (
+            <Card className="py-16 px-6 text-center">
+              <div className="text-5xl mb-3" aria-hidden="true">📝</div>
+              <p className="text-slate-600 font-medium">아직 글이 없어요.</p>
+              <p className="text-sm text-slate-400 mt-1">첫 글을 써보세요!</p>
+              <div className="mt-5">
+                <Button onClick={() => navigate('/write')}>글쓰기</Button>
+              </div>
+            </Card>
+          ) : (
+            <Card className="overflow-hidden">
+              <ul className="divide-y divide-slate-100">
+                {posts.map((post) => (
+                  <li key={post.id}>
+                    <Link
+                      to={`/posts/${post.id}`}
+                      className="block px-5 py-4 hover:bg-slate-50 transition-colors focus:outline-none focus-visible:bg-slate-50"
+                    >
+                      <div className="flex items-start gap-2">
+                        <h3 className="flex-1 font-semibold text-slate-800 truncate">{post.title}</h3>
+                        {post.isMine && <Badge color="indigo" className="flex-shrink-0 mt-0.5">내 글</Badge>}
+                      </div>
+                      <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-400">
+                        <span className="font-medium text-slate-500 truncate max-w-[40%]">{post.authorName}</span>
+                        <span aria-hidden="true">·</span>
+                        <time dateTime={post.createdAt} title={formatAbsolute(post.createdAt)}>
+                          {formatTime(post.createdAt)}
+                        </time>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </PageShell>
+      );
+    }
+
+    // ========================================
+    // 🧩 Shared — Post editor form (write + edit)
+    // ========================================
+    function PostForm({ initialTitle = '', initialContent = '', submitLabel, submittingLabel, onSubmit, onCancel }) {
+      const [title, setTitle] = useState(initialTitle);
+      const [content, setContent] = useState(initialContent);
+      const [errors, setErrors] = useState({});
+      const [submitting, setSubmitting] = useState(false);
+      const [serverError, setServerError] = useState('');
+
+      const validate = () => {
+        const next = {};
+        const t = title.trim();
+        if (!t) next.title = '제목을 입력해 주세요.';
+        else if (t.length > 100) next.title = '제목은 100자 이하로 입력해 주세요.';
+        if (!content.trim()) next.content = '내용을 입력해 주세요.';
+        setErrors(next);
+        return Object.keys(next).length === 0;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setServerError('');
+        if (!validate()) return;
+        setSubmitting(true);
+        try {
+          // On success the parent navigates away (this component unmounts),
+          // so we intentionally leave the button in its loading state.
+          await onSubmit(title.trim(), content.trim());
+        } catch (err) {
+          setServerError(err.message);
+          setSubmitting(false);
+        }
+      };
+
+      return (
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <ErrorBanner message={serverError} onDismiss={() => setServerError('')} />
+          <Input
+            id="post-title"
+            label="제목"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="제목을 입력하세요"
+            required
+            disabled={submitting}
+            error={errors.title}
+            maxLength={120}
+          />
+          <Textarea
+            id="post-content"
+            label="내용"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="내용을 입력하세요…"
+            rows={12}
+            required
+            disabled={submitting}
+            error={errors.content}
+          />
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
+              취소
+            </Button>
+            <Button type="submit" loading={submitting}>
+              {submitting ? (submittingLabel || '저장 중…') : (submitLabel || '저장')}
+            </Button>
+          </div>
+        </form>
+      );
+    }
+
+    // ========================================
+    // 📄 Page — Write (protected)
+    // ========================================
+    function WritePage() {
+      const { navigate } = useRouter();
+      const handleAuthFailure = useAuthFailure();
+
+      const onSubmit = async (title, content) => {
+        try {
+          const created = await postsApi.create(title, content);
+          navigate(`/posts/${created.id}`); // go to the new post's detail
+        } catch (err) {
+          if (err instanceof UnauthorizedError) {
+            handleAuthFailure();
+            return;
+          }
+          throw err; // surfaced inside PostForm
+        }
+      };
+
+      return (
+        <PageShell>
+          <div className="mb-5">
+            <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+              </svg>
+              목록으로
+            </Link>
+            <h2 className="text-xl font-bold text-slate-800 mt-2">글쓰기</h2>
+          </div>
+          <Card className="p-5 sm:p-6">
+            <PostForm
+              submitLabel="등록"
+              submittingLabel="등록 중…"
+              onSubmit={onSubmit}
+              onCancel={() => navigate('/')}
+            />
+          </Card>
+        </PageShell>
+      );
+    }
+
+    // ========================================
+    // 📄 Page — Post Detail (protected)
+    // ========================================
+    function NotFoundCard({ message = '게시글을 찾을 수 없어요.', onBack }) {
+      return (
+        <Card className="py-16 px-6 text-center">
+          <div className="text-5xl mb-3" aria-hidden="true">🔍</div>
+          <p className="text-slate-600 font-medium">{message}</p>
+          <p className="text-sm text-slate-400 mt-1">삭제되었거나 존재하지 않는 글이에요.</p>
+          <div className="mt-5">
+            <Button variant="secondary" onClick={onBack}>목록으로</Button>
+          </div>
+        </Card>
+      );
+    }
+
+    function PostDetailPage({ id }) {
+      const { navigate } = useRouter();
+      const showToast = useToast();
+      const handleAuthFailure = useAuthFailure();
+
+      const [post, setPost] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [loadError, setLoadError] = useState('');
+      const [notFound, setNotFound] = useState(false);
+
+      const [confirmOpen, setConfirmOpen] = useState(false);
+      const [deleting, setDeleting] = useState(false);
+
+      const fetchPost = useCallback(async () => {
+        setLoading(true);
+        setLoadError('');
+        setNotFound(false);
+        try {
+          const data = await postsApi.get(id);
+          setPost(data);
+        } catch (err) {
+          if (err instanceof UnauthorizedError) return handleAuthFailure();
+          if (err instanceof ApiError && err.status === 404) setNotFound(true);
+          else setLoadError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, [id, handleAuthFailure]);
+
+      useEffect(() => {
+        fetchPost();
+      }, [fetchPost]);
+
+      const handleDelete = async () => {
+        setDeleting(true);
+        try {
+          await postsApi.remove(id);
+          showToast('게시글을 삭제했어요.', 'success');
+          navigate('/');
+        } catch (err) {
+          setDeleting(false);
+          setConfirmOpen(false);
+          if (err instanceof UnauthorizedError) return handleAuthFailure();
+          if (err instanceof ApiError && err.status === 404) {
+            showToast('이미 삭제되었거나 권한이 없는 글이에요.');
+            navigate('/');
+            return;
+          }
+          showToast(err.message);
+        }
+      };
+
+      return (
+        <PageShell>
+          <div className="mb-5">
+            <Link to="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+              </svg>
+              목록으로
+            </Link>
+          </div>
+
+          {loading ? (
+            <InlineLoader label="게시글을 불러오는 중…" />
+          ) : notFound ? (
+            <NotFoundCard onBack={() => navigate('/')} />
+          ) : loadError ? (
+            <div className="space-y-4">
+              <ErrorBanner message={loadError} />
+              <div className="text-center">
+                <Button variant="secondary" onClick={fetchPost}>다시 시도</Button>
+              </div>
+            </div>
+          ) : post ? (
+            <Card className="p-5 sm:p-7">
+              <article>
+                <h1 className="text-2xl font-bold text-slate-900 break-words">{post.title}</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500 pb-4 border-b border-slate-100">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-6 w-6 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold" aria-hidden="true">
+                      {(post.authorName && post.authorName.charAt(0).toUpperCase()) || '?'}
+                    </span>
+                    <span className="font-semibold text-slate-700">{post.authorName}</span>
+                  </span>
+                  <span aria-hidden="true" className="text-slate-300">·</span>
+                  <time dateTime={post.createdAt} title={formatAbsolute(post.createdAt)}>
+                    {formatTime(post.createdAt)}
+                  </time>
+                  {isEdited(post) && <Badge color="slate">수정됨</Badge>}
+                  {post.isMine && <Badge color="emerald">내 글</Badge>}
+                </div>
+
+                <div className="mt-5 whitespace-pre-wrap break-words text-slate-700 leading-relaxed min-h-[6rem]">
+                  {post.content}
+                </div>
+
+                {post.isMine && (
+                  <div className="mt-7 pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <Button variant="secondary" onClick={() => navigate(`/posts/${post.id}/edit`)}>
+                      수정
+                    </Button>
+                    <Button variant="danger" onClick={() => setConfirmOpen(true)}>
+                      삭제
+                    </Button>
+                  </div>
+                )}
+              </article>
+            </Card>
+          ) : null}
+
+          <Modal
+            isOpen={confirmOpen}
+            onClose={() => !deleting && setConfirmOpen(false)}
+            title="게시글을 삭제할까요?"
+            footer={
+              <>
+                <Button variant="secondary" onClick={() => setConfirmOpen(false)} disabled={deleting}>
+                  취소
+                </Button>
+                <Button variant="danger" onClick={handleDelete} loading={deleting}>
+                  {deleting ? '삭제 중…' : '삭제'}
+                </Button>
+              </>
+            }
+          >
+            삭제한 게시글은 되돌릴 수 없어요. 정말 삭제하시겠어요?
+          </Modal>
+        </PageShell>
+      );
+    }
+
+    // ========================================
+    // 📄 Page — Edit Post (protected, owner only)
+    // ========================================
+    function EditPostPage({ id }) {
+      const { navigate } = useRouter();
+      const showToast = useToast();
+      const handleAuthFailure = useAuthFailure();
+
+      const [post, setPost] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [loadError, setLoadError] = useState('');
+      const [notFound, setNotFound] = useState(false);
+
+      const fetchPost = useCallback(async () => {
+        setLoading(true);
+        setLoadError('');
+        setNotFound(false);
+        try {
+          const data = await postsApi.get(id);
+          setPost(data);
+        } catch (err) {
+          if (err instanceof UnauthorizedError) return handleAuthFailure();
+          if (err instanceof ApiError && err.status === 404) setNotFound(true);
+          else setLoadError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, [id, handleAuthFailure]);
+
+      useEffect(() => {
+        fetchPost();
+      }, [fetchPost]);
+
+      const onSubmit = async (title, content) => {
+        try {
+          await postsApi.update(id, { title, content });
+          showToast('게시글을 수정했어요.', 'success');
+          navigate(`/posts/${id}`);
+        } catch (err) {
+          if (err instanceof UnauthorizedError) {
+            handleAuthFailure();
+            return;
+          }
+          // Server returns 404 when it isn't the user's own post.
+          if (err instanceof ApiError && err.status === 404) {
+            showToast('본인 글만 수정할 수 있어요.');
+            navigate('/');
+            return;
+          }
+          throw err; // surfaced inside PostForm
+        }
+      };
+
+      return (
+        <PageShell>
+          <div className="mb-5">
+            <Link to={`/posts/${id}`} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+              </svg>
+              돌아가기
+            </Link>
+            <h2 className="text-xl font-bold text-slate-800 mt-2">글 수정</h2>
+          </div>
+
+          {loading ? (
+            <InlineLoader label="게시글을 불러오는 중…" />
+          ) : notFound ? (
+            <NotFoundCard onBack={() => navigate('/')} />
+          ) : loadError ? (
+            <div className="space-y-4">
+              <ErrorBanner message={loadError} />
+              <div className="text-center">
+                <Button variant="secondary" onClick={fetchPost}>다시 시도</Button>
+              </div>
+            </div>
+          ) : post && !post.isMine ? (
+            <Card className="py-16 px-6 text-center">
+              <div className="text-5xl mb-3" aria-hidden="true">🔒</div>
+              <p className="text-slate-600 font-medium">본인 글만 수정할 수 있어요.</p>
+              <div className="mt-5 flex justify-center gap-2">
+                <Button variant="secondary" onClick={() => navigate(`/posts/${id}`)}>글 보기</Button>
+                <Button onClick={() => navigate('/')}>목록으로</Button>
+              </div>
+            </Card>
+          ) : post ? (
+            <Card className="p-5 sm:p-6">
+              <PostForm
+                initialTitle={post.title}
+                initialContent={post.content}
+                submitLabel="수정 완료"
+                submittingLabel="저장 중…"
+                onSubmit={onSubmit}
+                onCancel={() => navigate(`/posts/${id}`)}
+              />
+            </Card>
+          ) : null}
+        </PageShell>
+      );
+    }
+
+    // ========================================
+    // 🚦 Route resolver + guards
+    // ========================================
+    function AppRoutes() {
+      const { path } = useRouter();
+      const { isAuthenticated, initializing } = useAuth();
+
+      // While restoring the session, don't flash login or content.
+      if (initializing) return <FullScreenLoader label="세션을 확인하는 중…" />;
+
+      // Guest-only auth pages: if already logged in, bounce to the list.
+      if (path === '/login') return isAuthenticated ? <Redirect to="/" /> : <LoginPage />;
+      if (path === '/signup') return isAuthenticated ? <Redirect to="/" /> : <SignupPage />;
+
+      // Everything below is protected.
+      if (!isAuthenticated) return <Redirect to="/login" />;
+
+      if (path === '/') return <PostListPage />;
+      if (path === '/write') return <WritePage />;
+
+      let m;
+      if ((m = matchPath('/posts/:id/edit', path))) return <EditPostPage id={m.id} />;
+      if ((m = matchPath('/posts/:id', path))) return <PostDetailPage id={m.id} />;
+
+      // Unknown path → home (which itself guards).
+      return <Redirect to="/" />;
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+    function App() {
+      return (
+        <Router>
+          <AuthProvider>
+            <ToastProvider>
+              <AppRoutes />
+            </ToastProvider>
+          </AuthProvider>
+        </Router>
+      );
+    }
+
+    // ========================================
+    // Render
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "🏗️ 인테리어 현장 비용관리" [level=1] [ref=e6]:
+      - generic [ref=e7]: 🏗️
+      - generic [ref=e8]: 인테리어 현장 비용관리
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: 현장 선택
+          - combobox [ref=e18]:
+            - option "판교_사옥인테리어"
+            - option "강남자이_리모델링" [selected]
+        - generic [ref=e15]:
+          - button "현장 수정" [ref=e19] [cursor=pointer]
+          - button "삭제" [ref=e20] [cursor=pointer]
+          - button "+ 현장 등록" [ref=e16] [cursor=pointer]
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - paragraph [ref=e23]: 발주처
+          - paragraph [ref=e24]: 김철수
+        - generic [ref=e25]:
+          - paragraph [ref=e26]: 담당자
+          - paragraph [ref=e27]: 박현장
+        - generic [ref=e28]:
+          - paragraph [ref=e29]: 주소
+          - paragraph [ref=e30]: 서울 강남구 테헤란로 123
+    - generic [ref=e79]:
+      - heading "비용 등록" [level=2] [ref=e81]
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]:
+            - generic [ref=e85]: 날짜 *
+            - textbox "날짜 *" [ref=e86]: 2026-06-28
+          - generic [ref=e87]:
+            - generic [ref=e88]: 금액 (원) *
+            - spinbutton "금액 (원) *" [ref=e89]
+          - generic [ref=e90]:
+            - generic [ref=e91]: 비용 카테고리 *
+            - combobox "비용 카테고리 *" [ref=e92]:
+              - option "선택하세요" [selected]
+              - option "자재비"
+              - option "인건비"
+              - option "장비/공구"
+              - option "운반/물류"
+              - option "폐기물처리"
+              - option "가설/안전"
+              - option "외주(하도급)"
+              - option "경비(식대/유류)"
+              - option "임대료"
+              - option "기타"
+          - generic [ref=e93]:
+            - generic [ref=e94]: 공정 카테고리
+            - combobox "공정 카테고리" [ref=e95]:
+              - option "선택하세요 (선택)" [selected]
+              - option "철거"
+              - option "설비"
+              - option "전기"
+              - option "목공"
+              - option "미장/방수"
+              - option "타일"
+              - option "도장/도배"
+              - option "바닥"
+              - option "주방/가구"
+              - option "욕실"
+              - option "창호/도어"
+              - option "조명"
+              - option "준공/청소"
+              - option "기타"
+          - generic [ref=e96]:
+            - generic [ref=e97]: 담당자
+            - textbox "담당자" [ref=e98]:
+              - /placeholder: "예: 박현장"
+          - generic [ref=e99]:
+            - generic [ref=e100]: 거래처
+            - textbox "거래처" [ref=e101]:
+              - /placeholder: "예: 한솔자재"
+        - generic [ref=e102]:
+          - generic [ref=e103]: 메모 (선택)
+          - textbox "메모 (선택)" [ref=e104]:
+            - /placeholder: 간단한 메모
+        - button "비용 등록하기" [ref=e105] [cursor=pointer]
+    - heading "월별 집행 추이" [level=2] [ref=e116]
+    - generic [ref=e120]:
+      - heading "비용 내역" [level=2] [ref=e121]
+      - button "⬇ CSV 내보내기" [disabled] [ref=e122]
+    - heading "비용 목록" [level=2] [ref=e135]
+    - generic [ref=e17]: API 연동 준비 완료 · 서버 미연결 시 localStorage 자동 폴백 · 퍼센트는 프론트에서 직접 계산

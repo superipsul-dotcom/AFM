@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>할 일 관리 · Todos</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React 18 UMD (development) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Babel standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!--
+    ★ CRITICAL: @babel/standalone defaults to the *automatic* JSX runtime and
+    injects `import { jsx } from "react/jsx-runtime"`, which blows up when React
+    is loaded as a UMD global (blank white page + "Cannot use import statement
+    outside a module"). Register a *classic* runtime preset to avoid it.
+  -->
+  <script>
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+
+  <style>
+    /* Tailwind cannot express keyframes/animations inline — keep these minimal. */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(12px) translateX(-50%); }
+      to   { opacity: 1; transform: translateY(0)    translateX(-50%); }
+    }
+    .toast-in { animation: toast-in 0.22s ease-out; }
+  </style>
+</head>
+<body class="bg-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useContext, useCallback, useRef, createContext } = React;
+
+    // ========================================
+    // Config & API client
+    // ========================================
+    // Relative path only — the server statically serves index.html from the
+    // same origin. NEVER hardcode http://localhost:PORT.
+    const API_BASE_URL = '/api';
+    const TOKEN_KEY = 'todos_token';
+
+    const tokenStore = {
+      get: () => localStorage.getItem(TOKEN_KEY),
+      set: (t) => localStorage.setItem(TOKEN_KEY, t),
+      clear: () => localStorage.removeItem(TOKEN_KEY),
+    };
+
+    // Raised when a protected request comes back 401 so callers can sign out.
+    class UnauthorizedError extends Error {}
+
+    /**
+     * Calls the API and unwraps the shared response envelope.
+     * Success: { success:true, data, message }
+     * Failure: { success:false, data:null, message }  (+ HTTP status)
+     * Returns the `data` payload on success; throws Error(message) on failure.
+     */
+    async function apiRequest(endpoint, { method = 'GET', body, auth = false } = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (auth) {
+        const token = tokenStore.get();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method,
+          headers,
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+      } catch (networkErr) {
+        throw new Error('서버에 연결할 수 없어요. 잠시 후 다시 시도해 주세요.');
+      }
+
+      // Tolerate empty / non-JSON bodies without crashing.
+      let envelope = null;
+      try {
+        envelope = await res.json();
+      } catch (_) {
+        envelope = null;
+      }
+
+      if (res.status === 401) {
+        throw new UnauthorizedError(
+          (envelope && envelope.message) || '인증이 만료되었어요. 다시 로그인해 주세요.'
+        );
+      }
+
+      if (!res.ok || !envelope || envelope.success === false) {
+        const message =
+          (envelope && envelope.message) || `요청에 실패했어요. (HTTP ${res.status})`;
+        throw new Error(message);
+      }
+
+      return envelope.data;
+    }
+
+    const authApi = {
+      signup: (email, password) =>
+        apiRequest('/auth/signup', { method: 'POST', body: { email, password } }),
+      login: (email, password) =>
+        apiRequest('/auth/login', { method: 'POST', body: { email, password } }),
+      me: () => apiRequest('/auth/me', { auth: true }),
+    };
+
+    const todosApi = {
+      list: () => apiRequest('/todos', { auth: true }),
+      create: (title) => apiRequest('/todos', { method: 'POST', body: { title }, auth: true }),
+      update: (id, patch) =>
+        apiRequest(`/todos/${id}`, { method: 'PUT', body: patch, auth: true }),
+      remove: (id) => apiRequest(`/todos/${id}`, { method: 'DELETE', auth: true }),
+    };
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+    function Spinner({ className = '', size = 'md' }) {
+      const sizes = { sm: 'h-4 w-4 border-2', md: 'h-6 w-6 border-2', lg: 'h-10 w-10 border-[3px]' };
+      return (
+        <span
+          role="status"
+          aria-label="로딩 중"
+          className={`spinner inline-block rounded-full border-current border-t-transparent ${sizes[size]} ${className}`}
+        />
+      );
+    }
+
+    function Button({
+      children,
+      variant = 'primary',
+      size = 'md',
+      type = 'button',
+      disabled = false,
+      loading = false,
+      className = '',
+      ...rest
+    }) {
+      const base =
+        'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors ' +
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ' +
+        'disabled:opacity-50 disabled:cursor-not-allowed select-none';
+      const variants = {
+        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500',
+        secondary:
+          'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus-visible:ring-indigo-500',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:ring-indigo-500',
+      };
+      const sizes = {
+        sm: 'text-sm px-3 py-1.5',
+        md: 'text-sm px-4 py-2.5',
+        lg: 'text-base px-5 py-3',
+      };
+      return (
+        <button
+          type={type}
+          disabled={disabled || loading}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {loading && <Spinner size="sm" />}
+          {children}
+        </button>
+      );
+    }
+
+    function Input({
+      id,
+      label,
+      type = 'text',
+      value,
+      onChange,
+      placeholder = '',
+      error = '',
+      disabled = false,
+      autoComplete,
+      required = false,
+      className = '',
+      inputRef,
+      ...rest
+    }) {
+      const describedBy = error ? `${id}-error` : undefined;
+      return (
+        <div className={className}>
+          {label && (
+            <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1.5">
+              {label}
+              {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
+            </label>
+          )}
+          <input
+            id={id}
+            ref={inputRef}
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            required={required}
+            autoComplete={autoComplete}
+            aria-invalid={!!error}
+            aria-describedby={describedBy}
+            className={
+              'w-full rounded-lg border px-3.5 py-2.5 text-slate-900 placeholder-slate-400 ' +
+              'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ' +
+              'disabled:bg-slate-50 disabled:text-slate-400 ' +
+              (error ? 'border-red-400 focus:ring-red-500 focus:border-red-500' : 'border-slate-300')
+            }
+            {...rest}
+          />
+          {error && (
+            <p id={describedBy} className="mt-1.5 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    function Card({ children, className = '' }) {
+      return (
+        <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    // Inline error banner — shows the server's `message` verbatim.
+    function ErrorBanner({ message, onDismiss, className = '' }) {
+      if (!message) return null;
+      return (
+        <div
+          role="alert"
+          className={`flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 ${className}`}
+        >
+          <svg className="h-5 w-5 flex-shrink-0 mt-px" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-8-4a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+          </svg>
+          <span className="flex-1">{message}</span>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="에러 메시지 닫기"
+              className="text-red-400 hover:text-red-600 focus:outline-none"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🔔 Toast (action-failure feedback)
+    // ========================================
+    const ToastContext = createContext(null);
+    const useToast = () => useContext(ToastContext);
+
+    function ToastProvider({ children }) {
+      const [toast, setToast] = useState(null); // { message, variant }
+      const timerRef = useRef(null);
+
+      const showToast = useCallback((message, variant = 'error') => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setToast({ message, variant });
+        timerRef.current = setTimeout(() => setToast(null), 3500);
+      }, []);
+
+      useEffect(() => () => timerRef.current && clearTimeout(timerRef.current), []);
+
+      const palette = {
+        error: 'bg-red-600',
+        success: 'bg-emerald-600',
+        info: 'bg-slate-800',
+      };
+
+      return (
+        <ToastContext.Provider value={showToast}>
+          {children}
+          {toast && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`toast-in fixed bottom-6 left-1/2 z-50 max-w-[90vw] rounded-lg px-4 py-3 text-sm text-white shadow-lg ${palette[toast.variant] || palette.info}`}
+            >
+              {toast.message}
+            </div>
+          )}
+        </ToastContext.Provider>
+      );
+    }
+
+    // ========================================
+    // 🔀 Router (hash-based)
+    // ========================================
+    const RouterContext = createContext(null);
+    const useRouter = () => useContext(RouterContext);
+
+    function getHashPath() {
+      const raw = window.location.hash.replace(/^#/, '');
+      return raw === '' ? '/' : raw;
+    }
+
+    function Router({ children }) {
+      const [path, setPath] = useState(getHashPath());
+
+      useEffect(() => {
+        const onHashChange = () => setPath(getHashPath());
+        window.addEventListener('hashchange', onHashChange);
+        // Normalize empty hash to /#/ on first load.
+        if (window.location.hash === '') window.location.hash = '#/';
+        return () => window.removeEventListener('hashchange', onHashChange);
+      }, []);
+
+      const navigate = useCallback((to) => {
+        const target = to.startsWith('#') ? to : `#${to}`;
+        if (window.location.hash === target) {
+          setPath(getHashPath()); // force re-eval (e.g. redirect to current path)
+        } else {
+          window.location.hash = target;
+        }
+      }, []);
+
+      return (
+        <RouterContext.Provider value={{ path, navigate }}>
+          {children}
+        </RouterContext.Provider>
+      );
+    }
+
+    function Link({ to, children, className = '', ...rest }) {
+      const { navigate } = useRouter();
+      const href = to.startsWith('#') ? to : `#${to}`;
+      return (
+        <a
+          href={href}
+          onClick={(e) => {
+            e.preventDefault();
+            navigate(to);
+          }}
+          className={className}
+          {...rest}
+        >
+          {children}
+        </a>
+      );
+    }
+
+    // ========================================
+    // 🔐 Auth Context + Provider
+    // ========================================
+    const AuthContext = createContext(null);
+    const useAuth = () => useContext(AuthContext);
+
+    function AuthProvider({ children }) {
+      const [user, setUser] = useState(null);
+      const [initializing, setInitializing] = useState(true); // session-restore in flight
+
+      // On mount: if a token exists, restore the session via GET /auth/me.
+      useEffect(() => {
+        let cancelled = false;
+        const token = tokenStore.get();
+        if (!token) {
+          setInitializing(false);
+          return;
+        }
+        authApi
+          .me()
+          .then((data) => {
+            if (!cancelled) setUser(data.user);
+          })
+          .catch(() => {
+            // Invalid/expired token (401) or any failure → drop it.
+            tokenStore.clear();
+            if (!cancelled) setUser(null);
+          })
+          .finally(() => {
+            if (!cancelled) setInitializing(false);
+          });
+        return () => {
+          cancelled = true;
+        };
+      }, []);
+
+      const login = useCallback(async (email, password) => {
+        const data = await authApi.login(email, password); // { token, user }
+        tokenStore.set(data.token);
+        setUser(data.user);
+        return data.user;
+      }, []);
+
+      const signup = useCallback(async (email, password) => {
+        const data = await authApi.signup(email, password); // { token, user }
+        tokenStore.set(data.token);
+        setUser(data.user);
+        return data.user;
+      }, []);
+
+      const logout = useCallback(() => {
+        tokenStore.clear();
+        setUser(null);
+      }, []);
+
+      const value = { user, initializing, isAuthenticated: !!user, login, signup, logout };
+      return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    }
+
+    // ========================================
+    // 🧩 Layout — App Header
+    // ========================================
+    function AppHeader() {
+      const { user, logout } = useAuth();
+      const { navigate } = useRouter();
+
+      const handleLogout = () => {
+        logout();
+        navigate('/login');
+      };
+
+      return (
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-2xl" aria-hidden="true">✅</span>
+              <h1 className="text-lg font-bold text-slate-800 truncate">할 일 관리</h1>
+            </div>
+            {user && (
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <span
+                  className="text-sm text-slate-500 truncate max-w-[40vw] sm:max-w-xs"
+                  title={user.email}
+                >
+                  {user.email}
+                </span>
+                <Button variant="secondary" size="sm" onClick={handleLogout}>
+                  로그아웃
+                </Button>
+              </div>
+            )}
+          </div>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 📄 Page — Login
+    // ========================================
+    function LoginPage() {
+      const { login } = useAuth();
+      const { navigate } = useRouter();
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+      const [serverError, setServerError] = useState('');
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setServerError('');
+        setSubmitting(true);
+        try {
+          await login(email.trim(), password);
+          navigate('/'); // only on success
+        } catch (err) {
+          setServerError(err.message);
+        } finally {
+          setSubmitting(false);
+        }
+      };
+
+      return (
+        <AuthLayout title="로그인" subtitle="할 일 목록을 보려면 로그인하세요.">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <ErrorBanner message={serverError} onDismiss={() => setServerError('')} />
+            <Input
+              id="login-email"
+              label="이메일"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+              disabled={submitting}
+            />
+            <Input
+              id="login-password"
+              label="비밀번호"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호를 입력하세요"
+              autoComplete="current-password"
+              required
+              disabled={submitting}
+            />
+            <Button type="submit" size="lg" className="w-full" loading={submitting}>
+              {submitting ? '로그인 중…' : '로그인'}
+            </Button>
+          </form>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            계정이 없으신가요?{' '}
+            <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
+              회원가입으로
+            </Link>
+          </p>
+        </AuthLayout>
+      );
+    }
+
+    // ========================================
+    // 📄 Page — Signup
+    // ========================================
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function SignupPage() {
+      const { signup } = useAuth();
+      const { navigate } = useRouter();
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [confirm, setConfirm] = useState('');
+      const [errors, setErrors] = useState({}); // { email, password, confirm }
+      const [submitting, setSubmitting] = useState(false);
+      const [serverError, setServerError] = useState('');
+
+      const validate = () => {
+        const next = {};
+        const trimmed = email.trim();
+        if (!trimmed) next.email = '이메일을 입력해 주세요.';
+        else if (!EMAIL_RE.test(trimmed)) next.email = '올바른 이메일 형식이 아니에요.';
+
+        if (!password) next.password = '비밀번호를 입력해 주세요.';
+        else if (password.length < 6) next.password = '비밀번호는 6자 이상이어야 해요.';
+
+        if (!confirm) next.confirm = '비밀번호 확인을 입력해 주세요.';
+        else if (password !== confirm) next.confirm = '비밀번호가 일치하지 않아요.';
+
+        setErrors(next);
+        return Object.keys(next).length === 0;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setServerError('');
+        if (!validate()) return;
+        setSubmitting(true);
+        try {
+          await signup(email.trim(), password);
+          navigate('/'); // only on success
+        } catch (err) {
+          setServerError(err.message);
+        } finally {
+          setSubmitting(false);
+        }
+      };
+
+      return (
+        <AuthLayout title="회원가입" subtitle="새 계정을 만들어 할 일을 관리하세요.">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <ErrorBanner message={serverError} onDismiss={() => setServerError('')} />
+            <Input
+              id="signup-email"
+              label="이메일"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+              disabled={submitting}
+              error={errors.email}
+            />
+            <Input
+              id="signup-password"
+              label="비밀번호"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="6자 이상 입력하세요"
+              autoComplete="new-password"
+              required
+              disabled={submitting}
+              error={errors.password}
+            />
+            <Input
+              id="signup-confirm"
+              label="비밀번호 확인"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="비밀번호를 다시 입력하세요"
+              autoComplete="new-password"
+              required
+              disabled={submitting}
+              error={errors.confirm}
+            />
+            <Button type="submit" size="lg" className="w-full" loading={submitting}>
+              {submitting ? '가입 중…' : '회원가입'}
+            </Button>
+          </form>
+          <p className="mt-6 text-center text-sm text-slate-500">
+            이미 계정이 있으신가요?{' '}
+            <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-700 hover:underline">
+              로그인으로
+            </Link>
+          </p>
+        </AuthLayout>
+      );
+    }
+
+    // Shared centered card layout for auth pages.
+    function AuthLayout({ title, subtitle, children }) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <div className="text-4xl mb-2" aria-hidden="true">✅</div>
+              <h1 className="text-2xl font-bold text-slate-800">{title}</h1>
+              {subtitle && <p className="mt-1.5 text-sm text-slate-500">{subtitle}</p>}
+            </div>
+            <Card className="p-6 sm:p-8">{children}</Card>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 Page — Todo List (protected)
+    // ========================================
+    function TodoItem({ todo, onToggle, onUpdate, onDelete }) {
+      const [editing, setEditing] = useState(false);
+      const [draft, setDraft] = useState(todo.title);
+      const [busy, setBusy] = useState(false); // toggle/delete in flight
+      const [saving, setSaving] = useState(false); // inline title save in flight
+      const inputRef = useRef(null);
+
+      useEffect(() => {
+        if (editing && inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.select();
+        }
+      }, [editing]);
+
+      const startEdit = () => {
+        setDraft(todo.title);
+        setEditing(true);
+      };
+
+      const cancelEdit = () => {
+        setEditing(false);
+        setDraft(todo.title);
+      };
+
+      const saveEdit = async () => {
+        const title = draft.trim();
+        if (!title) {
+          cancelEdit();
+          return;
+        }
+        if (title === todo.title) {
+          setEditing(false);
+          return;
+        }
+        setSaving(true);
+        const ok = await onUpdate(todo.id, { title });
+        setSaving(false);
+        if (ok) setEditing(false); // close only on success
+      };
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          saveEdit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cancelEdit();
+        }
+      };
+
+      const handleToggle = async () => {
+        setBusy(true);
+        await onToggle(todo);
+        setBusy(false);
+      };
+
+      const handleDelete = async () => {
+        setBusy(true);
+        const ok = await onDelete(todo.id);
+        if (!ok) setBusy(false); // on success the row unmounts
+      };
+
+      return (
+        <li className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+          <input
+            type="checkbox"
+            checked={todo.done}
+            onChange={handleToggle}
+            disabled={busy || saving}
+            aria-label={`'${todo.title}' 완료 ${todo.done ? '해제' : '표시'}`}
+            className="h-5 w-5 flex-shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
+          />
+
+          {editing ? (
+            <div className="flex-1 flex items-center gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onBlur={saveEdit}
+                disabled={saving}
+                aria-label="할 일 제목 수정"
+                className="flex-1 rounded-md border border-indigo-400 px-2.5 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50"
+              />
+              {saving && <Spinner size="sm" className="text-indigo-500" />}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onDoubleClick={startEdit}
+              className={`flex-1 text-left text-sm break-words focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded px-1 ${
+                todo.done ? 'line-through text-slate-400' : 'text-slate-800'
+              }`}
+              title="더블클릭하여 수정"
+            >
+              {todo.title}
+            </button>
+          )}
+
+          {!editing && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={startEdit}
+                disabled={busy}
+                aria-label={`'${todo.title}' 수정`}
+                className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={busy}
+                aria-label={`'${todo.title}' 삭제`}
+                className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 disabled:opacity-50"
+              >
+                {busy ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          )}
+        </li>
+      );
+    }
+
+    function TodoListPage() {
+      const { logout } = useAuth();
+      const { navigate } = useRouter();
+      const showToast = useToast();
+
+      const [todos, setTodos] = useState([]);
+      const [loading, setLoading] = useState(true); // initial list fetch
+      const [loadError, setLoadError] = useState(''); // blocking fetch error
+      const [newTitle, setNewTitle] = useState('');
+      const [adding, setAdding] = useState(false);
+
+      // Centralized 401 handling for protected calls: sign out + redirect.
+      const handleAuthFailure = useCallback(() => {
+        logout();
+        navigate('/login');
+      }, [logout, navigate]);
+
+      const fetchTodos = useCallback(async () => {
+        setLoading(true);
+        setLoadError('');
+        try {
+          const data = await todosApi.list();
+          setTodos(Array.isArray(data) ? data : []);
+        } catch (err) {
+          if (err instanceof UnauthorizedError) {
+            handleAuthFailure();
+            return;
+          }
+          setLoadError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, [handleAuthFailure]);
+
+      useEffect(() => {
+        fetchTodos();
+      }, [fetchTodos]);
+
+      // --- Actions (server-authoritative: update state from the response) ---
+
+      const handleAdd = async (e) => {
+        e.preventDefault();
+        const title = newTitle.trim();
+        if (!title || adding) return;
+        setAdding(true);
+        try {
+          const created = await todosApi.create(title);
+          setTodos((prev) => [created, ...prev]); // API returns newest-first
+          setNewTitle(''); // reset only on success
+        } catch (err) {
+          if (err instanceof UnauthorizedError) return handleAuthFailure();
+          showToast(err.message);
+        } finally {
+          setAdding(false);
+        }
+      };
+
+      const handleToggle = async (todo) => {
+        try {
+          const updated = await todosApi.update(todo.id, { done: !todo.done });
+          setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+        } catch (err) {
+          if (err instanceof UnauthorizedError) return handleAuthFailure();
+          showToast(err.message);
+        }
+      };
+
+      // Returns true on success so the row can close its editor / stay mounted.
+      const handleUpdateTitle = async (id, patch) => {
+        try {
+          const updated = await todosApi.update(id, patch);
+          setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+          return true;
+        } catch (err) {
+          if (err instanceof UnauthorizedError) {
+            handleAuthFailure();
+            return false;
+          }
+          showToast(err.message);
+          return false;
+        }
+      };
+
+      const handleDelete = async (id) => {
+        try {
+          await todosApi.remove(id);
+          setTodos((prev) => prev.filter((t) => t.id !== id));
+          return true;
+        } catch (err) {
+          if (err instanceof UnauthorizedError) {
+            handleAuthFailure();
+            return false;
+          }
+          showToast(err.message);
+          return false;
+        }
+      };
+
+      const remaining = todos.filter((t) => !t.done).length;
+
+      return (
+        <div className="min-h-screen">
+          <AppHeader />
+          <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+            {/* Add form */}
+            <Card className="p-4 sm:p-5 mb-5">
+              <form onSubmit={handleAdd} className="flex items-stretch gap-2">
+                <label htmlFor="new-todo" className="sr-only">새 할 일</label>
+                <input
+                  id="new-todo"
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="할 일을 입력하세요…"
+                  disabled={adding}
+                  className="flex-1 rounded-lg border border-slate-300 px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50"
+                />
+                <Button type="submit" loading={adding} disabled={!newTitle.trim()}>
+                  추가
+                </Button>
+              </form>
+            </Card>
+
+            {/* List states */}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <Spinner size="lg" className="text-indigo-500" />
+                <p className="mt-4 text-sm">할 일을 불러오는 중…</p>
+              </div>
+            ) : loadError ? (
+              <div className="space-y-4">
+                <ErrorBanner message={loadError} />
+                <div className="text-center">
+                  <Button variant="secondary" onClick={fetchTodos}>다시 시도</Button>
+                </div>
+              </div>
+            ) : todos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="text-5xl mb-3" aria-hidden="true">🗒️</div>
+                <p className="text-slate-500 font-medium">아직 할 일이 없어요</p>
+                <p className="text-sm text-slate-400 mt-1">위 입력창에 첫 할 일을 추가해 보세요.</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <p className="text-sm text-slate-500">
+                    전체 {todos.length}개 · 남은 일 <span className="font-semibold text-slate-700">{remaining}</span>개
+                  </p>
+                </div>
+                <Card className="overflow-hidden">
+                  <ul className="divide-y divide-slate-100">
+                    {todos.map((todo) => (
+                      <TodoItem
+                        key={todo.id}
+                        todo={todo}
+                        onToggle={handleToggle}
+                        onUpdate={handleUpdateTitle}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </ul>
+                </Card>
+                <p className="mt-3 text-center text-xs text-slate-400">
+                  제목을 더블클릭하거나 연필 아이콘으로 수정할 수 있어요.
+                </p>
+              </>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚦 Route guards & resolver
+    // ========================================
+    function FullScreenLoader({ label = '불러오는 중…' }) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center text-slate-400">
+          <Spinner size="lg" className="text-indigo-500" />
+          <p className="mt-4 text-sm">{label}</p>
+        </div>
+      );
+    }
+
+    // Redirects to `to` as a side effect, renders nothing.
+    function Redirect({ to }) {
+      const { navigate } = useRouter();
+      useEffect(() => {
+        navigate(to);
+      }, [navigate, to]);
+      return null;
+    }
+
+    function AppRoutes() {
+      const { path } = useRouter();
+      const { isAuthenticated, initializing } = useAuth();
+
+      // While restoring the session, don't flash login or list.
+      if (initializing) return <FullScreenLoader label="세션을 확인하는 중…" />;
+
+      // Auth pages: if already logged in, bounce to the list.
+      if (path === '/login') {
+        return isAuthenticated ? <Redirect to="/" /> : <LoginPage />;
+      }
+      if (path === '/signup') {
+        return isAuthenticated ? <Redirect to="/" /> : <SignupPage />;
+      }
+
+      // Protected home.
+      if (path === '/') {
+        return isAuthenticated ? <TodoListPage /> : <Redirect to="/login" />;
+      }
+
+      // Unknown path → home (which itself guards).
+      return <Redirect to="/" />;
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+    function App() {
+      return (
+        <Router>
+          <AuthProvider>
+            <ToastProvider>
+              <AppRoutes />
+            </ToastProvider>
+          </AuthProvider>
+        </Router>
+      );
+    }
+
+    // ========================================
+    // Render
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

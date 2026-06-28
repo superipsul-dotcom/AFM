@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>나만의 가계부</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ★ Babel classic JSX runtime preset (UMD React 충돌/흰화면 방지) -->
+  <script>
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]]
+    });
+  </script>
+  <style>
+    @keyframes slideIn { from { transform: translateY(-12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes scaleIn { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .animate-slide-in { animation: slideIn .25s ease-out; }
+    .animate-fade-in { animation: fadeIn .2s ease-out; }
+    .animate-scale-in { animation: scaleIn .18s ease-out; }
+    .bar-grow { transition: width .5s ease-out; }
+    /* 숫자 입력의 spinner 제거 */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body class="bg-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useMemo, useCallback, useRef, createContext, useContext } = React;
+
+    // ========================================
+    // 상수 / 설정
+    // ========================================
+    const API_BASE_URL = '/api';
+    const STORAGE_KEY = 'budget_transactions_v1';
+    const BUDGET_KEY = 'budget_budgets_v1';
+
+    const CATEGORIES = {
+      expense: ['식비', '교통', '주거', '구독료', '경조사', '쇼핑', '의료', '기타'],
+      income: ['급여', '용돈', '부수입', '기타'],
+    };
+
+    // 예산 설정 가능한 지출 카테고리
+    const BUDGET_CATEGORIES = CATEGORIES.expense;
+
+    // 카테고리별 색상 (막대/뱃지용)
+    const CAT_COLOR = {
+      식비: 'bg-orange-400', 교통: 'bg-sky-400', 주거: 'bg-indigo-400',
+      구독료: 'bg-purple-400', 경조사: 'bg-pink-400', 쇼핑: 'bg-rose-400',
+      의료: 'bg-teal-400', 기타: 'bg-slate-400',
+      급여: 'bg-emerald-500', 용돈: 'bg-green-400', 부수입: 'bg-lime-500',
+    };
+
+    // ========================================
+    // 유틸 함수
+    // ========================================
+    const fmtWon = (n) => (Number(n) || 0).toLocaleString('ko-KR') + '원';
+    const todayStr = () => {
+      const d = new Date();
+      const tz = d.getTimezoneOffset() * 60000;
+      return new Date(d - tz).toISOString().slice(0, 10);
+    };
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+    // localStorage mock 저장소
+    const mockStore = {
+      read() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+        catch { return []; }
+      },
+      write(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); },
+    };
+
+    // localStorage 예산 저장소
+    const budgetStore = {
+      read() {
+        try { return JSON.parse(localStorage.getItem(BUDGET_KEY)) || []; }
+        catch { return []; }
+      },
+      write(list) { localStorage.setItem(BUDGET_KEY, JSON.stringify(list)); },
+    };
+
+    // 현재 월 (YYYY-MM)
+    const currentMonth = () => todayStr().slice(0, 7);
+
+    // 날짜(YYYY-MM-DD)의 그 주 시작일(월요일) 반환
+    const weekStartOf = (dateStr) => {
+      const d = new Date(dateStr + 'T00:00:00');
+      const day = (d.getDay() + 6) % 7; // 월=0 ... 일=6
+      d.setDate(d.getDate() - day);
+      const tz = d.getTimezoneOffset() * 60000;
+      return new Date(d - tz).toISOString().slice(0, 10);
+    };
+
+    // 시드 데이터 (mock 최초 진입 시)
+    const seedData = () => ([
+      { id: uid(), type: 'income',  amount: 3200000, category: '급여',   memo: '6월 월급',     date: todayStr(), created_at: new Date().toISOString() },
+      { id: uid(), type: 'expense', amount: 12000,   category: '식비',   memo: '점심 김치찌개', date: todayStr(), created_at: new Date().toISOString() },
+      { id: uid(), type: 'expense', amount: 9900,    category: '구독료', memo: '넷플릭스',     date: todayStr(), created_at: new Date().toISOString() },
+      { id: uid(), type: 'expense', amount: 55000,   category: '교통',   memo: '교통카드 충전', date: todayStr(), created_at: new Date().toISOString() },
+    ]);
+
+    // ========================================
+    // API 레이어 (서버 우선, 실패 시 localStorage 폴백)
+    // ========================================
+    const api = {
+      _useMock: false,
+
+      async _tryFetch(url, opts) {
+        const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      },
+
+      _ensureSeed() {
+        let list = mockStore.read();
+        if (!localStorage.getItem(STORAGE_KEY)) {
+          list = seedData();
+          mockStore.write(list);
+        }
+        return list;
+      },
+
+      _sorted(list) {
+        return [...list].sort((a, b) => {
+          if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+          return (a.created_at < b.created_at) ? 1 : -1;
+        });
+      },
+
+      async list() {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/transactions`);
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          return this._sorted(this._ensureSeed());
+        }
+      },
+
+      async create(body) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/transactions`, {
+            method: 'POST', body: JSON.stringify(body),
+          });
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          const list = this._ensureSeed();
+          const item = { id: uid(), created_at: new Date().toISOString(), ...body };
+          mockStore.write([item, ...list]);
+          return item;
+        }
+      },
+
+      async update(id, body) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/transactions/${id}`, {
+            method: 'PUT', body: JSON.stringify(body),
+          });
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          const list = this._ensureSeed();
+          const next = list.map((t) => (t.id === id ? { ...t, ...body } : t));
+          mockStore.write(next);
+          return next.find((t) => t.id === id);
+        }
+      },
+
+      async remove(id) {
+        try {
+          await this._tryFetch(`${API_BASE_URL}/transactions/${id}`, { method: 'DELETE' });
+          this._useMock = false;
+          return { success: true };
+        } catch {
+          this._useMock = true;
+          const list = this._ensureSeed();
+          mockStore.write(list.filter((t) => t.id !== id));
+          return { success: true };
+        }
+      },
+
+      // ── 월별 집계 ──
+      async monthly() {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/monthly`);
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          return computeMonthly(this._sorted(this._ensureSeed()));
+        }
+      },
+
+      // ── 주별 집계 ──
+      async weekly() {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/weekly`);
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          return computeWeekly(this._sorted(this._ensureSeed()));
+        }
+      },
+
+      // ── 예산 목록 ──
+      async budgets() {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/budgets`);
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          return budgetStore.read();
+        }
+      },
+
+      // ── 예산 upsert ──
+      async saveBudget(body) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/budgets`, {
+            method: 'POST', body: JSON.stringify(body),
+          });
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          const list = budgetStore.read();
+          const idx = list.findIndex((b) => b.category === body.category);
+          let item;
+          if (idx >= 0) {
+            item = { ...list[idx], amount: body.amount };
+            list[idx] = item;
+          } else {
+            item = { id: uid(), category: body.category, amount: body.amount };
+            list.push(item);
+          }
+          budgetStore.write(list);
+          return item;
+        }
+      },
+
+      // ── 예산 삭제 ──
+      async removeBudget(id) {
+        try {
+          await this._tryFetch(`${API_BASE_URL}/budgets/${id}`, { method: 'DELETE' });
+          this._useMock = false;
+          return { success: true };
+        } catch {
+          this._useMock = true;
+          budgetStore.write(budgetStore.read().filter((b) => b.id !== id));
+          return { success: true };
+        }
+      },
+
+      // ── 예산 대비 사용량 (현재 월) ──
+      async budgetUsage() {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/budget-usage`);
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          return computeBudgetUsage(budgetStore.read(), this._ensureSeed());
+        }
+      },
+    };
+
+    // summary는 폴백 시 클라이언트에서 직접 계산
+    function computeSummary(transactions) {
+      let totalIncome = 0, totalExpense = 0;
+      const map = {}; // key: type|category
+      transactions.forEach((t) => {
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'income') totalIncome += amt; else totalExpense += amt;
+        const k = t.type + '|' + t.category;
+        map[k] = (map[k] || 0) + amt;
+      });
+      const byCategory = Object.entries(map).map(([k, total]) => {
+        const [type, category] = k.split('|');
+        return { category, type, total };
+      });
+      return { totalIncome, totalExpense, balance: totalIncome - totalExpense, byCategory };
+    }
+
+    // 월별 집계: [{ month:'YYYY-MM', income, expense }] (오름차순)
+    function computeMonthly(transactions) {
+      const map = {};
+      transactions.forEach((t) => {
+        const month = (t.date || '').slice(0, 7);
+        if (!month) return;
+        if (!map[month]) map[month] = { month, income: 0, expense: 0 };
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'income') map[month].income += amt; else map[month].expense += amt;
+      });
+      return Object.values(map).sort((a, b) => (a.month < b.month ? -1 : 1));
+    }
+
+    // 주별 집계: [{ weekStart:'YYYY-MM-DD', income, expense }] (오름차순)
+    function computeWeekly(transactions) {
+      const map = {};
+      transactions.forEach((t) => {
+        if (!t.date) return;
+        const weekStart = weekStartOf(t.date);
+        if (!map[weekStart]) map[weekStart] = { weekStart, income: 0, expense: 0 };
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'income') map[weekStart].income += amt; else map[weekStart].expense += amt;
+      });
+      return Object.values(map).sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
+    }
+
+    // 예산 대비 사용량 (이번 달 지출 기준)
+    function computeBudgetUsage(budgets, transactions) {
+      const month = currentMonth();
+      const spentMap = {};
+      transactions.forEach((t) => {
+        if (t.type !== 'expense') return;
+        if ((t.date || '').slice(0, 7) !== month) return;
+        spentMap[t.category] = (spentMap[t.category] || 0) + (Number(t.amount) || 0);
+      });
+      return budgets.map((b) => {
+        const budget = Number(b.amount) || 0;
+        const spent = spentMap[b.category] || 0;
+        const ratio = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+        return { id: b.id, category: b.category, budget, spent, remaining: budget - spent, ratio };
+      });
+    }
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+    function Button({ variant = 'primary', size = 'md', disabled, onClick, type = 'button', className = '', children }) {
+      const base = 'inline-flex items-center justify-center font-semibold rounded-xl transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
+      const variants = {
+        primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-400',
+        secondary: 'bg-slate-200 text-slate-700 hover:bg-slate-300 focus:ring-slate-400',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-400',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-300',
+      };
+      const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2.5 text-sm', lg: 'px-6 py-3 text-base' };
+      return (
+        <button type={type} disabled={disabled} onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}>
+          {children}
+        </button>
+      );
+    }
+
+    function Input({ label, error, className = '', ...props }) {
+      return (
+        <label className="block">
+          {label && <span className="block mb-1.5 text-sm font-medium text-slate-700">{label}</span>}
+          <input
+            className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-slate-800 placeholder-slate-400
+              focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition
+              ${error ? 'border-red-400 ring-1 ring-red-300' : 'border-slate-300'} ${className}`}
+            {...props}
+          />
+          {error && <span className="block mt-1 text-xs text-red-500">{error}</span>}
+        </label>
+      );
+    }
+
+    function Select({ label, error, className = '', children, ...props }) {
+      return (
+        <label className="block">
+          {label && <span className="block mb-1.5 text-sm font-medium text-slate-700">{label}</span>}
+          <select
+            className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-slate-800
+              focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition
+              ${error ? 'border-red-400 ring-1 ring-red-300' : 'border-slate-300'} ${className}`}
+            {...props}
+          >
+            {children}
+          </select>
+          {error && <span className="block mt-1 text-xs text-red-500">{error}</span>}
+        </label>
+      );
+    }
+
+    function Card({ className = '', children }) {
+      return <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 ${className}`}>{children}</div>;
+    }
+
+    function Badge({ color = 'bg-slate-400', className = '', children }) {
+      return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${color} ${className}`}>{children}</span>;
+    }
+
+    function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [isOpen, onClose]);
+      if (!isOpen) return null;
+      const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg' };
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40 animate-fade-in" onClick={onClose}></div>
+          <div className={`relative w-full ${sizes[size]} bg-white rounded-2xl shadow-xl animate-scale-in`}>
+            {title && (
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+                <button onClick={onClose} aria-label="닫기" className="text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
+              </div>
+            )}
+            <div className="p-5">{children}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Toast (Context + Provider)
+    // ========================================
+    const ToastContext = createContext(null);
+    const useToast = () => useContext(ToastContext);
+
+    function ToastProvider({ children }) {
+      const [toasts, setToasts] = useState([]);
+      const push = useCallback((message, type = 'success') => {
+        const id = uid();
+        setToasts((prev) => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2600);
+      }, []);
+      const colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-slate-700' };
+      const icons = { success: '✓', error: '!', info: 'ℹ' };
+      return (
+        <ToastContext.Provider value={push}>
+          {children}
+          <div className="fixed top-4 right-4 z-[60] flex flex-col gap-2 max-w-[90vw]">
+            {toasts.map((t) => (
+              <div key={t.id} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-white shadow-lg animate-slide-in ${colors[t.type]}`}>
+                <span className="font-bold">{icons[t.type]}</span>
+                <span className="text-sm">{t.message}</span>
+              </div>
+            ))}
+          </div>
+        </ToastContext.Provider>
+      );
+    }
+
+    // ========================================
+    // 🧩 요약 대시보드
+    // ========================================
+    function SummaryDashboard({ summary }) {
+      const cards = [
+        { label: '총수입', value: summary.totalIncome, color: 'text-emerald-600', bg: 'from-emerald-50 to-white', ring: 'border-emerald-100', icon: '↑' },
+        { label: '총지출', value: summary.totalExpense, color: 'text-red-600', bg: 'from-red-50 to-white', ring: 'border-red-100', icon: '↓' },
+        { label: '잔액 (순수익)', value: summary.balance, color: summary.balance >= 0 ? 'text-blue-600' : 'text-red-600', bg: 'from-blue-50 to-white', ring: 'border-blue-100', icon: '＝' },
+      ];
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          {cards.map((c) => (
+            <Card key={c.label} className={`p-4 sm:p-5 bg-gradient-to-br ${c.bg} ${c.ring}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-500">{c.label}</span>
+                <span className={`text-lg ${c.color}`}>{c.icon}</span>
+              </div>
+              <div className={`mt-2 text-xl sm:text-2xl font-extrabold ${c.color} break-all`}>{fmtWon(c.value)}</div>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 등록/수정 폼
+    // ========================================
+    function TransactionForm({ onSubmit, editing, onCancelEdit }) {
+      const blank = { type: 'expense', amount: '', category: '', memo: '', date: todayStr() };
+      const [form, setForm] = useState(blank);
+      const [errors, setErrors] = useState({});
+      const [submitting, setSubmitting] = useState(false);
+
+      // 수정 모드 진입 시 폼 채우기
+      useEffect(() => {
+        if (editing) {
+          setForm({
+            type: editing.type, amount: String(editing.amount),
+            category: editing.category, memo: editing.memo || '', date: editing.date,
+          });
+          setErrors({});
+        }
+      }, [editing]);
+
+      // 타입 변경 시 카테고리가 옵션에 없으면 초기화
+      const setType = (type) => {
+        setForm((f) => {
+          const list = CATEGORIES[type];
+          return { ...f, type, category: list.includes(f.category) ? f.category : '' };
+        });
+      };
+
+      const validate = () => {
+        const e = {};
+        const amt = Number(form.amount);
+        if (!form.amount || isNaN(amt) || amt <= 0) e.amount = '금액은 0보다 큰 숫자여야 합니다.';
+        if (!form.category) e.category = '카테고리를 선택하세요.';
+        if (!form.date) e.date = '날짜를 선택하세요.';
+        setErrors(e);
+        return Object.keys(e).length === 0;
+      };
+
+      const handleSubmit = async (ev) => {
+        ev.preventDefault();
+        if (!validate()) return;
+        setSubmitting(true);
+        const ok = await onSubmit({
+          type: form.type, amount: Math.round(Number(form.amount)),
+          category: form.category, memo: form.memo.trim(), date: form.date,
+        });
+        setSubmitting(false);
+        if (ok && !editing) setForm({ ...blank, date: form.date });
+      };
+
+      const cats = CATEGORIES[form.type];
+
+      return (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-slate-800">{editing ? '내역 수정' : '내역 등록'}</h2>
+            {editing && <Button variant="ghost" size="sm" onClick={onCancelEdit}>수정 취소</Button>}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 수입/지출 토글 */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+              <button type="button" onClick={() => setType('expense')}
+                className={`py-2 rounded-lg text-sm font-semibold transition ${form.type === 'expense' ? 'bg-red-500 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+                지출
+              </button>
+              <button type="button" onClick={() => setType('income')}
+                className={`py-2 rounded-lg text-sm font-semibold transition ${form.type === 'income' ? 'bg-emerald-500 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+                수입
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input label="금액 (원)" type="number" inputMode="numeric" min="0"
+                placeholder="예: 12000" value={form.amount} error={errors.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+
+              <Select label="카테고리" value={form.category} error={errors.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                <option value="">선택하세요</option>
+                {cats.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+
+              <Input label="날짜" type="date" value={form.date} error={errors.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })} />
+
+              <Input label="메모 (선택)" type="text" placeholder="간단한 메모"
+                value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
+            </div>
+
+            <Button type="submit" size="lg" disabled={submitting}
+              variant={form.type === 'income' ? 'primary' : 'primary'} className="w-full">
+              {submitting ? '저장 중...' : (editing ? '수정 저장' : '등록하기')}
+            </Button>
+          </form>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧩 카테고리별 합계
+    // ========================================
+    function CategoryBreakdown({ summary }) {
+      const expense = summary.byCategory.filter((c) => c.type === 'expense').sort((a, b) => b.total - a.total);
+      const income = summary.byCategory.filter((c) => c.type === 'income').sort((a, b) => b.total - a.total);
+
+      const Section = ({ title, items, total, baseColor }) => {
+        if (items.length === 0) return null;
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="text-sm font-bold text-slate-700">{title}</h3>
+              <span className={`text-sm font-bold ${baseColor}`}>{fmtWon(total)}</span>
+            </div>
+            <div className="space-y-2.5">
+              {items.map((c) => {
+                const pct = total > 0 ? Math.round((c.total / total) * 100) : 0;
+                return (
+                  <div key={c.type + c.category}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2.5 h-2.5 rounded-full ${CAT_COLOR[c.category] || 'bg-slate-400'}`}></span>
+                        <span className="font-medium text-slate-600">{c.category}</span>
+                        <span className="text-slate-400">{pct}%</span>
+                      </span>
+                      <span className="font-semibold text-slate-700">{fmtWon(c.total)}</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full bar-grow ${CAT_COLOR[c.category] || 'bg-slate-400'}`} style={{ width: pct + '%' }}></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+
+      const hasAny = expense.length > 0 || income.length > 0;
+      return (
+        <Card className="p-5">
+          <h2 className="text-base font-bold text-slate-800 mb-4">카테고리별 합계</h2>
+          {!hasAny ? (
+            <p className="text-sm text-slate-400 text-center py-6">데이터가 없습니다.</p>
+          ) : (
+            <div className="space-y-6">
+              <Section title="지출" items={expense} total={summary.totalExpense} baseColor="text-red-600" />
+              <Section title="수입" items={income} total={summary.totalIncome} baseColor="text-emerald-600" />
+            </div>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧩 수입·지출 추이 차트 (Chart.js, 월별/주별 탭)
+    // ========================================
+    function TrendCharts({ monthly, weekly, loading }) {
+      const [tab, setTab] = useState('month'); // 'month' | 'week'
+      const canvasRef = useRef(null);
+      const chartRef = useRef(null);
+
+      const rows = tab === 'month' ? monthly : weekly;
+      const labels = (rows || []).map((r) => (tab === 'month' ? r.month : r.weekStart));
+      const incomeData = (rows || []).map((r) => r.income);
+      const expenseData = (rows || []).map((r) => r.expense);
+      const hasData = (rows || []).length > 0;
+
+      useEffect(() => {
+        if (loading || !hasData || !canvasRef.current || typeof Chart === 'undefined') return;
+        const ctx = canvasRef.current.getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: '수입',
+                data: incomeData,
+                backgroundColor: 'rgba(16, 185, 129, 0.75)', // emerald
+                borderRadius: 6,
+                maxBarThickness: 28,
+              },
+              {
+                label: '지출',
+                data: expenseData,
+                backgroundColor: 'rgba(239, 68, 68, 0.75)', // red
+                borderRadius: 6,
+                maxBarThickness: 28,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { position: 'top', labels: { boxWidth: 12, padding: 16, font: { size: 12 } } },
+              tooltip: {
+                callbacks: { label: (c) => `${c.dataset.label}: ${fmtWon(c.parsed.y)}` },
+              },
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  font: { size: 11 },
+                  callback: (v) => (v >= 10000 ? (v / 10000) + '만' : v.toLocaleString('ko-KR')),
+                },
+                grid: { color: 'rgba(148, 163, 184, 0.15)' },
+              },
+            },
+          },
+        });
+        chartRef.current = chart;
+        // ★ cleanup: 리렌더/데이터 변경 시 기존 차트 파괴 (중복·메모리 누수 방지)
+        return () => { chart.destroy(); chartRef.current = null; };
+      }, [tab, loading, hasData, JSON.stringify(labels), JSON.stringify(incomeData), JSON.stringify(expenseData)]);
+
+      const TabBtn = ({ value, children }) => (
+        <button type="button" onClick={() => setTab(value)}
+          className={`px-3.5 py-1.5 rounded-lg text-sm font-semibold transition ${tab === value ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+          {children}
+        </button>
+      );
+
+      return (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-slate-800">수입·지출 추이</h2>
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+              <TabBtn value="month">월별</TabBtn>
+              <TabBtn value="week">주별</TabBtn>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="h-64 bg-slate-100 rounded-xl animate-pulse"></div>
+          ) : !hasData ? (
+            <div className="text-center py-16">
+              <div className="text-4xl mb-2">📊</div>
+              <p className="text-sm text-slate-400">표시할 {tab === 'month' ? '월별' : '주별'} 데이터가 없습니다.</p>
+            </div>
+          ) : (
+            <div className="relative h-64 sm:h-72">
+              <canvas ref={canvasRef} aria-label="수입 지출 추이 차트" role="img"></canvas>
+            </div>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧩 예산 대비 사용량
+    // ========================================
+    function BudgetSection({ budgets, usage, loading, onSave, onAskDelete }) {
+      const [category, setCategory] = useState('');
+      const [amount, setAmount] = useState('');
+      const [errors, setErrors] = useState({});
+      const [submitting, setSubmitting] = useState(false);
+
+      const handleSave = async (ev) => {
+        ev.preventDefault();
+        const e = {};
+        const amt = Number(amount);
+        if (!category) e.category = '카테고리를 선택하세요.';
+        if (!amount || isNaN(amt) || amt <= 0) e.amount = '예산은 0보다 큰 숫자여야 합니다.';
+        setErrors(e);
+        if (Object.keys(e).length > 0) return;
+        setSubmitting(true);
+        const ok = await onSave({ category, amount: Math.round(amt) });
+        setSubmitting(false);
+        if (ok) { setCategory(''); setAmount(''); setErrors({}); }
+      };
+
+      const barColor = (ratio) => (ratio > 100 ? 'bg-red-500' : ratio >= 80 ? 'bg-orange-400' : 'bg-emerald-500');
+      const txtColor = (ratio) => (ratio > 100 ? 'text-red-600' : ratio >= 80 ? 'text-orange-500' : 'text-emerald-600');
+
+      const existing = budgets.find((b) => b.category === category);
+
+      return (
+        <Card className="p-5">
+          <h2 className="text-base font-bold text-slate-800 mb-1">예산 대비 사용량</h2>
+          <p className="text-xs text-slate-400 mb-4">이번 달 ({currentMonth()}) 지출 기준</p>
+
+          {/* 예산 설정 폼 */}
+          <form onSubmit={handleSave} className="space-y-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select label="지출 카테고리" value={category} error={errors.category}
+                onChange={(e) => setCategory(e.target.value)}>
+                <option value="">선택하세요</option>
+                {BUDGET_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+              <Input label="월 예산 (원)" type="number" inputMode="numeric" min="0"
+                placeholder="예: 300000" value={amount} error={errors.amount}
+                onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            {existing && (
+              <p className="text-xs text-amber-600">
+                '{category}' 예산이 이미 있습니다(현재 {fmtWon(existing.amount)}). 저장 시 새 금액으로 변경됩니다.
+              </p>
+            )}
+            <Button type="submit" disabled={submitting} className="w-full">
+              {submitting ? '저장 중...' : '예산 저장'}
+            </Button>
+          </form>
+
+          {/* 사용량 게이지 목록 */}
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse"></div>)}
+            </div>
+          ) : usage.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-3xl mb-2">🎯</div>
+              <p className="text-sm text-slate-400">설정된 예산이 없습니다.<br />위에서 카테고리별 예산을 추가해보세요.</p>
+            </div>
+          ) : (
+            <ul className="space-y-4">
+              {usage.map((u) => {
+                // 출처(서버=소수 0.66 / 로컬 폴백=퍼센트 66)와 무관하게 spent·budget 으로 직접 백분율 계산
+                const ratio = u.budget > 0 ? Math.round((u.spent / u.budget) * 100) : 0;
+                const over = u.remaining < 0;
+                return (
+                  <li key={u.id || u.category}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2.5 h-2.5 rounded-full ${CAT_COLOR[u.category] || 'bg-slate-400'}`}></span>
+                        <span className="text-sm font-semibold text-slate-700">{u.category}</span>
+                        <span className={`text-xs font-bold ${txtColor(ratio)}`}>{ratio}%</span>
+                      </span>
+                      <button onClick={() => onAskDelete(u)} aria-label="예산 삭제"
+                        className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 text-sm">🗑️</button>
+                    </div>
+                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full bar-grow ${barColor(ratio)}`}
+                        style={{ width: Math.min(ratio, 100) + '%' }}></div>
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5 text-xs">
+                      <span className="text-slate-500">
+                        {fmtWon(u.spent)} / {fmtWon(u.budget)}
+                      </span>
+                      <span className={`font-semibold ${over ? 'text-red-600' : 'text-slate-600'}`}>
+                        {over ? `${fmtWon(Math.abs(u.remaining))} 초과` : `${fmtWon(u.remaining)} 남음`}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧩 내역 목록
+    // ========================================
+    function TransactionList({ transactions, onEdit, onAskDelete, loading }) {
+      if (loading) {
+        return (
+          <Card className="p-5">
+            <h2 className="text-base font-bold text-slate-800 mb-4">내역</h2>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse"></div>
+              ))}
+            </div>
+          </Card>
+        );
+      }
+      return (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-slate-800">내역</h2>
+            <span className="text-xs text-slate-400">{transactions.length}건</span>
+          </div>
+
+          {transactions.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-2">📭</div>
+              <p className="text-sm text-slate-400">등록된 내역이 없습니다.<br />위 폼에서 첫 내역을 추가해보세요.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {transactions.map((t) => {
+                const isIncome = t.type === 'income';
+                return (
+                  <li key={t.id} className="py-3 flex items-center gap-3 group">
+                    <Badge color={CAT_COLOR[t.category] || 'bg-slate-400'} className="shrink-0">{t.category}</Badge>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-800 truncate">
+                        {t.memo || <span className="text-slate-400">메모 없음</span>}
+                      </p>
+                      <p className="text-xs text-slate-400">{t.date} · {isIncome ? '수입' : '지출'}</p>
+                    </div>
+                    <div className={`text-sm font-bold shrink-0 ${isIncome ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {isIncome ? '+' : '-'}{fmtWon(t.amount)}
+                    </div>
+                    <div className="flex gap-1 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition">
+                      <button onClick={() => onEdit(t)} aria-label="수정"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                      <button onClick={() => onAskDelete(t)} aria-label="삭제"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+    function App() {
+      const toast = useToast();
+      const [transactions, setTransactions] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [usingMock, setUsingMock] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [deleteTarget, setDeleteTarget] = useState(null);
+      const formRef = useRef(null);
+
+      // 차트 / 예산 상태
+      const [monthly, setMonthly] = useState([]);
+      const [weekly, setWeekly] = useState([]);
+      const [budgets, setBudgets] = useState([]);
+      const [usage, setUsage] = useState([]);
+      const [analyticsLoading, setAnalyticsLoading] = useState(true);
+      const [budgetDeleteTarget, setBudgetDeleteTarget] = useState(null);
+
+      const summary = useMemo(() => computeSummary(transactions), [transactions]);
+
+      const load = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+          const data = await api.list();
+          setTransactions(data);
+          setUsingMock(api._useMock);
+        } catch (e) {
+          setError('내역을 불러오지 못했습니다.');
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      // 차트(월별/주별) 새로고침
+      const loadCharts = useCallback(async () => {
+        try {
+          const [m, w] = await Promise.all([api.monthly(), api.weekly()]);
+          setMonthly(m);
+          setWeekly(w);
+          setUsingMock(api._useMock);
+        } catch (e) { /* 무시: 빈 상태로 표시 */ }
+      }, []);
+
+      // 예산 + 사용량 새로고침
+      const loadBudgets = useCallback(async () => {
+        try {
+          const [b, u] = await Promise.all([api.budgets(), api.budgetUsage()]);
+          setBudgets(b);
+          setUsage(u);
+          setUsingMock(api._useMock);
+        } catch (e) { /* 무시 */ }
+      }, []);
+
+      const loadAnalytics = useCallback(async () => {
+        setAnalyticsLoading(true);
+        await Promise.all([loadCharts(), loadBudgets()]);
+        setAnalyticsLoading(false);
+      }, [loadCharts, loadBudgets]);
+
+      useEffect(() => { load(); }, [load]);
+      useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
+
+      const handleSubmit = async (body) => {
+        try {
+          if (editing) {
+            const updated = await api.update(editing.id, body);
+            setTransactions((prev) =>
+              api._sorted(prev.map((t) => (t.id === editing.id ? { ...t, ...updated } : t)))
+            );
+            setEditing(null);
+            toast('내역이 수정되었습니다.', 'success');
+          } else {
+            const created = await api.create(body);
+            setTransactions((prev) => api._sorted([created, ...prev]));
+            toast('내역이 등록되었습니다.', 'success');
+          }
+          setUsingMock(api._useMock);
+          loadAnalytics(); // 차트/예산 사용량 갱신
+          return true;
+        } catch (e) {
+          toast('저장에 실패했습니다.', 'error');
+          return false;
+        }
+      };
+
+      const handleEdit = (t) => {
+        setEditing(t);
+        if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+
+      const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        const id = deleteTarget.id;
+        setDeleteTarget(null);
+        try {
+          await api.remove(id);
+          setTransactions((prev) => prev.filter((t) => t.id !== id));
+          if (editing && editing.id === id) setEditing(null);
+          setUsingMock(api._useMock);
+          loadAnalytics(); // 차트/예산 사용량 갱신
+          toast('내역이 삭제되었습니다.', 'info');
+        } catch (e) {
+          toast('삭제에 실패했습니다.', 'error');
+        }
+      };
+
+      // 예산 저장 (upsert)
+      const handleSaveBudget = async (body) => {
+        try {
+          await api.saveBudget(body);
+          setUsingMock(api._useMock);
+          await loadBudgets();
+          toast('예산이 저장되었습니다.', 'success');
+          return true;
+        } catch (e) {
+          toast('예산 저장에 실패했습니다.', 'error');
+          return false;
+        }
+      };
+
+      // 예산 삭제 확정
+      const confirmDeleteBudget = async () => {
+        if (!budgetDeleteTarget) return;
+        const target = budgetDeleteTarget;
+        setBudgetDeleteTarget(null);
+        try {
+          await api.removeBudget(target.id);
+          setUsingMock(api._useMock);
+          await loadBudgets();
+          toast('예산이 삭제되었습니다.', 'info');
+        } catch (e) {
+          toast('예산 삭제에 실패했습니다.', 'error');
+        }
+      };
+
+      return (
+        <div className="min-h-screen">
+          <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+            <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+              <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                <span>💰</span> 나만의 가계부
+              </h1>
+              {usingMock && (
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700"
+                  title="서버 연결 없이 브라우저(localStorage) 데이터로 동작 중입니다.">
+                  오프라인 데모 모드
+                </span>
+              )}
+            </div>
+          </header>
+
+          <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+            {error && (
+              <Card className="p-4 bg-red-50 border-red-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-red-700">{error}</span>
+                  <Button variant="danger" size="sm" onClick={load}>다시 시도</Button>
+                </div>
+              </Card>
+            )}
+
+            <SummaryDashboard summary={summary} />
+
+            <TrendCharts monthly={monthly} weekly={weekly} loading={analyticsLoading} />
+
+            <div ref={formRef}>
+              <TransactionForm onSubmit={handleSubmit} editing={editing} onCancelEdit={() => setEditing(null)} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <CategoryBreakdown summary={summary} />
+              <BudgetSection
+                budgets={budgets}
+                usage={usage}
+                loading={analyticsLoading}
+                onSave={handleSaveBudget}
+                onAskDelete={setBudgetDeleteTarget}
+              />
+            </div>
+
+            <TransactionList
+              transactions={transactions}
+              loading={loading}
+              onEdit={handleEdit}
+              onAskDelete={setDeleteTarget}
+            />
+
+            <footer className="text-center text-xs text-slate-400 py-4">
+              API 연동 준비 완료 · 서버 미연결 시 localStorage 자동 폴백
+            </footer>
+          </main>
+
+          {/* 삭제 확인 모달 (커스텀, 브라우저 confirm 미사용) */}
+          <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="삭제 확인" size="sm">
+            {deleteTarget && (
+              <div>
+                <p className="text-sm text-slate-600">
+                  아래 내역을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                </p>
+                <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 text-sm">
+                  <div className="flex items-center justify-between">
+                    <Badge color={CAT_COLOR[deleteTarget.category] || 'bg-slate-400'}>{deleteTarget.category}</Badge>
+                    <span className={`font-bold ${deleteTarget.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {deleteTarget.type === 'income' ? '+' : '-'}{fmtWon(deleteTarget.amount)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-slate-500">{deleteTarget.memo || '메모 없음'} · {deleteTarget.date}</p>
+                </div>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setDeleteTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDelete}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+
+          {/* 예산 삭제 확인 모달 */}
+          <Modal isOpen={!!budgetDeleteTarget} onClose={() => setBudgetDeleteTarget(null)} title="예산 삭제 확인" size="sm">
+            {budgetDeleteTarget && (
+              <div>
+                <p className="text-sm text-slate-600">
+                  '{budgetDeleteTarget.category}' 카테고리의 예산을 삭제하시겠습니까?
+                </p>
+                <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 text-sm">
+                  <div className="flex items-center justify-between">
+                    <Badge color={CAT_COLOR[budgetDeleteTarget.category] || 'bg-slate-400'}>{budgetDeleteTarget.category}</Badge>
+                    <span className="font-bold text-slate-700">예산 {fmtWon(budgetDeleteTarget.budget)}</span>
+                  </div>
+                </div>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setBudgetDeleteTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDeleteBudget}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+  </script>
+</body>
+</html>

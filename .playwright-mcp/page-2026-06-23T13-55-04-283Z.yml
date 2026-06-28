@@ -1,0 +1,518 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - list [ref=e6]:
+        - listitem [ref=e7]:
+          - link "판매자 가입" [ref=e8] [cursor=pointer]:
+            - /url: https://wing.coupang.com/tenants/vendor-signup/signup?utm_source=button_pc_coupang_top_right_cta&utm_medium=non_paid&utm_campaign=seller_registration
+        - listitem [ref=e9]:
+          - link "고객센터" [ref=e10] [cursor=pointer]:
+            - /url: https://mc.coupang.com/ssr/desktop/contact/faq
+        - listitem [ref=e11]:
+          - link "회원가입" [ref=e12] [cursor=pointer]:
+            - /url: https://login.coupang.com/login/memberJoinFrm.pang
+        - listitem [ref=e13]:
+          - link "로그인" [ref=e14] [cursor=pointer]:
+            - /url: https://login.coupang.com/login/login.pang?rtnUrl=https%3A%2F%2Fwww.coupang.com%2Fnp%2Fpost%2Flogin%3Fr%3Dhttp%253A%252F%252Fwww.coupang.com%252Fvp%252Fproducts%252F7464900475%253FitemId%253D19465765106%2526vendorItemId%253D86576143822
+      - list [ref=e15]:
+        - listitem [ref=e16]: 즐겨찾기
+        - listitem [ref=e17]:
+          - generic [ref=e18] [cursor=pointer]: 입점신청
+    - generic [ref=e21]:
+      - generic [ref=e27] [cursor=pointer]: 카테고리
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - link "Coupang" [ref=e30] [cursor=pointer]:
+            - /url: https://www.coupang.com
+            - img "Coupang" [ref=e31]
+          - generic [ref=e32]:
+            - link "전체" [ref=e35] [cursor=pointer]:
+              - /url: "#"
+            - textbox "쿠팡 상품 검색" [ref=e37]:
+              - /placeholder: 찾고 싶은 상품을 검색해보세요!
+            - button "검색" [ref=e39] [cursor=pointer]
+          - list [ref=e40]:
+            - listitem [ref=e41]:
+              - link "마이쿠팡" [ref=e42] [cursor=pointer]:
+                - /url: https://mc.coupang.com/ssr/desktop/order/list
+                - generic [ref=e43]: 마이쿠팡
+            - listitem [ref=e44]:
+              - link "장바구니" [ref=e45] [cursor=pointer]:
+                - /url: //cart.coupang.com/cartView.pang
+                - emphasis [ref=e46]
+                - generic [ref=e47]: 장바구니
+        - list [ref=e52]:
+          - listitem [ref=e53]:
+            - link "쿠팡플레이 쿠팡플레이" [ref=e54] [cursor=pointer]:
+              - /url: https://www.coupangplay.com/catalog
+              - img "쿠팡플레이" [ref=e55]
+              - generic [ref=e56]: 쿠팡플레이
+          - listitem [ref=e57]:
+            - link "로켓배송 로켓배송" [ref=e58] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/campaigns/82
+              - img "로켓배송" [ref=e59]
+              - generic [ref=e60]: 로켓배송
+          - listitem [ref=e61]:
+            - link "로켓프레시 로켓프레시" [ref=e62] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/categories/393760
+              - img "로켓프레시" [ref=e63]
+              - generic [ref=e64]: 로켓프레시
+          - listitem [ref=e65]:
+            - link "다시 구매 다시 구매" [ref=e66] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/fbi?sourceType=home_section_fbi
+              - img "다시 구매" [ref=e67]
+              - generic [ref=e68]: 다시 구매
+          - listitem [ref=e70]:
+            - link "쿠팡비즈 쿠팡비즈" [ref=e71] [cursor=pointer]:
+              - /url: https://login.coupang.com/corporation/member/landing-page
+              - img "쿠팡비즈" [ref=e72]
+              - generic [ref=e73]: 쿠팡비즈
+          - listitem [ref=e74]:
+            - link "로켓직구 로켓직구" [ref=e75] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/coupangglobal
+              - img "로켓직구" [ref=e76]
+              - generic [ref=e77]: 로켓직구
+          - listitem [ref=e78]:
+            - link "골드박스 골드박스" [ref=e79] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/121237?sourceType=gm_crm_goldbox&subSourceType=gm_crm_gwsrtcut
+              - img "골드박스" [ref=e80]
+              - generic [ref=e81]: 골드박스
+          - listitem [ref=e82]:
+            - link "이달의신상 이달의신상" [ref=e83] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/136938
+              - img "이달의신상" [ref=e84]
+              - generic [ref=e85]: 이달의신상
+          - listitem [ref=e86]:
+            - link "판매자특가 판매자특가" [ref=e87] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/omp
+              - img "판매자특가" [ref=e88]
+              - generic [ref=e89]: 판매자특가
+          - listitem [ref=e90]:
+            - link "와우회원할인 와우회원할인" [ref=e91] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/campaigns/83
+              - img "와우회원할인" [ref=e92]
+              - generic [ref=e93]: 와우회원할인
+          - listitem [ref=e94]:
+            - link "이벤트/쿠폰 이벤트/쿠폰" [ref=e95] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/coupangbenefit
+              - img "이벤트/쿠폰" [ref=e96]
+              - generic [ref=e97]: 이벤트/쿠폰
+          - listitem [ref=e98]:
+            - link "반품마켓 반품마켓" [ref=e99] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/54908
+              - img "반품마켓" [ref=e100]
+              - generic [ref=e101]: 반품마켓
+          - listitem [ref=e102]:
+            - link "착한상점 착한상점" [ref=e103] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/63240
+              - img "착한상점" [ref=e104]
+              - generic [ref=e105]: 착한상점
+          - listitem [ref=e107]:
+            - link "기획전 기획전" [ref=e108] [cursor=pointer]:
+              - /url: https://pages.coupang.com/p/bep?sourceType=gm_crm_oms&subSourceType=gm_crm_gwsrtcut
+              - img "기획전" [ref=e109]
+              - generic [ref=e110]: 기획전
+          - listitem [ref=e111]:
+            - link "쿠팡트래블 쿠팡트래블" [ref=e112] [cursor=pointer]:
+              - /url: https://trip.coupang.com/?channel=gnb
+              - img "쿠팡트래블" [ref=e113]
+              - generic [ref=e114]: 쿠팡트래블
+          - listitem [ref=e116]:
+            - link "입점신청 입점신청" [ref=e117] [cursor=pointer]:
+              - /url: https://wing.coupang.com/tenants/vendor-signup/signup?utm_source=button_pc_coupang_shortcut_1&utm_medium=non_paid&utm_id=onsite_ca&utm_content=202411
+              - img "입점신청" [ref=e118]
+              - generic [ref=e119]: 입점신청
+  - generic [ref=e123]:
+    - list [ref=e124]:
+      - listitem [ref=e125]:
+        - link "쿠팡 홈" [ref=e126] [cursor=pointer]:
+          - /url: https://www.coupang.com
+        - img [ref=e127]
+      - listitem [ref=e129]:
+        - link "가전디지털" [ref=e130] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/categories/178255?eventCategory=breadcrumb
+        - img [ref=e131]
+      - listitem [ref=e133]:
+        - link "음향기기" [ref=e134] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/categories/178399?eventCategory=breadcrumb
+        - img [ref=e135]
+      - listitem [ref=e137]:
+        - link "이어폰" [ref=e138] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/categories/178401?eventCategory=breadcrumb
+        - img [ref=e139]
+      - listitem [ref=e141]:
+        - link "블루투스 이어폰" [ref=e142] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/categories/178403?eventCategory=breadcrumb
+    - generic [ref=e143]:
+      - main [ref=e144]:
+        - generic [ref=e145]:
+          - generic [ref=e146]:
+            - list [ref=e148]:
+              - listitem [ref=e149] [cursor=pointer]
+              - listitem [ref=e151] [cursor=pointer]
+              - listitem [ref=e153] [cursor=pointer]
+              - listitem [ref=e155] [cursor=pointer]
+              - listitem [ref=e157] [cursor=pointer]
+              - listitem [ref=e159] [cursor=pointer]
+              - listitem [ref=e161] [cursor=pointer]
+            - img "Product image" [ref=e165]
+          - generic [ref=e166]:
+            - generic [ref=e167]:
+              - link "앤커" [ref=e168] [cursor=pointer]:
+                - /url: //www.coupang.com/np/products/brand-shop?brandName=%EC%95%A4%EC%BB%A4
+                - generic [ref=e169]: 앤커
+              - generic [ref=e170]:
+                - generic [ref=e171]:
+                  - heading "앤커 사운드코어 리버티 4 NC 블루투스 이어폰" [level=1] [ref=e172]
+                  - generic [ref=e173]:
+                    - link "5 (1,311)" [ref=e177] [cursor=pointer]:
+                      - /url: "#sdpReview"
+                      - generic [ref=e178]:
+                        - generic "5" [ref=e179]:
+                          - img [ref=e180]
+                          - img [ref=e183]
+                          - img [ref=e186]
+                          - img [ref=e189]
+                          - img [ref=e192]
+                        - generic [ref=e195]: (1,311)
+                    - paragraph [ref=e198]: 한 달간 400명 이상 구매했어요
+                - generic [ref=e200]:
+                  - button [ref=e201] [cursor=pointer]:
+                    - img [ref=e202]
+                  - button [ref=e204] [cursor=pointer]:
+                    - img [ref=e205]
+            - generic [ref=e208]:
+              - generic [ref=e209]:
+                - generic [ref=e210]:
+                  - generic [ref=e211]: 3%
+                  - img [ref=e212]
+                - generic [ref=e214]: 62,950원
+                - generic [ref=e215]: 64,900원
+                - img [ref=e219] [cursor=pointer]
+              - generic [ref=e223] [cursor=pointer]:
+                - img [ref=e225]
+                - generic [ref=e227]:
+                  - generic [ref=e229]: 1,950원
+                  - generic [ref=e230]: 쿠폰할인
+                - img [ref=e232]
+            - separator [ref=e234]
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - generic [ref=e238]: 이 상품은 내일 도착,
+                - generic [ref=e239]: 무료배송
+              - generic [ref=e240]:
+                - generic [ref=e243]:
+                  - emphasis [ref=e244]: 내일(수) 6/24
+                  - emphasis [ref=e245]: 도착
+                  - emphasis [ref=e246]: (
+                  - emphasis [ref=e247]: 1시간 4분
+                  - emphasis [ref=e248]: 내 주문 시
+                  - emphasis [ref=e249]: / 서울⋅경기 기준
+                  - emphasis [ref=e250]: )
+                - generic [ref=e253]: 무료배송
+            - generic [ref=e254]:
+              - generic [ref=e258] [cursor=pointer]:
+                - generic [ref=e259]: 모델명/품번
+                - generic [ref=e260]: A3947
+              - generic [ref=e263]:
+                - generic [ref=e264]: "색상:"
+                - generic [ref=e265]: 블랙
+            - generic [ref=e268]:
+              - generic [ref=e269]: 적립
+              - generic [ref=e270]:
+                - generic [ref=e271]: 최대 3,148원
+                - button "쿠팡캐시 적립" [ref=e272] [cursor=pointer]
+                - generic [ref=e273]: · 쿠페이 머니 결제시
+              - generic [ref=e274] [cursor=pointer]:
+                - generic [ref=e275]: 혜택보기
+                - img [ref=e276]
+            - generic [ref=e278]:
+              - strong [ref=e279]: PC에서도 간편한 결제
+              - generic [ref=e280]:
+                - img "쿠페이머니" [ref=e281]
+                - generic [ref=e282]: 쿠페이머니
+              - generic [ref=e283]:
+                - img "카드" [ref=e284]
+                - generic [ref=e285]: 카드
+              - generic [ref=e286]:
+                - img "계좌이체" [ref=e287]
+                - generic [ref=e288]: 계좌이체
+            - generic [ref=e289]:
+              - generic [ref=e291]:
+                - textbox [disabled] [ref=e292]: "1"
+                - generic [ref=e293]:
+                  - button "수량빼기" [disabled] [ref=e294]: 수량빼기
+                  - button "수량더하기" [disabled] [ref=e296]: 수량더하기
+              - generic [ref=e300]:
+                - button "장바구니 담기" [ref=e301] [cursor=pointer]
+                - button "바로구매" [ref=e302] [cursor=pointer]:
+                  - generic [ref=e303]: 바로구매
+            - list [ref=e305]:
+              - listitem [ref=e306]: "유무선 여부: 무선"
+              - listitem [ref=e307]: "유닛형태: 커널형"
+              - listitem [ref=e308]: "수량: 1개"
+              - listitem [ref=e309]: "포함 구성 요소: 본품"
+              - listitem [ref=e310]: "노이즈캔슬링 여부: 액티브노이즈캔슬링(ANC)"
+              - listitem [ref=e311]: "쿠팡상품번호: 7464900475 - 19465765106"
+            - link "다른 옵션에 반품 상품이 있어요! 새 상품 (1) / 반품 (2)" [ref=e313] [cursor=pointer]:
+              - /url: /vp/products/7464900475/item/19465765102/offerList?vendorItemId=86576143811&totalCount=3
+              - generic [ref=e314]:
+                - generic [ref=e315]: 다른 옵션에 반품 상품이 있어요!
+                - generic [ref=e316]: 새 상품
+                - generic [ref=e317]: (1)
+                - generic [ref=e318]: /
+                - generic [ref=e319]: 반품
+                - generic [ref=e320]: (2)
+        - generic [ref=e322]:
+          - generic [ref=e323] [cursor=pointer]:
+            - generic [ref=e324]: 상품상세
+            - generic [ref=e325]: 상품평 (1,311)
+            - generic [ref=e326]: 상품문의
+            - generic [ref=e327]: 배송/교환/반품 안내
+          - generic [ref=e328]:
+            - generic [ref=e329]:
+              - paragraph [ref=e330]: 필수 표기 정보
+              - table [ref=e331]:
+                - rowgroup [ref=e332]:
+                  - 'row "품명 및 모델명 앤커 사운드코어 리버티4 NC,A3947 KC 인증정보 본품 : R-R-AIl-A3947 , 전지 : YU101156-22002" [ref=e333]':
+                    - cell "품명 및 모델명" [ref=e334]
+                    - cell "앤커 사운드코어 리버티4 NC,A3947" [ref=e335]
+                    - cell "KC 인증정보" [ref=e336]
+                    - 'cell "본품 : R-R-AIl-A3947 , 전지 : YU101156-22002" [ref=e337]'
+                  - row "정격전압, 소비전력 컨텐츠 참조 출시년월 2023.07" [ref=e338]:
+                    - cell "정격전압, 소비전력" [ref=e339]
+                    - cell "컨텐츠 참조" [ref=e340]
+                    - cell "출시년월" [ref=e341]
+                    - cell "2023.07" [ref=e342]
+                  - row "제조자(수입자) Anker Innovations Limited/업체미제공 제조국 중국" [ref=e343]:
+                    - cell "제조자(수입자)" [ref=e344]
+                    - cell "Anker Innovations Limited/업체미제공" [ref=e345]
+                    - cell "제조국" [ref=e346]
+                    - cell "중국" [ref=e347]
+              - generic [ref=e349] [cursor=pointer]:
+                - generic [ref=e350]: 필수 표기 정보 더보기
+                - generic [ref=e351]: 더보기
+            - button "상품정보 더보기" [ref=e371] [cursor=pointer]:
+              - generic [ref=e372]: 상품정보 더보기
+          - generic [ref=e377]:
+            - heading "상품 리뷰" [level=4] [ref=e379]
+            - generic [ref=e393]:
+              - generic [ref=e394]: 동일한 상품에 대해 작성된 상품 리뷰로, 판매자는 다를 수 있습니다.
+              - button "상품리뷰 운영원칙" [ref=e395] [cursor=pointer]:
+                - generic [ref=e396]: 상품리뷰 운영원칙
+          - generic [ref=e400]:
+            - generic [ref=e401]:
+              - heading "상품문의" [level=2] [ref=e402]
+              - button "문의하기" [ref=e403] [cursor=pointer]
+            - list [ref=e405]:
+              - listitem [ref=e406]:
+                - text: 구매한 상품의
+                - emphasis [ref=e407]: 취소/반품은 마이쿠팡 구매내역에서 신청
+                - text: 가능합니다.
+              - listitem [ref=e408]: 상품문의 및 후기게시판을 통해 취소나 환불, 반품 등은 처리되지 않습니다.
+              - listitem [ref=e409]:
+                - emphasis [ref=e410]: 가격, 판매자, 교환/환불 및 배송 등 해당 상품 자체와 관련 없는 문의는 고객센터 내 1:1 문의하기
+                - text: 를 이용해주세요.
+              - listitem [ref=e411]:
+                - emphasis [ref=e412]: "\"해당 상품 자체\"와 관계없는 글, 양도, 광고성, 욕설, 비방, 도배 등의 글은 예고 없이 이동, 노출제한, 삭제 등의 조치가 취해질 수 있습니다."
+              - listitem [ref=e413]: 공개 게시판이므로 전화번호, 메일 주소 등 고객님의 소중한 개인정보는 절대 남기지 말아주세요.
+            - generic [ref=e415]: 아직 문의가 없습니다.
+            - generic [ref=e416]:
+              - paragraph [ref=e417]: 판매 부적격 상품 또는 허위과장광고 및 지식재산권을 침해하는 상품의 경우 신고하여 주시기 바랍니다.
+              - button "신고하기" [ref=e418] [cursor=pointer]
+          - generic [ref=e421]:
+            - generic [ref=e422]:
+              - heading "배송정보" [level=5] [ref=e423]
+              - generic [ref=e424]:
+                - table [ref=e425]:
+                  - rowgroup [ref=e426]:
+                    - row "배송방법 순차배송 배송비 무료배송 - 로켓배송 상품 중 19,800원 이상 구매 시 무료배송 - 도서산간 지역 추가비용 없음" [ref=e427]:
+                      - rowheader "배송방법" [ref=e428]
+                      - cell "순차배송" [ref=e429]
+                      - rowheader "배송비" [ref=e430]
+                      - cell "무료배송 - 로켓배송 상품 중 19,800원 이상 구매 시 무료배송 - 도서산간 지역 추가비용 없음" [ref=e431]:
+                        - generic [ref=e432]:
+                          - text: 무료배송
+                          - text: "- 로켓배송 상품 중 19,800원 이상 구매 시 무료배송"
+                          - text: "- 도서산간 지역 추가비용 없음"
+                    - row "묶음배송 여부 가능" [ref=e433]:
+                      - rowheader "묶음배송 여부" [ref=e434]
+                      - cell "가능" [ref=e435]
+                    - 'row "배송기간 ㆍ쿠팡친구 배송 지역 : 주문 및 결제 완료 후, 1-2일 이내 도착 ㆍ쿠팡친구 미배송 지역 : 주문 및 결제 완료 후, 2-3일 이내 도착 - 도서 산간 지역 등은 하루가 더 소요될 수 있습니다. 곧 고객님께도 쿠팡친구가 찾아갈 수 있도록 노력하겠습니다 ㆍ천재지변, 물량 수급 변동 등 예외적인 사유 발생 시, 다소 지연될 수 있는 점 양해 부탁드립니다." [ref=e436]':
+                      - rowheader "배송기간" [ref=e437]
+                      - 'cell "ㆍ쿠팡친구 배송 지역 : 주문 및 결제 완료 후, 1-2일 이내 도착 ㆍ쿠팡친구 미배송 지역 : 주문 및 결제 완료 후, 2-3일 이내 도착 - 도서 산간 지역 등은 하루가 더 소요될 수 있습니다. 곧 고객님께도 쿠팡친구가 찾아갈 수 있도록 노력하겠습니다 ㆍ천재지변, 물량 수급 변동 등 예외적인 사유 발생 시, 다소 지연될 수 있는 점 양해 부탁드립니다." [ref=e438]':
+                        - list [ref=e439]:
+                          - listitem [ref=e440]: "ㆍ쿠팡친구 배송 지역 : 주문 및 결제 완료 후, 1-2일 이내 도착"
+                          - listitem [ref=e441]:
+                            - text: "ㆍ쿠팡친구 미배송 지역 : 주문 및 결제 완료 후, 2-3일 이내 도착"
+                            - paragraph [ref=e442]: "- 도서 산간 지역 등은 하루가 더 소요될 수 있습니다. 곧 고객님께도 쿠팡친구가 찾아갈 수 있도록 노력하겠습니다"
+                          - listitem [ref=e443]: ㆍ천재지변, 물량 수급 변동 등 예외적인 사유 발생 시, 다소 지연될 수 있는 점 양해 부탁드립니다.
+                - heading "교환/반품 안내" [level=5] [ref=e444]
+                - list [ref=e445]:
+                  - listitem [ref=e446]:
+                    - text: ㆍ교환/반품에 관한 일반적인 사항은 판매자가 제시사항보다 관계법령이 우선합니다.
+                    - text: 다만, 판매자의 제시사항이 관계법령보다 소비자에게 유리한 경우에는 판매자 제시사항이 적용됩니다.
+                - table [ref=e447]:
+                  - rowgroup [ref=e448]:
+                    - 'row "교환/반품 비용 ㆍ와우멤버십 회원: 무료로 반품/교환 가능 ㆍ와우멤버십 회원 아닌 경우: 1) [총 주문금액] - [반품 상품금액] = 19,800원 미만인 경우 반품비 5,000원 2) [총 주문금액] - [반품 상품금액] = 19,800원 이상인 경우 반품비 2,500원" [ref=e449]':
+                      - rowheader "교환/반품 비용" [ref=e450]
+                      - 'cell "ㆍ와우멤버십 회원: 무료로 반품/교환 가능 ㆍ와우멤버십 회원 아닌 경우: 1) [총 주문금액] - [반품 상품금액] = 19,800원 미만인 경우 반품비 5,000원 2) [총 주문금액] - [반품 상품금액] = 19,800원 이상인 경우 반품비 2,500원" [ref=e451]':
+                        - generic [ref=e452]:
+                          - text: "ㆍ와우멤버십 회원: 무료로 반품/교환 가능"
+                          - text: "ㆍ와우멤버십 회원 아닌 경우:"
+                          - text: 1) [총 주문금액] - [반품 상품금액] = 19,800원 미만인 경우 반품비 5,000원
+                          - text: 2) [총 주문금액] - [반품 상품금액] = 19,800원 이상인 경우 반품비 2,500원
+                    - row "교환/반품 신청 기준일 ㆍ단순변심에 의한 로켓배송 상품의 교환/반품은 제품 수령 후 30일 이내까지, 교환/반품 제한사항에 해당하지 않는 경우에만 가능 (교환/반품 비용 고객부담) ㆍ상품의 내용이 표시·광고의 내용과 다른 경우에는 상품을 수령한 날부터 3개월 이내, 그 사실을 안 날 또는 알 수 있었던 날부터 30일 이내에 청약철회 가능" [ref=e453]:
+                      - rowheader "교환/반품 신청 기준일" [ref=e454]
+                      - cell "ㆍ단순변심에 의한 로켓배송 상품의 교환/반품은 제품 수령 후 30일 이내까지, 교환/반품 제한사항에 해당하지 않는 경우에만 가능 (교환/반품 비용 고객부담) ㆍ상품의 내용이 표시·광고의 내용과 다른 경우에는 상품을 수령한 날부터 3개월 이내, 그 사실을 안 날 또는 알 수 있었던 날부터 30일 이내에 청약철회 가능" [ref=e455]:
+                        - paragraph [ref=e456]: ㆍ단순변심에 의한 로켓배송 상품의 교환/반품은 제품 수령 후 30일 이내까지, 교환/반품 제한사항에 해당하지 않는 경우에만 가능 (교환/반품 비용 고객부담)
+                        - paragraph [ref=e457]:
+                          - text: ㆍ상품의 내용이 표시·광고의 내용과 다른 경우에는 상품을 수령한 날부터 3개월 이내, 그 사실을 안 날 또는 알 수 있었던 날부터
+                          - text: 30일 이내에 청약철회 가능
+                - heading "교환/반품 제한사항" [level=5] [ref=e458]
+                - list [ref=e459]:
+                  - listitem [ref=e460]: ㆍ주문/제작 상품의 경우, 상품의 제작이 이미 진행된 경우
+                  - listitem [ref=e461]: ㆍ상품 포장을 개봉하여 사용 또는 설치 완료되어 상품의 가치가 훼손된 경우 (단, 내용 확인을 위한 포장 개봉의 경우는 예외)
+                  - listitem [ref=e462]: ㆍ고객의 사용, 시간경과, 일부 소비에 의하여 상품의 가치가 현저히 감소한 경우
+                  - listitem [ref=e463]: ㆍ세트상품 일부 사용, 구성품을 분실하였거나 취급 부주의로 인한 파손/고장/오염으로 재판매 불가한 경우
+                  - listitem [ref=e464]: ㆍ모니터 해상도의 차이로 인해 색상이나 이미지가 실제와 달라, 고객이 단순 변심으로 교환/반품을 무료로 요청하는 경우
+                  - listitem [ref=e465]: ㆍ제조사의 사정 (신모델 출시 등) 및 부품 가격 변동 등에 의해 무료 교환/반품으로 요청하는 경우
+                - paragraph [ref=e466]: ※ 각 상품별로 아래와 같은 사유로 취소/반품이 제한될 수 있습니다.
+                - table [ref=e467]:
+                  - rowgroup [ref=e468]:
+                    - row "의류/잡화/수입명품 ⋅ 상품의 택(TAG) 및 라벨의 멸실 또는 훼손, 상품의 사용 또는 훼손, 구성품 누락으로 상품의 가치가 현저히 감소된 경우" [ref=e469]:
+                      - rowheader "의류/잡화/수입명품" [ref=e470]
+                      - cell "⋅ 상품의 택(TAG) 및 라벨의 멸실 또는 훼손, 상품의 사용 또는 훼손, 구성품 누락으로 상품의 가치가 현저히 감소된 경우" [ref=e471]:
+                        - paragraph [ref=e472]: ⋅ 상품의 택(TAG) 및 라벨의 멸실 또는 훼손, 상품의 사용 또는 훼손, 구성품 누락으로 상품의 가치가 현저히 감소된 경우
+                    - row "계절상품/식품/화장품 ㆍ신선/냉장/냉동 상품의 단순변심의 경우 ㆍ뷰티 상품 이용 시 트러블(알러지, 붉은 반점, 가려움, 따가움)이 발생하는 경우, 진료 확인서 및 소견서 등을 증빙하면 환불이 가능 (제반비용 고객부담)" [ref=e473]:
+                      - rowheader "계절상품/식품/화장품" [ref=e474]
+                      - cell "ㆍ신선/냉장/냉동 상품의 단순변심의 경우 ㆍ뷰티 상품 이용 시 트러블(알러지, 붉은 반점, 가려움, 따가움)이 발생하는 경우, 진료 확인서 및 소견서 등을 증빙하면 환불이 가능 (제반비용 고객부담)" [ref=e475]:
+                        - paragraph [ref=e476]: ㆍ신선/냉장/냉동 상품의 단순변심의 경우
+                        - paragraph [ref=e477]:
+                          - text: ㆍ뷰티 상품 이용 시 트러블(알러지, 붉은 반점, 가려움, 따가움)이 발생하는 경우,
+                          - text: 진료 확인서 및 소견서 등을 증빙하면 환불이 가능 (제반비용 고객부담)
+                    - row "전자/가전/설치상품 ㆍ전자제품 특성상 정품 스티커가 제거되었거나, 설치 또는 사용 이후에 단순변심인 경우 ㆍ설치 또는 사용하여 재판매가 어려운 경우, 액정이 있는 상품의 전원을 켠 경우 ㆍ상품의 시리얼 넘버 유출로 내장된 소프트웨어의 가치가 감소한 경우 (내비게이션, OS시리얼이 적힌 PMP) ㆍ홀로그램 등을 분리, 분실, 훼손하여 상품의 가치가 현저히 감소하여 재판매가 불가할 경우 (노트북, 데스크탑 PC 등)" [ref=e478]:
+                      - rowheader "전자/가전/설치상품" [ref=e479]
+                      - cell "ㆍ전자제품 특성상 정품 스티커가 제거되었거나, 설치 또는 사용 이후에 단순변심인 경우 ㆍ설치 또는 사용하여 재판매가 어려운 경우, 액정이 있는 상품의 전원을 켠 경우 ㆍ상품의 시리얼 넘버 유출로 내장된 소프트웨어의 가치가 감소한 경우 (내비게이션, OS시리얼이 적힌 PMP) ㆍ홀로그램 등을 분리, 분실, 훼손하여 상품의 가치가 현저히 감소하여 재판매가 불가할 경우 (노트북, 데스크탑 PC 등)" [ref=e480]:
+                        - paragraph [ref=e481]: ㆍ전자제품 특성상 정품 스티커가 제거되었거나, 설치 또는 사용 이후에 단순변심인 경우
+                        - paragraph [ref=e482]: ㆍ설치 또는 사용하여 재판매가 어려운 경우, 액정이 있는 상품의 전원을 켠 경우
+                        - paragraph [ref=e483]: ㆍ상품의 시리얼 넘버 유출로 내장된 소프트웨어의 가치가 감소한 경우 (내비게이션, OS시리얼이 적힌 PMP)
+                        - paragraph [ref=e484]: ㆍ홀로그램 등을 분리, 분실, 훼손하여 상품의 가치가 현저히 감소하여 재판매가 불가할 경우 (노트북, 데스크탑 PC 등)
+                    - row "자동차용품 ㆍ상품을 개봉하여 장착한 이후 단순변심인 경우" [ref=e485]:
+                      - rowheader "자동차용품" [ref=e486]
+                      - cell "ㆍ상품을 개봉하여 장착한 이후 단순변심인 경우" [ref=e487]:
+                        - paragraph [ref=e488]: ㆍ상품을 개봉하여 장착한 이후 단순변심인 경우
+                    - row "CD/DVD/GAME/ BOOK ㆍ복제가 가능한 상품의 포장 등을 훼손한 경우" [ref=e489]:
+                      - rowheader "CD/DVD/GAME/ BOOK" [ref=e490]:
+                        - text: CD/DVD/GAME/
+                        - text: BOOK
+                      - cell "ㆍ복제가 가능한 상품의 포장 등을 훼손한 경우" [ref=e491]
+            - generic [ref=e493]:
+              - paragraph [ref=e494]: 판매자 정보
+              - table [ref=e495]:
+                - rowgroup [ref=e496]:
+                  - row "판매자 쿠팡1577-7011" [ref=e497]:
+                    - rowheader "판매자" [ref=e498]
+                    - cell "쿠팡1577-7011" [ref=e499]:
+                      - text: 쿠팡
+                      - link "1577-7011" [ref=e500] [cursor=pointer]:
+                        - /url: tel:+8215777011
+              - paragraph [ref=e501]: 미성년자가 체결한 계약은 법정대리인이 동의하지 않는 경우 본인 또는 법정대리인이 취소할 수 있습니다.
+              - generic [ref=e502]:
+                - generic [ref=e503]: 상품인증정보
+                - generic [ref=e504]:
+                  - generic [ref=e507]:
+                    - generic [ref=e508]:
+                      - strong [ref=e510]: KC인증 전기용품 안전확인
+                      - text: ":"
+                      - link "YU101156-22002" [ref=e512] [cursor=pointer]:
+                        - /url: http://www.safetykorea.kr/search/searchPop?certNum=YU101156-22002
+                    - paragraph [ref=e513]: 구조 또는 사용 방법 등으로 인하여 화재·감전 등의 위해가 발생할 우려가 있는 전기용품으로서 그 위해를 방지하기 위하여 안전기준에 적합한 것임을 확인
+                  - generic [ref=e516]:
+                    - generic [ref=e517]:
+                      - strong [ref=e519]: 방송통신기자재 적합성 평가 대상
+                      - text: ":"
+                      - link "R-R-AIl-A3947" [ref=e521] [cursor=pointer]:
+                        - /url: https://www.rra.go.kr/ko/license/A_b_popup_keyno.do?key_no=R-R-AIl-A3947
+                    - paragraph [ref=e522]: 전파환경 및 방송통신망 등에 위해를 줄 우려가 있는 기자재와 중대한 전자파장해를 주거나 전자파로부터 정상적인 동작을 방해받을 정도의 영향을 받는 기자재에 대한 기술수준 및 전자파 인체보호기준 등에 대한 적합 여부 평가
+      - complementary
+    - generic [ref=e523]:
+      - heading "이 상품과 관련된 카테고리" [level=2] [ref=e524]
+      - link "유선 이어폰" [ref=e527] [cursor=pointer]:
+        - /url: https://www.coupang.com/np/categories/178404
+  - contentinfo [ref=e529]:
+    - generic [ref=e530]:
+      - generic [ref=e531]:
+        - link "회사소개" [ref=e532] [cursor=pointer]:
+          - /url: https://news.coupang.com/
+        - link "Investor Relations" [ref=e533] [cursor=pointer]:
+          - /url: https://ir.aboutcoupang.com/overview/default.aspx
+        - link "인재채용" [ref=e534] [cursor=pointer]:
+          - /url: https://rocketyourcareer.kr.coupang.com
+        - link "입점/제휴문의" [ref=e535] [cursor=pointer]:
+          - /url: https://marketplace.coupangcorp.com/s/?utm_source=button_pc&utm_medium=non_paid&utm_campaign=onsite_ca&utm_id=coupang_app?inflow=WEB_FOOTER_B
+        - link "공지사항" [ref=e536] [cursor=pointer]:
+          - /url: https://mc.coupang.com/ssr/desktop/contact/notice
+        - link "고객의 소리" [ref=e537] [cursor=pointer]:
+          - /url: https://mc.coupang.com/ssr/desktop/contact/voc
+        - link "이용약관" [ref=e538] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/policies/terms
+        - link "개인정보 처리방침" [ref=e539] [cursor=pointer]:
+          - /url: https://privacy.coupang.com/ko/center/coupang
+          - strong [ref=e540]: 개인정보 처리방침
+        - link "정보보호/개인정보보호 인증" [ref=e541] [cursor=pointer]:
+          - /url: https://privacy.coupang.com/ko/security/status
+        - link "쿠팡페이 이용약관" [ref=e542] [cursor=pointer]:
+          - /url: https://rocketpay.coupang.com/rocketpay/operationTerms/coupangPcFooter
+        - link "신뢰관리센터" [ref=e543] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/safety
+        - link "제휴마케팅" [ref=e544] [cursor=pointer]:
+          - /url: https://partners.coupang.com/
+        - link "광고안내" [ref=e545] [cursor=pointer]:
+          - /url: https://ads.coupang.com
+      - paragraph [ref=e549] [cursor=pointer]: Global Site
+    - generic [ref=e551]:
+      - generic [ref=e552]:
+        - link "COUPANG" [ref=e553] [cursor=pointer]:
+          - /url: https://www.coupang.com/
+        - generic [ref=e554]:
+          - text: "상호명 및 호스팅 서비스 제공 : 쿠팡(주)"
+          - text: "대표이사 : 로저스 해롤드 린(Rogers Harold Lynn)"
+          - text: 서울시 송파구 송파대로 570
+          - text: "사업자 등록번호 : 120-88-00767"
+          - text: "통신판매업신고 : 2017-서울송파-0680"
+          - link "사업자정보 확인 >" [ref=e555] [cursor=pointer]:
+            - /url: http://www.ftc.go.kr/info/bizinfo/communicationViewPopup.jsp?wrkr_no=1208800767
+      - 'link "365고객센터 | 전자금융거래분쟁처리담당 1577-7011 (유료) 서울시 송파구 송파대로 570 email : help@coupang.com" [ref=e557] [cursor=pointer]':
+        - /url: https://mc.coupang.com/ssr/desktop/contact/inquiry
+        - strong [ref=e558]: 365고객센터
+        - text: "| 전자금융거래분쟁처리담당"
+        - emphasis [ref=e559]: 1577-7011 (유료)
+        - text: 서울시 송파구 송파대로 570
+        - text: "email : help@coupang.com"
+      - paragraph [ref=e560]:
+        - strong [ref=e561]: 채무지급보증 안내
+        - generic [ref=e562]:
+          - text: 당사는 고객님이 현금 결제한 금액에 대해
+          - text: 채무지급보증 계약을 체결하여
+          - text: 안전거래를 보장하고 있습니다.
+        - link "서비스 가입사실 확인 >" [ref=e563] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/etc/popWooriService
+    - generic [ref=e569]:
+      - paragraph [ref=e570]:
+        - text: 사이버몰 내 판매되는 상품 중에는 쿠팡에 등록한 개별 판매자가 판매하는 마켓플레이스(오픈마켓) 상품이 포함되어 있습니다.
+        - text: 마켓플레이스(오픈마켓) 상품의 경우 쿠팡은 통신판매중개자이며 통신판매의 당사자가 아닙니다.
+        - text: 쿠팡은 마켓플레이스(오픈마켓) 상품, 거래정보 및 거래 등에 대하여 책임을 지지 않습니다.
+        - text: 쿠팡은 소비자 보호와 안전거래를 위해 신뢰관리센터(CM112@coupang.com)를 운영하고 있으며, 관련 분쟁이 발생할 경우 별도의 분쟁 처리절차에 의거 분쟁이 처리됩니다.
+        - text: Copyright © Coupang Corp. 2010-2025 All Rights Reserved.
+      - list [ref=e571]:
+        - listitem [ref=e572]:
+          - link [ref=e573] [cursor=pointer]:
+            - /url: https://www.facebook.com/Coupang.korea
+        - listitem [ref=e574]:
+          - link [ref=e575] [cursor=pointer]:
+            - /url: https://news.coupang.com/
+        - listitem [ref=e576]:
+          - link [ref=e577] [cursor=pointer]:
+            - /url: https://www.instagram.com/coupang
+  - alert [ref=e578]

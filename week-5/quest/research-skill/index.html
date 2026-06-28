@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🏗️ 자재 단가 리서치 — 인테리어 공사 전용</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏗️</text></svg>" />
+
+  <!-- Pretendard (Korean web font) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+
+  <!-- Tailwind (CDN, JIT in browser) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+  <!-- Prevent dark-mode flash -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('research_theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (t === 'dark' || (!t && prefersDark)) document.documentElement.classList.add('dark');
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- React + ReactDOM (UMD globals) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Babel standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ CRITICAL: @babel/standalone defaults to the AUTOMATIC JSX runtime, which injects
+    // `import { jsx } from "react/jsx-runtime"` — with React as a UMD global that import throws
+    // and the page renders blank white. Register a CLASSIC-runtime preset and use it below.
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+
+  <style>
+    html { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', sans-serif; }
+    @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+    @keyframes popIn { 0% { transform: scale(.6); opacity: 0 } 60% { transform: scale(1.12) } 100% { transform: scale(1); opacity: 1 } }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(24px) } to { opacity: 1; transform: translateX(0) } }
+    @keyframes shimmer { 100% { transform: translateX(100%) } }
+    .anim-fade { animation: fadeIn .4s ease both; }
+    .anim-slide { animation: slideUp .45s cubic-bezier(.21,1.02,.73,1) both; }
+    .anim-pop { animation: popIn .35s cubic-bezier(.21,1.02,.73,1) both; }
+    .anim-toast { animation: toastIn .3s cubic-bezier(.21,1.02,.73,1) both; }
+    .shimmer { position: relative; overflow: hidden; }
+    .shimmer::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent); animation: shimmer 1.3s infinite; }
+    .dark .shimmer::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent); }
+    .thin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+    .thin-scroll::-webkit-scrollbar-thumb { background: rgba(120,120,150,.35); border-radius: 999px; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="app-react">
+    const { useState, useEffect, useRef, useCallback, useMemo, useContext, createContext } = React;
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🔌 MOCK 데이터 레이어 (SWAP POINT) — 인테리어 자재 단가
+    //   지금 단가는 전부 예시(mock)입니다. 실제로 교체할 곳은 `researchEngine`의
+    //   4개 메서드뿐입니다:
+    //     • resolveSites  → 어떤 단가 출처(쇼핑몰/제조사/도매시세)를 볼지 결정
+    //     • crawlSite     → 출처 1곳을 탐색해 자재별 단가/규격 + 시세 동향 3줄 반환
+    //     • synthesize    → 출처별 단가를 모아 '단가 비교표'·요약·액션으로 합성
+    //     • shareToNotion → 정리한 md를 노션에 페이지로 업로드
+    //   UI/상태/마크다운 포맷은 그대로 두고 이 4개만 실제 구현으로 바꾸면 됩니다.
+    // ════════════════════════════════════════════════════════════════════════
+
+    // ── 자재 카테고리 판별용 별칭 (순서대로 매칭) ─────────────────────────
+    const CATEGORY_ALIASES = [
+      ['바닥재',          ['바닥', '마루', '강마루', '강화마루', 'spc', 'lvt', '포세린', '장판', '데코타일']],
+      ['벽/도배·도장',    ['도배', '도장', '벽지', '실크벽지', '합지', '페인트', '수성페인트', '석고보드', '퍼티', '벽면']],
+      ['천장',            ['천장', '텍스', '석고텍스', 'smc', '마이톤', '다공']],
+      ['몰딩',            ['몰딩', '걸레받이', '천장몰딩', '문선']],
+      ['도어/창호',       ['도어', '창호', '샤시', '새시', 'abs도어', '멤브레인', '시스템창', '하이샤시', '문짝', '문틀']],
+      ['주방',            ['주방', '싱크', '싱크볼', '상판', '인조대리석', '엔지니어드스톤', '후드', '상부장', '하부장']],
+      ['욕실/위생도기',   ['욕실', '위생도기', '변기', '양변기', '세면', '세면기', '수전', '욕실타일']],
+      ['조명',            ['조명', '평판등', 'led평판', '매입등', '다운라이트', '레일조명', '등기구']],
+    ];
+
+    // ── 단가 출처 메타 (도메인 + 가격 계수: 도매<쇼핑<제조사몰<시공참고) ────
+    const SITE_META = {
+      '네이버쇼핑':            { url: 'https://shopping.naver.com', factor: 0.96 },
+      '오늘의집':              { url: 'https://ohou.se',            factor: 1.02 },
+      '한샘몰':                { url: 'https://mall.hanssem.com',   factor: 1.05 },
+      '을지로·방산시장 시세':  { url: '#',                          factor: 0.90 },
+      '페인트인포':            { url: 'https://www.paintinfo.co.kr',factor: 0.98 },
+      '동화자연마루':          { url: 'https://www.dongwha.co.kr',  factor: 1.04 },
+      '구정마루':              { url: 'https://www.gujung.co.kr',   factor: 1.03 },
+      'LX지인':                { url: 'https://z-in.lxhausys.com',  factor: 1.06 },
+      'KCC':                   { url: 'https://www.kccworld.co.kr', factor: 1.05 },
+      '현대L&C':               { url: 'https://www.hyundailnc.com', factor: 1.05 },
+      '삼화페인트':            { url: 'https://www.samhwa.com',     factor: 1.00 },
+      '집닥':                  { url: 'https://zipdoc.co.kr',       factor: 1.10 },
+      '숨고':                  { url: 'https://soomgo.com',         factor: 1.08 },
+    };
+
+    // ── 카테고리별 mock 단가 원본 ──────────────────────────────────────────
+    // TODO: 실제 단가로 교체 — items의 base(₩)/spec, sites, trends가 단가 리서치의 데이터 소스입니다.
+    const MATERIAL_DATA = {
+      '바닥재': {
+        sites: ['네이버쇼핑', '오늘의집', '동화자연마루', '구정마루', '한샘몰'],
+        fallbackBase: 70000,
+        items: {
+          '강마루':     { spec: '6T 시공/평',  base: 95000 },
+          '강화마루':   { spec: '8mm 시공/평', base: 78000 },
+          'SPC타일':    { spec: '5T 시공/평',  base: 88000 },
+          '포세린타일': { spec: '600각/장',    base: 4800 },
+          '장판':       { spec: '1.8T 시공/평',base: 42000 },
+        },
+        trends: [
+          '이번 주 {kw} 시공 단가 보합세, 일부 브랜드 프로모션 진행 중',
+          '원자재(목분·MDF) 가격 안정으로 강마루 라인 변동 미미',
+          '포세린타일은 수입 물량 증가로 장당 단가 소폭 하락',
+          '대량 발주(50평 이상) 시 평당 3~5천 원 추가 협의 여지',
+          '시공 인건비 상승분이 마감 단가에 일부 반영되는 흐름',
+          '재고 소진 임박 색상은 단종 전 특가로 풀리는 중',
+        ],
+        summary: '{topic} 단가는 전반적으로 보합세이며, {kw}는 대량 발주와 프로모션 활용 시 평당 단가를 더 낮출 여지가 있다.',
+        actions: ['을지로 ○○상사에 {kw} 50평 실측 견적 요청', '포세린 타일 대량 발주 단가 협의', '최저가 출처 기준으로 시공팀 단가 크로스체크'],
+      },
+      '벽/도배·도장': {
+        sites: ['페인트인포', '네이버쇼핑', '삼화페인트', '오늘의집', '을지로·방산시장 시세'],
+        fallbackBase: 30000,
+        items: {
+          '실크벽지':         { spec: '1롤(약5㎡)', base: 38000 },
+          '합지벽지':         { spec: '1롤(약5㎡)', base: 22000 },
+          '친환경수성페인트': { spec: '18L/통',     base: 68000 },
+          '석고보드':         { spec: '12.5T/장',   base: 4200 },
+        },
+        trends: [
+          '친환경 수성페인트 수요 증가로 18L 단가 강보합',
+          '{kw}는 신상 패턴 출시로 구형 재고 할인 폭 확대',
+          '석고보드는 물류비 영향으로 장당 단가 소폭 상승',
+          '도장 시공은 평형대별 패키지 견적이 단가보다 유리',
+          '친환경 인증(HB) 제품 위주로 재고가 빠르게 회전',
+          '대형 현장은 통 단위 대량 구매 시 10% 내 네고 가능',
+        ],
+        summary: '{topic} 단가는 친환경 제품 위주로 강보합이며, {kw}는 통·롤 단위 대량 구매로 단가를 방어하는 게 유리하다.',
+        actions: ['친환경수성페인트 18L 통 단위 대량 단가 협의', '{kw} 신상/구형 재고가 비교 후 발주 결정', '도장 시공 평형대 패키지 견적 별도 요청'],
+      },
+      '천장': {
+        sites: ['네이버쇼핑', '을지로·방산시장 시세', '오늘의집', '한샘몰'],
+        fallbackBase: 5000,
+        items: {
+          '석고텍스':   { spec: '605각/장', base: 1300 },
+          'SMC':        { spec: '600각/장', base: 3800 },
+          '마이톤':     { spec: '605각/장', base: 2600 },
+          '다공천장':   { spec: '㎡',       base: 28000 },
+        },
+        trends: [
+          '{kw} 장당 단가 보합, 대량 현장 위주로 물량 확보 권장',
+          'SMC·마이톤은 디자인 패턴 수요로 일부 품목 강보합',
+          '다공천장(흡음)은 ㎡ 단가 상승 흐름, 견적 시 면적 확정 필요',
+          '천장 부자재(M-bar·캐링)가 마감 단가에 영향',
+          '재고 보유 색상은 즉납, 특수 색상은 리드타임 확인',
+          '대형 평수 일괄 발주 시 장당 단가 협의 여지 있음',
+        ],
+        summary: '{topic} 단가는 부자재 영향으로 소폭 변동하며, {kw}는 면적 확정 후 대량 발주로 장당 단가를 협의하는 게 핵심이다.',
+        actions: ['{kw} 시공 면적 확정 후 장당 대량 단가 요청', 'M-bar 등 부자재 포함 견적으로 재산정', '즉납 가능 색상 재고 확인'],
+      },
+      '몰딩': {
+        sites: ['네이버쇼핑', '을지로·방산시장 시세', '오늘의집'],
+        fallbackBase: 3000,
+        items: {
+          '걸레받이':   { spec: '60mm/m',  base: 2300 },
+          '천장몰딩':   { spec: '100mm/m', base: 3400 },
+          '문선몰딩':   { spec: '90mm/m',  base: 3100 },
+        },
+        trends: [
+          '{kw} m당 단가 보합, 길이 단위 주문이 유리',
+          'PVC 원자재 안정으로 몰딩 라인 가격 변동 작음',
+          '무도장(필름) 마감 제품 수요 증가로 일부 품목 강보합',
+          '곡선·고사양 몰딩은 가공비가 별도 산정됨',
+          '대량 시 m당 수백 원 단위 네고가 일반적',
+          '재고 컬러는 즉납, 주문 제작 컬러는 리드타임 발생',
+        ],
+        summary: '{topic} 단가는 원자재 안정으로 변동이 작고, {kw}는 길이 단위 일괄 주문이 단가 면에서 가장 유리하다.',
+        actions: ['{kw} 길이 단위 일괄 주문 단가 협의', '주문 제작 컬러 리드타임 확인', '대량 m당 네고 가능 여부 문의'],
+      },
+      '도어/창호': {
+        sites: ['LX지인', 'KCC', '오늘의집', '현대L&C', '네이버쇼핑'],
+        fallbackBase: 200000,
+        items: {
+          'ABS도어':     { spec: '세트(문짝+틀)', base: 185000 },
+          '멤브레인도어':{ spec: '세트(문짝+틀)', base: 240000 },
+          '시스템창호':  { spec: '㎡',            base: 320000 },
+          '하이샤시':    { spec: '㎡',            base: 210000 },
+        },
+        trends: [
+          'ABS·멤브레인 도어 세트 단가 강보합, 리드타임 2~3주',
+          '시스템창호는 알루미늄 시세 영향으로 ㎡ 단가 상승 흐름',
+          '하이샤시(PVC)는 단열등급별 단가 차이가 큼',
+          '대형 현장은 창호 일괄 발주 시 설치비 포함 협의 유리',
+          '고단열·고기밀 사양 수요 증가로 상위 라인 강세',
+          '도어 하드웨어(경첩·손잡이) 사양에 따라 세트가 변동',
+        ],
+        summary: '{topic} 단가는 알루미늄·단열사양 영향으로 강보합이며, {kw}는 리드타임을 감안해 일괄 발주로 설치비까지 묶는 게 유리하다.',
+        actions: ['{kw} 세트 리드타임 확인 후 일괄 발주', '시스템창호 ㎡ 단가에 설치비 포함 견적 요청', '단열등급별 단가 비교표 작성'],
+      },
+      '주방': {
+        sites: ['한샘몰', '오늘의집', '네이버쇼핑', '현대L&C'],
+        fallbackBase: 200000,
+        items: {
+          '인조대리석상판': { spec: 'm', base: 180000 },
+          '엔지니어드스톤': { spec: 'm', base: 420000 },
+          '싱크볼':         { spec: '개', base: 95000 },
+          '후드':           { spec: '개', base: 260000 },
+        },
+        trends: [
+          '엔지니어드스톤 상판 m당 단가 강보합, 컬러별 편차 존재',
+          '인조대리석은 보급형 라인 위주로 가격 안정',
+          '싱크볼·후드는 수입 환율 영향으로 일부 품목 상승',
+          '주방 일괄(상판+싱크+후드) 패키지가 개별 구매보다 유리',
+          '대형 평형은 상판 길이 단위 협의로 단가 절감 가능',
+          '인기 컬러·마감은 리드타임이 길어 사전 발주 권장',
+        ],
+        summary: '{topic} 단가는 상판 소재에 따라 편차가 크며, {kw} 중심으로 패키지 견적을 받으면 개별 구매보다 단가가 낮아진다.',
+        actions: ['{kw} 포함 주방 패키지 견적 요청', '상판 길이 단위 단가 협의', '인기 컬러 리드타임 확인 후 사전 발주'],
+      },
+      '욕실/위생도기': {
+        sites: ['네이버쇼핑', '오늘의집', '을지로·방산시장 시세', '한샘몰'],
+        fallbackBase: 60000,
+        items: {
+          '양변기':   { spec: '개',         base: 165000 },
+          '세면기':   { spec: '개',         base: 78000 },
+          '수전':     { spec: '개',         base: 54000 },
+          '욕실타일': { spec: '300×600/장', base: 2200 },
+        },
+        trends: [
+          '양변기·세면기 단가 보합, 브랜드별 프로모션 상시 진행',
+          '수전은 환율·원자재 영향으로 일부 모델 강보합',
+          '{kw}(300×600)은 수입 물량으로 장당 단가 안정',
+          '욕실 일괄(도기+수전+타일) 견적이 개별보다 유리',
+          '절수·일체형 도기 수요 증가로 상위 라인 강세',
+          '재고 모델 즉납 가능, 신상·특수 색상은 리드타임 확인',
+        ],
+        summary: '{topic} 단가는 브랜드 프로모션으로 변동이 있으며, {kw}는 도기·수전·타일 일괄 견적으로 묶을 때 단가가 가장 좋다.',
+        actions: ['{kw} 포함 욕실 일괄 견적 요청', '수전 모델별 단가 비교', '재고 즉납 모델 확인 후 발주'],
+      },
+      '조명': {
+        sites: ['네이버쇼핑', '오늘의집', '을지로·방산시장 시세'],
+        fallbackBase: 15000,
+        items: {
+          'LED평판등': { spec: '640각/개', base: 28000 },
+          '매입등':    { spec: '개',       base: 9800 },
+          '레일조명':  { spec: '개',       base: 22000 },
+        },
+        trends: [
+          'LED평판등 단가 보합, 면조명 수요 꾸준',
+          '매입등(다운라이트)은 보급형 위주로 가격 경쟁 치열',
+          '레일조명은 디자인 수요로 일부 품목 강보합',
+          '색온도·연색성(CRI) 사양에 따라 단가 차이 발생',
+          '대량 발주 시 개당 단가 두 자릿수 % 네고 가능',
+          'KS·KC 인증 제품 위주로 현장 채택률 높음',
+        ],
+        summary: '{topic} 단가는 보급형 위주로 경쟁이 치열하며, {kw}는 대량 발주 시 개당 단가를 크게 낮출 수 있다.',
+        actions: ['{kw} 대량 발주 개당 단가 네고', '색온도·CRI 사양 확정', 'KS/KC 인증 모델로 현장 채택 확정'],
+      },
+    };
+
+    // 빠른 자재 카테고리 프리셋 (버튼) — topic=카테고리명, keywords=예시 자재
+    const MATERIAL_PRESETS = [
+      { emoji: '🪵', label: '바닥재',        keywords: ['강마루', '강화마루', 'SPC타일', '포세린타일', '장판'] },
+      { emoji: '🎨', label: '벽/도배·도장',  keywords: ['실크벽지', '합지벽지', '친환경수성페인트', '석고보드'] },
+      { emoji: '☁️', label: '천장',          keywords: ['석고텍스', 'SMC', '마이톤', '다공천장'] },
+      { emoji: '📏', label: '몰딩',          keywords: ['걸레받이', '천장몰딩', '문선몰딩'] },
+      { emoji: '🚪', label: '도어/창호',     keywords: ['ABS도어', '멤브레인도어', '시스템창호', '하이샤시'] },
+      { emoji: '🍳', label: '주방',          keywords: ['인조대리석상판', '엔지니어드스톤', '싱크볼', '후드'] },
+      { emoji: '🚽', label: '욕실/위생도기', keywords: ['양변기', '세면기', '수전', '욕실타일'] },
+      { emoji: '💡', label: '조명',          keywords: ['LED평판등', '매입등', '레일조명'] },
+    ];
+    const ALL_CATEGORIES = MATERIAL_PRESETS.map((p) => p.label);
+
+    // ── helpers ────────────────────────────────────────────────────────────
+    function detectCategory(topic) {
+      const t = (topic || '').toLowerCase();
+      for (const [key, aliases] of CATEGORY_ALIASES) {
+        if (t.includes(key.toLowerCase())) return key;
+        if (aliases.some((a) => t.includes(a.toLowerCase()))) return key;
+      }
+      return '바닥재';
+    }
+    function fill(str, topic, kw) { return str.replaceAll('{topic}', topic).replaceAll('{kw}', kw); }
+    function pickBullets(pool, offset, topic, kw) {
+      const out = [];
+      for (let i = 0; i < 3; i++) out.push(fill(pool[(offset + i) % pool.length], topic, kw));
+      return out;
+    }
+    function presetKeywordsFor(category) {
+      const p = MATERIAL_PRESETS.find((x) => x.label === category);
+      if (p) return p.keywords.slice();
+      return Object.keys(MATERIAL_DATA[detectCategory(category)].items).slice(0, 4);
+    }
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const won = (n) => '₩' + Number(n).toLocaleString('ko-KR');
+
+    // ── 전주 대비 계산용: 카테고리별 직전 단가 localStorage 저장/조회 ──────
+    const PRICE_KEY = 'material_prices_v1';
+    function loadAllPrices() { try { return JSON.parse(localStorage.getItem(PRICE_KEY) || '{}'); } catch (e) { return {}; } }
+    function loadPrevPrices(catKey) {
+      const m = loadAllPrices()[catKey];
+      if (!m) return null;
+      const { _savedAt, ...rest } = m;
+      return rest;
+    }
+    function savePrices(catKey, map) {
+      const all = loadAllPrices();
+      all[catKey] = { ...map, _savedAt: new Date().toISOString() };
+      try { localStorage.setItem(PRICE_KEY, JSON.stringify(all)); } catch (e) {}
+    }
+
+    // 전주 대비 변동 → 표시 텍스트
+    function changeText(c) {
+      if (!c || c.dir === 'new') return '신규';
+      if (c.dir === 'flat') return `＝ ${c.pct >= 0 ? '+' : ''}${c.pct.toFixed(1)}%`;
+      if (c.dir === 'up') return `▲ +${c.pct.toFixed(1)}%`;
+      return `▼ ${c.pct.toFixed(1)}%`;
+    }
+
+    // ── 🔌 리서치 엔진 (이 4개 메서드만 실제 구현으로 교체) ────────────────
+    const researchEngine = {
+      // 탐색할 단가 출처 목록 결정
+      resolveSites(category, count) {
+        // TODO: 실제 출처 선정 로직으로 교체
+        const data = MATERIAL_DATA[detectCategory(category)];
+        return data.sites.slice(0, count);
+      },
+
+      // 출처 1곳 탐색 → { name, url, highlights:[3], offers:[{name,spec,price}] }
+      async crawlSite(siteName, category, keywords, index) {
+        // TODO: 실제 브라우저 MCP 크롤링으로 교체 (지금은 딜레이 + mock 단가/규격)
+        await sleep(620 + Math.random() * 600);
+        const data = MATERIAL_DATA[detectCategory(category)];
+        const meta = SITE_META[siteName] || { url: '#', factor: 1.0 };
+        const mats = keywords.length ? keywords : Object.keys(data.items).slice(0, 4);
+        const offers = mats.map((name) => {
+          const it = data.items[name] || { spec: '규격 협의', base: data.fallbackBase };
+          const noise = 1 + (Math.random() * 0.06 - 0.03); // 출처별 ±3% 노이즈 → 최저가 출처가 자재마다 달라짐
+          return { name, spec: it.spec, price: Math.round((it.base * meta.factor * noise) / 10) * 10 };
+        });
+        return {
+          name: siteName,
+          url: meta.url,
+          highlights: pickBullets(data.trends, index, category, mats[0] || '자재'),
+          offers,
+        };
+      },
+
+      // 출처별 단가 → 단가 비교표 + 전주 대비 + 요약/액션 합성
+      synthesize(category, keywords, siteResults) {
+        // TODO: 실제 단가 정규화/요약 로직으로 교체
+        const catKey = detectCategory(category);
+        const data = MATERIAL_DATA[catKey];
+        const mats = keywords.length ? keywords : Object.keys(data.items).slice(0, 4);
+        const prevMap = loadPrevPrices(catKey);
+
+        const rows = mats.map((name) => {
+          // 출처들 중 최저가 채택 → 그 출처가 표의 '출처'
+          let best = null;
+          siteResults.forEach((s) => {
+            const o = s.offers.find((x) => x.name === name);
+            if (o && (!best || o.price < best.price)) best = { price: o.price, source: s.name, spec: o.spec };
+          });
+          if (!best) {
+            const it = data.items[name] || { spec: '규격 협의' };
+            best = { price: data.fallbackBase, source: (siteResults[0] && siteResults[0].name) || '-', spec: it.spec };
+          }
+          // 전주 대비: 직전 저장가가 있으면 그 값을 기준으로 ±1~6% 드리프트
+          let price, change;
+          const prev = prevMap && prevMap[name];
+          if (prev != null) {
+            price = Math.round((prev * (1 + (Math.random() * 0.12 - 0.06))) / 10) * 10;
+            const pct = ((price - prev) / prev) * 100;
+            change = { dir: pct > 0.4 ? 'up' : pct < -0.4 ? 'down' : 'flat', pct };
+          } else {
+            price = best.price;
+            change = { dir: 'new', pct: 0 };
+          }
+          return { name, spec: best.spec, price, source: best.source, change };
+        });
+
+        // 이번 주 단가를 다음 주 비교 기준으로 저장
+        savePrices(catKey, Object.fromEntries(rows.map((r) => [r.name, r.price])));
+
+        const cheapest = rows.reduce((a, b) => (a.price <= b.price ? a : b));
+        const avgPrice = Math.round(rows.reduce((s, r) => s + r.price, 0) / rows.length);
+        const kw = mats[0] || '자재';
+
+        return {
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          category,
+          date: todayStr(),
+          keywords: keywords.slice(),
+          rows,
+          sites: siteResults.map((s) => ({ name: s.name, url: s.url, highlights: s.highlights })),
+          cheapest: { source: cheapest.source, price: cheapest.price, name: cheapest.name },
+          avgPrice,
+          summary: fill(data.summary, category, kw),
+          nextActions: data.actions.map((a) => fill(a, category, kw)),
+        };
+      },
+
+      // 노션 업로드 (mock)
+      async shareToNotion(markdown, category) {
+        // TODO: 실제 Notion API 호출로 교체 (페이지 생성 후 URL 반환)
+        await sleep(800);
+        const slug = (category || 'material').replace(/[\\/\s·]+/g, '-').slice(0, 24);
+        const rand = Math.random().toString(36).slice(2, 10);
+        return { url: `https://www.notion.so/자재단가-${slug}-${rand}` };
+      },
+    };
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🧰 공용 유틸 (날짜/마크다운/복사/다운로드/스케줄)
+    // ════════════════════════════════════════════════════════════════════════
+    function cx(...a) { return a.filter(Boolean).join(' '); }
+    const p2 = (n) => String(n).padStart(2, '0');
+    function fmtDate(d) { return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; }
+    function todayStr() { return fmtDate(new Date()); }
+    const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+    // research 객체 → 자재단가-{카테고리}-{날짜}.md 텍스트
+    function researchToMarkdown(r, checked) {
+      const done = checked || new Set();
+      const L = [];
+      L.push(`# ${r.category} 자재 단가 리서치`, '');
+      L.push(`> **수집일**: ${r.date}`);
+      if (r.keywords && r.keywords.length) L.push(`> **키워드**: ${r.keywords.join(', ')}`);
+      L.push(`> **탐색 출처**: ${r.sites.length}곳`, '');
+      L.push('## 💰 단가 비교', '');
+      L.push('| 자재명 | 규격 | 단가 | 전주 대비 | 출처 |');
+      L.push('| --- | --- | --- | --- | --- |');
+      r.rows.forEach((row) => L.push(`| ${row.name} | ${row.spec} | ${won(row.price)} | ${changeText(row.change)} | ${row.source} |`));
+      L.push('');
+      L.push(`- **최저가 출처**: ${r.cheapest.source} (${won(r.cheapest.price)})`);
+      L.push(`- **평균가**: ${won(r.avgPrice)}`, '');
+      L.push('## 📌 출처별 핵심', '');
+      r.sites.forEach((s, i) => {
+        L.push(`### ${i + 1}. ${s.name}`);
+        s.highlights.forEach((h) => L.push(`- ${h}`));
+        L.push('');
+      });
+      L.push('## 📝 한 줄 요약', r.summary, '');
+      L.push('## ✅ 다음 액션');
+      r.nextActions.forEach((a, i) => L.push(`- [${done.has(i) ? 'x' : ' '}] ${a}`));
+      L.push('', '---', '*🏗️ 「자재 단가 리서치」 스킬로 생성됨*');
+      return L.join('\n');
+    }
+    function mdFilename(r) {
+      const safe = r.category.replace(/[\\/\s·]+/g, '_');
+      return `자재단가-${safe}-${r.date}.md`;
+    }
+
+    async function copyText(text) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+      } catch (e) {}
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        const ok = document.execCommand('copy'); document.body.removeChild(ta); return ok;
+      } catch (e) { return false; }
+    }
+    function downloadText(filename, text) {
+      const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+
+    const HISTORY_KEY = 'material_history_v1';
+    function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { return []; } }
+
+    // 스케줄러 설정 / 마지막 자동 실행 시각
+    const SCHED_KEY = 'material_scheduler_v1';
+    function loadSched() {
+      try { const s = JSON.parse(localStorage.getItem(SCHED_KEY)); if (s) return s; } catch (e) {}
+      return { enabled: false, day: 1, time: '09:00', categories: ['바닥재', '벽/도배·도장', '도어/창호'] };
+    }
+    const LAST_AUTO_KEY = 'material_last_auto_run';
+    function loadLastAutoRun() { try { return localStorage.getItem(LAST_AUTO_KEY); } catch (e) { return null; } }
+    function saveLastAutoRun(iso) { try { localStorage.setItem(LAST_AUTO_KEY, iso); } catch (e) {} }
+
+    // 다음/직전 예정 실행 시각 계산
+    function nextRunDate(day, time, from) {
+      const [hh, mm] = time.split(':').map(Number);
+      const now = from || new Date();
+      const d = new Date(now); d.setHours(hh, mm, 0, 0);
+      let diff = (day - now.getDay() + 7) % 7;
+      if (diff === 0 && d <= now) diff = 7;
+      d.setDate(now.getDate() + diff);
+      return d;
+    }
+    function prevRunDate(day, time, from) {
+      const [hh, mm] = time.split(':').map(Number);
+      const now = from || new Date();
+      const d = new Date(now); d.setHours(hh, mm, 0, 0);
+      let diff = (now.getDay() - day + 7) % 7;
+      if (diff === 0 && d > now) diff = 7;
+      d.setDate(now.getDate() - diff);
+      return d;
+    }
+    function dDays(target) {
+      const a = new Date(); a.setHours(0, 0, 0, 0);
+      const b = new Date(target); b.setHours(0, 0, 0, 0);
+      return Math.round((b - a) / 86400000);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🔔 토스트 시스템
+    // ════════════════════════════════════════════════════════════════════════
+    const ToastContext = createContext(null);
+    const useToast = () => useContext(ToastContext);
+
+    function ToastProvider({ children }) {
+      const [toasts, setToasts] = useState([]);
+      const remove = useCallback((id) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+      const toast = useCallback((message, type = 'success') => {
+        const id = Date.now() + Math.random();
+        setToasts((t) => [...t, { id, message, type }]);
+        setTimeout(() => remove(id), 2800);
+      }, [remove]);
+      return (
+        <ToastContext.Provider value={toast}>
+          {children}
+          <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-[min(92vw,360px)]" aria-live="polite" aria-atomic="true">
+            {toasts.map((t) => <ToastItem key={t.id} {...t} onClose={() => remove(t.id)} />)}
+          </div>
+        </ToastContext.Provider>
+      );
+    }
+    function ToastItem({ message, type, onClose }) {
+      const styles = { success: 'bg-emerald-600 text-white', info: 'bg-indigo-600 text-white', error: 'bg-rose-600 text-white' }[type] || 'bg-slate-800 text-white';
+      const icon = { success: '✓', info: 'ℹ', error: '✕' }[type] || '•';
+      return (
+        <div className={cx('anim-toast flex items-center gap-3 rounded-xl px-4 py-3 shadow-lg shadow-black/10', styles)} role="status">
+          <span className="grid place-items-center w-5 h-5 rounded-full bg-white/25 text-xs font-bold">{icon}</span>
+          <span className="text-sm font-medium flex-1">{message}</span>
+          <button onClick={onClose} className="opacity-70 hover:opacity-100 text-sm" aria-label="닫기">✕</button>
+        </div>
+      );
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🎨 디자인 시스템
+    // ════════════════════════════════════════════════════════════════════════
+    function Card({ className, children, ...rest }) {
+      return (
+        <div className={cx('rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm shadow-slate-200/60 dark:shadow-black/30', className)} {...rest}>
+          {children}
+        </div>
+      );
+    }
+    function Button({ variant = 'primary', size = 'md', className, children, ...rest }) {
+      const base = 'inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.98]';
+      const variants = {
+        primary: 'text-white bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500 hover:brightness-110 shadow-lg shadow-indigo-500/25',
+        secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700',
+        ghost: 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800',
+      };
+      const sizes = { sm: 'text-xs px-3 py-1.5', md: 'text-sm px-4 py-2.5', lg: 'text-base px-6 py-3.5' };
+      return <button className={cx(base, variants[variant], sizes[size], className)} {...rest}>{children}</button>;
+    }
+    function Badge({ children, className }) {
+      return <span className={cx('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium', className)}>{children}</span>;
+    }
+    function Spinner({ className }) {
+      return <span className={cx('inline-block rounded-full border-2 border-current border-t-transparent animate-spin', className || 'w-4 h-4')} aria-hidden="true" />;
+    }
+    function SectionTitle({ children, className }) {
+      return <h3 className={cx('text-sm font-bold text-slate-500 dark:text-slate-400 tracking-wide', className)}>{children}</h3>;
+    }
+    // on/off 스위치
+    function Switch({ checked, onChange, label }) {
+      return (
+        <button
+          onClick={() => onChange(!checked)}
+          role="switch" aria-checked={checked} aria-label={label}
+          className={cx('relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors', checked ? 'bg-gradient-to-r from-indigo-500 to-violet-500' : 'bg-slate-300 dark:bg-slate-700')}
+        >
+          <span className={cx('inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform', checked ? 'translate-x-5' : 'translate-x-0.5')} />
+        </button>
+      );
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🧩 기능 컴포넌트
+    // ════════════════════════════════════════════════════════════════════════
+
+    function Header({ dark, onToggleDark }) {
+      return (
+        <header className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500 bg-clip-text text-transparent">
+                🏗️ 자재 단가 리서치 — 인테리어 공사 전용
+              </h1>
+              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30">
+                프로토타입 · mock 단가
+              </Badge>
+            </div>
+            <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
+              주요 자재 단가를 매주 자동으로 모아 비교하고, 노션에 정리해 올립니다. (사무실 전용)
+            </p>
+            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+              ※ 표시된 단가는 예시이며, 실제 크롤링 연동 시 라이브 단가로 교체됩니다.
+            </p>
+          </div>
+          <button
+            onClick={onToggleDark}
+            className="shrink-0 grid place-items-center w-11 h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label={dark ? '라이트 모드로 전환' : '다크 모드로 전환'} title={dark ? '라이트 모드' : '다크 모드'}
+          >
+            <span className="text-lg">{dark ? '☀️' : '🌙'}</span>
+          </button>
+        </header>
+      );
+    }
+
+    // ── 입력 폼 ──────────────────────────────────────────────────────────
+    function ResearchForm({ topic, setTopic, keywords, setKeywords, siteCount, setSiteCount, onStart, isRunning }) {
+      const [draft, setDraft] = useState('');
+      const addKeyword = (raw) => {
+        const v = raw.trim().replace(/,$/, '').trim();
+        if (!v) return;
+        if (keywords.includes(v)) { setDraft(''); return; }
+        setKeywords([...keywords, v]); setDraft('');
+      };
+      const onKeyDown = (e) => {
+        if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addKeyword(draft); }
+        else if (e.key === 'Backspace' && !draft && keywords.length) setKeywords(keywords.slice(0, -1));
+      };
+      const removeKeyword = (k) => setKeywords(keywords.filter((x) => x !== k));
+      const applyPreset = (p) => { setTopic(p.label); setKeywords(p.keywords.slice()); };
+      const canStart = topic.trim().length > 0 && !isRunning;
+
+      return (
+        <Card className="p-5 sm:p-6 anim-slide">
+          <label className="block">
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">자재 카테고리</span>
+            <input
+              type="text" value={topic} onChange={(e) => setTopic(e.target.value)}
+              placeholder="예: 바닥재 강마루, 욕실 타일"
+              className="mt-2 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 transition placeholder:text-slate-400"
+            />
+          </label>
+
+          <div className="mt-4">
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">자재 키워드</span>
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-400/30 transition">
+              {keywords.map((k) => (
+                <span key={k} className="anim-pop inline-flex items-center gap-1 rounded-lg bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-200 px-2.5 py-1 text-xs font-medium">
+                  {k}
+                  <button onClick={() => removeKeyword(k)} className="hover:text-rose-500 transition" aria-label={`${k} 제거`}>✕</button>
+                </span>
+              ))}
+              <input
+                type="text" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onKeyDown} onBlur={() => addKeyword(draft)}
+                placeholder={keywords.length ? '자재 추가...' : '엔터로 자재 추가 (단가표 행이 됩니다)'}
+                className="flex-1 min-w-[140px] bg-transparent outline-none text-sm py-1 placeholder:text-slate-400"
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-slate-400">엔터/쉼표로 추가 · 입력한 자재가 단가 비교표의 행이 됩니다</p>
+          </div>
+
+          <div className="mt-4">
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">탐색할 출처 수</span>
+            <div className="mt-2 inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-1">
+              {[3, 4, 5].map((n) => (
+                <button key={n} onClick={() => setSiteCount(n)} aria-pressed={siteCount === n}
+                  className={cx('px-5 py-2 rounded-lg text-sm font-semibold transition-all', siteCount === n ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200')}>
+                  {n}곳
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">빠른 자재 카테고리</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MATERIAL_PRESETS.map((p) => (
+                <button key={p.label} onClick={() => applyPreset(p)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-3 py-1.5 text-xs font-medium transition-colors">
+                  <span>{p.emoji}</span>{p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Button size="lg" onClick={onStart} disabled={!canStart} className="mt-6 w-full">
+            {isRunning ? (<><Spinner className="w-5 h-5" /> 단가 수집 중…</>) : (<>🚀 단가 리서치 시작</>)}
+          </Button>
+          {!topic.trim() && <p className="mt-2 text-center text-xs text-slate-400">자재 카테고리를 입력하면 시작할 수 있어요.</p>}
+        </Card>
+      );
+    }
+
+    // ── ★ 주간 자동 리서치 스케줄러 패널 ─────────────────────────────────
+    function SchedulerPanel({ sched, setSched, batch, onRunNow }) {
+      const [, setTick] = useState(0);
+      const [noteOpen, setNoteOpen] = useState(false);
+      useEffect(() => {
+        const id = setInterval(() => setTick((t) => t + 1), 60000); // D-day 카운트다운 갱신
+        return () => clearInterval(id);
+      }, []);
+
+      const days = [{ l: '월', v: 1 }, { l: '화', v: 2 }, { l: '수', v: 3 }, { l: '목', v: 4 }, { l: '금', v: 5 }, { l: '토', v: 6 }, { l: '일', v: 0 }];
+      const next = nextRunDate(sched.day, sched.time);
+      const dd = dDays(next);
+      const ddLabel = dd === 0 ? 'D-DAY' : `D-${dd}`;
+      const toggleCat = (c) => {
+        setSched({ ...sched, categories: sched.categories.includes(c) ? sched.categories.filter((x) => x !== c) : [...sched.categories, c] });
+      };
+
+      return (
+        <Card className="p-5 anim-slide">
+          <div className="flex items-center justify-between gap-2">
+            <SectionTitle className="!text-slate-700 dark:!text-slate-200 !text-base">⏰ 주간 자동 리서치</SectionTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">{sched.enabled ? '켜짐' : '꺼짐'}</span>
+              <Switch checked={sched.enabled} onChange={(v) => setSched({ ...sched, enabled: v })} label="자동 리서치 켜기" />
+            </div>
+          </div>
+
+          {/* 요일 + 시간 */}
+          <div className="mt-4 flex flex-wrap items-end gap-4">
+            <div>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">실행 요일</span>
+              <div className="mt-1.5 inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-1">
+                {days.map((d) => (
+                  <button key={d.v} onClick={() => setSched({ ...sched, day: d.v })} aria-pressed={sched.day === d.v}
+                    className={cx('w-8 h-8 rounded-lg text-xs font-semibold transition-all', sched.day === d.v ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200')}>
+                    {d.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">시간</span>
+              <input type="time" value={sched.time} onChange={(e) => setSched({ ...sched, time: e.target.value })}
+                className="mt-1.5 block rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30" />
+            </div>
+          </div>
+
+          {/* 대상 카테고리 다중 선택 */}
+          <div className="mt-4">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">대상 카테고리 (자동 실행 시 순차 리서치)</span>
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              {ALL_CATEGORIES.map((c) => {
+                const on = sched.categories.includes(c);
+                return (
+                  <button key={c} onClick={() => toggleCat(c)}
+                    className={cx('flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors text-left', on ? 'border-indigo-300 dark:border-indigo-500/50 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-200' : 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60')}>
+                    <span className={cx('grid place-items-center w-4 h-4 rounded border-2 shrink-0', on ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300 dark:border-slate-600')}>{on && <span className="text-[9px] font-bold">✓</span>}</span>
+                    <span className="truncate">{c}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 다음 실행 + 지금 실행 */}
+          <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-3.5">
+            <div className="text-sm">
+              <span className="text-slate-400 text-xs">다음 자동 실행</span>
+              <div className="font-semibold text-slate-700 dark:text-slate-200">
+                {fmtDate(next)}({WEEKDAY_KO[next.getDay()]}) {sched.time}
+                <span className="ml-2 inline-flex items-center rounded-md bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 px-1.5 py-0.5 text-xs font-bold">{ddLabel}</span>
+              </div>
+            </div>
+            <Button variant="secondary" size="sm" onClick={onRunNow} disabled={batch.running || sched.categories.length === 0} className="mt-3 w-full">
+              {batch.running ? (<><Spinner className="w-4 h-4" /> 자동 리서치 실행 중… ({batch.done}/{batch.total})</>) : (<>▶ 지금 한 번 실행 ({sched.categories.length}개 카테고리)</>)}
+            </Button>
+            {!sched.enabled && <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">자동 실행이 꺼져 있어요. 위 스위치를 켜면 예정 시각에 자동으로 돕니다.</p>}
+          </div>
+
+          {/* F. 정직성 안내 + 실제 cron 연결 (접이식) */}
+          <div className="mt-3">
+            <button onClick={() => setNoteOpen((v) => !v)} className="w-full flex items-center justify-between gap-2 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition" aria-expanded={noteOpen}>
+              <span>⚠️ 이 자동 실행은 어떻게 동작하나요? · 무인 자동화: Claude Code 예약 루틴 연동</span>
+              <span className={cx('shrink-0 transition-transform', noteOpen && 'rotate-180')}>▾</span>
+            </button>
+            {noteOpen && (
+              <p className="mt-2 anim-fade text-xs leading-relaxed text-slate-500 dark:text-slate-400 rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-200 dark:border-slate-800">
+                이 자동 실행은 <b>이 페이지가 열려 있을 때만</b> 동작하는 브라우저 스케줄러입니다. 사무실에서 매주 무인으로 단가를 모아 노션에 올리려면
+                <b> Claude Code 예약 루틴(cron)</b>이 별도로 돌립니다 — 그쪽이 실제 무인 자동화를 담당합니다.
+                (이 화면은 사람이 보고 조정하는 대시보드, cron은 무인 실행 엔진.)
+              </p>
+            )}
+          </div>
+        </Card>
+      );
+    }
+
+    // ── 진행 상태 ─────────────────────────────────────────────────────────
+    function ProgressTracker({ sites, running }) {
+      const doneCount = sites.filter((s) => s.status === 'done').length;
+      const pct = sites.length ? Math.round((doneCount / sites.length) * 100) : 0;
+      const allDone = doneCount === sites.length;
+      return (
+        <Card className="p-5 sm:p-6 anim-slide">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {running && !allDone ? <Spinner className="w-5 h-5 text-indigo-500" /> : <span className="grid place-items-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold anim-pop">✓</span>}
+              <SectionTitle className="!text-slate-700 dark:!text-slate-100 !text-base">{allDone ? `${sites.length}곳 단가 수집 완료` : '출처별 단가 수집 중…'}</SectionTitle>
+            </div>
+            <span className="text-sm font-bold text-indigo-500">{pct}%</span>
+          </div>
+          <div className="mt-3 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+          </div>
+          <ul className="mt-4 space-y-2">
+            {sites.map((s, i) => (
+              <li key={i} className={cx('flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-colors',
+                s.status === 'searching' && 'border-indigo-200 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-500/10 shimmer',
+                s.status === 'done' && 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-500/10',
+                s.status === 'pending' && 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 opacity-70')}>
+                <span className="grid place-items-center w-7 h-7 shrink-0">
+                  {s.status === 'pending' && <span className="w-2.5 h-2.5 rounded-full bg-slate-300 dark:bg-slate-600" />}
+                  {s.status === 'searching' && <Spinner className="w-5 h-5 text-indigo-500" />}
+                  {s.status === 'done' && <span className="grid place-items-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold anim-pop">✓</span>}
+                </span>
+                <span className={cx('text-sm font-medium flex-1', s.status === 'pending' && 'text-slate-400')}>{s.name}</span>
+                <span className="text-xs text-slate-400">{s.status === 'pending' ? '대기' : s.status === 'searching' ? '단가 확인 중' : '완료'}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      );
+    }
+
+    // ── 전주 대비 태그 ────────────────────────────────────────────────────
+    function ChangeTag({ c }) {
+      const color = { up: 'text-rose-500', down: 'text-blue-500', flat: 'text-slate-400', new: 'text-indigo-500' }[c.dir] || 'text-slate-400';
+      return <span className={cx('font-semibold tabular-nums whitespace-nowrap', color)}>{changeText(c)}</span>;
+    }
+
+    // ── 결과: 단가 비교 카드 ──────────────────────────────────────────────
+    function ResultPreview({ result, viewRaw, onToggleRaw, checked, onToggleAction }) {
+      const md = useMemo(() => researchToMarkdown(result, checked), [result, checked]);
+      return (
+        <Card className="overflow-hidden anim-slide">
+          <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-indigo-50/70 to-violet-50/70 dark:from-indigo-500/10 dark:to-violet-500/10">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base">📄</span>
+              <span className="font-mono text-sm font-semibold text-slate-600 dark:text-slate-300 truncate">{mdFilename(result)}</span>
+            </div>
+            <button onClick={onToggleRaw} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+              {viewRaw ? '🎨 예쁘게 보기' : '📝 원본 .md 보기'}
+            </button>
+          </div>
+
+          {viewRaw ? (
+            <pre className="thin-scroll m-0 max-h-[520px] overflow-auto px-5 sm:px-6 py-5 text-xs leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono bg-slate-50 dark:bg-slate-900/60">
+{md}
+            </pre>
+          ) : (
+            <div className="px-5 sm:px-6 py-5">
+              <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">{result.category} 자재 단가 리서치</h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">📅 {result.date}</Badge>
+                <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">🌐 출처 {result.sites.length}곳</Badge>
+                {result.keywords.map((k) => (<Badge key={k} className="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-200"># {k}</Badge>))}
+              </div>
+
+              {/* 단가 비교 표 */}
+              <div className="mt-5">
+                <SectionTitle>💰 단가 비교</SectionTitle>
+                <div className="mt-3 overflow-x-auto thin-scroll rounded-xl border border-slate-100 dark:border-slate-800">
+                  <table className="w-full text-sm min-w-[460px]">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-xs">
+                        <th className="text-left font-semibold px-3 py-2.5">자재명</th>
+                        <th className="text-left font-semibold px-3 py-2.5">규격</th>
+                        <th className="text-right font-semibold px-3 py-2.5">단가</th>
+                        <th className="text-right font-semibold px-3 py-2.5">전주 대비</th>
+                        <th className="text-left font-semibold px-3 py-2.5">출처</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {result.rows.map((row, i) => (
+                        <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                          <td className="px-3 py-2.5 font-medium text-slate-700 dark:text-slate-200">{row.name}</td>
+                          <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{row.spec}</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-slate-800 dark:text-slate-100 tabular-nums">{won(row.price)}</td>
+                          <td className="px-3 py-2.5 text-right"><ChangeTag c={row.change} /></td>
+                          <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{row.source}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* 가격 비교 요약 */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-3 py-1.5 text-xs">
+                    <span className="text-blue-500 font-bold">최저가 출처</span>
+                    <span className="text-slate-600 dark:text-slate-300">{result.cheapest.source} · <b>{won(result.cheapest.price)}</b></span>
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs">
+                    <span className="text-slate-500 font-bold">평균가</span>
+                    <span className="text-slate-600 dark:text-slate-300"><b>{won(result.avgPrice)}</b></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 출처별 핵심 */}
+              <div className="mt-5">
+                <SectionTitle>📌 출처별 핵심 (시세 동향)</SectionTitle>
+                <div className="mt-3 space-y-3">
+                  {result.sites.map((s, i) => (
+                    <div key={i} className="rounded-xl border border-slate-100 dark:border-slate-800 p-4 bg-slate-50/60 dark:bg-slate-800/40">
+                      <div className="flex items-center gap-2">
+                        <span className="grid place-items-center w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 text-white text-xs font-bold">{i + 1}</span>
+                        {s.url && s.url !== '#' ? (
+                          <a href={s.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-500 hover:underline">{s.name} <span className="text-xs text-slate-400">↗</span></a>
+                        ) : (<span className="font-semibold text-slate-700 dark:text-slate-200">{s.name}</span>)}
+                      </div>
+                      <ul className="mt-2.5 space-y-1.5">
+                        {s.highlights.map((h, j) => (<li key={j} className="flex gap-2 text-sm text-slate-600 dark:text-slate-300"><span className="text-indigo-400 mt-0.5">•</span><span>{h}</span></li>))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 한 줄 요약 */}
+              <div className="mt-5">
+                <SectionTitle>📝 한 줄 요약</SectionTitle>
+                <p className="mt-2 rounded-xl bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-500/10 dark:to-violet-500/10 border border-indigo-100 dark:border-indigo-500/20 px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 leading-relaxed">{result.summary}</p>
+              </div>
+
+              {/* 다음 액션 */}
+              <div className="mt-5">
+                <SectionTitle>✅ 다음 액션</SectionTitle>
+                <ul className="mt-2 space-y-1.5">
+                  {result.nextActions.map((a, i) => {
+                    const on = checked.has(i);
+                    return (
+                      <li key={i}>
+                        <button onClick={() => onToggleAction(i)} className="w-full flex items-start gap-3 text-left rounded-lg px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition">
+                          <span className={cx('mt-0.5 grid place-items-center w-5 h-5 rounded-md border-2 shrink-0 transition-all', on ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-slate-600')}>{on && <span className="text-[11px] font-bold anim-pop">✓</span>}</span>
+                          <span className={cx('text-sm', on ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200')}>{a}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          )}
+        </Card>
+      );
+    }
+
+    // ── 액션 버튼 ─────────────────────────────────────────────────────────
+    function ActionButtons({ result, markdown, onShared }) {
+      const toast = useToast();
+      const [sharing, setSharing] = useState(false);
+      const [notionUrl, setNotionUrl] = useState(null);
+      const onCopy = async () => {
+        const ok = await copyText(markdown);
+        ok ? toast('단가표 마크다운을 복사했어요 📋', 'success') : toast('복사 실패. 직접 선택해 복사해 주세요.', 'error');
+      };
+      const onDownload = () => { downloadText(mdFilename(result), markdown); toast(`${mdFilename(result)} 다운로드 ⬇️`, 'info'); };
+      const onShare = async () => {
+        setSharing(true);
+        const res = await researchEngine.shareToNotion(markdown, result.category); // TODO: 실제 Notion API
+        setNotionUrl(res.url); setSharing(false);
+        onShared && onShared(result.id, res.url);
+        toast('노션에 공유됨 ✓', 'success');
+      };
+      return (
+        <div className="anim-fade">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={onCopy}>📋 md 복사</Button>
+            <Button variant="secondary" onClick={onDownload}>⬇️ .md 다운로드</Button>
+            <Button variant="primary" onClick={onShare} disabled={sharing}>{sharing ? (<><Spinner className="w-4 h-4" /> 공유 중…</>) : (<>📝 노션에 공유</>)}</Button>
+          </div>
+          {notionUrl && (
+            <div className="anim-slide mt-3 flex items-center gap-2 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-2.5 text-sm">
+              <span>✅</span><span className="text-slate-600 dark:text-slate-300">노션 페이지 생성됨 (mock):</span>
+              <a href={notionUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-emerald-700 dark:text-emerald-300 hover:underline truncate">{notionUrl}</a>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── 히스토리 ──────────────────────────────────────────────────────────
+    function HistoryPanel({ history, activeId, onLoad, onDelete }) {
+      return (
+        <Card className="p-5 anim-slide">
+          <div className="flex items-center justify-between">
+            <SectionTitle className="!text-slate-700 dark:!text-slate-200 !text-base">🗂️ 단가 리서치 히스토리</SectionTitle>
+            <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500">{history.length}</Badge>
+          </div>
+          {history.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-400 text-center py-6">아직 저장된 단가 리서치가 없어요.<br />첫 리서치를 돌려보세요!</p>
+          ) : (
+            <ul className="mt-3 space-y-2 max-h-[340px] overflow-auto thin-scroll pr-1">
+              {history.map((h) => (
+                <li key={h.id} onClick={() => onLoad(h)}
+                  className={cx('group flex items-center gap-2 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors',
+                    activeId === h.id ? 'border-indigo-300 dark:border-indigo-500/50 bg-indigo-50 dark:bg-indigo-500/10' : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/60')}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span title={h.auto ? '자동 실행' : '수동 실행'}>{h.auto ? '🤖' : '👆'}</span>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{h.topic}</p>
+                    </div>
+                    <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                      {h.date} · 출처 {h.siteCount}곳
+                      {h.notion && <span className="inline-flex items-center gap-0.5 text-emerald-500" title="노션 업로드됨">· 📝 업로드됨</span>}
+                    </p>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); onDelete(h.id); }}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition w-7 h-7 grid place-items-center rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40" aria-label="삭제" title="삭제">🗑️</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      );
+    }
+
+    // ── 빈 상태 ───────────────────────────────────────────────────────────
+    function EmptyState() {
+      const steps = [{ icon: '🧱', label: '자재 선택' }, { icon: '🌐', label: '출처 단가 수집' }, { icon: '💰', label: '단가표 정리' }, { icon: '📝', label: '노션 공유' }];
+      return (
+        <Card className="p-8 anim-fade text-center">
+          <div className="text-5xl mb-3">🏗️</div>
+          <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">자재 단가 리서치를 시작해 보세요</h3>
+          <p className="mt-1 text-sm text-slate-400">왼쪽에서 자재 카테고리를 고르고 「단가 리서치 시작」을 누르면 이 자리에 단가 비교표가 나타나요.</p>
+          <div className="mt-6 flex items-center justify-center gap-1.5 sm:gap-3 flex-wrap">
+            {steps.map((s, i) => (
+              <React.Fragment key={s.label}>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="grid place-items-center w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-500/10 dark:to-violet-500/10 border border-indigo-100 dark:border-indigo-500/20 text-xl">{s.icon}</div>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{s.label}</span>
+                </div>
+                {i < steps.length - 1 && <span className="text-slate-300 dark:text-slate-600 -mt-4">→</span>}
+              </React.Fragment>
+            ))}
+          </div>
+        </Card>
+      );
+    }
+
+    // ── "왜 스킬인가" 패널 ────────────────────────────────────────────────
+    function WhySkillPanel() {
+      const [open, setOpen] = useState(false);
+      return (
+        <Card className="overflow-hidden anim-fade">
+          <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition" aria-expanded={open}>
+            <span className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">💡 왜 &lsquo;스킬&rsquo;로 만드나요?</span>
+            <span className={cx('text-slate-400 transition-transform', open && 'rotate-180')}>▾</span>
+          </button>
+          {open && (
+            <div className="px-5 pb-5 anim-fade">
+              <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                매주 같은 자재 단가를 손으로 모으지 않으려면 — 이 절차(자재 선택 → 출처별 단가 수집 → 같은 포맷의 단가표 정리 → 노션 업로드)를
+                <b> SKILL.md 한 장</b>에 박제하면 됩니다. 그러면 다음부턴
+                <span className="mx-1 inline-block rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-mono text-xs">&ldquo;이번 주 단가 돌려줘&rdquo;</span>
+                한마디로 똑같이 재현돼요. 무인 반복은 <b>Claude Code 예약 루틴(cron)</b>이 맡습니다.
+              </p>
+              <p className="mt-2 text-sm font-semibold bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-transparent">에이전트는 한 번, 스킬은 매번.</p>
+            </div>
+          )}
+        </Card>
+      );
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 🚀 App
+    // ════════════════════════════════════════════════════════════════════════
+    function App() {
+      const toast = useToast();
+
+      const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', dark);
+        try { localStorage.setItem('research_theme', dark ? 'dark' : 'light'); } catch (e) {}
+      }, [dark]);
+
+      const [topic, setTopic] = useState('');
+      const [keywords, setKeywords] = useState([]);
+      const [siteCount, setSiteCount] = useState(3);
+
+      const [status, setStatus] = useState('idle'); // idle | researching | done
+      const [progress, setProgress] = useState([]);
+      const [result, setResult] = useState(null);
+      const [viewRaw, setViewRaw] = useState(false);
+      const [checked, setChecked] = useState(new Set());
+
+      const [history, setHistory] = useState(() => loadHistory());
+      useEffect(() => { try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) {} }, [history]);
+
+      const [sched, setSched] = useState(() => loadSched());
+      useEffect(() => { try { localStorage.setItem(SCHED_KEY, JSON.stringify(sched)); } catch (e) {} }, [sched]);
+
+      const [batch, setBatch] = useState({ running: false, total: 0, done: 0 });
+      const runToken = useRef(0);
+
+      const addHistory = useCallback((entry) => {
+        setHistory((prev) => [entry, ...prev.filter((h) => h.id !== entry.id)].slice(0, 40));
+      }, []);
+
+      // 단일 카테고리 — 애니메이션 있는 리서치 (수동 "리서치 시작")
+      const runResearch = useCallback(async () => {
+        const myToken = ++runToken.current;
+        const cat = topic.trim();
+        if (!cat) return;
+        const siteNames = researchEngine.resolveSites(cat, siteCount);
+        setResult(null); setViewRaw(false); setChecked(new Set());
+        setProgress(siteNames.map((name) => ({ name, status: 'pending' })));
+        setStatus('researching');
+
+        const collected = [];
+        for (let i = 0; i < siteNames.length; i++) {
+          if (runToken.current !== myToken) return;
+          setProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'searching' } : p)));
+          const r = await researchEngine.crawlSite(siteNames[i], cat, keywords, i); // TODO: 실제 크롤링
+          if (runToken.current !== myToken) return;
+          collected.push(r);
+          setProgress((prev) => prev.map((p, idx) => (idx === i ? { ...p, status: 'done' } : p)));
+          await sleep(240);
+        }
+        if (runToken.current !== myToken) return;
+        await sleep(360);
+        const res = researchEngine.synthesize(cat, keywords, collected); // TODO: 실제 합성
+        setResult(res); setStatus('done');
+        addHistory({ id: res.id, topic: res.category, date: res.date, siteCount: res.sites.length, result: res, auto: false, notion: false });
+      }, [topic, keywords, siteCount, addHistory]);
+
+      // 배치 — 선택 카테고리 전체 연속 리서치 + 자동 노션 업로드 (자동/수동 공용)
+      const runBatch = useCallback(async (cats, auto) => {
+        if (!cats || !cats.length) return;
+        runToken.current++; // 진행 중 단일 루프 중단
+        setBatch({ running: true, total: cats.length, done: 0 });
+        let last = null;
+        for (let i = 0; i < cats.length; i++) {
+          const cat = cats[i];
+          const kws = presetKeywordsFor(cat);
+          const siteNames = researchEngine.resolveSites(cat, siteCount);
+          const collected = [];
+          for (let j = 0; j < siteNames.length; j++) collected.push(await researchEngine.crawlSite(siteNames[j], cat, kws, j));
+          const res = researchEngine.synthesize(cat, kws, collected);
+          const share = await researchEngine.shareToNotion(researchToMarkdown(res, new Set()), cat); // 자동 노션 업로드(mock)
+          addHistory({ id: res.id, topic: res.category, date: res.date, siteCount: res.sites.length, result: res, auto, notion: true, notionUrl: share.url });
+          last = res;
+          setBatch((b) => ({ ...b, done: i + 1 }));
+        }
+        setBatch({ running: false, total: 0, done: 0 });
+        if (last) {
+          setResult(last); setChecked(new Set()); setViewRaw(false);
+          setProgress(last.sites.map((s) => ({ name: s.name, status: 'done' })));
+          setStatus('done');
+        }
+        saveLastAutoRun(new Date().toISOString());
+        toast(`${auto ? '🤖 자동' : '👆 수동'} 단가 리서치 ${cats.length}건 완료 · 노션 업로드됨 📝`, 'success');
+      }, [siteCount, addHistory, toast]);
+
+      // 페이지 로드 시: 예정 시각이 지났고 자동이 켜져 있으면 자동 실행
+      const autoRan = useRef(false);
+      useEffect(() => {
+        if (autoRan.current) return;
+        autoRan.current = true;
+        if (!sched.enabled || !sched.categories.length) return;
+        const due = prevRunDate(sched.day, sched.time);
+        const last = loadLastAutoRun();
+        if (!last || new Date(last) < due) {
+          setTimeout(() => runBatch(sched.categories, true), 400); // 마운트 안정화 후 자동 배치
+        }
+        // eslint-disable-next-line
+      }, []);
+
+      const loadFromHistory = useCallback((h) => {
+        runToken.current++;
+        setResult(h.result);
+        setProgress(h.result.sites.map((s) => ({ name: s.name, status: 'done' })));
+        setChecked(new Set()); setViewRaw(false); setStatus('done');
+        setTopic(h.result.category); setKeywords(h.result.keywords.slice());
+      }, []);
+      const deleteHistory = useCallback((id) => setHistory((prev) => prev.filter((h) => h.id !== id)), []);
+      const toggleAction = useCallback((i) => setChecked((prev) => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; }), []);
+      const markNotion = useCallback((id, url) => setHistory((prev) => prev.map((h) => (h.id === id ? { ...h, notion: true, notionUrl: url } : h))), []);
+
+      const markdown = useMemo(() => (result ? researchToMarkdown(result, checked) : ''), [result, checked]);
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 dark:from-slate-950 dark:via-slate-950 dark:to-indigo-950/20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+            <Header dark={dark} onToggleDark={() => setDark((v) => !v)} />
+
+            <main className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+              <div className="lg:col-span-5 space-y-5">
+                <ResearchForm
+                  topic={topic} setTopic={setTopic} keywords={keywords} setKeywords={setKeywords}
+                  siteCount={siteCount} setSiteCount={setSiteCount}
+                  onStart={runResearch} isRunning={status === 'researching'}
+                />
+                <SchedulerPanel sched={sched} setSched={setSched} batch={batch} onRunNow={() => runBatch(sched.categories, false)} />
+                <HistoryPanel history={history} activeId={result ? result.id : null} onLoad={loadFromHistory} onDelete={deleteHistory} />
+              </div>
+
+              <div className="lg:col-span-7 space-y-5">
+                {status === 'idle' && <EmptyState />}
+                {status !== 'idle' && <ProgressTracker sites={progress} running={status === 'researching'} />}
+                {status === 'done' && result && (
+                  <>
+                    <ResultPreview result={result} viewRaw={viewRaw} onToggleRaw={() => setViewRaw((v) => !v)} checked={checked} onToggleAction={toggleAction} />
+                    <ActionButtons result={result} markdown={markdown} onShared={markNotion} />
+                  </>
+                )}
+              </div>
+            </main>
+
+            <div className="mt-6"><WhySkillPanel /></div>
+            <footer className="mt-8 text-center text-xs text-slate-400">
+              🏗️ 자재 단가 리서치 · 인테리어 공사 전용 · UI 프로토타입(mock 단가) · 무인 자동화는 Claude Code 예약 루틴(cron) 담당
+            </footer>
+          </div>
+        </div>
+      );
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ▶ Render
+    // ════════════════════════════════════════════════════════════════════════
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+  </script>
+</body>
+</html>

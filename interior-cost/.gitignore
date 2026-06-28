@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.DS_Store
+.vercel
+# 현장별 생성 폴더 안의 산출물(영수증/내보내기)은 깃에 올리지 않음. 폴더 구조만 유지.
+sites/*/receipts/*
+sites/*/*.csv

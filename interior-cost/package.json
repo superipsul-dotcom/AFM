@@ -1,0 +1,14 @@
+{
+  "name": "interior-cost-supabase",
+  "version": "1.0.0",
+  "description": "인테리어 현장 비용관리 앱 (Express + pg + dotenv, Supabase PostgreSQL 영속화)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.22.2",
+    "pg": "^8.13.1"
+  }
+}

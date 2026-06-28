@@ -1,0 +1,16 @@
+{
+  "name": "community-auth-supabase",
+  "version": "1.0.0",
+  "description": "커뮤니티 게시판 앱 (Express + pg + dotenv + JWT 인증, Supabase PostgreSQL 영속화) — 로그인한 사용자만 글쓰기, 본인 글만 수정/삭제",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}

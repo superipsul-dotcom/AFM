@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>인테리어 현장 비용관리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ★ Babel classic JSX runtime preset (UMD React 충돌/흰화면 방지) -->
+  <script>
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]]
+    });
+  </script>
+  <style>
+    @keyframes slideIn { from { transform: translateY(-12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes scaleIn { from { transform: scale(.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .animate-slide-in { animation: slideIn .25s ease-out; }
+    .animate-fade-in { animation: fadeIn .2s ease-out; }
+    .animate-scale-in { animation: scaleIn .18s ease-out; }
+    .bar-grow { transition: width .5s ease-out; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+</head>
+<body class="bg-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useMemo, useCallback, useRef, createContext, useContext } = React;
+
+    // ========================================
+    // 상수 / 설정
+    // ========================================
+    const API_BASE_URL = '/api';
+    const SITES_KEY = 'interior_sites_v1';
+    const COSTS_KEY = 'interior_costs_v1';
+    const SEL_KEY = 'interior_selected_site_v1';
+
+    // 비용 카테고리 / 공정 카테고리 (CONTRACT.md 와 1:1)
+    const COST_CATEGORIES = ['자재비', '인건비', '장비/공구', '운반/물류', '폐기물처리', '가설/안전', '외주(하도급)', '경비(식대/유류)', '임대료', '기타'];
+    const PROCESS_CATEGORIES = ['철거', '설비', '전기', '목공', '미장/방수', '타일', '도장/도배', '바닥', '주방/가구', '욕실', '창호/도어', '조명', '준공/청소', '기타'];
+
+    // 비용 카테고리 색상
+    const COST_COLOR = {
+      '자재비': 'bg-blue-500', '인건비': 'bg-emerald-500', '장비/공구': 'bg-amber-500',
+      '운반/물류': 'bg-sky-400', '폐기물처리': 'bg-stone-500', '가설/안전': 'bg-orange-500',
+      '외주(하도급)': 'bg-purple-500', '경비(식대/유류)': 'bg-pink-500', '임대료': 'bg-indigo-500', '기타': 'bg-slate-400',
+    };
+    // 공정 카테고리 색상
+    const PROC_COLOR = {
+      '철거': 'bg-rose-500', '설비': 'bg-cyan-500', '전기': 'bg-yellow-500', '목공': 'bg-amber-600',
+      '미장/방수': 'bg-teal-500', '타일': 'bg-sky-500', '도장/도배': 'bg-violet-500', '바닥': 'bg-lime-600',
+      '주방/가구': 'bg-fuchsia-500', '욕실': 'bg-blue-400', '창호/도어': 'bg-indigo-400', '조명': 'bg-orange-400',
+      '준공/청소': 'bg-green-500', '기타': 'bg-slate-400',
+    };
+
+    // ========================================
+    // 유틸 함수
+    // ========================================
+    const fmtWon = (n) => (Number(n) || 0).toLocaleString('ko-KR') + '원';
+    const fmtNum = (n) => (Number(n) || 0).toLocaleString('ko-KR');
+    const todayStr = () => {
+      const d = new Date();
+      const tz = d.getTimezoneOffset() * 60000;
+      return new Date(d - tz).toISOString().slice(0, 10);
+    };
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+    // 두 날짜(YYYY-MM-DD) 사이 일수 차이 (b - a), 정수
+    const daysBetween = (a, b) => {
+      if (!a || !b) return null;
+      const da = new Date(a + 'T00:00:00');
+      const db = new Date(b + 'T00:00:00');
+      return Math.round((db - da) / 86400000);
+    };
+
+    // ========================================
+    // localStorage 저장소 (폴백)
+    // ========================================
+    const sitesStore = {
+      read() { try { return JSON.parse(localStorage.getItem(SITES_KEY)) || []; } catch { return []; } },
+      write(list) { localStorage.setItem(SITES_KEY, JSON.stringify(list)); },
+    };
+    const costsStore = {
+      read() { try { return JSON.parse(localStorage.getItem(COSTS_KEY)) || []; } catch { return []; } },
+      write(list) { localStorage.setItem(COSTS_KEY, JSON.stringify(list)); },
+    };
+
+    // 시드 (폴백 최초 진입 시 데모 데이터)
+    const seedSites = () => {
+      const id1 = uid();
+      const sites = [{
+        id: id1, name: '래미안 아파트 34평 리모델링', client: '김철수', address: '서울시 강남구 도곡로 123',
+        manager: '박현장', budget: 50000000, start_date: '2026-06-01', end_date: '2026-08-31',
+        folder: 'sites/래미안 아파트 34평 리모델링/receipts/', created_at: new Date().toISOString(),
+      }];
+      sitesStore.write(sites);
+      const costs = [
+        { id: uid(), site_id: id1, date: '2026-06-03', amount: 8000000, category: '자재비', process: '목공', manager: '박현장', vendor: '한솔자재', memo: '합판/각재 일괄', created_at: new Date(Date.now()-5000).toISOString() },
+        { id: uid(), site_id: id1, date: '2026-06-05', amount: 5000000, category: '인건비', process: '철거', manager: '박현장', vendor: '대성철거', memo: '철거 인력 3일', created_at: new Date(Date.now()-4000).toISOString() },
+        { id: uid(), site_id: id1, date: '2026-06-10', amount: 3200000, category: '자재비', process: '타일', manager: '이기사', vendor: '타일마트', memo: '욕실 타일', created_at: new Date(Date.now()-3000).toISOString() },
+        { id: uid(), site_id: id1, date: '2026-06-15', amount: 1500000, category: '장비/공구', process: '전기', manager: '최전기', vendor: '전기나라', memo: '배선/차단기', created_at: new Date(Date.now()-2000).toISOString() },
+      ];
+      costsStore.write(costs);
+      return sites;
+    };
+
+    // ========================================
+    // 클라이언트 계산 (폴백 summary / 분석)
+    // ========================================
+    function computeSummary(site, costs) {
+      const budget = Number(site.budget) || 0;
+      const spent = costs.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      const remaining = budget - spent;
+      const rate = budget > 0 ? spent / budget : null;
+
+      const catMap = {}, procMap = {};
+      costs.forEach((c) => {
+        const amt = Number(c.amount) || 0;
+        catMap[c.category] = (catMap[c.category] || 0) + amt;
+        if (c.process) procMap[c.process] = (procMap[c.process] || 0) + amt;
+      });
+      const byCategory = Object.entries(catMap).map(([category, total]) => ({ category, total }));
+      const byProcess = Object.entries(procMap).map(([process, total]) => ({ process, total }));
+
+      const today = todayStr();
+      const totalDays = daysBetween(site.start_date, site.end_date);
+      let elapsedDays = null, remainingDays = null, progressRate = null, dday = null;
+      if (site.start_date && site.end_date && totalDays != null) {
+        const elapsedRaw = daysBetween(site.start_date, today);
+        elapsedDays = Math.max(0, Math.min(elapsedRaw, totalDays));
+        remainingDays = daysBetween(today, site.end_date);
+        progressRate = totalDays > 0 ? elapsedDays / totalDays : null;
+        dday = daysBetween(today, site.end_date);
+      }
+      return {
+        budget, spent, remaining, rate, byCategory, byProcess,
+        schedule: { start_date: site.start_date, end_date: site.end_date, totalDays, elapsedDays, remainingDays, progressRate, dday },
+      };
+    }
+
+    // 월별 집행 추이: [{ month:'YYYY-MM', total }]
+    function computeMonthly(costs) {
+      const map = {};
+      costs.forEach((c) => {
+        const m = (c.date || '').slice(0, 7);
+        if (!m) return;
+        map[m] = (map[m] || 0) + (Number(c.amount) || 0);
+      });
+      return Object.entries(map).map(([month, total]) => ({ month, total })).sort((a, b) => (a.month < b.month ? -1 : 1));
+    }
+
+    // ========================================
+    // API 레이어 (서버 우선, 실패 시 localStorage 폴백)
+    // ========================================
+    const api = {
+      _useMock: false,
+
+      async _tryFetch(url, opts) {
+        const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+        if (!res.ok) {
+          let msg = 'HTTP ' + res.status;
+          try { const j = await res.json(); if (j && j.error) msg = j.error; else if (j && j.message) msg = j.message; } catch {}
+          const err = new Error(msg); err.status = res.status; throw err;
+        }
+        return res.json();
+      },
+
+      _ensureSeed() {
+        if (!localStorage.getItem(SITES_KEY)) seedSites();
+        return sitesStore.read();
+      },
+
+      _sortSites(list) {
+        return [...list].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+      },
+      _sortCosts(list) {
+        return [...list].sort((a, b) => {
+          if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+          return (a.created_at < b.created_at) ? 1 : -1;
+        });
+      },
+
+      // ── 현장 ──
+      async listSites() {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/sites`);
+          this._useMock = false; return data;
+        } catch (e) {
+          if (e.status) throw e; // 서버는 살아있는데 응답 에러면 폴백 안 함
+          this._useMock = true;
+          return this._sortSites(this._ensureSeed());
+        }
+      },
+
+      async createSite(body) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/sites`, { method: 'POST', body: JSON.stringify(body) });
+          this._useMock = false; return data;
+        } catch (e) {
+          if (e.status) throw e;
+          this._useMock = true;
+          const list = this._ensureSeed();
+          if (list.some((s) => s.name === body.name)) { const err = new Error('이미 같은 이름의 현장이 있습니다.'); err.status = 409; throw err; }
+          const safe = (body.name || '').trim().replace(/[\/\\:*?"<>|\x00-\x1f]/g, '_').replace(/\.\./g, '_');
+          const item = { id: uid(), folder: `sites/${safe}/receipts/`, created_at: new Date().toISOString(), ...body };
+          sitesStore.write([item, ...list]);
+          return item;
+        }
+      },
+
+      async updateSite(id, body) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/sites/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+          this._useMock = false; return data;
+        } catch (e) {
+          if (e.status) throw e;
+          this._useMock = true;
+          const list = this._ensureSeed();
+          if (list.some((s) => s.name === body.name && s.id !== id)) { const err = new Error('이미 같은 이름의 현장이 있습니다.'); err.status = 409; throw err; }
+          const next = list.map((s) => (s.id === id ? { ...s, ...body } : s));
+          sitesStore.write(next);
+          return next.find((s) => s.id === id);
+        }
+      },
+
+      async removeSite(id) {
+        try {
+          await this._tryFetch(`${API_BASE_URL}/sites/${id}`, { method: 'DELETE' });
+          this._useMock = false; return { success: true };
+        } catch (e) {
+          if (e.status) throw e;
+          this._useMock = true;
+          sitesStore.write(sitesStore.read().filter((s) => s.id !== id));
+          costsStore.write(costsStore.read().filter((c) => c.site_id !== id)); // CASCADE
+          return { success: true };
+        }
+      },
+
+      // ── 비용 ──
+      async listCosts(siteId) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/costs`);
+          this._useMock = false; return data;
+        } catch (e) {
+          if (e.status) throw e;
+          this._useMock = true;
+          this._ensureSeed();
+          return this._sortCosts(costsStore.read().filter((c) => c.site_id === siteId));
+        }
+      },
+
+      async createCost(siteId, body) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/costs`, { method: 'POST', body: JSON.stringify(body) });
+          this._useMock = false; return data;
+        } catch (e) {
+          if (e.status) throw e;
+          this._useMock = true;
+          const item = { id: uid(), site_id: siteId, created_at: new Date().toISOString(), ...body };
+          costsStore.write([item, ...costsStore.read()]);
+          return item;
+        }
+      },
+
+      async updateCost(id, body) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/costs/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+          this._useMock = false; return data;
+        } catch (e) {
+          if (e.status) throw e;
+          this._useMock = true;
+          const next = costsStore.read().map((c) => (c.id === id ? { ...c, ...body } : c));
+          costsStore.write(next);
+          return next.find((c) => c.id === id);
+        }
+      },
+
+      async removeCost(id) {
+        try {
+          await this._tryFetch(`${API_BASE_URL}/costs/${id}`, { method: 'DELETE' });
+          this._useMock = false; return { success: true };
+        } catch (e) {
+          if (e.status) throw e;
+          this._useMock = true;
+          costsStore.write(costsStore.read().filter((c) => c.id !== id));
+          return { success: true };
+        }
+      },
+
+      // ── 요약 ──
+      async summary(siteId, site) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/summary`);
+          this._useMock = false; return data;
+        } catch (e) {
+          if (e.status) throw e;
+          this._useMock = true;
+          this._ensureSeed();
+          const costs = costsStore.read().filter((c) => c.site_id === siteId);
+          return computeSummary(site, costs);
+        }
+      },
+
+      // ── CSV 내보내기 ──
+      // 서버 모드면 서버 URL로 다운로드, 폴백이면 Blob 생성하도록 정보 반환
+      exportUrl(siteId) { return `${API_BASE_URL}/sites/${siteId}/export`; },
+    };
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+    function Button({ variant = 'primary', size = 'md', disabled, onClick, type = 'button', className = '', children }) {
+      const base = 'inline-flex items-center justify-center font-semibold rounded-xl transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
+      const variants = {
+        primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-400',
+        secondary: 'bg-slate-200 text-slate-700 hover:bg-slate-300 focus:ring-slate-400',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-400',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-300',
+      };
+      const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2.5 text-sm', lg: 'px-6 py-3 text-base' };
+      return (
+        <button type={type} disabled={disabled} onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}>
+          {children}
+        </button>
+      );
+    }
+
+    function Input({ label, error, className = '', ...props }) {
+      return (
+        <label className="block">
+          {label && <span className="block mb-1.5 text-sm font-medium text-slate-700">{label}</span>}
+          <input
+            className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-slate-800 placeholder-slate-400
+              focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition
+              ${error ? 'border-red-400 ring-1 ring-red-300' : 'border-slate-300'} ${className}`}
+            {...props}
+          />
+          {error && <span className="block mt-1 text-xs text-red-500">{error}</span>}
+        </label>
+      );
+    }
+
+    function Select({ label, error, className = '', children, ...props }) {
+      return (
+        <label className="block">
+          {label && <span className="block mb-1.5 text-sm font-medium text-slate-700">{label}</span>}
+          <select
+            className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-slate-800
+              focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition
+              ${error ? 'border-red-400 ring-1 ring-red-300' : 'border-slate-300'} ${className}`}
+            {...props}
+          >
+            {children}
+          </select>
+          {error && <span className="block mt-1 text-xs text-red-500">{error}</span>}
+        </label>
+      );
+    }
+
+    function Textarea({ label, error, className = '', ...props }) {
+      return (
+        <label className="block">
+          {label && <span className="block mb-1.5 text-sm font-medium text-slate-700">{label}</span>}
+          <textarea
+            className={`w-full px-3.5 py-2.5 rounded-xl border bg-white text-slate-800 placeholder-slate-400
+              focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition resize-none
+              ${error ? 'border-red-400 ring-1 ring-red-300' : 'border-slate-300'} ${className}`}
+            {...props}
+          />
+          {error && <span className="block mt-1 text-xs text-red-500">{error}</span>}
+        </label>
+      );
+    }
+
+    function Card({ className = '', children }) {
+      return <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 ${className}`}>{children}</div>;
+    }
+
+    function Badge({ color = 'bg-slate-400', className = '', children }) {
+      return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${color} ${className}`}>{children}</span>;
+    }
+
+    function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [isOpen, onClose]);
+      if (!isOpen) return null;
+      const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl' };
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/40 animate-fade-in" onClick={onClose}></div>
+          <div className={`relative w-full ${sizes[size]} bg-white rounded-2xl shadow-xl animate-scale-in max-h-[90vh] overflow-y-auto`}>
+            {title && (
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white rounded-t-2xl">
+                <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+                <button onClick={onClose} aria-label="닫기" className="text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
+              </div>
+            )}
+            <div className="p-5">{children}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Toast (Context + Provider)
+    // ========================================
+    const ToastContext = createContext(null);
+    const useToast = () => useContext(ToastContext);
+
+    function ToastProvider({ children }) {
+      const [toasts, setToasts] = useState([]);
+      const push = useCallback((message, type = 'success') => {
+        const id = uid();
+        setToasts((prev) => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2800);
+      }, []);
+      const colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-slate-700' };
+      const icons = { success: '✓', error: '!', info: 'ℹ' };
+      return (
+        <ToastContext.Provider value={push}>
+          {children}
+          <div className="fixed top-4 right-4 z-[60] flex flex-col gap-2 max-w-[90vw]">
+            {toasts.map((t) => (
+              <div key={t.id} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-white shadow-lg animate-slide-in ${colors[t.type]}`}>
+                <span className="font-bold">{icons[t.type]}</span>
+                <span className="text-sm">{t.message}</span>
+              </div>
+            ))}
+          </div>
+        </ToastContext.Provider>
+      );
+    }
+
+    // ========================================
+    // 🧩 현장 등록/수정 폼 (모달 내부)
+    // ========================================
+    function SiteForm({ editing, onSubmit, onCancel }) {
+      const blank = { name: '', client: '', address: '', manager: '', budget: '', start_date: todayStr(), end_date: '' };
+      const [form, setForm] = useState(editing ? {
+        name: editing.name || '', client: editing.client || '', address: editing.address || '',
+        manager: editing.manager || '', budget: editing.budget != null ? String(editing.budget) : '',
+        start_date: editing.start_date || todayStr(), end_date: editing.end_date || '',
+      } : blank);
+      const [errors, setErrors] = useState({});
+      const [submitting, setSubmitting] = useState(false);
+
+      const validate = () => {
+        const e = {};
+        if (!form.name.trim()) e.name = '현장명을 입력하세요.';
+        const b = Number(form.budget);
+        if (form.budget === '' || isNaN(b) || b < 0) e.budget = '견적비는 0 이상의 숫자여야 합니다.';
+        if (form.start_date && form.end_date && form.start_date > form.end_date) e.end_date = '준공일은 착공일 이후여야 합니다.';
+        setErrors(e);
+        return Object.keys(e).length === 0;
+      };
+
+      const handleSubmit = async (ev) => {
+        ev.preventDefault();
+        if (!validate()) return;
+        setSubmitting(true);
+        const ok = await onSubmit({
+          name: form.name.trim(), client: form.client.trim(), address: form.address.trim(),
+          manager: form.manager.trim(), budget: Math.round(Number(form.budget) || 0),
+          start_date: form.start_date || null, end_date: form.end_date || null,
+        });
+        setSubmitting(false);
+        // ok=true 면 부모가 모달 닫음
+      };
+
+      return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input label="현장명 *" placeholder="예: 래미안 아파트 34평 리모델링" value={form.name} error={errors.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="발주처 / 고객" placeholder="예: 김철수" value={form.client}
+              onChange={(e) => setForm({ ...form, client: e.target.value })} />
+            <Input label="현장 담당자" placeholder="예: 박현장" value={form.manager}
+              onChange={(e) => setForm({ ...form, manager: e.target.value })} />
+          </div>
+          <Input label="현장 주소" placeholder="예: 서울시 강남구 도곡로 123" value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          <Input label="견적비 (예산, 원) *" type="number" inputMode="numeric" min="0" placeholder="예: 50000000"
+            value={form.budget} error={errors.budget}
+            onChange={(e) => setForm({ ...form, budget: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="착공일" type="date" value={form.start_date || ''}
+              onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+            <Input label="준공(예정)일" type="date" value={form.end_date || ''} error={errors.end_date}
+              onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? '저장 중...' : (editing ? '수정 저장' : '현장 등록')}</Button>
+          </div>
+        </form>
+      );
+    }
+
+    // ========================================
+    // 🧩 요약 대시보드 (비용 카드 + 날짜/진행률)
+    // ========================================
+    function SummaryDashboard({ summary, loading }) {
+      if (loading || !summary) {
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-white rounded-2xl border border-slate-100 animate-pulse"></div>)}
+          </div>
+        );
+      }
+
+      // ⚠️ 퍼센트는 프론트에서 직접 계산 (서버 rate 신뢰 X)
+      const rate = summary.budget > 0 ? (summary.spent / summary.budget) * 100 : 0;
+      const over = summary.budget > 0 && summary.spent > summary.budget;
+      const remaining = summary.budget - summary.spent;
+
+      const cards = [
+        { label: '견적비 (예산)', value: summary.budget, color: 'text-slate-700', bg: 'from-slate-50 to-white', ring: 'border-slate-100', icon: '📋' },
+        { label: '집행액', value: summary.spent, color: 'text-blue-600', bg: 'from-blue-50 to-white', ring: 'border-blue-100', icon: '💸' },
+        { label: '잔여', value: remaining, color: remaining < 0 ? 'text-red-600' : 'text-emerald-600', bg: remaining < 0 ? 'from-red-50 to-white' : 'from-emerald-50 to-white', ring: remaining < 0 ? 'border-red-100' : 'border-emerald-100', icon: '🏦' },
+      ];
+
+      const sc = summary.schedule || {};
+      // ⚠️ 진행률도 프론트 직접 계산
+      const progress = (sc.totalDays && sc.totalDays > 0 && sc.elapsedDays != null) ? (sc.elapsedDays / sc.totalDays) * 100 : null;
+      const delayed = sc.dday != null && sc.dday < 0;
+
+      return (
+        <div className="space-y-4">
+          {/* 비용 카드 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {cards.map((c) => (
+              <Card key={c.label} className={`p-4 sm:p-5 bg-gradient-to-br ${c.bg} ${c.ring}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-500">{c.label}</span>
+                  <span className="text-lg">{c.icon}</span>
+                </div>
+                <div className={`mt-2 text-lg sm:text-xl font-extrabold ${c.color} break-all`}>{fmtWon(c.value)}</div>
+              </Card>
+            ))}
+            {/* 집행률 카드 */}
+            <Card className={`p-4 sm:p-5 bg-gradient-to-br ${over ? 'from-red-50 to-white border-red-200' : 'from-indigo-50 to-white border-indigo-100'}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-500">집행률</span>
+                <span className="text-lg">{over ? '⚠️' : '📊'}</span>
+              </div>
+              <div className={`mt-2 text-2xl font-extrabold ${over ? 'text-red-600' : 'text-indigo-600'}`}>
+                {summary.budget > 0 ? rate.toFixed(1) + '%' : '—'}
+              </div>
+              <div className="mt-2 h-2 bg-white/70 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full bar-grow ${over ? 'bg-red-500' : rate >= 80 ? 'bg-orange-400' : 'bg-indigo-500'}`}
+                  style={{ width: Math.min(rate, 100) + '%' }}></div>
+              </div>
+              {over && <p className="mt-1.5 text-xs font-semibold text-red-600">예산 초과! {fmtWon(Math.abs(remaining))} 초과</p>}
+            </Card>
+          </div>
+
+          {/* 공기 / 일정 */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-slate-800">공사 일정</h2>
+              {sc.start_date && sc.end_date ? (
+                delayed
+                  ? <Badge color="bg-red-500">지연 ({Math.abs(sc.dday)}일 초과)</Badge>
+                  : <Badge color="bg-blue-500">{sc.dday === 0 ? 'D-Day' : 'D-' + sc.dday}</Badge>
+              ) : <Badge color="bg-slate-400">일정 미설정</Badge>}
+            </div>
+
+            {sc.start_date && sc.end_date ? (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  {[
+                    { label: '공기 (총)', value: sc.totalDays != null ? sc.totalDays + '일' : '—', sub: `${sc.start_date} ~ ${sc.end_date}` },
+                    { label: '경과일', value: sc.elapsedDays != null ? sc.elapsedDays + '일' : '—', sub: null },
+                    { label: '잔여일', value: sc.remainingDays != null ? (sc.remainingDays >= 0 ? sc.remainingDays + '일' : '초과') : '—', sub: null },
+                    { label: 'D-day', value: sc.dday != null ? (sc.dday >= 0 ? 'D-' + sc.dday : 'D+' + Math.abs(sc.dday)) : '—', sub: null },
+                  ].map((b) => (
+                    <div key={b.label} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <p className="text-xs text-slate-500">{b.label}</p>
+                      <p className={`mt-0.5 text-lg font-bold ${b.label === 'D-day' && delayed ? 'text-red-600' : 'text-slate-800'}`}>{b.value}</p>
+                      {b.sub && <p className="mt-0.5 text-[11px] text-slate-400 truncate">{b.sub}</p>}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-medium text-slate-600">진행률</span>
+                    <span className={`font-bold ${delayed ? 'text-red-600' : 'text-slate-700'}`}>
+                      {progress != null ? Math.min(progress, 100).toFixed(0) + '%' : '—'}
+                    </span>
+                  </div>
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full bar-grow ${delayed ? 'bg-red-500' : 'bg-blue-500'}`}
+                      style={{ width: (progress != null ? Math.min(progress, 100) : 0) + '%' }}></div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-4">착공일/준공일을 입력하면 공기와 진행률이 표시됩니다.</p>
+            )}
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 비용 등록/수정 폼
+    // ========================================
+    function CostForm({ onSubmit, editing, onCancelEdit }) {
+      const blank = { date: todayStr(), amount: '', category: '', process: '', manager: '', vendor: '', memo: '' };
+      const [form, setForm] = useState(blank);
+      const [errors, setErrors] = useState({});
+      const [submitting, setSubmitting] = useState(false);
+
+      useEffect(() => {
+        if (editing) {
+          setForm({
+            date: editing.date || todayStr(), amount: String(editing.amount || ''),
+            category: editing.category || '', process: editing.process || '',
+            manager: editing.manager || '', vendor: editing.vendor || '', memo: editing.memo || '',
+          });
+          setErrors({});
+        }
+      }, [editing]);
+
+      const validate = () => {
+        const e = {};
+        const amt = Number(form.amount);
+        if (!form.amount || isNaN(amt) || amt <= 0) e.amount = '금액은 0보다 큰 숫자여야 합니다.';
+        if (!form.category) e.category = '비용 카테고리를 선택하세요.';
+        if (!form.date) e.date = '날짜를 선택하세요.';
+        setErrors(e);
+        return Object.keys(e).length === 0;
+      };
+
+      const handleSubmit = async (ev) => {
+        ev.preventDefault();
+        if (!validate()) return;
+        setSubmitting(true);
+        const ok = await onSubmit({
+          date: form.date, amount: Math.round(Number(form.amount)),
+          category: form.category, process: form.process || null,
+          manager: form.manager.trim(), vendor: form.vendor.trim(), memo: form.memo.trim(),
+        });
+        setSubmitting(false);
+        if (ok && !editing) setForm({ ...blank, date: form.date });
+      };
+
+      return (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-slate-800">{editing ? '비용 수정' : '비용 등록'}</h2>
+            {editing && <Button variant="ghost" size="sm" onClick={onCancelEdit}>수정 취소</Button>}
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input label="날짜 *" type="date" value={form.date} error={errors.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })} />
+              <Input label="금액 (원) *" type="number" inputMode="numeric" min="0" placeholder="예: 1500000"
+                value={form.amount} error={errors.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+              <Select label="비용 카테고리 *" value={form.category} error={errors.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                <option value="">선택하세요</option>
+                {COST_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+              <Select label="공정 카테고리" value={form.process}
+                onChange={(e) => setForm({ ...form, process: e.target.value })}>
+                <option value="">선택하세요 (선택)</option>
+                {PROCESS_CATEGORIES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </Select>
+              <Input label="담당자" placeholder="예: 박현장" value={form.manager}
+                onChange={(e) => setForm({ ...form, manager: e.target.value })} />
+              <Input label="거래처" placeholder="예: 한솔자재" value={form.vendor}
+                onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
+            </div>
+            <Textarea label="메모 (선택)" rows="2" placeholder="간단한 메모" value={form.memo}
+              onChange={(e) => setForm({ ...form, memo: e.target.value })} />
+            <Button type="submit" size="lg" disabled={submitting} className="w-full">
+              {submitting ? '저장 중...' : (editing ? '수정 저장' : '비용 등록하기')}
+            </Button>
+          </form>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧩 분석 (비용 카테고리별 / 공정별 비율 바)
+    // ========================================
+    function BreakdownBars({ title, items, keyName, colorMap, total }) {
+      const sorted = [...items].sort((a, b) => b.total - a.total);
+      if (sorted.length === 0) {
+        return (
+          <div>
+            <h3 className="text-sm font-bold text-slate-700 mb-2.5">{title}</h3>
+            <p className="text-sm text-slate-400 text-center py-4">데이터가 없습니다.</p>
+          </div>
+        );
+      }
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-2.5">
+            <h3 className="text-sm font-bold text-slate-700">{title}</h3>
+            <span className="text-sm font-bold text-slate-700">{fmtWon(total)}</span>
+          </div>
+          <div className="space-y-2.5">
+            {sorted.map((c) => {
+              const name = c[keyName];
+              const pct = total > 0 ? Math.round((c.total / total) * 100) : 0;
+              const color = colorMap[name] || 'bg-slate-400';
+              return (
+                <div key={name}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color}`}></span>
+                      <span className="font-medium text-slate-600 truncate">{name}</span>
+                      <span className="text-slate-400 shrink-0">{pct}%</span>
+                    </span>
+                    <span className="font-semibold text-slate-700 shrink-0">{fmtWon(c.total)}</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full bar-grow ${color}`} style={{ width: pct + '%' }}></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function Analysis({ summary, loading }) {
+      if (loading || !summary) {
+        return <Card className="p-5"><div className="h-48 bg-slate-100 rounded-xl animate-pulse"></div></Card>;
+      }
+      const spent = summary.spent || 0;
+      return (
+        <Card className="p-5">
+          <h2 className="text-base font-bold text-slate-800 mb-4">집행 분석</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <BreakdownBars title="비용 카테고리별" items={summary.byCategory || []} keyName="category" colorMap={COST_COLOR} total={spent} />
+            <BreakdownBars title="공정별" items={summary.byProcess || []} keyName="process" colorMap={PROC_COLOR} total={spent} />
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧩 월별 집행 추이 (Chart.js)
+    // ========================================
+    function MonthlyTrend({ costs, loading }) {
+      const canvasRef = useRef(null);
+      const monthly = useMemo(() => computeMonthly(costs || []), [costs]);
+      const labels = monthly.map((r) => r.month);
+      const data = monthly.map((r) => r.total);
+      const hasData = monthly.length > 0;
+
+      useEffect(() => {
+        if (loading || !hasData || !canvasRef.current || typeof Chart === 'undefined') return;
+        const ctx = canvasRef.current.getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: '집행액', data,
+              backgroundColor: 'rgba(59, 130, 246, 0.75)',
+              borderRadius: 6, maxBarThickness: 40,
+            }],
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (c) => fmtWon(c.parsed.y) } },
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+              y: {
+                beginAtZero: true,
+                ticks: { font: { size: 11 }, callback: (v) => (v >= 10000 ? (v / 10000) + '만' : v.toLocaleString('ko-KR')) },
+                grid: { color: 'rgba(148, 163, 184, 0.15)' },
+              },
+            },
+          },
+        });
+        return () => chart.destroy();
+      }, [loading, hasData, JSON.stringify(labels), JSON.stringify(data)]);
+
+      return (
+        <Card className="p-5">
+          <h2 className="text-base font-bold text-slate-800 mb-4">월별 집행 추이</h2>
+          {loading ? (
+            <div className="h-56 bg-slate-100 rounded-xl animate-pulse"></div>
+          ) : !hasData ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-2">📊</div>
+              <p className="text-sm text-slate-400">표시할 데이터가 없습니다.</p>
+            </div>
+          ) : (
+            <div className="relative h-56 sm:h-64"><canvas ref={canvasRef} aria-label="월별 집행 추이 차트" role="img"></canvas></div>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧩 비용 목록
+    // ========================================
+    function CostList({ costs, onEdit, onAskDelete, loading }) {
+      if (loading) {
+        return (
+          <Card className="p-5">
+            <h2 className="text-base font-bold text-slate-800 mb-4">비용 목록</h2>
+            <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-slate-100 rounded-xl animate-pulse"></div>)}</div>
+          </Card>
+        );
+      }
+      return (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-slate-800">비용 목록</h2>
+            <span className="text-xs text-slate-400">{costs.length}건</span>
+          </div>
+          {costs.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-2">📭</div>
+              <p className="text-sm text-slate-400">등록된 비용이 없습니다.<br />위 폼에서 첫 비용을 추가해보세요.</p>
+            </div>
+          ) : (
+            <>
+              {/* 데스크탑: 표 */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                      <th className="py-2 pr-3 font-medium">날짜</th>
+                      <th className="py-2 pr-3 font-medium">비용</th>
+                      <th className="py-2 pr-3 font-medium">공정</th>
+                      <th className="py-2 pr-3 font-medium text-right">금액</th>
+                      <th className="py-2 pr-3 font-medium">담당자</th>
+                      <th className="py-2 pr-3 font-medium">거래처</th>
+                      <th className="py-2 font-medium text-right">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {costs.map((c) => (
+                      <tr key={c.id} className="group hover:bg-slate-50">
+                        <td className="py-2.5 pr-3 text-slate-500 whitespace-nowrap">{c.date}</td>
+                        <td className="py-2.5 pr-3"><Badge color={COST_COLOR[c.category] || 'bg-slate-400'}>{c.category}</Badge></td>
+                        <td className="py-2.5 pr-3">{c.process ? <Badge color={PROC_COLOR[c.process] || 'bg-slate-400'}>{c.process}</Badge> : <span className="text-slate-300">-</span>}</td>
+                        <td className="py-2.5 pr-3 text-right font-bold text-slate-800 whitespace-nowrap">{fmtWon(c.amount)}</td>
+                        <td className="py-2.5 pr-3 text-slate-600">{c.manager || <span className="text-slate-300">-</span>}</td>
+                        <td className="py-2.5 pr-3 text-slate-600">{c.vendor || <span className="text-slate-300">-</span>}</td>
+                        <td className="py-2.5 text-right whitespace-nowrap">
+                          <button onClick={() => onEdit(c)} aria-label="수정" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                          <button onClick={() => onAskDelete(c)} aria-label="삭제" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* 모바일: 카드 리스트 */}
+              <ul className="md:hidden divide-y divide-slate-100">
+                {costs.map((c) => (
+                  <li key={c.id} className="py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                        <Badge color={COST_COLOR[c.category] || 'bg-slate-400'}>{c.category}</Badge>
+                        {c.process && <Badge color={PROC_COLOR[c.process] || 'bg-slate-400'}>{c.process}</Badge>}
+                      </div>
+                      <span className="text-sm font-bold text-slate-800 shrink-0">{fmtWon(c.amount)}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {c.date}
+                      {c.manager && ` · ${c.manager}`}
+                      {c.vendor && ` · ${c.vendor}`}
+                    </p>
+                    {c.memo && <p className="mt-0.5 text-xs text-slate-500 truncate">{c.memo}</p>}
+                    <div className="mt-1.5 flex gap-1 justify-end">
+                      <button onClick={() => onEdit(c)} aria-label="수정" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                      <button onClick={() => onAskDelete(c)} aria-label="삭제" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+    function App() {
+      const toast = useToast();
+      const [sites, setSites] = useState([]);
+      const [selectedId, setSelectedId] = useState(null);
+      const [sitesLoading, setSitesLoading] = useState(true);
+      const [usingMock, setUsingMock] = useState(false);
+
+      const [costs, setCosts] = useState([]);
+      const [summary, setSummary] = useState(null);
+      const [detailLoading, setDetailLoading] = useState(false);
+      const [error, setError] = useState(null);
+
+      const [editingCost, setEditingCost] = useState(null);
+      const [costDeleteTarget, setCostDeleteTarget] = useState(null);
+
+      const [siteModalOpen, setSiteModalOpen] = useState(false);
+      const [editingSite, setEditingSite] = useState(null);
+      const [siteDeleteTarget, setSiteDeleteTarget] = useState(null);
+
+      const formRef = useRef(null);
+
+      const selectedSite = useMemo(() => sites.find((s) => s.id === selectedId) || null, [sites, selectedId]);
+
+      // ── 현장 목록 로드 ──
+      const loadSites = useCallback(async (preferId) => {
+        setSitesLoading(true);
+        setError(null);
+        try {
+          const data = await api.listSites();
+          setSites(data);
+          setUsingMock(api._useMock);
+          // 선택 유지 / 복원 / 첫 항목
+          const saved = preferId || localStorage.getItem(SEL_KEY);
+          let next = null;
+          if (saved && data.some((s) => String(s.id) === String(saved))) next = data.find((s) => String(s.id) === String(saved)).id;
+          else if (data.length > 0) next = data[0].id;
+          setSelectedId(next);
+        } catch (e) {
+          setError('현장 목록을 불러오지 못했습니다.');
+        } finally {
+          setSitesLoading(false);
+        }
+      }, []);
+
+      useEffect(() => { loadSites(); }, [loadSites]);
+
+      // ── 선택 현장 상세(비용+요약) 로드 ──
+      const loadDetail = useCallback(async (site) => {
+        if (!site) { setCosts([]); setSummary(null); return; }
+        setDetailLoading(true);
+        try {
+          const [cs, sm] = await Promise.all([api.listCosts(site.id), api.summary(site.id, site)]);
+          setCosts(cs);
+          setSummary(sm);
+          setUsingMock(api._useMock);
+        } catch (e) {
+          toast('현장 정보를 불러오지 못했습니다.', 'error');
+        } finally {
+          setDetailLoading(false);
+        }
+      }, [toast]);
+
+      useEffect(() => {
+        if (selectedId != null) {
+          localStorage.setItem(SEL_KEY, String(selectedId));
+          loadDetail(selectedSite);
+        } else {
+          setCosts([]); setSummary(null);
+        }
+      }, [selectedId, selectedSite, loadDetail]);
+
+      const refreshDetail = useCallback(() => loadDetail(selectedSite), [loadDetail, selectedSite]);
+
+      // ── 현장 등록/수정 ──
+      const handleSaveSite = async (body) => {
+        try {
+          if (editingSite) {
+            await api.updateSite(editingSite.id, body);
+            toast('현장 정보가 수정되었습니다.', 'success');
+          } else {
+            const created = await api.createSite(body);
+            toast('현장이 등록되었습니다.', 'success');
+            setSiteModalOpen(false);
+            setEditingSite(null);
+            await loadSites(created.id);
+            return true;
+          }
+          setSiteModalOpen(false);
+          setEditingSite(null);
+          await loadSites(editingSite ? editingSite.id : undefined);
+          return true;
+        } catch (e) {
+          toast(e.status === 409 ? (e.message || '이미 같은 이름의 현장이 있습니다.') : '저장에 실패했습니다.', 'error');
+          return false;
+        }
+      };
+
+      const confirmDeleteSite = async () => {
+        if (!siteDeleteTarget) return;
+        const target = siteDeleteTarget;
+        setSiteDeleteTarget(null);
+        try {
+          await api.removeSite(target.id);
+          toast('현장이 삭제되었습니다. (자료 폴더는 보존됩니다)', 'info');
+          const remaining = sites.filter((s) => s.id !== target.id);
+          await loadSites(remaining[0] ? remaining[0].id : undefined);
+        } catch (e) {
+          toast('현장 삭제에 실패했습니다.', 'error');
+        }
+      };
+
+      // ── 비용 등록/수정 ──
+      const handleSubmitCost = async (body) => {
+        if (!selectedSite) return false;
+        try {
+          if (editingCost) {
+            await api.updateCost(editingCost.id, body);
+            setEditingCost(null);
+            toast('비용이 수정되었습니다.', 'success');
+          } else {
+            await api.createCost(selectedSite.id, body);
+            toast('비용이 등록되었습니다.', 'success');
+          }
+          setUsingMock(api._useMock);
+          await refreshDetail();
+          return true;
+        } catch (e) {
+          toast('저장에 실패했습니다.', 'error');
+          return false;
+        }
+      };
+
+      const handleEditCost = (c) => {
+        setEditingCost(c);
+        if (formRef.current) formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+
+      const confirmDeleteCost = async () => {
+        if (!costDeleteTarget) return;
+        const id = costDeleteTarget.id;
+        setCostDeleteTarget(null);
+        try {
+          await api.removeCost(id);
+          if (editingCost && editingCost.id === id) setEditingCost(null);
+          setUsingMock(api._useMock);
+          await refreshDetail();
+          toast('비용이 삭제되었습니다.', 'info');
+        } catch (e) {
+          toast('삭제에 실패했습니다.', 'error');
+        }
+      };
+
+      // ── CSV 내보내기 ──
+      const handleExport = async () => {
+        if (!selectedSite) return;
+        // 서버 모드: 서버 export 엔드포인트로 다운로드 시도
+        if (!api._useMock) {
+          try {
+            const res = await fetch(api.exportUrl(selectedSite.id));
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const blob = await res.blob();
+            downloadBlob(blob, `${selectedSite.name}-비용내역.csv`);
+            toast('CSV를 내보냈습니다.', 'success');
+            return;
+          } catch (e) {
+            // 서버 실패 시 브라우저 폴백으로 진행
+          }
+        }
+        // 폴백: 브라우저에서 CSV 생성
+        const header = ['날짜', '금액', '비용카테고리', '공정', '담당자', '거래처', '메모'];
+        const esc = (v) => {
+          const s = (v == null ? '' : String(v));
+          return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        };
+        const lines = [header.join(',')];
+        costs.forEach((c) => {
+          lines.push([c.date, c.amount, c.category, c.process || '', c.manager || '', c.vendor || '', c.memo || ''].map(esc).join(','));
+        });
+        const csv = '﻿' + lines.join('\r\n'); // UTF-8 BOM
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        downloadBlob(blob, `${selectedSite.name}-비용내역.csv`);
+        toast('CSV를 내보냈습니다. (브라우저 다운로드)', 'success');
+      };
+
+      function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      return (
+        <div className="min-h-screen">
+          <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+            <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+              <h1 className="text-lg sm:text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                <span>🏗️</span> <span className="hidden sm:inline">인테리어 현장 비용관리</span><span className="sm:hidden">현장 비용관리</span>
+              </h1>
+              {usingMock && (
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 shrink-0"
+                  title="서버 연결 없이 브라우저(localStorage) 데이터로 동작 중입니다.">
+                  오프라인 데모 모드
+                </span>
+              )}
+            </div>
+          </header>
+
+          <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+            {/* 에러 배너 */}
+            {error && (
+              <Card className="p-4 bg-red-50 border-red-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-red-700">{error}</span>
+                  <Button variant="danger" size="sm" onClick={() => loadSites()}>다시 시도</Button>
+                </div>
+              </Card>
+            )}
+
+            {/* 현장 선택/관리 바 */}
+            <Card className="p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+                <div className="flex-1">
+                  <span className="block mb-1.5 text-sm font-medium text-slate-700">현장 선택</span>
+                  {sitesLoading ? (
+                    <div className="h-11 bg-slate-100 rounded-xl animate-pulse"></div>
+                  ) : sites.length === 0 ? (
+                    <div className="h-11 flex items-center px-3.5 rounded-xl border border-dashed border-slate-300 text-sm text-slate-400">
+                      등록된 현장이 없습니다.
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedId != null ? String(selectedId) : ''}
+                      onChange={(e) => { setSelectedId(sites.find((s) => String(s.id) === e.target.value).id); setEditingCost(null); }}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition"
+                    >
+                      {sites.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                    </select>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {selectedSite && (
+                    <>
+                      <Button variant="secondary" onClick={() => { setEditingSite(selectedSite); setSiteModalOpen(true); }}>현장 수정</Button>
+                      <Button variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => setSiteDeleteTarget(selectedSite)}>삭제</Button>
+                    </>
+                  )}
+                  <Button onClick={() => { setEditingSite(null); setSiteModalOpen(true); }}>+ 현장 등록</Button>
+                </div>
+              </div>
+
+              {/* 선택 현장 메타 */}
+              {selectedSite && (
+                <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                  <div><p className="text-xs text-slate-400">발주처</p><p className="font-medium text-slate-700 truncate">{selectedSite.client || '-'}</p></div>
+                  <div><p className="text-xs text-slate-400">담당자</p><p className="font-medium text-slate-700 truncate">{selectedSite.manager || '-'}</p></div>
+                  <div className="col-span-2"><p className="text-xs text-slate-400">주소</p><p className="font-medium text-slate-700 truncate">{selectedSite.address || '-'}</p></div>
+                </div>
+              )}
+            </Card>
+
+            {/* 현장 없음 안내 */}
+            {!sitesLoading && sites.length === 0 ? (
+              <Card className="p-12 text-center">
+                <div className="text-5xl mb-3">🏗️</div>
+                <h2 className="text-lg font-bold text-slate-700 mb-1">현장을 먼저 등록하세요</h2>
+                <p className="text-sm text-slate-400 mb-5">현장을 등록하면 비용 집행 현황과 일정을 관리할 수 있습니다.</p>
+                <Button size="lg" onClick={() => { setEditingSite(null); setSiteModalOpen(true); }}>+ 첫 현장 등록하기</Button>
+              </Card>
+            ) : selectedSite ? (
+              <>
+                {/* 요약 대시보드 */}
+                <SummaryDashboard summary={summary} loading={detailLoading} />
+
+                {/* 비용 등록 폼 */}
+                <div ref={formRef}>
+                  <CostForm onSubmit={handleSubmitCost} editing={editingCost} onCancelEdit={() => setEditingCost(null)} />
+                </div>
+
+                {/* 분석 + 월별 추이 */}
+                <Analysis summary={summary} loading={detailLoading} />
+                <MonthlyTrend costs={costs} loading={detailLoading} />
+
+                {/* 비용 목록 + CSV 내보내기 */}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold text-slate-800">비용 내역</h2>
+                  <Button variant="secondary" size="sm" onClick={handleExport} disabled={costs.length === 0}>
+                    ⬇ CSV 내보내기
+                  </Button>
+                </div>
+                <CostList costs={costs} loading={detailLoading} onEdit={handleEditCost} onAskDelete={setCostDeleteTarget} />
+              </>
+            ) : null}
+
+            <footer className="text-center text-xs text-slate-400 py-4">
+              API 연동 준비 완료 · 서버 미연결 시 localStorage 자동 폴백 · 퍼센트는 프론트에서 직접 계산
+            </footer>
+          </main>
+
+          {/* 현장 등록/수정 모달 */}
+          <Modal isOpen={siteModalOpen} onClose={() => { setSiteModalOpen(false); setEditingSite(null); }}
+            title={editingSite ? '현장 수정' : '현장 등록'} size="lg">
+            <SiteForm
+              key={editingSite ? editingSite.id : 'new'}
+              editing={editingSite}
+              onSubmit={handleSaveSite}
+              onCancel={() => { setSiteModalOpen(false); setEditingSite(null); }}
+            />
+          </Modal>
+
+          {/* 현장 삭제 확인 모달 */}
+          <Modal isOpen={!!siteDeleteTarget} onClose={() => setSiteDeleteTarget(null)} title="현장 삭제 확인" size="sm">
+            {siteDeleteTarget && (
+              <div>
+                <p className="text-sm text-slate-600">
+                  '<span className="font-semibold">{siteDeleteTarget.name}</span>' 현장을 삭제하시겠습니까?<br />
+                  해당 현장의 <span className="font-semibold text-red-600">모든 비용 내역</span>이 함께 삭제됩니다. (자료 폴더/파일은 보존)
+                </p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setSiteDeleteTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDeleteSite}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+
+          {/* 비용 삭제 확인 모달 */}
+          <Modal isOpen={!!costDeleteTarget} onClose={() => setCostDeleteTarget(null)} title="비용 삭제 확인" size="sm">
+            {costDeleteTarget && (
+              <div>
+                <p className="text-sm text-slate-600">아래 비용을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+                <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Badge color={COST_COLOR[costDeleteTarget.category] || 'bg-slate-400'}>{costDeleteTarget.category}</Badge>
+                      {costDeleteTarget.process && <Badge color={PROC_COLOR[costDeleteTarget.process] || 'bg-slate-400'}>{costDeleteTarget.process}</Badge>}
+                    </div>
+                    <span className="font-bold text-slate-800">{fmtWon(costDeleteTarget.amount)}</span>
+                  </div>
+                  <p className="mt-1 text-slate-500">{costDeleteTarget.memo || '메모 없음'} · {costDeleteTarget.date}</p>
+                </div>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setCostDeleteTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDeleteCost}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    );
+  </script>
+</body>
+</html>

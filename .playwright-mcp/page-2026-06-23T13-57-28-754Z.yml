@@ -1,0 +1,227 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - link "Coupang" [ref=e6] [cursor=pointer]:
+      - /url: //www.coupang.com
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e12]: 장바구니(3)
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - generic [ref=e15]: "01"
+            - generic [ref=e16]: 옵션선택
+          - generic [ref=e18]:
+            - generic [ref=e19]: "02"
+            - generic [ref=e20]: 장바구니
+          - generic [ref=e22]:
+            - generic [ref=e23]: "03"
+            - generic [ref=e24]: 주문/결제
+          - generic [ref=e26]:
+            - generic [ref=e27]: "04"
+            - generic [ref=e28]: 주문완료
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e32]:
+            - generic [ref=e35]:
+              - generic [ref=e36]: 로켓배송 상품
+              - generic [ref=e37]: 무료배송 · 19,800원 이상 주문 가능
+            - generic [ref=e40]:
+              - generic [ref=e41]:
+                - checkbox [checked] [ref=e43]
+                - link [ref=e44] [cursor=pointer]:
+                  - /url: https://www.coupang.com/vp/products/8298433306?vendorItemId=90958820204&sourceType=CART
+              - generic [ref=e45]:
+                - generic [ref=e46]:
+                  - 'link "블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰 BLP-OE383K 블랙 37시간 옵션: BLP-OE383K, 블랙" [ref=e48] [cursor=pointer]':
+                    - /url: https://www.coupang.com/vp/products/8298433306?vendorItemId=90958820204&sourceType=CART
+                    - text: 블라우풍트 AAC ENC 노이즈 캔슬링 오픈 귀걸이형 HI-FI 5.4 블루투스 이어폰 BLP-OE383K 블랙 37시간
+                    - generic [ref=e49]: "옵션: BLP-OE383K, 블랙"
+                  - generic [ref=e50]: 삭제
+                - generic [ref=e51]:
+                  - generic [ref=e53]: 한달구매 2천+
+                  - generic [ref=e54]:
+                    - generic [ref=e56]: 259,470원
+                    - generic [ref=e57]:
+                      - generic [ref=e58]: 76%
+                      - generic [ref=e59]:
+                        - generic [ref=e60]: 61,180
+                        - generic [ref=e61]: 원
+                  - textbox [ref=e67]: "1"
+            - generic [ref=e71]:
+              - generic [ref=e72]:
+                - checkbox [checked] [ref=e74]
+                - link [ref=e75] [cursor=pointer]:
+                  - /url: https://www.coupang.com/vp/products/7464900475?vendorItemId=86576143822&sourceType=CART
+              - generic [ref=e76]:
+                - generic [ref=e77]:
+                  - 'link "앤커 사운드코어 리버티 4 NC 블루투스 이어폰 옵션: A3947, 블랙" [ref=e79] [cursor=pointer]':
+                    - /url: https://www.coupang.com/vp/products/7464900475?vendorItemId=86576143822&sourceType=CART
+                    - text: 앤커 사운드코어 리버티 4 NC 블루투스 이어폰
+                    - generic [ref=e80]: "옵션: A3947, 블랙"
+                  - generic [ref=e81]: 삭제
+                - generic [ref=e82]:
+                  - generic [ref=e84]: 한달구매 400+
+                  - generic [ref=e87]:
+                    - generic [ref=e88]: 64,900
+                    - generic [ref=e89]: 원
+                  - textbox [ref=e95]: "1"
+            - link "로켓배송 상품 추가하기" [ref=e99] [cursor=pointer]:
+              - /url: https://www.coupang.com/np/rocketdelivery
+              - text: 로켓배송 상품 추가하기
+          - generic [ref=e103]:
+            - generic [ref=e107]: 판매자배송 상품
+            - generic [ref=e108]:
+              - generic [ref=e110]:
+                - generic [ref=e111]:
+                  - checkbox [checked] [ref=e113]
+                  - link [ref=e114] [cursor=pointer]:
+                    - /url: https://www.coupang.com/vp/products/8404942764?vendorItemId=91891730192&sourceType=CART
+                - generic [ref=e115]:
+                  - generic [ref=e116]:
+                    - 'link "삼성공식파트너 JBL WAVE BEAM 블루투스이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱 가성비 이어폰 옵션: JBLWBEAMBLK, 블랙" [ref=e118] [cursor=pointer]':
+                      - /url: https://www.coupang.com/vp/products/8404942764?vendorItemId=91891730192&sourceType=CART
+                      - text: 삼성공식파트너 JBL WAVE BEAM 블루투스이어폰 노이즈캔슬링 Pure Bass사운드 최대 40시간 통화품질 IP54 Google Fast Pair 전용앱 가성비 이어폰
+                      - generic [ref=e119]: "옵션: JBLWBEAMBLK, 블랙"
+                    - generic [ref=e120]: 삭제
+                  - generic [ref=e121]:
+                    - generic [ref=e123]: 한달구매 300+
+                    - generic [ref=e124]:
+                      - generic [ref=e125]:
+                        - generic [ref=e126]: 할인
+                        - strong [ref=e128]:
+                          - generic [ref=e129]: ・
+                          - generic [ref=e130]: "12"
+                          - text: ":"
+                          - generic [ref=e131]: "12"
+                          - text: ":"
+                          - generic [ref=e132]: "31"
+                        - generic [ref=e133]: 69,000원
+                      - generic [ref=e134]:
+                        - generic [ref=e135]:
+                          - generic [ref=e137]: 24%
+                          - img [ref=e138]
+                        - generic [ref=e140]:
+                          - generic [ref=e141]: 52,200
+                          - generic [ref=e142]: 원
+                    - textbox [ref=e147]: "1"
+              - generic [ref=e150]:
+                - generic [ref=e151]:
+                  - generic [ref=e152]:
+                    - text: 상품가격52,200원
+                    - generic [ref=e153]:
+                      - text: +배송비
+                      - strong [ref=e155]: 무료
+                  - generic [ref=e157]: =주문금액52,200원
+                - link "같은 판매자 상품 추가하기" [ref=e159] [cursor=pointer]:
+                  - /url: https://shop.coupang.com/vid/all-products/A00033963?pid=8404942764&viid=91891730192&ocid=91975&platform=p&source=brandstore_cart
+                  - text: 같은 판매자 상품 추가하기
+          - generic [ref=e162]:
+            - generic [ref=e163]:
+              - checkbox "전체 선택 (3 / 3)" [checked] [ref=e164]
+              - generic [ref=e165]: 전체 선택
+              - generic [ref=e166]: (3 / 3)
+            - generic [ref=e167]:
+              - generic [ref=e168]: 선택삭제
+              - generic [ref=e169]: 품절/판매종료상품 전체삭제
+        - generic [ref=e170]:
+          - generic [ref=e171]:
+            - generic [ref=e172]:
+              - generic [ref=e173]: 주문 예상 금액
+              - generic [ref=e174]:
+                - generic [ref=e175]:
+                  - generic [ref=e176]: 총 상품 가격
+                  - generic [ref=e178]:
+                    - emphasis [ref=e179]: 180,980
+                    - text: 원
+                - generic [ref=e180]:
+                  - generic [ref=e181]: 총 즉시할인
+                  - generic [ref=e183]:
+                    - emphasis [ref=e184]: "-"
+                    - emphasis [ref=e185]: 2,700
+                    - text: 원
+                - generic [ref=e186]:
+                  - generic [ref=e187]: 총 배송비
+                  - generic [ref=e189]:
+                    - emphasis [ref=e190]: +
+                    - emphasis [ref=e191]: "0"
+                    - text: 원
+            - generic [ref=e194]:
+              - emphasis [ref=e195]: 178,280
+              - text: 원
+          - button "총 3개 상품 구매하기" [ref=e198] [cursor=pointer]:
+            - generic [ref=e199]: 총 3개 상품 구매하기
+  - contentinfo [ref=e202]:
+    - generic [ref=e203]:
+      - generic [ref=e204]:
+        - link "회사소개" [ref=e205] [cursor=pointer]:
+          - /url: https://news.coupang.com/
+        - link "Investor Relations" [ref=e206] [cursor=pointer]:
+          - /url: https://ir.aboutcoupang.com/overview/default.aspx
+        - link "인재채용" [ref=e207] [cursor=pointer]:
+          - /url: https://rocketyourcareer.kr.coupang.com
+        - link "입점/제휴문의" [ref=e208] [cursor=pointer]:
+          - /url: https://marketplace.coupangcorp.com/s/?utm_source=button_pc&utm_medium=non_paid&utm_campaign=onsite_ca&utm_id=coupang_app?inflow=WEB_FOOTER_B
+        - link "공지사항" [ref=e209] [cursor=pointer]:
+          - /url: https://mc.coupang.com/ssr/desktop/contact/notice
+        - link "고객의 소리" [ref=e210] [cursor=pointer]:
+          - /url: https://mc.coupang.com/ssr/desktop/contact/voc
+        - link "이용약관" [ref=e211] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/policies/terms
+        - link "개인정보 처리방침" [ref=e212] [cursor=pointer]:
+          - /url: https://privacy.coupang.com/ko/center/coupang
+          - strong [ref=e213]: 개인정보 처리방침
+        - link "정보보호/개인정보보호 인증" [ref=e214] [cursor=pointer]:
+          - /url: https://privacy.coupang.com/ko/security/status
+        - link "쿠팡페이 이용약관" [ref=e215] [cursor=pointer]:
+          - /url: https://rocketpay.coupang.com/rocketpay/operationTerms/coupangPcFooter
+        - link "신뢰관리센터" [ref=e216] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/safety
+        - link "제휴마케팅" [ref=e217] [cursor=pointer]:
+          - /url: https://partners.coupang.com/
+        - link "광고안내" [ref=e218] [cursor=pointer]:
+          - /url: https://ads.coupang.com
+      - paragraph [ref=e222] [cursor=pointer]: Global Site
+    - generic [ref=e224]:
+      - generic [ref=e225]:
+        - link "COUPANG" [ref=e226] [cursor=pointer]:
+          - /url: https://www.coupang.com/
+        - generic [ref=e227]:
+          - text: "상호명 및 호스팅 서비스 제공 : 쿠팡(주)"
+          - text: "대표이사 : 로저스 해롤드 린(Rogers Harold Lynn)"
+          - text: 서울시 송파구 송파대로 570
+          - text: "사업자 등록번호 : 120-88-00767"
+          - text: "통신판매업신고 : 2017-서울송파-0680"
+          - link "사업자정보 확인 >" [ref=e228] [cursor=pointer]:
+            - /url: http://www.ftc.go.kr/info/bizinfo/communicationViewPopup.jsp?wrkr_no=1208800767
+      - 'link "365고객센터 | 전자금융거래분쟁처리담당 1577-7011 (유료) 서울시 송파구 송파대로 570 email : help@coupang.com" [ref=e230] [cursor=pointer]':
+        - /url: https://mc.coupang.com/ssr/desktop/contact/inquiry
+        - strong [ref=e231]: 365고객센터
+        - text: "| 전자금융거래분쟁처리담당"
+        - emphasis [ref=e232]: 1577-7011 (유료)
+        - text: 서울시 송파구 송파대로 570
+        - text: "email : help@coupang.com"
+      - paragraph [ref=e233]:
+        - strong [ref=e234]: 채무지급보증 안내
+        - generic [ref=e235]:
+          - text: 당사는 고객님이 현금 결제한 금액에 대해
+          - text: 채무지급보증 계약을 체결하여
+          - text: 안전거래를 보장하고 있습니다.
+        - link "서비스 가입사실 확인 >" [ref=e236] [cursor=pointer]:
+          - /url: https://www.coupang.com/np/etc/popWooriService
+    - generic [ref=e242]:
+      - paragraph [ref=e243]:
+        - text: 사이버몰 내 판매되는 상품 중에는 쿠팡에 등록한 개별 판매자가 판매하는 마켓플레이스(오픈마켓) 상품이 포함되어 있습니다.
+        - text: 마켓플레이스(오픈마켓) 상품의 경우 쿠팡은 통신판매중개자이며 통신판매의 당사자가 아닙니다.
+        - text: 쿠팡은 마켓플레이스(오픈마켓) 상품, 거래정보 및 거래 등에 대하여 책임을 지지 않습니다.
+        - text: 쿠팡은 소비자 보호와 안전거래를 위해 신뢰관리센터(CM112@coupang.com)를 운영하고 있으며, 관련 분쟁이 발생할 경우 별도의 분쟁 처리절차에 의거 분쟁이 처리됩니다.
+        - text: Copyright © Coupang Corp. 2010-2025 All Rights Reserved.
+      - list [ref=e244]:
+        - listitem [ref=e245]:
+          - link [ref=e246] [cursor=pointer]:
+            - /url: https://www.facebook.com/Coupang.korea
+        - listitem [ref=e247]:
+          - link [ref=e248] [cursor=pointer]:
+            - /url: https://news.coupang.com/
+        - listitem [ref=e249]:
+          - link [ref=e250] [cursor=pointer]:
+            - /url: https://www.instagram.com/coupang
+  - alert [ref=e251]

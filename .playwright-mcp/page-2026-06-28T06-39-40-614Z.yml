@@ -1,0 +1,58 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "💰 나만의 가계부" [level=1] [ref=e6]:
+      - generic [ref=e7]: 💰
+      - text: 나만의 가계부
+  - main [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - generic [ref=e12]: 총수입
+          - generic [ref=e13]: ↑
+        - generic [ref=e14]: 0원
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: 총지출
+          - generic [ref=e18]: ↓
+        - generic [ref=e19]: 0원
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]: 잔액 (순수익)
+          - generic [ref=e23]: ＝
+        - generic [ref=e24]: 0원
+    - generic [ref=e26]:
+      - heading "내역 등록" [level=2] [ref=e28]
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - button "지출" [ref=e31] [cursor=pointer]
+          - button "수입" [ref=e32] [cursor=pointer]
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - generic [ref=e35]: 금액 (원)
+            - spinbutton "금액 (원)" [ref=e36]
+          - generic [ref=e37]:
+            - generic [ref=e38]: 카테고리
+            - combobox "카테고리" [ref=e39]:
+              - option "선택하세요" [selected]
+              - option "식비"
+              - option "교통"
+              - option "주거"
+              - option "구독료"
+              - option "경조사"
+              - option "쇼핑"
+              - option "의료"
+              - option "기타"
+          - generic [ref=e40]:
+            - generic [ref=e41]: 날짜
+            - textbox "날짜" [ref=e42]: 2026-06-28
+          - generic [ref=e43]:
+            - generic [ref=e44]: 메모 (선택)
+            - textbox "메모 (선택)" [ref=e45]:
+              - /placeholder: 간단한 메모
+        - button "등록하기" [ref=e46] [cursor=pointer]
+    - generic [ref=e47]:
+      - generic [ref=e48]:
+        - heading "카테고리별 합계" [level=2] [ref=e49]
+        - paragraph [ref=e50]: 데이터가 없습니다.
+      - heading "내역" [level=2] [ref=e52]
+    - generic [ref=e57]: API 연동 준비 완료 · 서버 미연결 시 localStorage 자동 폴백

@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧊 우리집 냉장고 · 재료 & 레시피 관리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    /* Tailwind 유틸리티로 표현하기 어려운 진입 애니메이션만 정의 */
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-in { animation: slideIn 0.18s ease-out; }
+
+    @keyframes pop {
+      0%   { transform: scale(0.7); }
+      60%  { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+    .animate-pop { animation: pop 0.18s ease-out; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    .animate-fade-in { animation: fadeIn 0.15s ease-out; }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-modal-in { animation: modalIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+
+    /* 모달 열렸을 때 배경 스크롤 잠금 보조 (JS 와 함께 사용) */
+    body.modal-open { overflow: hidden; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useMemo, useRef, useCallback, createContext, useContext } = React;
+
+    // ========================================
+    // 🌐 상수 & 유틸 — 서버(Express + Supabase Postgres)와 통신
+    //   영속화 계층은 localStorage 가 아니라 실제 DB 다.
+    //   API_BASE_URL 은 상대 경로 '/api' — 같은 server.js 가 index.html 과 API 를
+    //   함께 서빙하므로 호스트/포트를 절대 하드코딩하지 않는다.
+    //   (server.js 는 다음 단계에서 추가된다. 지금은 UI 만 API 규약에 맞춰 배선.)
+    // ========================================
+    const API_BASE_URL = '/api';
+
+    // fetch 래퍼: JSON 파싱 + 서버의 { success, data, message } 규약에 맞춰 에러 throw.
+    //   - fetch 자체 실패(서버 미실행/네트워크) → 친화적 연결 오류 메시지
+    //   - !res.ok 또는 success === false → 서버 message(없으면 HTTP 상태)로 throw
+    //   - 성공 시 envelope 를 벗겨 body.data 만 반환한다.
+    async function apiRequest(path, options = {}) {
+      let res;
+      try {
+        res = await fetch(`${API_BASE_URL}${path}`, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options,
+        });
+      } catch (networkErr) {
+        // fetch 가 reject = 서버에 닿지 못함(서버 미실행/네트워크 문제)
+        throw new Error('서버에 연결할 수 없어요. 서버가 실행 중인지 확인해 주세요.');
+      }
+
+      let body = null;
+      try {
+        body = await res.json();
+      } catch (_) {
+        // JSON 이 아니면 null 로 두고 아래에서 상태코드로 판단
+      }
+
+      if (!res.ok || !body || body.success === false) {
+        const msg = (body && body.message) || `요청에 실패했어요 (HTTP ${res.status})`;
+        throw new Error(msg);
+      }
+      return body.data; // envelope { success, data, message } 에서 data 만 반환
+    }
+
+    // --- 자원별 API 객체 (server.js 의 /api/* 라우트와 1:1 대응) ---
+    const ingredientApi = {
+      list:   ()        => apiRequest('/ingredients'),
+      create: (payload) => apiRequest('/ingredients', { method: 'POST', body: JSON.stringify(payload) }),
+      remove: (id)      => apiRequest(`/ingredients/${id}`, { method: 'DELETE' }),
+    };
+
+    const recipeApi = {
+      list:   ()            => apiRequest('/recipes'),
+      create: (payload)     => apiRequest('/recipes', { method: 'POST', body: JSON.stringify(payload) }),
+      update: (id, payload) => apiRequest(`/recipes/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+      remove: (id)          => apiRequest(`/recipes/${id}`, { method: 'DELETE' }),
+    };
+
+    // --- 날짜 포맷: 서버는 createdAt 을 epoch-ms NUMBER 로 준다 → 'YYYY.MM.DD HH:mm' ---
+    function formatDate(ts) {
+      const n = Number(ts);
+      if (!ts || Number.isNaN(n)) return '';
+      const d = new Date(n);
+      if (Number.isNaN(d.getTime())) return '';
+      const p = (x) => String(x).padStart(2, '0');
+      return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    // --- 카테고리 맵: 이모지 + Tailwind 색상(칩/배지 표현용) ---
+    const CATEGORIES = [
+      { key: '채소',     emoji: '🥬', chip: 'bg-green-50 text-green-700 border-green-200',     dot: 'bg-green-400',   solid: 'bg-green-100 text-green-700' },
+      { key: '과일',     emoji: '🍎', chip: 'bg-red-50 text-red-700 border-red-200',           dot: 'bg-red-400',     solid: 'bg-red-100 text-red-700' },
+      { key: '육류',     emoji: '🥩', chip: 'bg-rose-50 text-rose-700 border-rose-200',        dot: 'bg-rose-400',    solid: 'bg-rose-100 text-rose-700' },
+      { key: '수산물',   emoji: '🐟', chip: 'bg-sky-50 text-sky-700 border-sky-200',           dot: 'bg-sky-400',     solid: 'bg-sky-100 text-sky-700' },
+      { key: '유제품',   emoji: '🥛', chip: 'bg-amber-50 text-amber-700 border-amber-200',     dot: 'bg-amber-300',   solid: 'bg-amber-100 text-amber-700' },
+      { key: '곡물/면',  emoji: '🌾', chip: 'bg-yellow-50 text-yellow-700 border-yellow-200',  dot: 'bg-yellow-400',  solid: 'bg-yellow-100 text-yellow-700' },
+      { key: '양념/소스', emoji: '🧂', chip: 'bg-orange-50 text-orange-700 border-orange-200',  dot: 'bg-orange-400',  solid: 'bg-orange-100 text-orange-700' },
+      { key: '음료',     emoji: '🥤', chip: 'bg-cyan-50 text-cyan-700 border-cyan-200',        dot: 'bg-cyan-400',    solid: 'bg-cyan-100 text-cyan-700' },
+      { key: '기타',     emoji: '📦', chip: 'bg-slate-100 text-slate-600 border-slate-200',    dot: 'bg-slate-400',   solid: 'bg-slate-200 text-slate-600' },
+    ];
+    const CATEGORY_MAP = CATEGORIES.reduce((acc, c) => { acc[c.key] = c; return acc; }, {});
+    const DEFAULT_CATEGORY = CATEGORIES[0].key;
+    const getCategory = (key) => CATEGORY_MAP[key] || CATEGORY_MAP['기타'];
+
+    // --- 줄바꿈 문자열 <-> 배열 변환 (recipe ingredients/steps 는 와이어에서 '\n' 구분 문자열) ---
+    const linesToText = (arr) => (Array.isArray(arr) ? arr : []).map((s) => String(s).trim()).filter(Boolean).join('\n');
+    const textToLines = (str) =>
+      (typeof str === 'string' ? str : '')
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    // ========================================
+    // 🎨 Design System Components (순수 프레젠테이션 — 비즈니스 로직 없음)
+    // ========================================
+    function Button({ variant = 'primary', size = 'md', disabled = false, onClick, className = '', type = 'button', children, ...rest }) {
+      const base = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 select-none';
+      const variants = {
+        primary: 'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-400 shadow-sm shadow-emerald-200',
+        secondary: 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 focus:ring-slate-300',
+        danger: 'bg-rose-50 text-rose-600 hover:bg-rose-100 focus:ring-rose-300 border border-rose-100',
+        ghost: 'bg-transparent text-slate-500 hover:bg-slate-100 focus:ring-slate-300',
+      };
+      const sizes = {
+        sm: 'text-xs px-3 py-1.5 gap-1',
+        md: 'text-sm px-4 py-2.5 gap-1.5',
+        lg: 'text-base px-5 py-3 gap-2',
+      };
+      return (
+        <button
+          type={type}
+          disabled={disabled}
+          onClick={onClick}
+          className={`${base} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    const Input = React.forwardRef(function Input(
+      { label, type = 'text', value, onChange, onKeyDown, placeholder = '', disabled = false, error = '', className = '', id, ...rest },
+      ref
+    ) {
+      const autoId = useRef(`in-${Math.random().toString(36).slice(2, 8)}`).current;
+      const inputId = id || autoId;
+      return (
+        <div className={className}>
+          {label && (
+            <label htmlFor={inputId} className="block text-sm font-semibold text-slate-700 mb-1.5">
+              {label}
+            </label>
+          )}
+          <input
+            ref={ref}
+            id={inputId}
+            type={type}
+            value={value}
+            onChange={onChange}
+            onKeyDown={onKeyDown}
+            placeholder={placeholder}
+            disabled={disabled}
+            aria-invalid={!!error}
+            className={`w-full bg-white border rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition disabled:bg-slate-50 disabled:text-slate-400 ${
+              error
+                ? 'border-rose-300 focus:border-rose-400 focus:ring-2 focus:ring-rose-100'
+                : 'border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100'
+            }`}
+            {...rest}
+          />
+          {error && <p className="text-xs text-rose-500 mt-1.5 font-medium">{error}</p>}
+        </div>
+      );
+    });
+
+    const Textarea = React.forwardRef(function Textarea(
+      { label, value, onChange, onKeyDown, placeholder = '', rows = 3, disabled = false, error = '', className = '', id, ...rest },
+      ref
+    ) {
+      const autoId = useRef(`ta-${Math.random().toString(36).slice(2, 8)}`).current;
+      const taId = id || autoId;
+      return (
+        <div className={className}>
+          {label && (
+            <label htmlFor={taId} className="block text-sm font-semibold text-slate-700 mb-1.5">
+              {label}
+            </label>
+          )}
+          <textarea
+            ref={ref}
+            id={taId}
+            value={value}
+            onChange={onChange}
+            onKeyDown={onKeyDown}
+            placeholder={placeholder}
+            rows={rows}
+            disabled={disabled}
+            aria-invalid={!!error}
+            className={`w-full bg-white border rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 outline-none transition resize-y ${
+              error
+                ? 'border-rose-300 focus:border-rose-400 focus:ring-2 focus:ring-rose-100'
+                : 'border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100'
+            }`}
+            {...rest}
+          />
+          {error && <p className="text-xs text-rose-500 mt-1.5 font-medium">{error}</p>}
+        </div>
+      );
+    });
+
+    const Select = React.forwardRef(function Select(
+      { label, value, onChange, options = [], disabled = false, className = '', id, ...rest },
+      ref
+    ) {
+      const autoId = useRef(`sel-${Math.random().toString(36).slice(2, 8)}`).current;
+      const selId = id || autoId;
+      return (
+        <div className={className}>
+          {label && (
+            <label htmlFor={selId} className="block text-sm font-semibold text-slate-700 mb-1.5">
+              {label}
+            </label>
+          )}
+          <select
+            ref={ref}
+            id={selId}
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-3 text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50 cursor-pointer"
+            {...rest}
+          >
+            {options.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      );
+    });
+
+    function Card({ className = '', children, ...rest }) {
+      return (
+        <div className={`bg-white rounded-2xl shadow-sm shadow-slate-200/60 border border-slate-100 ${className}`} {...rest}>
+          {children}
+        </div>
+      );
+    }
+
+    function Badge({ children, className = '' }) {
+      return (
+        <span className={`inline-flex items-center justify-center min-w-[1.25rem] px-2 py-0.5 rounded-full text-xs font-bold ${className}`}>
+          {children}
+        </span>
+      );
+    }
+
+    // 재료 칩 (카테고리 색/이모지 + 삭제 버튼)
+    function Chip({ label, category, onRemove, removing = false }) {
+      const cat = getCategory(category);
+      return (
+        <span className={`animate-pop inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-full border text-sm font-medium ${cat.chip} ${removing ? 'opacity-40' : ''}`}>
+          <span aria-hidden="true">{cat.emoji}</span>
+          <span className="break-all">{label}</span>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={removing}
+              aria-label={`${label} 삭제`}
+              className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/10 transition focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed"
+            >
+              <svg className="w-3 h-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M6 6l8 8M14 6l-8 8" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </span>
+      );
+    }
+
+    function Spinner({ className = 'w-8 h-8 text-emerald-500' }) {
+      return (
+        <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+        </svg>
+      );
+    }
+
+    function LoadingState({ message = '불러오는 중…' }) {
+      return (
+        <div className="text-center py-16 px-4" role="status" aria-live="polite">
+          <Spinner className="w-8 h-8 mx-auto text-emerald-400" />
+          <p className="text-slate-400 text-sm mt-3">{message}</p>
+        </div>
+      );
+    }
+
+    function EmptyState({ emoji = '🗒️', title, subtitle, action }) {
+      return (
+        <div className="text-center py-14 px-4">
+          <div className="text-5xl mb-3" aria-hidden="true">{emoji}</div>
+          <p className="text-slate-600 font-semibold">{title}</p>
+          {subtitle && <p className="text-slate-400 text-sm mt-1 whitespace-pre-line">{subtitle}</p>}
+          {action && <div className="mt-5">{action}</div>}
+        </div>
+      );
+    }
+
+    // 일반 에러 배너 (작업 중 발생한 오류 — 닫기 + 선택적 재시도)
+    function ErrorBanner({ message, onRetry, onDismiss }) {
+      if (!message) return null;
+      return (
+        <div className="mb-4 flex items-start gap-3 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 animate-slide-in" role="alert">
+          <span className="text-lg leading-none" aria-hidden="true">⚠️</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-rose-700">{message}</p>
+            {(onRetry || onDismiss) && (
+              <div className="flex gap-3 mt-1.5">
+                {onRetry && (
+                  <button onClick={onRetry} className="text-xs font-bold text-rose-600 hover:text-rose-800 underline">
+                    다시 시도
+                  </button>
+                )}
+                {onDismiss && (
+                  <button onClick={onDismiss} className="text-xs font-medium text-rose-400 hover:text-rose-600">
+                    닫기
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // 연결 안내(초기 로드 실패용) — "고장난 빨간 에러"가 아니라 의도된 친절한 안내 카드
+    function ConnectionNotice({ onRetry, retrying = false }) {
+      return (
+        <Card className="p-8 sm:p-10 text-center border-dashed border-2 border-emerald-200 bg-emerald-50/40">
+          <div className="text-5xl mb-4" aria-hidden="true">🔌</div>
+          <h3 className="text-lg font-bold text-slate-800">아직 서버에 연결되지 않았어요</h3>
+          <p className="text-sm text-slate-500 mt-2 leading-relaxed max-w-md mx-auto">
+            서버(<code className="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600 text-xs">server.js</code>)를
+            실행하면 자동으로 재료와 레시피를 불러옵니다.
+          </p>
+          <div className="mt-6">
+            <Button onClick={onRetry} disabled={retrying} size="md">
+              {retrying ? <><Spinner className="w-4 h-4 text-white mr-1" /> 연결 중…</> : '🔄 다시 시도'}
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
+    // 접근성 갖춘 모달 (Esc 닫기 + 배경 클릭 닫기 + 스크롤 잠금)
+    function Modal({ isOpen, onClose, title, children, size = 'md', footer }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose && onClose(); };
+        document.addEventListener('keydown', onKey);
+        document.body.classList.add('modal-open');
+        return () => {
+          document.removeEventListener('keydown', onKey);
+          document.body.classList.remove('modal-open');
+        };
+      }, [isOpen, onClose]);
+
+      if (!isOpen) return null;
+      const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' };
+      return (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title || '대화상자'}
+        >
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+          <div className={`relative w-full ${sizes[size] || sizes.md} bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl animate-modal-in max-h-[92vh] flex flex-col`}>
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 shrink-0">
+              <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+              <button
+                onClick={onClose}
+                aria-label="닫기"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition focus:outline-none focus:ring-2 focus:ring-slate-300"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M6 6l8 8M14 6l-8 8" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-5 sm:px-6 py-5 overflow-y-auto">{children}</div>
+            {footer && <div className="px-5 sm:px-6 py-4 border-t border-slate-100 shrink-0">{footer}</div>}
+          </div>
+        </div>
+      );
+    }
+
+    // 확인 모달 (삭제 등 파괴적 작업 확인)
+    function ConfirmModal({ isOpen, title = '삭제할까요?', message, confirmLabel = '삭제', onConfirm, onCancel, busy = false }) {
+      return (
+        <Modal
+          isOpen={isOpen}
+          onClose={busy ? () => {} : onCancel}
+          title={title}
+          size="sm"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={onCancel} disabled={busy}>취소</Button>
+              <Button variant="danger" onClick={onConfirm} disabled={busy}>
+                {busy ? <><Spinner className="w-4 h-4 text-rose-500 mr-1" /> 처리 중…</> : confirmLabel}
+              </Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{message}</p>
+        </Modal>
+      );
+    }
+
+    // ========================================
+    // 🔀 Router (해시 기반: '/#/' 재료, '/#/recipes' 레시피)
+    // ========================================
+    const RouterContext = createContext({ path: '/', navigate: () => {} });
+
+    function Router({ children }) {
+      const getPath = () => {
+        const h = window.location.hash.replace(/^#/, '');
+        return h && h.startsWith('/') ? h : '/';
+      };
+      const [path, setPath] = useState(getPath);
+
+      useEffect(() => {
+        const onHash = () => setPath(getPath());
+        window.addEventListener('hashchange', onHash);
+        // 최초 진입 시 해시가 없으면 '#/' 로 정규화
+        if (!window.location.hash) window.location.hash = '#/';
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+
+      const navigate = useCallback((to) => {
+        const target = to.startsWith('/') ? to : `/${to}`;
+        if (`#${target}` !== window.location.hash) {
+          window.location.hash = `#${target}`;
+        }
+      }, []);
+
+      return <RouterContext.Provider value={{ path, navigate }}>{children}</RouterContext.Provider>;
+    }
+
+    const useRouter = () => useContext(RouterContext);
+
+    // ========================================
+    // 🧩 Layout (Header + Nav)
+    // ========================================
+    function Header() {
+      const { path, navigate } = useRouter();
+      const tabs = [
+        { to: '/', label: '냉장고 재료', emoji: '🧊' },
+        { to: '/recipes', label: '레시피', emoji: '🍳' },
+      ];
+      const isActive = (to) => (to === '/' ? path === '/' : path.startsWith(to));
+
+      return (
+        <header className="bg-white border-b border-slate-100 sticky top-0 z-30">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6">
+            <div className="flex items-center gap-2 pt-5 pb-3">
+              <span className="text-2xl" aria-hidden="true">🧊</span>
+              <div>
+                <h1 className="text-xl font-extrabold text-slate-800 tracking-tight leading-none">우리집 냉장고</h1>
+                <p className="text-xs text-slate-400 mt-1">재료를 모으고 🥗 레시피로 요리해요 🍳</p>
+              </div>
+            </div>
+            <nav className="flex gap-1" role="tablist" aria-label="주요 메뉴">
+              {tabs.map((tab) => {
+                const active = isActive(tab.to);
+                return (
+                  <button
+                    key={tab.to}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => navigate(tab.to)}
+                    className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 ${
+                      active ? 'text-emerald-700' : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    <span aria-hidden="true">{tab.emoji}</span>
+                    {tab.label}
+                    <span className={`absolute left-2 right-2 -bottom-px h-0.5 rounded-full transition-all ${active ? 'bg-emerald-500' : 'bg-transparent'}`} />
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 📄 Pages
+    // ========================================
+
+    // --- 재료 등록 폼(입력 + 카테고리 Select + 추가) ---
+    function IngredientForm({ onAdd, submitting }) {
+      const [name, setName] = useState('');
+      const [category, setCategory] = useState(DEFAULT_CATEGORY);
+      const inputRef = useRef(null);
+
+      const handleAdd = () => {
+        const trimmed = name.trim();
+        if (!trimmed || submitting) return;
+        onAdd({ name: trimmed, category });
+        setName('');
+        inputRef.current?.focus();
+      };
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleAdd(); }
+      };
+
+      const options = CATEGORIES.map((c) => ({ value: c.key, label: `${c.emoji} ${c.key}` }));
+
+      return (
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex-1">
+            <Input
+              ref={inputRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="재료 이름을 입력하고 Enter (예: 양파)"
+              aria-label="재료 이름"
+              disabled={submitting}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              options={options}
+              disabled={submitting}
+              aria-label="카테고리 선택"
+              className="w-32 sm:w-36 shrink-0"
+            />
+            <Button onClick={handleAdd} disabled={submitting || !name.trim()} className="shrink-0 px-5">
+              {submitting ? <><Spinner className="w-4 h-4 text-white mr-1" /> 추가 중</> : '추가'}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // --- 재료 페이지 ---
+    function IngredientsPage() {
+      const [items, setItems] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [connError, setConnError] = useState(false); // 초기 로드 실패 → 연결 안내 카드
+      const [actionError, setActionError] = useState(''); // 작업 중 오류 → 배너
+      const [submitting, setSubmitting] = useState(false);
+      const [removingId, setRemovingId] = useState(null);
+      const [activeFilter, setActiveFilter] = useState('전체');
+
+      const load = useCallback(async () => {
+        setLoading(true);
+        setConnError(false);
+        setActionError('');
+        try {
+          const data = await ingredientApi.list();
+          setItems(Array.isArray(data) ? data : []);
+        } catch (err) {
+          setConnError(true);
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => { load(); }, [load]);
+
+      const addIngredient = useCallback(async ({ name, category }) => {
+        setActionError('');
+        setSubmitting(true);
+        try {
+          const created = await ingredientApi.create({ name, category });
+          // 서버가 만든 row 로 상태 갱신(맨 앞에). 응답이 비면 안전하게 재조회.
+          if (created && created.id != null) {
+            setItems((prev) => [created, ...prev]);
+          } else {
+            await load();
+          }
+        } catch (err) {
+          setActionError(err.message);
+        } finally {
+          setSubmitting(false);
+        }
+      }, [load]);
+
+      const removeIngredient = useCallback(async (id) => {
+        setActionError('');
+        setRemovingId(id);
+        const snapshot = items;
+        setItems((prev) => prev.filter((it) => it.id !== id)); // 낙관적 삭제
+        try {
+          await ingredientApi.remove(id);
+        } catch (err) {
+          setItems(snapshot); // 실패 시 복원
+          setActionError(err.message);
+        } finally {
+          setRemovingId(null);
+        }
+      }, [items]);
+
+      // 카테고리별 그룹 + 개수 (CATEGORIES 정의 순서로 정렬)
+      const grouped = useMemo(() => {
+        const map = {};
+        for (const it of items) {
+          const key = CATEGORY_MAP[it.category] ? it.category : '기타';
+          (map[key] = map[key] || []).push(it);
+        }
+        return CATEGORIES.map((c) => ({ category: c, list: map[c.key] || [] })).filter((g) => g.list.length > 0);
+      }, [items]);
+
+      const counts = useMemo(() => {
+        const c = { 전체: items.length };
+        for (const cat of CATEGORIES) c[cat.key] = 0;
+        for (const it of items) {
+          const key = CATEGORY_MAP[it.category] ? it.category : '기타';
+          c[key] = (c[key] || 0) + 1;
+        }
+        return c;
+      }, [items]);
+
+      const visibleGroups = useMemo(() => {
+        if (activeFilter === '전체') return grouped;
+        return grouped.filter((g) => g.category.key === activeFilter);
+      }, [grouped, activeFilter]);
+
+      // 필터 칩에 노출할 카테고리(전체 + 데이터가 있는 카테고리)
+      const filterTabs = useMemo(() => {
+        const present = CATEGORIES.filter((c) => (counts[c.key] || 0) > 0);
+        return [{ key: '전체', emoji: '🧺' }, ...present];
+      }, [counts]);
+
+      // 필터가 가리키던 카테고리가 비면 '전체'로 되돌린다.
+      useEffect(() => {
+        if (activeFilter !== '전체' && (counts[activeFilter] || 0) === 0) {
+          setActiveFilter('전체');
+        }
+      }, [counts, activeFilter]);
+
+      return (
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 py-6" aria-label="냉장고 재료">
+          <Card className="p-5 sm:p-6 mb-5">
+            <h2 className="text-base font-bold text-slate-800 mb-1">🥬 재료 등록</h2>
+            <p className="text-xs text-slate-400 mb-4">냉장고에 있는 재료를 카테고리와 함께 추가해 보세요.</p>
+            <ErrorBanner message={actionError} onDismiss={() => setActionError('')} />
+            <IngredientForm onAdd={addIngredient} submitting={submitting} />
+          </Card>
+
+          {loading ? (
+            <Card><LoadingState message="재료를 불러오는 중…" /></Card>
+          ) : connError ? (
+            <ConnectionNotice onRetry={load} retrying={loading} />
+          ) : items.length === 0 ? (
+            <Card>
+              <EmptyState
+                emoji="🧊"
+                title="냉장고가 비어 있어요"
+                subtitle={'위에서 첫 재료를 추가해 보세요!\n신선한 재료가 레시피의 시작이에요 🥗'}
+              />
+            </Card>
+          ) : (
+            <>
+              {/* 카테고리 필터 칩 */}
+              <div className="flex flex-wrap gap-1.5 mb-4" role="tablist" aria-label="카테고리 필터">
+                {filterTabs.map((t) => {
+                  const active = activeFilter === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setActiveFilter(t.key)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 ${
+                        active
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white text-slate-500 border-slate-200 hover:border-emerald-300 hover:text-slate-700'
+                      }`}
+                    >
+                      <span aria-hidden="true">{t.emoji}</span>
+                      {t.key}
+                      <Badge className={active ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}>
+                        {counts[t.key] || 0}
+                      </Badge>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 카테고리별 칩 그룹 */}
+              <div className="space-y-3">
+                {visibleGroups.map(({ category, list }) => (
+                  <Card key={category.key} className="p-4 sm:p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`w-2.5 h-2.5 rounded-full ${category.dot}`} aria-hidden="true" />
+                      <h3 className="text-sm font-bold text-slate-700">
+                        <span aria-hidden="true">{category.emoji}</span> {category.key}
+                      </h3>
+                      <Badge className="bg-slate-100 text-slate-500">{list.length}</Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {list.map((it) => (
+                        <Chip
+                          key={it.id}
+                          label={it.name}
+                          category={it.category}
+                          removing={removingId === it.id}
+                          onRemove={() => removeIngredient(it.id)}
+                        />
+                      ))}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              <p className="text-center text-xs text-slate-400 mt-6">
+                전체 재료 {counts['전체']}개 · 데이터는 서버 DB(Supabase)에 저장돼요
+              </p>
+            </>
+          )}
+        </section>
+      );
+    }
+
+    // --- 레시피 작성/수정 모달 폼 ---
+    function RecipeFormModal({ isOpen, onClose, onSubmit, initial, saving }) {
+      const isEdit = !!(initial && initial.id != null);
+      const [title, setTitle] = useState('');
+      const [ingredients, setIngredients] = useState([]); // 배열로 관리
+      const [steps, setSteps] = useState([]);             // 배열로 관리
+      const [ingInput, setIngInput] = useState('');
+      const [stepInput, setStepInput] = useState('');
+      const [errors, setErrors] = useState({});
+      const titleRef = useRef(null);
+
+      // 모달 열릴 때 초기값 주입 + 제목 포커스
+      useEffect(() => {
+        if (!isOpen) return;
+        setTitle(initial?.title || '');
+        setIngredients(Array.isArray(initial?.ingredients) ? [...initial.ingredients] : []);
+        setSteps(Array.isArray(initial?.steps) ? [...initial.steps] : []);
+        setIngInput('');
+        setStepInput('');
+        setErrors({});
+        const t = setTimeout(() => titleRef.current?.focus(), 60);
+        return () => clearTimeout(t);
+      }, [isOpen, initial]);
+
+      const addIng = () => {
+        const v = ingInput.trim();
+        if (!v) return;
+        setIngredients((prev) => [...prev, v]);
+        setIngInput('');
+        setErrors((e) => ({ ...e, ingredients: '' }));
+      };
+      const removeIng = (idx) => setIngredients((prev) => prev.filter((_, i) => i !== idx));
+
+      const addStep = () => {
+        const v = stepInput.trim();
+        if (!v) return;
+        setSteps((prev) => [...prev, v]);
+        setStepInput('');
+        setErrors((e) => ({ ...e, steps: '' }));
+      };
+      const removeStep = (idx) => setSteps((prev) => prev.filter((_, i) => i !== idx));
+      const moveStep = (idx, dir) => {
+        setSteps((prev) => {
+          const next = [...prev];
+          const j = idx + dir;
+          if (j < 0 || j >= next.length) return prev;
+          [next[idx], next[j]] = [next[j], next[idx]];
+          return next;
+        });
+      };
+
+      const handleSubmit = () => {
+        const nextErrors = {};
+        if (!title.trim()) nextErrors.title = '요리명을 입력해 주세요.';
+        if (ingredients.length === 0) nextErrors.ingredients = '재료를 1개 이상 추가해 주세요.';
+        if (steps.length === 0) nextErrors.steps = '조리 단계를 1개 이상 추가해 주세요.';
+        setErrors(nextErrors);
+        if (Object.keys(nextErrors).length > 0) return;
+        onSubmit({ title: title.trim(), ingredients, steps });
+      };
+
+      return (
+        <Modal
+          isOpen={isOpen}
+          onClose={saving ? () => {} : onClose}
+          title={isEdit ? '✏️ 레시피 수정' : '🍳 새 레시피 작성'}
+          size="lg"
+          footer={
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={onClose} disabled={saving}>취소</Button>
+              <Button onClick={handleSubmit} disabled={saving}>
+                {saving ? <><Spinner className="w-4 h-4 text-white mr-1" /> 저장 중…</> : (isEdit ? '수정 저장' : '레시피 저장')}
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <Input
+              ref={titleRef}
+              label="요리명"
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setErrors((er) => ({ ...er, title: '' })); }}
+              placeholder="예: 김치볶음밥"
+              error={errors.title}
+            />
+
+            {/* 재료 입력 (칩/라인 리스트) */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">재료</label>
+              <div className="flex gap-2">
+                <Input
+                  value={ingInput}
+                  onChange={(e) => setIngInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addIng(); } }}
+                  placeholder="재료를 입력하고 Enter (예: 김치 1컵)"
+                  aria-label="재료 추가"
+                  className="flex-1"
+                />
+                <Button variant="secondary" onClick={addIng} disabled={!ingInput.trim()} className="shrink-0">추가</Button>
+              </div>
+              {errors.ingredients && <p className="text-xs text-rose-500 mt-1.5 font-medium">{errors.ingredients}</p>}
+              {ingredients.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {ingredients.map((ing, idx) => (
+                    <span key={`${ing}-${idx}`} className="animate-pop inline-flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium">
+                      <span className="break-all">{ing}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeIng(idx)}
+                        aria-label={`${ing} 삭제`}
+                        className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center hover:bg-emerald-200/60 transition focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      >
+                        <svg className="w-3 h-3" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M6 6l8 8M14 6l-8 8" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 조리법 입력 (순서 있는 단계) */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">조리법 (단계)</label>
+              <div className="flex gap-2">
+                <Input
+                  value={stepInput}
+                  onChange={(e) => setStepInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addStep(); } }}
+                  placeholder="조리 단계를 입력하고 Enter"
+                  aria-label="조리 단계 추가"
+                  className="flex-1"
+                />
+                <Button variant="secondary" onClick={addStep} disabled={!stepInput.trim()} className="shrink-0">추가</Button>
+              </div>
+              {errors.steps && <p className="text-xs text-rose-500 mt-1.5 font-medium">{errors.steps}</p>}
+              {steps.length > 0 && (
+                <ol className="mt-3 space-y-2">
+                  {steps.map((step, idx) => (
+                    <li key={`${step}-${idx}`} className="animate-slide-in flex items-start gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                      <span className="shrink-0 w-6 h-6 mt-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center">{idx + 1}</span>
+                      <span className="flex-1 text-sm text-slate-700 break-all py-0.5">{step}</span>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button type="button" onClick={() => moveStep(idx, -1)} disabled={idx === 0} aria-label="위로 이동" className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition">
+                          <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 6l-4 5h8l-4-5z" strokeLinejoin="round"/></svg>
+                        </button>
+                        <button type="button" onClick={() => moveStep(idx, 1)} disabled={idx === steps.length - 1} aria-label="아래로 이동" className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition">
+                          <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 14l4-5H6l4 5z" strokeLinejoin="round"/></svg>
+                        </button>
+                        <button type="button" onClick={() => removeStep(idx)} aria-label="단계 삭제" className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition">
+                          <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l8 8M14 6l-8 8" strokeLinecap="round" /></svg>
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    // --- 레시피 상세 모달 ---
+    function RecipeDetailModal({ isOpen, recipe, onClose, onEdit, onDelete }) {
+      if (!recipe) return null;
+      return (
+        <Modal
+          isOpen={isOpen}
+          onClose={onClose}
+          title={recipe.title}
+          size="lg"
+          footer={
+            <div className="flex gap-2 justify-between">
+              <Button variant="danger" onClick={() => onDelete(recipe)}>🗑️ 삭제</Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={onClose}>닫기</Button>
+                <Button onClick={() => onEdit(recipe)}>✏️ 수정</Button>
+              </div>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <p className="text-xs text-slate-400">🕒 {formatDate(recipe.createdAt)} 등록</p>
+
+            <div>
+              <h3 className="text-sm font-bold text-slate-700 mb-2">🧺 재료 <span className="text-slate-400 font-medium">({recipe.ingredients.length})</span></h3>
+              {recipe.ingredients.length === 0 ? (
+                <p className="text-sm text-slate-400">등록된 재료가 없어요.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {recipe.ingredients.map((ing, idx) => (
+                    <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium break-all">{ing}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-slate-700 mb-2">👩‍🍳 조리법 <span className="text-slate-400 font-medium">({recipe.steps.length}단계)</span></h3>
+              {recipe.steps.length === 0 ? (
+                <p className="text-sm text-slate-400">등록된 조리법이 없어요.</p>
+              ) : (
+                <ol className="space-y-2.5">
+                  {recipe.steps.map((step, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-emerald-600 text-white text-sm font-bold flex items-center justify-center">{idx + 1}</span>
+                      <span className="flex-1 text-sm text-slate-700 leading-relaxed break-all pt-0.5">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    // --- 레시피 카드 ---
+    function RecipeCard({ recipe, onOpen }) {
+      return (
+        <Card
+          className="p-5 hover:shadow-md hover:border-emerald-200 transition cursor-pointer focus-within:ring-2 focus-within:ring-emerald-300"
+          role="button"
+          tabIndex={0}
+          aria-label={`${recipe.title} 상세 보기`}
+          onClick={() => onOpen(recipe)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(recipe); } }}
+        >
+          <h3 className="text-base font-bold text-slate-800 break-all leading-snug">🍽️ {recipe.title}</h3>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            <Badge className="bg-emerald-50 text-emerald-700">🧺 재료 {recipe.ingredients.length}</Badge>
+            <Badge className="bg-sky-50 text-sky-700">👩‍🍳 {recipe.steps.length}단계</Badge>
+          </div>
+          {recipe.ingredients.length > 0 && (
+            <p className="text-xs text-slate-400 mt-3 truncate">
+              {recipe.ingredients.slice(0, 4).join(' · ')}{recipe.ingredients.length > 4 ? ' …' : ''}
+            </p>
+          )}
+          <p className="text-xs text-slate-300 mt-3">🕒 {formatDate(recipe.createdAt)}</p>
+        </Card>
+      );
+    }
+
+    // --- 레시피 페이지 ---
+    function RecipesPage() {
+      const [recipes, setRecipes] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [connError, setConnError] = useState(false);
+      const [actionError, setActionError] = useState('');
+      const [saving, setSaving] = useState(false);
+
+      const [formOpen, setFormOpen] = useState(false);
+      const [editing, setEditing] = useState(null);   // 수정 대상(없으면 신규)
+      const [detail, setDetail] = useState(null);      // 상세 보기 대상
+      const [confirmTarget, setConfirmTarget] = useState(null); // 삭제 확인 대상
+      const [deleting, setDeleting] = useState(false);
+
+      // 서버는 ingredients/steps 를 '\n' 구분 문자열로 준다 → UI 에선 배열로 정규화
+      const normalize = (r) => ({
+        ...r,
+        ingredients: textToLines(r.ingredients),
+        steps: textToLines(r.steps),
+      });
+
+      const load = useCallback(async () => {
+        setLoading(true);
+        setConnError(false);
+        setActionError('');
+        try {
+          const data = await recipeApi.list();
+          setRecipes(Array.isArray(data) ? data.map(normalize) : []);
+        } catch (err) {
+          setConnError(true);
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => { load(); }, [load]);
+
+      // 생성 / 수정 (배열 → '\n' 문자열로 변환해 전송)
+      const submitRecipe = useCallback(async ({ title, ingredients, steps }) => {
+        setActionError('');
+        setSaving(true);
+        const payload = { title, ingredients: linesToText(ingredients), steps: linesToText(steps) };
+        try {
+          if (editing && editing.id != null) {
+            const updated = await recipeApi.update(editing.id, payload);
+            if (updated && updated.id != null) {
+              const n = normalize(updated);
+              setRecipes((prev) => prev.map((r) => (r.id === n.id ? n : r)));
+            } else {
+              await load();
+            }
+          } else {
+            const created = await recipeApi.create(payload);
+            if (created && created.id != null) {
+              setRecipes((prev) => [normalize(created), ...prev]);
+            } else {
+              await load();
+            }
+          }
+          setFormOpen(false);
+          setEditing(null);
+        } catch (err) {
+          setActionError(err.message);
+        } finally {
+          setSaving(false);
+        }
+      }, [editing, load]);
+
+      const deleteRecipe = useCallback(async (target) => {
+        if (!target) return;
+        setDeleting(true);
+        setActionError('');
+        const snapshot = recipes;
+        setRecipes((prev) => prev.filter((r) => r.id !== target.id)); // 낙관적
+        try {
+          await recipeApi.remove(target.id);
+          setConfirmTarget(null);
+          setDetail(null);
+        } catch (err) {
+          setRecipes(snapshot);
+          setActionError(err.message);
+          setConfirmTarget(null);
+        } finally {
+          setDeleting(false);
+        }
+      }, [recipes]);
+
+      const openCreate = () => { setEditing(null); setFormOpen(true); };
+      const openEdit = (recipe) => { setDetail(null); setEditing(recipe); setFormOpen(true); };
+
+      return (
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 py-6" aria-label="레시피">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-base font-bold text-slate-800">🍳 내 레시피</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {loading || connError ? '레시피를 관리해요' : `총 ${recipes.length}개의 레시피`}
+              </p>
+            </div>
+            <Button onClick={openCreate} className="shrink-0">＋ 새 레시피</Button>
+          </div>
+
+          <ErrorBanner message={actionError} onDismiss={() => setActionError('')} />
+
+          {loading ? (
+            <Card><LoadingState message="레시피를 불러오는 중…" /></Card>
+          ) : connError ? (
+            <ConnectionNotice onRetry={load} retrying={loading} />
+          ) : recipes.length === 0 ? (
+            <Card>
+              <EmptyState
+                emoji="🍽️"
+                title="아직 저장된 레시피가 없어요"
+                subtitle={'냉장고 재료로 만들 수 있는\n나만의 레시피를 추가해 보세요!'}
+                action={<Button onClick={openCreate}>＋ 첫 레시피 작성하기</Button>}
+              />
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {recipes.map((r) => (
+                <RecipeCard key={r.id} recipe={r} onOpen={setDetail} />
+              ))}
+            </div>
+          )}
+
+          {/* 작성/수정 모달 */}
+          <RecipeFormModal
+            isOpen={formOpen}
+            onClose={() => { if (!saving) { setFormOpen(false); setEditing(null); } }}
+            onSubmit={submitRecipe}
+            initial={editing}
+            saving={saving}
+          />
+
+          {/* 상세 모달 */}
+          <RecipeDetailModal
+            isOpen={!!detail}
+            recipe={detail}
+            onClose={() => setDetail(null)}
+            onEdit={openEdit}
+            onDelete={(r) => setConfirmTarget(r)}
+          />
+
+          {/* 삭제 확인 모달 */}
+          <ConfirmModal
+            isOpen={!!confirmTarget}
+            title="레시피를 삭제할까요?"
+            message={confirmTarget ? `'${confirmTarget.title}' 레시피를 삭제합니다.\n이 작업은 되돌릴 수 없어요.` : ''}
+            confirmLabel="삭제"
+            busy={deleting}
+            onCancel={() => { if (!deleting) setConfirmTarget(null); }}
+            onConfirm={() => deleteRecipe(confirmTarget)}
+          />
+        </section>
+      );
+    }
+
+    // 해시 경로에 따라 페이지를 선택 (라우터 컨텍스트 사용)
+    function RouteOutlet() {
+      const { path } = useRouter();
+      if (path.startsWith('/recipes')) return <RecipesPage />;
+      return <IngredientsPage />;
+    }
+
+    // ========================================
+    // 🚀 App Component
+    // ========================================
+    function App() {
+      return (
+        <Router>
+          <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-1">
+              <RouteOutlet />
+            </main>
+            <footer className="text-center text-xs text-slate-400 py-6">
+              🧊 우리집 냉장고 · 재료 &amp; 레시피 관리앱 · 데이터는 서버 DB(Supabase)에 저장돼요
+            </footer>
+          </div>
+        </Router>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

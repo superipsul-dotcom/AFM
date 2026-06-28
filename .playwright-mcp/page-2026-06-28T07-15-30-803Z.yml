@@ -1,0 +1,192 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "💰 나만의 가계부" [level=1] [ref=e6]:
+      - generic [ref=e7]: 💰
+      - text: 나만의 가계부
+  - main [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - generic [ref=e12]: 총수입
+          - generic [ref=e13]: ↑
+        - generic [ref=e14]: 3,200,000원
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: 총지출
+          - generic [ref=e18]: ↓
+        - generic [ref=e19]: 106,900원
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]: 잔액 (순수익)
+          - generic [ref=e23]: ＝
+        - generic [ref=e24]: 3,093,100원
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - heading "수입·지출 추이" [level=2] [ref=e27]
+        - generic [ref=e28]:
+          - button "월별" [ref=e216] [cursor=pointer]
+          - button "주별" [ref=e217] [cursor=pointer]
+      - img "수입 지출 추이 차트" [ref=e82]
+    - generic [ref=e33]:
+      - heading "내역 등록" [level=2] [ref=e35]
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - button "지출" [ref=e38] [cursor=pointer]
+          - button "수입" [ref=e39] [cursor=pointer]
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - generic [ref=e42]: 금액 (원)
+            - spinbutton "금액 (원)" [ref=e43]
+          - generic [ref=e44]:
+            - generic [ref=e45]: 카테고리
+            - combobox "카테고리" [ref=e46]:
+              - option "선택하세요" [selected]
+              - option "식비"
+              - option "교통"
+              - option "주거"
+              - option "구독료"
+              - option "경조사"
+              - option "쇼핑"
+              - option "의료"
+              - option "기타"
+          - generic [ref=e47]:
+            - generic [ref=e48]: 날짜
+            - textbox "날짜" [ref=e49]: 2026-06-28
+          - generic [ref=e50]:
+            - generic [ref=e51]: 메모 (선택)
+            - textbox "메모 (선택)" [ref=e52]:
+              - /placeholder: 간단한 메모
+        - button "등록하기" [ref=e53] [cursor=pointer]
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - heading "카테고리별 합계" [level=2] [ref=e56]
+        - generic [ref=e83]:
+          - generic [ref=e84]:
+            - generic [ref=e85]:
+              - heading "지출" [level=3] [ref=e86]
+              - generic [ref=e87]: 106,900원
+            - generic [ref=e88]:
+              - generic [ref=e90]:
+                - generic [ref=e91]:
+                  - generic [ref=e93]: 교통
+                  - generic [ref=e94]: 51%
+                - generic [ref=e95]: 55,000원
+              - generic [ref=e99]:
+                - generic [ref=e100]:
+                  - generic [ref=e102]: 식비
+                  - generic [ref=e103]: 39%
+                - generic [ref=e104]: 42,000원
+              - generic [ref=e108]:
+                - generic [ref=e109]:
+                  - generic [ref=e111]: 구독료
+                  - generic [ref=e112]: 9%
+                - generic [ref=e113]: 9,900원
+          - generic [ref=e116]:
+            - generic [ref=e117]:
+              - heading "수입" [level=3] [ref=e118]
+              - generic [ref=e119]: 3,200,000원
+            - generic [ref=e122]:
+              - generic [ref=e123]:
+                - generic [ref=e125]: 급여
+                - generic [ref=e126]: 100%
+              - generic [ref=e127]: 3,200,000원
+      - generic [ref=e58]:
+        - heading "예산 대비 사용량" [level=2] [ref=e59]
+        - paragraph [ref=e60]: 이번 달 (2026-06) 지출 기준
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - generic [ref=e63]:
+              - generic [ref=e64]: 지출 카테고리
+              - combobox "지출 카테고리" [ref=e65]:
+                - option "선택하세요" [selected]
+                - option "식비"
+                - option "교통"
+                - option "주거"
+                - option "구독료"
+                - option "경조사"
+                - option "쇼핑"
+                - option "의료"
+                - option "기타"
+            - generic [ref=e66]:
+              - generic [ref=e67]: 월 예산 (원)
+              - spinbutton "월 예산 (원)" [ref=e68]
+          - button "예산 저장" [ref=e69] [cursor=pointer]
+        - list [ref=e130]:
+          - listitem [ref=e131]:
+            - generic [ref=e132]:
+              - generic [ref=e133]:
+                - generic [ref=e135]: 교통
+                - generic [ref=e136]: 110%
+              - button "예산 삭제" [ref=e137] [cursor=pointer]: 🗑️
+            - generic [ref=e140]:
+              - generic [ref=e141]: 55,000원 / 50,000원
+              - generic [ref=e142]: 5,000원 초과
+          - listitem [ref=e143]:
+            - generic [ref=e144]:
+              - generic [ref=e145]:
+                - generic [ref=e147]: 구독료
+                - generic [ref=e148]: 66%
+              - button "예산 삭제" [ref=e149] [cursor=pointer]: 🗑️
+            - generic [ref=e152]:
+              - generic [ref=e153]: 9,900원 / 15,000원
+              - generic [ref=e154]: 5,100원 남음
+          - listitem [ref=e155]:
+            - generic [ref=e156]:
+              - generic [ref=e157]:
+                - generic [ref=e159]: 식비
+                - generic [ref=e160]: 12%
+              - button "예산 삭제" [ref=e161] [cursor=pointer]: 🗑️
+            - generic [ref=e164]:
+              - generic [ref=e165]: 42,000원 / 350,000원
+              - generic [ref=e166]: 308,000원 남음
+    - generic [ref=e73]:
+      - generic [ref=e167]:
+        - heading "내역" [level=2] [ref=e168]
+        - generic [ref=e169]: 5건
+      - list [ref=e170]:
+        - listitem [ref=e171]:
+          - generic [ref=e172]: 식비
+          - generic [ref=e173]:
+            - paragraph [ref=e174]: 마트 장보기
+            - paragraph [ref=e175]: 2026-06-28 · 지출
+          - generic [ref=e176]: "-30,000원"
+          - generic [ref=e177]:
+            - button "수정" [ref=e178] [cursor=pointer]: ✏️
+            - button "삭제" [ref=e179] [cursor=pointer]: 🗑️
+        - listitem [ref=e180]:
+          - generic [ref=e181]: 구독료
+          - generic [ref=e182]:
+            - paragraph [ref=e183]: 넷플릭스
+            - paragraph [ref=e184]: 2026-06-28 · 지출
+          - generic [ref=e185]: "-9,900원"
+          - generic [ref=e186]:
+            - button "수정" [ref=e187] [cursor=pointer]: ✏️
+            - button "삭제" [ref=e188] [cursor=pointer]: 🗑️
+        - listitem [ref=e189]:
+          - generic [ref=e190]: 식비
+          - generic [ref=e191]:
+            - paragraph [ref=e192]: 점심 김치찌개
+            - paragraph [ref=e193]: 2026-06-27 · 지출
+          - generic [ref=e194]: "-12,000원"
+          - generic [ref=e195]:
+            - button "수정" [ref=e196] [cursor=pointer]: ✏️
+            - button "삭제" [ref=e197] [cursor=pointer]: 🗑️
+        - listitem [ref=e198]:
+          - generic [ref=e199]: 교통
+          - generic [ref=e200]:
+            - paragraph [ref=e201]: 교통카드 충전
+            - paragraph [ref=e202]: 2026-06-26 · 지출
+          - generic [ref=e203]: "-55,000원"
+          - generic [ref=e204]:
+            - button "수정" [ref=e205] [cursor=pointer]: ✏️
+            - button "삭제" [ref=e206] [cursor=pointer]: 🗑️
+        - listitem [ref=e207]:
+          - generic [ref=e208]: 급여
+          - generic [ref=e209]:
+            - paragraph [ref=e210]: 6월 월급
+            - paragraph [ref=e211]: 2026-06-25 · 수입
+          - generic [ref=e212]: +3,200,000원
+          - generic [ref=e213]:
+            - button "수정" [ref=e214] [cursor=pointer]: ✏️
+            - button "삭제" [ref=e215] [cursor=pointer]: 🗑️
+    - generic [ref=e79]: API 연동 준비 완료 · 서버 미연결 시 localStorage 자동 폴백
