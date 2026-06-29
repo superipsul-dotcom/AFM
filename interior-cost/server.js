@@ -86,6 +86,11 @@ const TRADE_MASTER = [
 //   기존 status(견적/진행/완료/보류)·tags 와 별개로 공존(둘 다 보존).
 const PROGRESS_STATES = ['준비', '착수', '완료', '마감', '인수'];
 
+// (v5) 노션 관계형 서브-DB 상태 마스터. 목록 외 값은 각 기본값으로 보정(400 대신).
+const CLIENT_STATES = ['리드', '상담', '견적', '계약', '시공중', '완료', '보류']; // interior_clients.status (기본 '리드')
+const ORDER_STATES = ['대기', '발주', '입고', '정산완료']; // interior_orders.status (기본 '대기')
+const AS_STATES = ['접수', '처리중', '완료', '보류']; // interior_as.status (기본 '접수')
+
 // (v3) 원가계산서 기본 가정율 (CONTRACT "interior_estimates 확장" / "원가계산서 산출식").
 //   견적 헤더에 값이 안 오면 이 기본값 사용. 실제 견적서(.xlsm)로 원 단위 검증된 율.
 const BUILDUP_DEFAULTS = {
@@ -320,8 +325,88 @@ async function initDB() {
   //     JSON 은 'group' 키 → DB 'grp' 컬럼으로 매핑. markup 류 컬럼은 스키마에 없어 무시.
   await seedCatalogIfEmpty();
 
+  // ====================================================================
+  // (v5) 노션 관계형 서브-DB — 고객/리드 · 발주서 · 미팅 · AS
+  //   고객/리드 = 전역 마스터(staff/vendors 동형), 발주/미팅/AS = 현장(site_id) 종속 CASCADE.
+  //   전부 CREATE TABLE / ADD COLUMN IF NOT EXISTS → v1~v4 데이터 100% 보존, 멱등.
+  // ====================================================================
+
+  // 17) 고객/리드 (전역 마스터). UNIQUE 없음(동명 리드 공존 허용).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_clients (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      name TEXT NOT NULL,
+      phone TEXT NOT NULL DEFAULT '',
+      email TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT '리드',
+      address TEXT NOT NULL DEFAULT '',
+      memo TEXT NOT NULL DEFAULT '',
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // 18) 현장 ↔ 고객/리드 연결 컬럼 (nullable, 앱 레벨 검증; 기존 client 텍스트는 그대로 보존)
+  await pool.query('ALTER TABLE interior_sites ADD COLUMN IF NOT EXISTS client_id BIGINT');
+
+  // 19) 발주서 (현장 종속, 현장 삭제 시 CASCADE)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_orders (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      site_id BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      order_no TEXT NOT NULL DEFAULT '',
+      vendor TEXT NOT NULL DEFAULT '',
+      trade TEXT NOT NULL DEFAULT '',
+      title TEXT NOT NULL,
+      amount BIGINT NOT NULL DEFAULT 0 CHECK (amount >= 0),
+      order_date DATE,
+      due_date DATE,
+      status TEXT NOT NULL DEFAULT '대기',
+      memo TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // 20) 미팅 (현장 종속, CASCADE)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_meetings (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      site_id BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      meeting_date DATE,
+      title TEXT NOT NULL,
+      attendees TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL DEFAULT '',
+      next_action TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // 21) AS (현장 종속, CASCADE)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_as (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      site_id BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      received_date DATE,
+      title TEXT NOT NULL,
+      detail TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT '접수',
+      handled_date DATE,
+      staff TEXT NOT NULL DEFAULT '',
+      cost BIGINT NOT NULL DEFAULT 0 CHECK (cost >= 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // 22) v5 인덱스 (목록/정렬/조인 가속) — 멱등
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_clients_active_name ON interior_clients (active DESC, name ASC);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_sites_client ON interior_sites (client_id);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_orders_site ON interior_orders (site_id, order_date DESC, id DESC);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_meetings_site ON interior_meetings (site_id, meeting_date DESC, id DESC);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_as_site ON interior_as (site_id, received_date DESC, id DESC);');
+
   dbInitialized = true;
-  console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/estimates/estimate_items/catalog) 준비 완료 + 카테고리/카탈로그 시드.');
+  console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/estimates/estimate_items/catalog/clients/orders/meetings/as) 준비 완료 + 카테고리/카탈로그 시드.');
 }
 
 // (v3) 카탈로그가 비어 있을 때만 seed/catalog.json 을 읽어 일괄 적재 (트랜잭션). 실패해도 부팅은 계속.
@@ -504,6 +589,9 @@ function rowToSite(row) {
     construction_manager: row.construction_manager || '',
     designer: row.designer || '',
     progress_status: row.progress_status || '준비',
+    // (v5) 고객/리드 연결. id 는 다른 id 들과 동일하게 문자열, client_name 은 JOIN 된 경우만(아니면 null).
+    client_id: row.client_id == null ? null : String(row.client_id),
+    client_name: row.client_name == null ? null : row.client_name,
     created_at: new Date(row.created_at).toISOString(),
   };
 }
@@ -647,12 +735,76 @@ function rowToCatalog(row) {
   };
 }
 
+// (v5) 고객/리드 row → 클라이언트 모델
+function rowToClient(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone || '',
+    email: row.email || '',
+    source: row.source || '',
+    status: row.status || '리드',
+    address: row.address || '',
+    memo: row.memo || '',
+    active: row.active,
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
+// (v5) 발주서 row → 클라이언트 모델 (amount BIGINT → Number, DATE 는 to_char 텍스트)
+function rowToOrder(row) {
+  return {
+    id: row.id,
+    site_id: row.site_id,
+    order_no: row.order_no || '',
+    vendor: row.vendor || '',
+    trade: row.trade || '',
+    title: row.title,
+    amount: Number(row.amount),
+    order_date: row.order_date, // 'YYYY-MM-DD' | null
+    due_date: row.due_date, // 'YYYY-MM-DD' | null
+    status: row.status || '대기',
+    memo: row.memo || '',
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
+// (v5) 미팅 row → 클라이언트 모델
+function rowToMeeting(row) {
+  return {
+    id: row.id,
+    site_id: row.site_id,
+    meeting_date: row.meeting_date, // 'YYYY-MM-DD' | null
+    title: row.title,
+    attendees: row.attendees || '',
+    content: row.content || '',
+    next_action: row.next_action || '',
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
+// (v5) AS row → 클라이언트 모델 (cost BIGINT → Number)
+function rowToAS(row) {
+  return {
+    id: row.id,
+    site_id: row.site_id,
+    received_date: row.received_date, // 'YYYY-MM-DD' | null
+    title: row.title,
+    detail: row.detail || '',
+    status: row.status || '접수',
+    handled_date: row.handled_date, // 'YYYY-MM-DD' | null
+    staff: row.staff || '',
+    cost: Number(row.cost),
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
 // ----------------------------------------
 // SELECT 컬럼 목록 (DATE 는 to_char 직렬화)
 // ----------------------------------------
 const SITE_COLS =
   "id, name, client, address, manager, budget, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, folder, status, tags, " +
-  "building_type, floor_area, to_char(move_in_date,'YYYY-MM-DD') AS move_in_date, pm, construction_manager, designer, progress_status, created_at";
+  "building_type, floor_area, to_char(move_in_date,'YYYY-MM-DD') AS move_in_date, pm, construction_manager, designer, progress_status, client_id, created_at";
 const COST_COLS =
   "id, site_id, to_char(date,'YYYY-MM-DD') AS date, amount, category, process, manager, vendor, memo, schedule_id, created_at";
 const STAFF_COLS = 'id, name, role, phone, active, created_at';
@@ -667,6 +819,14 @@ const ITEM_COLS =
 // (v3) 카탈로그 컬럼 (가격은 rowToCatalog 에서 Number 변환)
 const CATALOG_COLS =
   'id, trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, active, created_at';
+// (v5) 노션 서브-DB 컬럼 (DATE 는 to_char 직렬화, BIGINT 금액은 rowTo* 에서 Number)
+const CLIENT_COLS = 'id, name, phone, email, source, status, address, memo, active, created_at';
+const ORDER_COLS =
+  "id, site_id, order_no, vendor, trade, title, amount, to_char(order_date,'YYYY-MM-DD') AS order_date, to_char(due_date,'YYYY-MM-DD') AS due_date, status, memo, created_at";
+const MEETING_COLS =
+  "id, site_id, to_char(meeting_date,'YYYY-MM-DD') AS meeting_date, title, attendees, content, next_action, created_at";
+const AS_COLS =
+  "id, site_id, to_char(received_date,'YYYY-MM-DD') AS received_date, title, detail, status, to_char(handled_date,'YYYY-MM-DD') AS handled_date, staff, cost, created_at";
 
 // 일정 SELECT (alias s) — actual_cost = 연결 비용 합계 서브쿼리
 const SCHEDULE_SELECT_COLS = `
@@ -886,6 +1046,22 @@ function validateSite(body) {
     progress_status = PROGRESS_STATES.includes(p) ? p : '준비';
   }
 
+  // (v5) 고객/리드 연결(client_id). 본문에 키가 있을 때만 반영 → PUT 미전달 시 기존값 보존.
+  //   양의 정수 → 문자열 / null·'' → 연결 해제(null) / 키 없음 → undefined(보존, provided=false).
+  let client_id; // undefined = 본문 미전달
+  let client_id_provided = false;
+  if (Object.prototype.hasOwnProperty.call(b, 'client_id')) {
+    client_id_provided = true;
+    const raw = b.client_id;
+    if (raw === null || raw === '' || raw === undefined) {
+      client_id = null;
+    } else if (/^\d+$/.test(String(raw))) {
+      client_id = String(raw);
+    } else {
+      return { valid: false, message: 'client_id 는 양의 정수이거나 null 이어야 합니다.' };
+    }
+  }
+
   return {
     valid: true,
     values: {
@@ -906,6 +1082,9 @@ function validateSite(body) {
       construction_manager: typeof b.construction_manager === 'string' ? b.construction_manager.trim() : '',
       designer: typeof b.designer === 'string' ? b.designer.trim() : '',
       progress_status,
+      // (v5) 고객/리드 연결 (undefined=미전달 → PUT 보존, null=해제, '문자열'=연결)
+      client_id,
+      client_id_provided,
     },
   };
 }
@@ -977,6 +1156,145 @@ function validateVendor(body) {
       phone: typeof b.phone === 'string' ? b.phone.trim() : '',
       memo: typeof b.memo === 'string' ? b.memo.trim() : '',
       active: parseBool(b.active, true),
+    },
+  };
+}
+
+// (v5) 고객/리드 검증. name 필수, status 는 CLIENT_STATES 외 값이면 '리드'로 보정.
+function validateClient(body) {
+  const b = body || {};
+  const name = typeof b.name === 'string' ? b.name.trim() : '';
+  if (!name) return { valid: false, message: 'name(고객/리드명) 은 필수입니다.' };
+
+  let status = '리드';
+  if (typeof b.status === 'string' && b.status.trim()) {
+    const s = b.status.trim();
+    status = CLIENT_STATES.includes(s) ? s : '리드';
+  }
+
+  return {
+    valid: true,
+    values: {
+      name,
+      phone: typeof b.phone === 'string' ? b.phone.trim() : '',
+      email: typeof b.email === 'string' ? b.email.trim() : '',
+      source: typeof b.source === 'string' ? b.source.trim() : '',
+      status,
+      address: typeof b.address === 'string' ? b.address.trim() : '',
+      memo: typeof b.memo === 'string' ? b.memo.trim() : '',
+      active: parseBool(b.active, true),
+    },
+  };
+}
+
+// (v5) 발주서 검증. title 필수, amount 0 이상 정수, status 는 ORDER_STATES 외 값이면 '대기' 보정.
+//   order_no 는 선택(미전달 시 라우트에서 'PO-'+id 자동 세팅).
+function validateOrder(body) {
+  const b = body || {};
+  const title = typeof b.title === 'string' ? b.title.trim() : '';
+  if (!title) return { valid: false, message: 'title(발주 품목/내역) 은 필수입니다.' };
+
+  let amount = 0;
+  if (b.amount !== undefined && b.amount !== null && b.amount !== '') {
+    amount = Number(b.amount);
+    if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount < 0) {
+      return { valid: false, message: 'amount(발주 금액) 은 0 이상의 정수(원)여야 합니다.' };
+    }
+  }
+
+  const order_date = typeof b.order_date === 'string' && b.order_date.trim() ? b.order_date.trim() : null;
+  if (order_date && !isRealDate(order_date)) {
+    return { valid: false, message: 'order_date 는 유효한 YYYY-MM-DD 형식이어야 합니다.' };
+  }
+  const due_date = typeof b.due_date === 'string' && b.due_date.trim() ? b.due_date.trim() : null;
+  if (due_date && !isRealDate(due_date)) {
+    return { valid: false, message: 'due_date 는 유효한 YYYY-MM-DD 형식이어야 합니다.' };
+  }
+
+  let status = '대기';
+  if (typeof b.status === 'string' && b.status.trim()) {
+    const s = b.status.trim();
+    status = ORDER_STATES.includes(s) ? s : '대기';
+  }
+
+  return {
+    valid: true,
+    values: {
+      order_no: typeof b.order_no === 'string' ? b.order_no.trim() : '',
+      vendor: typeof b.vendor === 'string' ? b.vendor.trim() : '',
+      trade: typeof b.trade === 'string' ? b.trade.trim() : '',
+      title,
+      amount,
+      order_date,
+      due_date,
+      status,
+      memo: typeof b.memo === 'string' ? b.memo.trim() : '',
+    },
+  };
+}
+
+// (v5) 미팅 검증. title 필수, meeting_date 선택.
+function validateMeeting(body) {
+  const b = body || {};
+  const title = typeof b.title === 'string' ? b.title.trim() : '';
+  if (!title) return { valid: false, message: 'title(미팅 제목) 은 필수입니다.' };
+
+  const meeting_date = typeof b.meeting_date === 'string' && b.meeting_date.trim() ? b.meeting_date.trim() : null;
+  if (meeting_date && !isRealDate(meeting_date)) {
+    return { valid: false, message: 'meeting_date 는 유효한 YYYY-MM-DD 형식이어야 합니다.' };
+  }
+
+  return {
+    valid: true,
+    values: {
+      meeting_date,
+      title,
+      attendees: typeof b.attendees === 'string' ? b.attendees.trim() : '',
+      content: typeof b.content === 'string' ? b.content.trim() : '',
+      next_action: typeof b.next_action === 'string' ? b.next_action.trim() : '',
+    },
+  };
+}
+
+// (v5) AS 검증. title 필수, status 는 AS_STATES 외 값이면 '접수' 보정, cost 0 이상 정수.
+function validateAS(body) {
+  const b = body || {};
+  const title = typeof b.title === 'string' ? b.title.trim() : '';
+  if (!title) return { valid: false, message: 'title(AS 내용/제목) 은 필수입니다.' };
+
+  const received_date = typeof b.received_date === 'string' && b.received_date.trim() ? b.received_date.trim() : null;
+  if (received_date && !isRealDate(received_date)) {
+    return { valid: false, message: 'received_date 는 유효한 YYYY-MM-DD 형식이어야 합니다.' };
+  }
+  const handled_date = typeof b.handled_date === 'string' && b.handled_date.trim() ? b.handled_date.trim() : null;
+  if (handled_date && !isRealDate(handled_date)) {
+    return { valid: false, message: 'handled_date 는 유효한 YYYY-MM-DD 형식이어야 합니다.' };
+  }
+
+  let status = '접수';
+  if (typeof b.status === 'string' && b.status.trim()) {
+    const s = b.status.trim();
+    status = AS_STATES.includes(s) ? s : '접수';
+  }
+
+  let cost = 0;
+  if (b.cost !== undefined && b.cost !== null && b.cost !== '') {
+    cost = Number(b.cost);
+    if (!Number.isFinite(cost) || !Number.isInteger(cost) || cost < 0) {
+      return { valid: false, message: 'cost(AS 비용) 은 0 이상의 정수(원)여야 합니다.' };
+    }
+  }
+
+  return {
+    valid: true,
+    values: {
+      received_date,
+      title,
+      detail: typeof b.detail === 'string' ? b.detail.trim() : '',
+      status,
+      handled_date,
+      staff: typeof b.staff === 'string' ? b.staff.trim() : '',
+      cost,
     },
   };
 }
@@ -1256,7 +1574,8 @@ app.get('/api/sites', async (_req, res) => {
         interior_sites.building_type, interior_sites.floor_area,
         to_char(interior_sites.move_in_date,'YYYY-MM-DD') AS move_in_date,
         interior_sites.pm, interior_sites.construction_manager, interior_sites.designer,
-        interior_sites.progress_status, interior_sites.created_at,
+        interior_sites.progress_status, interior_sites.client_id, interior_sites.created_at,
+        cl.name AS client_name,
         (SELECT COALESCE(SUM(c.amount),0)::bigint FROM interior_costs c WHERE c.site_id = interior_sites.id) AS spent,
         est.id                        AS conf_id,
         est.vat_mode                  AS conf_vat_mode,
@@ -1278,6 +1597,7 @@ app.get('/api/sites', async (_req, res) => {
         COALESCE(agg.direct_labor,0)::bigint    AS conf_direct_labor,
         COALESCE(agg.sub_material,0)::bigint     AS conf_sub_material
       FROM interior_sites
+      LEFT JOIN interior_clients cl ON cl.id = interior_sites.client_id
       LEFT JOIN LATERAL (
         SELECT e.* FROM interior_estimates e
         WHERE e.site_id = interior_sites.id AND e.status = 'confirmed'
@@ -1351,12 +1671,13 @@ app.post('/api/sites', async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO interior_sites
          (name, client, address, manager, budget, start_date, end_date, folder, status, tags,
-          building_type, floor_area, move_in_date, pm, construction_manager, designer, progress_status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+          building_type, floor_area, move_in_date, pm, construction_manager, designer, progress_status, client_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING ${SITE_COLS}`,
       [
         v.name, v.client, v.address, v.manager, v.budget, v.start_date, v.end_date, folder, v.status, v.tags,
         v.building_type, v.floor_area, v.move_in_date, v.pm, v.construction_manager, v.designer, v.progress_status,
+        v.client_id != null ? v.client_id : null, // (v5) 미전달/null → null
       ]
     );
     res.status(201).json(rowToSite(rows[0]));
@@ -1379,16 +1700,24 @@ app.put('/api/sites/:id', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
 
+    // 기본 SET 절(v1~v4 컬럼) — 전부 풀-리플레이스.
+    const sets = [
+      'name=$1', 'client=$2', 'address=$3', 'manager=$4', 'budget=$5', 'start_date=$6', 'end_date=$7', 'status=$8', 'tags=$9',
+      'building_type=$10', 'floor_area=$11', 'move_in_date=$12', 'pm=$13', 'construction_manager=$14', 'designer=$15', 'progress_status=$16',
+    ];
+    const params = [
+      v.name, v.client, v.address, v.manager, v.budget, v.start_date, v.end_date, v.status, v.tags,
+      v.building_type, v.floor_area, v.move_in_date, v.pm, v.construction_manager, v.designer, v.progress_status,
+    ];
+    // (v5) client_id 는 본문에 키가 있을 때만 SET → 미전달 시 기존값 보존(null 이면 연결 해제).
+    if (v.client_id_provided) {
+      params.push(v.client_id != null ? v.client_id : null);
+      sets.push(`client_id=$${params.length}`);
+    }
+    params.push(id);
     const { rows } = await pool.query(
-      `UPDATE interior_sites
-       SET name=$1, client=$2, address=$3, manager=$4, budget=$5, start_date=$6, end_date=$7, status=$8, tags=$9,
-           building_type=$10, floor_area=$11, move_in_date=$12, pm=$13, construction_manager=$14, designer=$15, progress_status=$16
-       WHERE id=$17
-       RETURNING ${SITE_COLS}`,
-      [
-        v.name, v.client, v.address, v.manager, v.budget, v.start_date, v.end_date, v.status, v.tags,
-        v.building_type, v.floor_area, v.move_in_date, v.pm, v.construction_manager, v.designer, v.progress_status, id,
-      ]
+      `UPDATE interior_sites SET ${sets.join(', ')} WHERE id=$${params.length} RETURNING ${SITE_COLS}`,
+      params
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
     res.json(rowToSite(rows[0]));
@@ -2313,6 +2642,25 @@ app.get('/api/sites/:id/summary', async (req, res) => {
       doneCount: Number(sa.done_count),
     };
 
+    // (v5) 연결된 고객/리드명 — 단일 테이블 쿼리(SITE_COLS)라 별도 조회. 미연결/삭제됨 → null.
+    let clientName = null;
+    if (s.client_id != null) {
+      const clQ = await pool.query('SELECT name FROM interior_clients WHERE id=$1', [s.client_id]);
+      if (clQ.rows.length > 0) clientName = clQ.rows[0].name;
+    }
+    s.client_name = clientName; // rowToSite(s) 가 집어가도록 주입
+
+    // (v5) 서브-DB 카운트(프로젝트 헤더 뱃지용) — 발주/미팅/AS 건수 + 미완료 AS 건수.
+    const cntQ = await pool.query(
+      `SELECT
+         (SELECT COUNT(*) FROM interior_orders   WHERE site_id=$1) AS order_count,
+         (SELECT COUNT(*) FROM interior_meetings WHERE site_id=$1) AS meeting_count,
+         (SELECT COUNT(*) FROM interior_as       WHERE site_id=$1) AS as_count,
+         (SELECT COUNT(*) FROM interior_as       WHERE site_id=$1 AND status <> '완료') AS as_open_count`,
+      [id]
+    );
+    const cnt = cntQ.rows[0];
+
     res.json({
       // (v4) 프로젝트 헤더 카드용 현장 전체 정보(신규 7컬럼 포함). 기존 키는 그대로 보존(추가만).
       site: rowToSite(s),
@@ -2326,6 +2674,13 @@ app.get('/api/sites/:id/summary', async (req, res) => {
       estimateTotal,
       byProcessPlan,
       scheduleAgg,
+      // (v5) 고객/리드 + 서브-DB 카운트 (프로젝트 헤더 뱃지용)
+      client_id: s.client_id == null ? null : String(s.client_id),
+      client_name: clientName,
+      orderCount: Number(cnt.order_count),
+      meetingCount: Number(cnt.meeting_count),
+      asCount: Number(cnt.as_count),
+      asOpenCount: Number(cnt.as_open_count),
     });
   } catch (err) {
     console.error('GET /api/sites/:id/summary 오류:', err.message);
@@ -2502,6 +2857,313 @@ app.delete('/api/catalog/:id', async (req, res) => {
   } catch (err) {
     console.error('DELETE /api/catalog/:id 오류:', err.message);
     res.status(500).json({ success: false, message: '카탈로그 항목을 삭제하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// REST API — 고객/리드(interior_clients) — 전역 마스터 (staff/vendors 동형)
+//   GET 기본 active 만, ?all=1 비활성 포함. status 는 CLIENT_STATES 외 값이면 '리드' 보정.
+// ========================================
+app.get('/api/clients', async (req, res) => {
+  try {
+    const where = wantAll(req) ? '' : 'WHERE active = TRUE';
+    const { rows } = await pool.query(
+      `SELECT ${CLIENT_COLS} FROM interior_clients ${where} ORDER BY active DESC, name ASC`
+    );
+    res.json(rows.map(rowToClient));
+  } catch (err) {
+    console.error('GET /api/clients 오류:', err.message);
+    res.status(500).json({ success: false, message: '고객/리드 목록을 불러오지 못했습니다.' });
+  }
+});
+
+app.post('/api/clients', async (req, res) => {
+  try {
+    const check = validateClient(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+    const { rows } = await pool.query(
+      `INSERT INTO interior_clients (name, phone, email, source, status, address, memo, active)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${CLIENT_COLS}`,
+      [v.name, v.phone, v.email, v.source, v.status, v.address, v.memo, v.active]
+    );
+    res.status(201).json(rowToClient(rows[0]));
+  } catch (err) {
+    console.error('POST /api/clients 오류:', err.message);
+    res.status(500).json({ success: false, message: '고객/리드를 생성하지 못했습니다.' });
+  }
+});
+
+app.put('/api/clients/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 고객/리드 id 형식입니다.' });
+    const check = validateClient(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+    const { rows } = await pool.query(
+      `UPDATE interior_clients
+       SET name=$1, phone=$2, email=$3, source=$4, status=$5, address=$6, memo=$7, active=$8
+       WHERE id=$9 RETURNING ${CLIENT_COLS}`,
+      [v.name, v.phone, v.email, v.source, v.status, v.address, v.memo, v.active, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 고객/리드를 찾을 수 없습니다.' });
+    res.json(rowToClient(rows[0]));
+  } catch (err) {
+    console.error('PUT /api/clients/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '고객/리드를 수정하지 못했습니다.' });
+  }
+});
+
+app.delete('/api/clients/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 고객/리드 id 형식입니다.' });
+    // 삭제 시 현장의 client_id 는 그대로 둔다(프론트가 못 찾으면 미표시 — 단순화, 데이터 보존).
+    const { rowCount } = await pool.query('DELETE FROM interior_clients WHERE id=$1', [id]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 고객/리드를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/clients/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '고객/리드를 삭제하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// REST API — 발주서(interior_orders) — 프로젝트(현장) 종속, CASCADE
+//   order_no 미전달 시 생성 직후 'PO-'+id 자동 세팅. status 는 ORDER_STATES 외 값이면 '대기' 보정.
+// ========================================
+app.get('/api/sites/:id/orders', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${ORDER_COLS} FROM interior_orders WHERE site_id=$1 ORDER BY order_date DESC NULLS LAST, id DESC`,
+      [id]
+    );
+    res.json(rows.map(rowToOrder));
+  } catch (err) {
+    console.error('GET /api/sites/:id/orders 오류:', err.message);
+    res.status(500).json({ success: false, message: '발주서 목록을 불러오지 못했습니다.' });
+  }
+});
+
+app.post('/api/sites/:id/orders', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const check = validateOrder(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+
+    const site = await pool.query('SELECT id FROM interior_sites WHERE id=$1', [id]);
+    if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+    const ins = await pool.query(
+      `INSERT INTO interior_orders (site_id, order_no, vendor, trade, title, amount, order_date, due_date, status, memo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${ORDER_COLS}`,
+      [id, v.order_no, v.vendor, v.trade, v.title, v.amount, v.order_date, v.due_date, v.status, v.memo]
+    );
+    let row = ins.rows[0];
+    // order_no 미전달 → 'PO-'+id 자동 세팅 후 재조회
+    if (!v.order_no) {
+      const upd = await pool.query(
+        `UPDATE interior_orders SET order_no=$1 WHERE id=$2 RETURNING ${ORDER_COLS}`,
+        ['PO-' + row.id, row.id]
+      );
+      row = upd.rows[0];
+    }
+    res.status(201).json(rowToOrder(row));
+  } catch (err) {
+    console.error('POST /api/sites/:id/orders 오류:', err.message);
+    res.status(500).json({ success: false, message: '발주서를 저장하지 못했습니다.' });
+  }
+});
+
+app.put('/api/orders/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 발주서 id 형식입니다.' });
+    const check = validateOrder(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+    // order_no 가 비면 'PO-'+id 로 유지(공란 방지 — POST 자동생성 규칙과 일관).
+    const orderNo = v.order_no ? v.order_no : 'PO-' + id;
+    const { rows } = await pool.query(
+      `UPDATE interior_orders
+       SET order_no=$1, vendor=$2, trade=$3, title=$4, amount=$5, order_date=$6, due_date=$7, status=$8, memo=$9
+       WHERE id=$10 RETURNING ${ORDER_COLS}`,
+      [orderNo, v.vendor, v.trade, v.title, v.amount, v.order_date, v.due_date, v.status, v.memo, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 발주서를 찾을 수 없습니다.' });
+    res.json(rowToOrder(rows[0]));
+  } catch (err) {
+    console.error('PUT /api/orders/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '발주서를 수정하지 못했습니다.' });
+  }
+});
+
+app.delete('/api/orders/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 발주서 id 형식입니다.' });
+    const { rowCount } = await pool.query('DELETE FROM interior_orders WHERE id=$1', [id]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 발주서를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/orders/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '발주서를 삭제하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// REST API — 미팅(interior_meetings) — 프로젝트(현장) 종속, CASCADE
+// ========================================
+app.get('/api/sites/:id/meetings', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${MEETING_COLS} FROM interior_meetings WHERE site_id=$1 ORDER BY meeting_date DESC NULLS LAST, id DESC`,
+      [id]
+    );
+    res.json(rows.map(rowToMeeting));
+  } catch (err) {
+    console.error('GET /api/sites/:id/meetings 오류:', err.message);
+    res.status(500).json({ success: false, message: '미팅 목록을 불러오지 못했습니다.' });
+  }
+});
+
+app.post('/api/sites/:id/meetings', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const check = validateMeeting(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+
+    const site = await pool.query('SELECT id FROM interior_sites WHERE id=$1', [id]);
+    if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO interior_meetings (site_id, meeting_date, title, attendees, content, next_action)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${MEETING_COLS}`,
+      [id, v.meeting_date, v.title, v.attendees, v.content, v.next_action]
+    );
+    res.status(201).json(rowToMeeting(rows[0]));
+  } catch (err) {
+    console.error('POST /api/sites/:id/meetings 오류:', err.message);
+    res.status(500).json({ success: false, message: '미팅을 저장하지 못했습니다.' });
+  }
+});
+
+app.put('/api/meetings/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 미팅 id 형식입니다.' });
+    const check = validateMeeting(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+    const { rows } = await pool.query(
+      `UPDATE interior_meetings
+       SET meeting_date=$1, title=$2, attendees=$3, content=$4, next_action=$5
+       WHERE id=$6 RETURNING ${MEETING_COLS}`,
+      [v.meeting_date, v.title, v.attendees, v.content, v.next_action, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 미팅을 찾을 수 없습니다.' });
+    res.json(rowToMeeting(rows[0]));
+  } catch (err) {
+    console.error('PUT /api/meetings/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '미팅을 수정하지 못했습니다.' });
+  }
+});
+
+app.delete('/api/meetings/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 미팅 id 형식입니다.' });
+    const { rowCount } = await pool.query('DELETE FROM interior_meetings WHERE id=$1', [id]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 미팅을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/meetings/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '미팅을 삭제하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// REST API — AS(interior_as) — 프로젝트(현장) 종속, CASCADE
+//   status 는 AS_STATES 외 값이면 '접수' 보정. cost 0 이상 정수.
+// ========================================
+app.get('/api/sites/:id/as', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${AS_COLS} FROM interior_as WHERE site_id=$1 ORDER BY received_date DESC NULLS LAST, id DESC`,
+      [id]
+    );
+    res.json(rows.map(rowToAS));
+  } catch (err) {
+    console.error('GET /api/sites/:id/as 오류:', err.message);
+    res.status(500).json({ success: false, message: 'AS 목록을 불러오지 못했습니다.' });
+  }
+});
+
+app.post('/api/sites/:id/as', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const check = validateAS(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+
+    const site = await pool.query('SELECT id FROM interior_sites WHERE id=$1', [id]);
+    if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO interior_as (site_id, received_date, title, detail, status, handled_date, staff, cost)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${AS_COLS}`,
+      [id, v.received_date, v.title, v.detail, v.status, v.handled_date, v.staff, v.cost]
+    );
+    res.status(201).json(rowToAS(rows[0]));
+  } catch (err) {
+    console.error('POST /api/sites/:id/as 오류:', err.message);
+    res.status(500).json({ success: false, message: 'AS 를 저장하지 못했습니다.' });
+  }
+});
+
+app.put('/api/as/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 AS id 형식입니다.' });
+    const check = validateAS(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+    const { rows } = await pool.query(
+      `UPDATE interior_as
+       SET received_date=$1, title=$2, detail=$3, status=$4, handled_date=$5, staff=$6, cost=$7
+       WHERE id=$8 RETURNING ${AS_COLS}`,
+      [v.received_date, v.title, v.detail, v.status, v.handled_date, v.staff, v.cost, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 AS 를 찾을 수 없습니다.' });
+    res.json(rowToAS(rows[0]));
+  } catch (err) {
+    console.error('PUT /api/as/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: 'AS 를 수정하지 못했습니다.' });
+  }
+});
+
+app.delete('/api/as/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 AS id 형식입니다.' });
+    const { rowCount } = await pool.query('DELETE FROM interior_as WHERE id=$1', [id]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 AS 를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/as/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: 'AS 를 삭제하지 못했습니다.' });
   }
 });
 

@@ -393,3 +393,98 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - 폴백(localStorage): 신규 필드/보드/롤업도 폴백 지원(서버 우선). spent/estimateTotal 폴백은 클라이언트 집계.
 
 ## 다음 단계(이번 v4 범위 밖, 메모): 노션의 리드/고객DB·발주서DB·미팅·AS 관계형 서브-DB 연동.
+
+---
+
+# v5 확장 — 노션 관계형 서브-DB (고객/리드 · 발주서 · 미팅 · AS)
+
+> 노션 프로젝트 DB의 연결 데이터베이스를 구현. **v1~v4 동작/엔드포인트/UI 100% 보존**(새 테이블 CREATE IF NOT EXISTS, 컬럼 추가 ADD COLUMN IF NOT EXISTS). 고객/리드는 **전역 마스터**(staff/vendors와 동형, 프로젝트가 참조), 발주서·미팅·AS는 **프로젝트(현장) 종속**(site_id FK, CASCADE). 모든 응답 raw JSON, DELETE만 `{success:true}`, BIGINT→Number, DATE→`to_char 'YYYY-MM-DD'`. 폴백(localStorage) 지원.
+
+## 새 테이블
+
+### interior_clients (고객/리드 — 전역 마스터)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| name | text NOT NULL | 고객/리드명 |
+| phone | text default '' | 연락처 |
+| email | text default '' | |
+| source | text default '' | 리드 출처(소개/홈페이지/광고/재방문/기타) |
+| status | text default '리드' | 리드/상담/견적/계약/시공중/완료/보류 |
+| address | text default '' | |
+| memo | text default '' | |
+| active | boolean default true | |
+| created_at | timestamptz default now() | |
+- `interior_sites` 에 `ADD COLUMN IF NOT EXISTS client_id bigint` (nullable, → interior_clients.id, FK 생략 가능·앱검증). 기존 `client` 텍스트 유지.
+- 서버 상수 `CLIENT_STATES=['리드','상담','견적','계약','시공중','완료','보류']`.
+
+### interior_orders (발주서 — 프로젝트 종속)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| site_id | bigint NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE | |
+| order_no | text default '' | 발주번호(서버가 생성 시 `'PO-'+id` 자동 세팅) |
+| vendor | text default '' | 거래처 |
+| trade | text default '' | 공종 |
+| title | text NOT NULL | 발주 품목/내역 |
+| amount | bigint default 0 CHECK>=0 | 발주 금액(원) |
+| order_date | date | 발주일 |
+| due_date | date | 납기일 |
+| status | text default '대기' | 대기/발주/입고/정산완료 |
+| memo | text default '' | |
+| created_at | timestamptz default now() | |
+- 서버 상수 `ORDER_STATES=['대기','발주','입고','정산완료']`.
+
+### interior_meetings (미팅 — 프로젝트 종속)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| site_id | bigint NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE | |
+| meeting_date | date | 미팅일 |
+| title | text NOT NULL | 제목 |
+| attendees | text default '' | 참석자 |
+| content | text default '' | 내용 |
+| next_action | text default '' | 다음 액션 |
+| created_at | timestamptz default now() | |
+
+### interior_as (AS — 프로젝트 종속)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| site_id | bigint NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE | |
+| received_date | date | 접수일 |
+| title | text NOT NULL | 내용/제목 |
+| detail | text default '' | 상세 |
+| status | text default '접수' | 접수/처리중/완료/보류 |
+| handled_date | date | 처리완료일 |
+| staff | text default '' | 담당자 |
+| cost | bigint default 0 CHECK>=0 | AS 비용(원) |
+| created_at | timestamptz default now() | |
+- 서버 상수 `AS_STATES=['접수','처리중','완료','보류']`.
+
+## 엔드포인트
+### 고객/리드 (전역, staff/vendors 동형)
+- `GET /api/clients` (active만, `?all=1` 비활성 포함, status ASC?·name ASC). `POST /api/clients` `{name, phone?, email?, source?, status?, address?, memo?}` → 201(name 필수). `PUT /api/clients/:id` (+active). `DELETE /api/clients/:id` → `{success:true}`/404. (삭제 시 interior_sites.client_id 는 앱에서 null 처리하거나 그대로 — 단순화: 그대로 두고 프론트가 못 찾으면 미표시)
+
+### 발주서 (프로젝트 종속)
+- `GET /api/sites/:id/orders` → 배열(order_date DESC, id DESC). `POST /api/sites/:id/orders` `{vendor?,trade?,title,amount?,order_date?,due_date?,status?,memo?}` → 201(title 필수, 현장 없으면 404, **order_no='PO-'+id 자동**). `PUT /api/orders/:id` → 200/404. `DELETE /api/orders/:id`.
+- status 검증(ORDER_STATES 외 '대기' 보정). amount 정수≥0.
+
+### 미팅 (프로젝트 종속)
+- `GET /api/sites/:id/meetings` (meeting_date DESC). `POST /api/sites/:id/meetings` `{meeting_date?,title,attendees?,content?,next_action?}` → 201(title 필수). `PUT /api/meetings/:id`. `DELETE /api/meetings/:id`.
+
+### AS (프로젝트 종속)
+- `GET /api/sites/:id/as` (received_date DESC). `POST /api/sites/:id/as` `{received_date?,title,detail?,status?,handled_date?,staff?,cost?}` → 201(title 필수, status AS_STATES 보정). `PUT /api/as/:id`. `DELETE /api/as/:id`.
+
+### 현장 연동
+- `POST/PUT /api/sites` body 에 `client_id?`(정수/null) 허용. `GET /api/sites`·`GET /api/sites/:id/summary` 응답에 `client_id` + **`client_name`**(interior_clients JOIN, 없으면 null) 포함.
+- (선택) `GET /api/sites/:id/summary` 에 `orderCount, meetingCount, asCount, asOpenCount`(상태≠완료) 카운트 추가 — 프로젝트 헤더 뱃지용.
+
+## UI
+- **관리 탭에 `고객/리드` 마스터 섹션** 추가(목록/검색/추가/수정/삭제 + status 뱃지, staff/vendors 섹션과 동형).
+- **현장 등록/수정 폼**: `고객/리드` 드롭다운(client_id, interior_clients에서 선택; 자유입력 client 텍스트도 유지). **요약 프로젝트 헤더에 고객명 표시**(client_name).
+- **새 탭 `🧾 발주`(프로젝트 종속)**: 발주서 목록(발주번호·거래처·공종·품목·금액·발주일·납기일·상태뱃지) + 행 추가/수정/삭제 + 상태별 색·합계. (거래처=vendors, 공종=trades 드롭다운 재사용)
+- **새 탭 `📒 미팅·AS`(프로젝트 종속)**: 상단 서브토글 2개 — **미팅**(일자·제목·참석자·내용·다음액션, 타임라인/목록 CRUD) / **AS**(접수일·내용·상태·처리일·담당자·비용, 목록 CRUD + 상태뱃지). 담당자=staff 드롭다운.
+- 탭 순서: 🗂 프로젝트 · 📊 요약 · 💸 비용 · 📅 일정 · 📋 견적 · 🧾 발주 · 📒 미팅·AS · ⚙️ 관리.
+- 상태 뱃지 색감(노션풍): 고객(리드 회색→계약 파랑→완료 초록), 발주(대기 회색/발주 파랑/입고 청록/정산완료 초록), AS(접수 빨강/처리중 주황/완료 초록).
+- 폴백(localStorage): 4개 도메인 각각 키로 CRUD + 현장 client_id 연결. 서버 우선.

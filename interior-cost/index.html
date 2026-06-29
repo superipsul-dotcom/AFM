@@ -112,6 +112,25 @@
     const PROGRESS_STATUS_COLOR = { '준비': 'bg-slate-400', '착수': 'bg-blue-500', '완료': 'bg-emerald-500', '마감': 'bg-orange-500', '인수': 'bg-purple-500' };
     const BUILDING_TYPES = ['아파트', '빌라', '주택', '상가', '오피스', '카페', '사무실', '기타'];
 
+    // ── v5: 노션 관계형 서브-DB (고객/리드 · 발주 · 미팅 · AS) ──
+    const CLIENTS_KEY = 'interior_clients_v1';
+    const ORDERS_KEY = 'interior_orders_v1';
+    const MEETINGS_KEY = 'interior_meetings_v1';
+    const AS_KEY = 'interior_as_v1';
+    // 고객/리드 상태 (노션 색감: 리드 회색 → 계약 파랑 → 완료 초록)
+    const CLIENT_STATES = ['리드', '상담', '견적', '계약', '시공중', '완료', '보류'];
+    const CLIENT_STATUS_COLOR = {
+      '리드': 'bg-slate-400', '상담': 'bg-sky-400', '견적': 'bg-amber-500',
+      '계약': 'bg-blue-500', '시공중': 'bg-indigo-500', '완료': 'bg-emerald-500', '보류': 'bg-slate-500',
+    };
+    const CLIENT_SOURCES = ['소개', '홈페이지', '광고', '재방문', '기타'];
+    // 발주 상태 (대기 회색/발주 파랑/입고 청록/정산완료 초록)
+    const ORDER_STATES = ['대기', '발주', '입고', '정산완료'];
+    const ORDER_STATUS_COLOR = { '대기': 'bg-slate-400', '발주': 'bg-blue-500', '입고': 'bg-teal-500', '정산완료': 'bg-emerald-500' };
+    // AS 상태 (접수 빨강/처리중 주황/완료 초록/보류 회색)
+    const AS_STATES = ['접수', '처리중', '완료', '보류'];
+    const AS_STATUS_COLOR = { '접수': 'bg-red-500', '처리중': 'bg-orange-500', '완료': 'bg-emerald-500', '보류': 'bg-slate-400' };
+
     // 공급자(우리 회사) 정보 — 견적서 인쇄용
     const SUPPLIER = { name: '안도공간', en: 'ANDO SPACE', biz: '인테리어 설계·시공', contact: '' };
 
@@ -364,6 +383,11 @@
     const scheduleStore = makeStore(SCHEDULE_KEY);
     const estimatesStore = makeStore(ESTIMATES_KEY);
     const catalogStore = makeStore(CATALOG_KEY); // v3 단가 카탈로그
+    // v5: 노션 관계형 서브-DB 스토어 (고객/리드 · 발주 · 미팅 · AS)
+    const clientsStore = makeStore(CLIENTS_KEY);
+    const ordersStore = makeStore(ORDERS_KEY);
+    const meetingsStore = makeStore(MEETINGS_KEY);
+    const asStore = makeStore(AS_KEY);
 
     // 단가 카탈로그 폴백 시드 (비어 있을 때만 대표 항목 주입)
     function ensureCatalog() {
@@ -437,6 +461,16 @@
           building_type: '상가', floor_area: 90, move_in_date: '2026-04-15',
           pm: '정매니저', construction_manager: '', designer: '', progress_status: '인수' },
       ];
+      // v5: 고객/리드 마스터 시드 + 현장 연결(client_id)
+      const cli1 = uid(), cli2 = uid(), cli3 = uid(), cli4 = uid(), cli5 = uid();
+      clientsStore.write([
+        { id: cli1, name: '김철수', phone: '010-1234-5678', email: 'kim@example.com', source: '소개', status: '계약', address: '서울시 강남구 도곡로 123', memo: '34평 전체 리모델링', active: true, created_at: new Date(bt).toISOString() },
+        { id: cli2, name: '이사장', phone: '010-2222-3333', email: '', source: '홈페이지', status: '상담', address: '서울시 마포구 연남로 22', memo: '카페 창업 상담', active: true, created_at: new Date(bt - 1000).toISOString() },
+        { id: cli3, name: '(주)테크', phone: '02-555-7777', email: 'biz@tech.co.kr', source: '재방문', status: '완료', address: '경기도 성남시 분당구 판교역로 10', memo: '사옥 오피스', active: true, created_at: new Date(bt - 2000).toISOString() },
+        { id: cli4, name: '박회장', phone: '010-4444-5555', email: '', source: '소개', status: '시공중', address: '서울시 용산구 한남대로 5', memo: '프리미엄 단독주택', active: true, created_at: new Date(bt - 3000).toISOString() },
+        { id: cli5, name: '최대표', phone: '010-6666-7777', email: '', source: '광고', status: '완료', address: '서울시 구로구 디지털로 300', memo: '', active: true, created_at: new Date(bt - 4000).toISOString() },
+      ]);
+      sites[0].client_id = cli1; sites[1].client_id = cli2; sites[2].client_id = cli3; sites[3].client_id = cli4; sites[4].client_id = cli5;
       sitesStore.write(sites);
       // 일정(공정 태스크) 데모 — 비용과 schedule_id 로 연결
       const tDemo = uid(), tMok = uid(), tTile = uid();
@@ -467,6 +501,21 @@
           { id: uid(), process: '타일', name: '욕실 타일 시공', spec: '300x600', qty: 25, unit: 'm²', unit_price: 140000, amount: 3500000, memo: '', sort_order: 2 },
         ],
       }]);
+      // v5: 발주/미팅/AS 시드 (현장 종속) — 오프라인 데모용
+      ordersStore.write([
+        { id: uid(), site_id: id1, order_no: 'PO-1001', vendor: '한솔자재', trade: '목공사', title: '합판/각재 일괄 발주', amount: 8000000, order_date: '2026-06-02', due_date: '2026-06-05', status: '입고', memo: '', created_at: new Date(now - 5000).toISOString() },
+        { id: uid(), site_id: id1, order_no: 'PO-1002', vendor: '타일마트', trade: '타일공사', title: '욕실 타일 300x600', amount: 3200000, order_date: '2026-06-08', due_date: '2026-06-10', status: '발주', memo: '논슬립 포함', created_at: new Date(now - 4000).toISOString() },
+        { id: uid(), site_id: id1, order_no: 'PO-1003', vendor: '전기나라', trade: '전기공사', title: '배선/차단기 자재', amount: 1500000, order_date: '2026-06-12', due_date: '', status: '대기', memo: '', created_at: new Date(now - 3000).toISOString() },
+        { id: uid(), site_id: id3, order_no: 'PO-1004', vendor: '판교종합건설', trade: '가구공사', title: '오피스 가구 일괄', amount: 12000000, order_date: '2026-05-20', due_date: '2026-06-01', status: '정산완료', memo: '', created_at: new Date(now - 2000).toISOString() },
+      ]);
+      meetingsStore.write([
+        { id: uid(), site_id: id1, meeting_date: '2026-05-28', title: '착공 전 현장 미팅', attendees: '김철수, 박현장, 최디자', content: '도면 최종 확인 및 자재 등급 협의', next_action: '자재 샘플 발송', created_at: new Date(now - 6000).toISOString() },
+        { id: uid(), site_id: id1, meeting_date: '2026-06-09', title: '중간 점검 미팅', attendees: '김철수, 박현장', content: '목공 진행상황 확인, 타일 패턴 결정', next_action: '타일 발주 확정', created_at: new Date(now - 5500).toISOString() },
+      ]);
+      asStore.write([
+        { id: uid(), site_id: id3, received_date: '2026-06-22', title: '회의실 도어 흔들림', detail: '경첩 풀림 현상', status: '완료', handled_date: '2026-06-24', staff: '이기사', cost: 50000, created_at: new Date(now - 1800).toISOString() },
+        { id: uid(), site_id: id3, received_date: '2026-06-26', title: '탕비실 누수 의심', detail: '싱크 하부 물자국 발견', status: '처리중', handled_date: null, staff: '박현장', cost: 0, created_at: new Date(now - 1700).toISOString() },
+      ]);
       return sites;
     };
 
@@ -570,6 +619,7 @@
       _rollupSites(list) {
         const allCosts = costsStore.read();
         const allEst = estimatesStore.read();
+        const allClients = clientsStore.read(); // v5: client_id → client_name 해석
         return list.map((s) => {
           const spent = allCosts.filter((c) => String(c.site_id) === String(s.id)).reduce((a, c) => a + (Number(c.amount) || 0), 0);
           const confirmed = allEst.filter((e) => String(e.site_id) === String(s.id) && e.status === 'confirmed');
@@ -578,6 +628,7 @@
             const latest = confirmed.slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
             estimateTotal = computeTotals(latest).total;
           }
+          const cli = s.client_id != null ? allClients.find((c) => String(c.id) === String(s.client_id)) : null;
           return {
             ...s,
             building_type: s.building_type || '',
@@ -585,6 +636,8 @@
             move_in_date: s.move_in_date || null,
             pm: s.pm || '', construction_manager: s.construction_manager || '', designer: s.designer || '',
             progress_status: PROGRESS_STATES.includes(s.progress_status) ? s.progress_status : '준비',
+            client_id: s.client_id != null ? s.client_id : null,
+            client_name: cli ? cli.name : null,
             spent, estimateTotal,
           };
         });
@@ -1045,6 +1098,165 @@
         try { await this._tryFetch(`${API_BASE_URL}/catalog/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
         catch (e) { if (e.status) throw e; this._useMock = true; catalogStore.write(ensureCatalog().filter((c) => String(c.id) !== String(id))); return { success: true }; }
       },
+
+      // ════════ v5: 고객/리드 (clients) — 전역 마스터 (staff/vendors 동형) ════════
+      async listClients(all) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/clients${all ? '?all=1' : ''}`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          let list = clientsStore.read();
+          if (!all) list = list.filter((c) => c.active !== false);
+          return list.slice().sort((a, b) => (a.active === b.active ? (a.name < b.name ? -1 : 1) : (a.active ? -1 : 1)));
+        }
+      },
+      async createClient(body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/clients`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          if (!body.name || !String(body.name).trim()) { const err = new Error('고객/리드명은 필수입니다.'); err.status = 400; throw err; }
+          const item = {
+            id: uid(), name: String(body.name).trim(), phone: body.phone || '', email: body.email || '',
+            source: body.source || '', status: CLIENT_STATES.includes(body.status) ? body.status : '리드',
+            address: body.address || '', memo: body.memo || '', active: true, created_at: new Date().toISOString(),
+          };
+          clientsStore.write([...clientsStore.read(), item]); return item;
+        }
+      },
+      async updateClient(id, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/clients/${id}`, { method: 'PUT', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const patch = { ...body };
+          if (patch.status != null && !CLIENT_STATES.includes(patch.status)) patch.status = '리드';
+          const next = clientsStore.read().map((c) => (String(c.id) === String(id) ? { ...c, ...patch } : c));
+          clientsStore.write(next); return next.find((c) => String(c.id) === String(id));
+        }
+      },
+      async removeClient(id) {
+        try { await this._tryFetch(`${API_BASE_URL}/clients/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; clientsStore.write(clientsStore.read().filter((c) => String(c.id) !== String(id))); return { success: true }; }
+      },
+
+      // ════════ v5: 발주서 (orders) — 프로젝트 종속 ════════
+      async listOrders(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/orders`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          return ordersStore.read().filter((o) => String(o.site_id) === String(siteId)).sort((a, b) => {
+            const ad = a.order_date || '', bd = b.order_date || '';
+            if (ad !== bd) return ad < bd ? 1 : -1;
+            return (a.created_at < b.created_at) ? 1 : -1;
+          });
+        }
+      },
+      async createOrder(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/orders`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          if (!body.title || !String(body.title).trim()) { const err = new Error('발주 품목(내역)은 필수입니다.'); err.status = 400; throw err; }
+          const id = uid();
+          const item = {
+            id, site_id: siteId, order_no: body.order_no || ('PO-' + id), vendor: body.vendor || '', trade: body.trade || '',
+            title: String(body.title).trim(), amount: Math.max(0, Math.round(Number(body.amount) || 0)),
+            order_date: body.order_date || null, due_date: body.due_date || null,
+            status: ORDER_STATES.includes(body.status) ? body.status : '대기', memo: body.memo || '', created_at: new Date().toISOString(),
+          };
+          ordersStore.write([...ordersStore.read(), item]); return item;
+        }
+      },
+      async updateOrder(id, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/orders/${id}`, { method: 'PUT', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const patch = { ...body };
+          if (patch.amount != null) patch.amount = Math.max(0, Math.round(Number(patch.amount) || 0));
+          if (patch.status != null && !ORDER_STATES.includes(patch.status)) patch.status = '대기';
+          const next = ordersStore.read().map((o) => (String(o.id) === String(id) ? { ...o, ...patch } : o));
+          ordersStore.write(next); return next.find((o) => String(o.id) === String(id));
+        }
+      },
+      async removeOrder(id) {
+        try { await this._tryFetch(`${API_BASE_URL}/orders/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; ordersStore.write(ordersStore.read().filter((o) => String(o.id) !== String(id))); return { success: true }; }
+      },
+
+      // ════════ v5: 미팅 (meetings) — 프로젝트 종속 ════════
+      async listMeetings(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/meetings`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          return meetingsStore.read().filter((m) => String(m.site_id) === String(siteId)).sort((a, b) => {
+            const ad = a.meeting_date || '', bd = b.meeting_date || '';
+            if (ad !== bd) return ad < bd ? 1 : -1;
+            return (a.created_at < b.created_at) ? 1 : -1;
+          });
+        }
+      },
+      async createMeeting(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/meetings`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          if (!body.title || !String(body.title).trim()) { const err = new Error('제목은 필수입니다.'); err.status = 400; throw err; }
+          const item = {
+            id: uid(), site_id: siteId, meeting_date: body.meeting_date || null, title: String(body.title).trim(),
+            attendees: body.attendees || '', content: body.content || '', next_action: body.next_action || '', created_at: new Date().toISOString(),
+          };
+          meetingsStore.write([...meetingsStore.read(), item]); return item;
+        }
+      },
+      async updateMeeting(id, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/meetings/${id}`, { method: 'PUT', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const next = meetingsStore.read().map((m) => (String(m.id) === String(id) ? { ...m, ...body } : m));
+          meetingsStore.write(next); return next.find((m) => String(m.id) === String(id));
+        }
+      },
+      async removeMeeting(id) {
+        try { await this._tryFetch(`${API_BASE_URL}/meetings/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; meetingsStore.write(meetingsStore.read().filter((m) => String(m.id) !== String(id))); return { success: true }; }
+      },
+
+      // ════════ v5: AS (as) — 프로젝트 종속 ════════
+      async listAS(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/as`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          return asStore.read().filter((a) => String(a.site_id) === String(siteId)).sort((a, b) => {
+            const ad = a.received_date || '', bd = b.received_date || '';
+            if (ad !== bd) return ad < bd ? 1 : -1;
+            return (a.created_at < b.created_at) ? 1 : -1;
+          });
+        }
+      },
+      async createAS(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/as`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          if (!body.title || !String(body.title).trim()) { const err = new Error('AS 내용(제목)은 필수입니다.'); err.status = 400; throw err; }
+          const item = {
+            id: uid(), site_id: siteId, received_date: body.received_date || null, title: String(body.title).trim(),
+            detail: body.detail || '', status: AS_STATES.includes(body.status) ? body.status : '접수',
+            handled_date: body.handled_date || null, staff: body.staff || '', cost: Math.max(0, Math.round(Number(body.cost) || 0)), created_at: new Date().toISOString(),
+          };
+          asStore.write([...asStore.read(), item]); return item;
+        }
+      },
+      async updateAS(id, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/as/${id}`, { method: 'PUT', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const patch = { ...body };
+          if (patch.cost != null) patch.cost = Math.max(0, Math.round(Number(patch.cost) || 0));
+          if (patch.status != null && !AS_STATES.includes(patch.status)) patch.status = '접수';
+          const next = asStore.read().map((a) => (String(a.id) === String(id) ? { ...a, ...patch } : a));
+          asStore.write(next); return next.find((a) => String(a.id) === String(id));
+        }
+      },
+      async removeAS(id) {
+        try { await this._tryFetch(`${API_BASE_URL}/as/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; asStore.write(asStore.read().filter((a) => String(a.id) !== String(id))); return { success: true }; }
+      },
     };
 
     // ========================================
@@ -1204,6 +1416,7 @@
       const blank = {
         name: '', client: '', address: '', manager: '', budget: '', start_date: todayStr(), end_date: '', status: '진행', tags: '',
         building_type: '', floor_area: '', move_in_date: '', pm: '', construction_manager: '', designer: '', progress_status: '준비',
+        client_id: '',
       };
       const [form, setForm] = useState(editing ? {
         name: editing.name || '', client: editing.client || '', address: editing.address || '',
@@ -1215,9 +1428,13 @@
         move_in_date: editing.move_in_date || '',
         pm: editing.pm || '', construction_manager: editing.construction_manager || '', designer: editing.designer || '',
         progress_status: PROGRESS_STATES.includes(editing.progress_status) ? editing.progress_status : '준비',
+        client_id: editing.client_id != null ? String(editing.client_id) : '',
       } : blank);
       const [errors, setErrors] = useState({});
       const [submitting, setSubmitting] = useState(false);
+      // v5: 고객/리드 마스터 드롭다운 (client_id 연결)
+      const [clientOpts, setClientOpts] = useState([]);
+      useEffect(() => { let alive = true; api.listClients().then((d) => { if (alive && Array.isArray(d)) setClientOpts(d); }).catch(() => {}); return () => { alive = false; }; }, []);
 
       const validate = () => {
         const e = {};
@@ -1244,6 +1461,7 @@
           move_in_date: form.move_in_date || null,
           pm: (form.pm || '').trim(), construction_manager: (form.construction_manager || '').trim(), designer: (form.designer || '').trim(),
           progress_status: PROGRESS_STATES.includes(form.progress_status) ? form.progress_status : '준비',
+          client_id: (() => { const v = form.client_id; if (!v) return null; const n = Number(v); return (Number.isFinite(n) && String(n) === String(v)) ? n : v; })(),
         });
         setSubmitting(false);
         // ok=true 면 부모가 모달 닫음
@@ -1259,6 +1477,10 @@
             <Input label="현장 담당자" placeholder="예: 박현장" value={form.manager}
               onChange={(e) => setForm({ ...form, manager: e.target.value })} />
           </div>
+          <Select label="고객/리드 연결 (마스터)" value={form.client_id} onChange={(e) => setForm({ ...form, client_id: e.target.value })}>
+            <option value="">선택 안 함 (위 발주처에 직접 입력 가능)</option>
+            {clientOpts.map((c) => <option key={c.id} value={String(c.id)}>{c.name}{c.status ? ` · ${c.status}` : ''}</option>)}
+          </Select>
           <Input label="현장 주소" placeholder="예: 서울시 강남구 도곡로 123" value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1981,7 +2203,7 @@
             <Badge color={PROGRESS_STATUS_COLOR[site.progress_status] || 'bg-slate-400'}>{site.progress_status || '준비'}</Badge>
             {site.status && <Badge color={SITE_STATUS_COLOR[site.status] || 'bg-blue-500'}>{site.status}</Badge>}
           </div>
-          <p className="text-sm text-slate-500 mb-4">📍 {site.address || '주소 미입력'}{site.client ? ` · 발주처 ${site.client}` : ''}</p>
+          <p className="text-sm text-slate-500 mb-4">📍 {site.address || '주소 미입력'}{site.client ? ` · 발주처 ${site.client}` : ''}{site.client_name ? ` · 👤 고객 ${site.client_name}` : ''}</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {metas.map((m) => (
               <div key={m.label} className="p-3 rounded-xl bg-white border border-slate-100">
@@ -2074,6 +2296,8 @@
       { id: 'cost', label: '비용', icon: '💸' },
       { id: 'schedule', label: '일정', icon: '📅' },
       { id: 'estimate', label: '견적', icon: '📋' },
+      { id: 'orders', label: '발주', icon: '🧾' },
+      { id: 'meetings_as', label: '미팅·AS', icon: '📒' },
       { id: 'manage', label: '관리', icon: '⚙️' },
     ];
     function TabNav({ active, onChange }) {
@@ -3115,6 +3339,381 @@
     }
 
     // ========================================
+    // 🧾 발주 (현장 종속) — OrderForm + OrdersTab
+    // ========================================
+    function OrderForm({ initial, trades, vendorNames, onSave, onCancel }) {
+      const toast = useToast();
+      const [f, setF] = useState(initial ? {
+        vendor: initial.vendor || '', trade: initial.trade || '', title: initial.title || '',
+        amount: initial.amount != null ? String(initial.amount) : '', order_date: initial.order_date || '',
+        due_date: initial.due_date || '', status: ORDER_STATES.includes(initial.status) ? initial.status : '대기', memo: initial.memo || '',
+      } : { vendor: '', trade: '', title: '', amount: '', order_date: todayStr(), due_date: '', status: '대기', memo: '' });
+      const [saving, setSaving] = useState(false);
+      const submit = async (e) => {
+        e.preventDefault();
+        if (!f.title.trim()) { toast('발주 품목(내역)을 입력하세요.', 'error'); return; }
+        setSaving(true);
+        await onSave({
+          vendor: f.vendor.trim(), trade: f.trade.trim(), title: f.title.trim(),
+          amount: Math.max(0, Math.round(Number(f.amount) || 0)),
+          order_date: f.order_date || null, due_date: f.due_date || null, status: f.status, memo: f.memo.trim(),
+        });
+        setSaving(false);
+      };
+      return (
+        <form onSubmit={submit} className="space-y-4">
+          <Input label="발주 품목 / 내역 *" placeholder="예: 합판/각재 일괄 발주" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Combo label="거래처" placeholder="거래처 선택/입력" value={f.vendor} options={vendorNames} onChange={(e) => setF({ ...f, vendor: e.target.value })} />
+            <Combo label="공종" placeholder="공종 선택/입력" value={f.trade} options={trades} onChange={(e) => setF({ ...f, trade: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="발주 금액 (원)" type="number" inputMode="numeric" min="0" placeholder="예: 8000000" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
+            <Select label="상태" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
+              {ORDER_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </Select>
+            <Input label="발주일" type="date" value={f.order_date || ''} onChange={(e) => setF({ ...f, order_date: e.target.value })} />
+            <Input label="납기일" type="date" value={f.due_date || ''} onChange={(e) => setF({ ...f, due_date: e.target.value })} />
+          </div>
+          <Textarea label="메모" rows="2" placeholder="비고" value={f.memo} onChange={(e) => setF({ ...f, memo: e.target.value })} />
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button type="submit" disabled={saving}>{saving ? '저장 중...' : '저장'}</Button>
+          </div>
+        </form>
+      );
+    }
+
+    function OrdersTab({ site, vendorNames = [] }) {
+      const toast = useToast();
+      const [list, setList] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [trades, setTrades] = useState(TRADE_MASTER);
+      const [editorOpen, setEditorOpen] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [delTarget, setDelTarget] = useState(null);
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try { const d = await api.listOrders(site.id); setList(Array.isArray(d) ? d : []); }
+        catch (e) { setList([]); }
+        finally { setLoading(false); }
+      }, [site.id]);
+      useEffect(() => { reload(); }, [reload]);
+      useEffect(() => { let alive = true; api.listTrades().then((d) => { if (alive && d && d.length) setTrades(d); }).catch(() => {}); return () => { alive = false; }; }, []);
+      const total = useMemo(() => list.reduce((s, o) => s + (Number(o.amount) || 0), 0), [list]);
+      const save = async (body) => {
+        try {
+          if (editing) { await api.updateOrder(editing.id, body); toast('발주서가 수정되었습니다.', 'success'); }
+          else { await api.createOrder(site.id, body); toast('발주서가 추가되었습니다.', 'success'); }
+          setEditorOpen(false); setEditing(null); await reload();
+        } catch (e) { toast(e.status === 400 ? e.message : '저장 실패', 'error'); }
+      };
+      const confirmDel = async () => { const o = delTarget; setDelTarget(null); try { await api.removeOrder(o.id); toast('발주서가 삭제되었습니다.', 'info'); await reload(); } catch (e) { toast('삭제 실패', 'error'); } };
+      return (
+        <div className="space-y-6">
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">🧾 발주서 <span className="text-sm font-normal text-slate-400">· {site.name}</span></h2>
+                <p className="text-xs text-slate-400 mt-0.5">발주 {list.length}건 · 합계 <span className="font-bold text-slate-600">{fmtWon(total)}</span></p>
+              </div>
+              <Button size="sm" onClick={() => { setEditing(null); setEditorOpen(true); }}>+ 발주 추가</Button>
+            </div>
+            {loading ? (
+              <div className="h-32 bg-slate-100 rounded-xl animate-pulse"></div>
+            ) : list.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-10">등록된 발주서가 없습니다. <span className="text-slate-300">+ 발주 추가로 시작하세요.</span></p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                    <th className="py-2 pr-3 font-medium">발주번호</th><th className="py-2 pr-3 font-medium">거래처</th>
+                    <th className="py-2 pr-3 font-medium">공종</th><th className="py-2 pr-3 font-medium">품목/내역</th>
+                    <th className="py-2 pr-3 font-medium text-right">금액</th><th className="py-2 pr-3 font-medium">발주일</th>
+                    <th className="py-2 pr-3 font-medium">납기일</th><th className="py-2 pr-3 font-medium">상태</th>
+                    <th className="py-2 font-medium text-right">관리</th></tr></thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {list.map((o) => (
+                      <tr key={o.id}>
+                        <td className="py-2 pr-3 font-mono text-xs text-slate-500 whitespace-nowrap">{o.order_no || '-'}</td>
+                        <td className="py-2 pr-3 text-slate-600">{o.vendor || '-'}</td>
+                        <td className="py-2 pr-3">{o.trade ? <span className="text-xs px-2 py-0.5 rounded-full text-white whitespace-nowrap" style={{ backgroundColor: tradeHex(o.trade) }}>{o.trade}</span> : <span className="text-slate-300">-</span>}</td>
+                        <td className="py-2 pr-3 font-medium text-slate-700 min-w-[150px]">{o.title}{o.memo ? <span className="block text-[11px] font-normal text-slate-400 truncate max-w-[200px]">{o.memo}</span> : null}</td>
+                        <td className="py-2 pr-3 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtWon(o.amount)}</td>
+                        <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{o.order_date || '-'}</td>
+                        <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{o.due_date || '-'}</td>
+                        <td className="py-2 pr-3"><Badge color={ORDER_STATUS_COLOR[o.status] || 'bg-slate-400'}>{o.status || '대기'}</Badge></td>
+                        <td className="py-2 text-right whitespace-nowrap">
+                          <button onClick={() => { setEditing(o); setEditorOpen(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                          <button onClick={() => setDelTarget(o)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot><tr className="border-t-2 border-slate-200">
+                    <td colSpan="4" className="py-2.5 pr-3 text-right font-bold text-slate-600">합계</td>
+                    <td className="py-2.5 pr-3 text-right font-extrabold text-slate-800 whitespace-nowrap">{fmtWon(total)}</td>
+                    <td colSpan="4"></td>
+                  </tr></tfoot>
+                </table>
+              </div>
+            )}
+          </Card>
+          <Modal isOpen={editorOpen} onClose={() => { setEditorOpen(false); setEditing(null); }} title={editing ? '발주서 수정' : '새 발주서'} size="lg">
+            <OrderForm key={editing ? editing.id : 'new'} initial={editing} trades={trades} vendorNames={vendorNames} onSave={save} onCancel={() => { setEditorOpen(false); setEditing(null); }} />
+          </Modal>
+          <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="발주 삭제 확인" size="sm">
+            {delTarget && (
+              <div>
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{delTarget.title}</span>' 발주서를 삭제하시겠습니까?</p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setDelTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDel}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📒 미팅·AS (현장 종속) — MeetingForm + ASForm + MeetingsAsTab
+    // ========================================
+    function MeetingForm({ initial, onSave, onCancel }) {
+      const toast = useToast();
+      const [f, setF] = useState(initial ? {
+        meeting_date: initial.meeting_date || '', title: initial.title || '', attendees: initial.attendees || '',
+        content: initial.content || '', next_action: initial.next_action || '',
+      } : { meeting_date: todayStr(), title: '', attendees: '', content: '', next_action: '' });
+      const [saving, setSaving] = useState(false);
+      const submit = async (e) => {
+        e.preventDefault();
+        if (!f.title.trim()) { toast('제목을 입력하세요.', 'error'); return; }
+        setSaving(true);
+        await onSave({ meeting_date: f.meeting_date || null, title: f.title.trim(), attendees: f.attendees.trim(), content: f.content.trim(), next_action: f.next_action.trim() });
+        setSaving(false);
+      };
+      return (
+        <form onSubmit={submit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="미팅 일자" type="date" value={f.meeting_date || ''} onChange={(e) => setF({ ...f, meeting_date: e.target.value })} />
+            <Input label="참석자" placeholder="예: 김철수, 박현장" value={f.attendees} onChange={(e) => setF({ ...f, attendees: e.target.value })} />
+          </div>
+          <Input label="제목 *" placeholder="예: 착공 전 현장 미팅" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
+          <Textarea label="내용" rows="3" placeholder="논의 내용" value={f.content} onChange={(e) => setF({ ...f, content: e.target.value })} />
+          <Textarea label="다음 액션" rows="2" placeholder="예: 자재 샘플 발송" value={f.next_action} onChange={(e) => setF({ ...f, next_action: e.target.value })} />
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button type="submit" disabled={saving}>{saving ? '저장 중...' : '저장'}</Button>
+          </div>
+        </form>
+      );
+    }
+
+    function ASForm({ initial, staffNames, onSave, onCancel }) {
+      const toast = useToast();
+      const [f, setF] = useState(initial ? {
+        received_date: initial.received_date || '', title: initial.title || '', detail: initial.detail || '',
+        status: AS_STATES.includes(initial.status) ? initial.status : '접수', handled_date: initial.handled_date || '',
+        staff: initial.staff || '', cost: initial.cost != null ? String(initial.cost) : '',
+      } : { received_date: todayStr(), title: '', detail: '', status: '접수', handled_date: '', staff: '', cost: '' });
+      const [saving, setSaving] = useState(false);
+      const submit = async (e) => {
+        e.preventDefault();
+        if (!f.title.trim()) { toast('AS 내용(제목)을 입력하세요.', 'error'); return; }
+        setSaving(true);
+        await onSave({
+          received_date: f.received_date || null, title: f.title.trim(), detail: f.detail.trim(),
+          status: f.status, handled_date: f.handled_date || null, staff: f.staff.trim(), cost: Math.max(0, Math.round(Number(f.cost) || 0)),
+        });
+        setSaving(false);
+      };
+      return (
+        <form onSubmit={submit} className="space-y-4">
+          <Input label="AS 내용 / 제목 *" placeholder="예: 회의실 도어 흔들림" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} />
+          <Textarea label="상세 내용" rows="2" placeholder="증상/요청 상세" value={f.detail} onChange={(e) => setF({ ...f, detail: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="접수일" type="date" value={f.received_date || ''} onChange={(e) => setF({ ...f, received_date: e.target.value })} />
+            <Select label="상태" value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
+              {AS_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </Select>
+            <Input label="처리 완료일" type="date" value={f.handled_date || ''} onChange={(e) => setF({ ...f, handled_date: e.target.value })} />
+            <Combo label="담당자" placeholder="담당자 선택/입력" value={f.staff} options={staffNames} onChange={(e) => setF({ ...f, staff: e.target.value })} />
+          </div>
+          <Input label="AS 비용 (원)" type="number" inputMode="numeric" min="0" placeholder="예: 50000" value={f.cost} onChange={(e) => setF({ ...f, cost: e.target.value })} />
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button type="submit" disabled={saving}>{saving ? '저장 중...' : '저장'}</Button>
+          </div>
+        </form>
+      );
+    }
+
+    function MeetingsAsTab({ site, staffNames = [] }) {
+      const toast = useToast();
+      const [view, setView] = useState('meetings');
+      const [meetings, setMeetings] = useState([]);
+      const [asList, setAsList] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [mEditorOpen, setMEditorOpen] = useState(false);
+      const [mEditing, setMEditing] = useState(null);
+      const [mDel, setMDel] = useState(null);
+      const [aEditorOpen, setAEditorOpen] = useState(false);
+      const [aEditing, setAEditing] = useState(null);
+      const [aDel, setADel] = useState(null);
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try { const [m, a] = await Promise.all([api.listMeetings(site.id), api.listAS(site.id)]); setMeetings(Array.isArray(m) ? m : []); setAsList(Array.isArray(a) ? a : []); }
+        catch (e) { setMeetings([]); setAsList([]); }
+        finally { setLoading(false); }
+      }, [site.id]);
+      useEffect(() => { reload(); }, [reload]);
+      const asCost = useMemo(() => asList.reduce((s, a) => s + (Number(a.cost) || 0), 0), [asList]);
+      const openCount = useMemo(() => asList.filter((a) => a.status !== '완료').length, [asList]);
+      const saveMeeting = async (body) => {
+        try {
+          if (mEditing) { await api.updateMeeting(mEditing.id, body); toast('미팅이 수정되었습니다.', 'success'); }
+          else { await api.createMeeting(site.id, body); toast('미팅이 기록되었습니다.', 'success'); }
+          setMEditorOpen(false); setMEditing(null); await reload();
+        } catch (e) { toast('저장 실패', 'error'); }
+      };
+      const delMeeting = async () => { const m = mDel; setMDel(null); try { await api.removeMeeting(m.id); toast('미팅이 삭제되었습니다.', 'info'); await reload(); } catch (e) { toast('삭제 실패', 'error'); } };
+      const saveAS = async (body) => {
+        try {
+          if (aEditing) { await api.updateAS(aEditing.id, body); toast('AS가 수정되었습니다.', 'success'); }
+          else { await api.createAS(site.id, body); toast('AS가 접수되었습니다.', 'success'); }
+          setAEditorOpen(false); setAEditing(null); await reload();
+        } catch (e) { toast('저장 실패', 'error'); }
+      };
+      const delAS = async () => { const a = aDel; setADel(null); try { await api.removeAS(a.id); toast('AS가 삭제되었습니다.', 'info'); await reload(); } catch (e) { toast('삭제 실패', 'error'); } };
+      const subBtn = (id, label, badge) => (
+        <button onClick={() => setView(id)} className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${view === id ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+          {label}{badge != null && badge > 0 && <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${view === id ? 'bg-white/25' : 'bg-slate-200 text-slate-600'}`}>{badge}</span>}
+        </button>
+      );
+      return (
+        <div className="space-y-6">
+          <Card className="p-1.5">
+            <div className="flex gap-1">
+              {subBtn('meetings', '📝 미팅', meetings.length)}
+              {subBtn('as', '🛠 AS', openCount)}
+            </div>
+          </Card>
+
+          {view === 'meetings' ? (
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-slate-800">미팅 기록 <span className="text-sm font-normal text-slate-400">· {meetings.length}건</span></h2>
+                <Button size="sm" onClick={() => { setMEditing(null); setMEditorOpen(true); }}>+ 미팅 기록</Button>
+              </div>
+              {loading ? (
+                <div className="h-32 bg-slate-100 rounded-xl animate-pulse"></div>
+              ) : meetings.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">기록된 미팅이 없습니다.</p>
+              ) : (
+                <ol className="relative border-l-2 border-slate-100 ml-2 space-y-5">
+                  {meetings.map((m) => (
+                    <li key={m.id} className="ml-5">
+                      <span className="absolute -left-[7px] mt-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white"></span>
+                      <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-mono text-slate-400">{m.meeting_date || '날짜 미정'}</span>
+                              <span className="font-bold text-slate-800">{m.title}</span>
+                            </div>
+                            {m.attendees && <p className="text-xs text-slate-500 mt-1">👥 {m.attendees}</p>}
+                            {m.content && <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{m.content}</p>}
+                            {m.next_action && <p className="text-sm text-blue-600 mt-1.5">➡️ <span className="font-medium">다음 액션:</span> {m.next_action}</p>}
+                          </div>
+                          <div className="shrink-0 flex gap-1">
+                            <button onClick={() => { setMEditing(m); setMEditorOpen(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                            <button onClick={() => setMDel(m)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </Card>
+          ) : (
+            <Card className="p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">AS 관리 <span className="text-sm font-normal text-slate-400">· {asList.length}건</span></h2>
+                  <p className="text-xs text-slate-400 mt-0.5">미완료 {openCount}건 · AS 비용 합계 <span className="font-bold text-slate-600">{fmtWon(asCost)}</span></p>
+                </div>
+                <Button size="sm" onClick={() => { setAEditing(null); setAEditorOpen(true); }}>+ AS 접수</Button>
+              </div>
+              {loading ? (
+                <div className="h-32 bg-slate-100 rounded-xl animate-pulse"></div>
+              ) : asList.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">접수된 AS가 없습니다.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                      <th className="py-2 pr-3 font-medium">접수일</th><th className="py-2 pr-3 font-medium">내용</th>
+                      <th className="py-2 pr-3 font-medium">상태</th><th className="py-2 pr-3 font-medium">처리완료일</th>
+                      <th className="py-2 pr-3 font-medium">담당자</th><th className="py-2 pr-3 font-medium text-right">비용</th>
+                      <th className="py-2 font-medium text-right">관리</th></tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {asList.map((a) => (
+                        <tr key={a.id}>
+                          <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{a.received_date || '-'}</td>
+                          <td className="py-2 pr-3 font-medium text-slate-700 min-w-[150px]">{a.title}{a.detail ? <span className="block text-[11px] font-normal text-slate-400 truncate max-w-[220px]">{a.detail}</span> : null}</td>
+                          <td className="py-2 pr-3"><Badge color={AS_STATUS_COLOR[a.status] || 'bg-slate-400'}>{a.status || '접수'}</Badge></td>
+                          <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{a.handled_date || '-'}</td>
+                          <td className="py-2 pr-3 text-slate-600">{a.staff || '-'}</td>
+                          <td className="py-2 pr-3 text-right font-semibold text-slate-700 whitespace-nowrap">{a.cost ? fmtWon(a.cost) : '-'}</td>
+                          <td className="py-2 text-right whitespace-nowrap">
+                            <button onClick={() => { setAEditing(a); setAEditorOpen(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                            <button onClick={() => setADel(a)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          )}
+
+          <Modal isOpen={mEditorOpen} onClose={() => { setMEditorOpen(false); setMEditing(null); }} title={mEditing ? '미팅 수정' : '새 미팅 기록'} size="lg">
+            <MeetingForm key={mEditing ? mEditing.id : 'new'} initial={mEditing} onSave={saveMeeting} onCancel={() => { setMEditorOpen(false); setMEditing(null); }} />
+          </Modal>
+          <Modal isOpen={!!mDel} onClose={() => setMDel(null)} title="미팅 삭제 확인" size="sm">
+            {mDel && (
+              <div>
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{mDel.title}</span>' 미팅 기록을 삭제하시겠습니까?</p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setMDel(null)}>취소</Button>
+                  <Button variant="danger" onClick={delMeeting}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+          <Modal isOpen={aEditorOpen} onClose={() => { setAEditorOpen(false); setAEditing(null); }} title={aEditing ? 'AS 수정' : '새 AS 접수'} size="lg">
+            <ASForm key={aEditing ? aEditing.id : 'new'} initial={aEditing} staffNames={staffNames} onSave={saveAS} onCancel={() => { setAEditorOpen(false); setAEditing(null); }} />
+          </Modal>
+          <Modal isOpen={!!aDel} onClose={() => setADel(null)} title="AS 삭제 확인" size="sm">
+            {aDel && (
+              <div>
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{aDel.title}</span>' AS를 삭제하시겠습니까?</p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setADel(null)}>취소</Button>
+                  <Button variant="danger" onClick={delAS}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
     // 🧩 관리 (마스터, 전역)
     // ========================================
     function StaffManager({ staff, onChanged }) {
@@ -3249,6 +3848,102 @@
                 <Input label="거래처명 *" value={eForm.name} onChange={(e) => setEForm({ ...eForm, name: e.target.value })} />
                 <Combo label="구분" value={eForm.kind} options={VENDOR_KINDS} onChange={(e) => setEForm({ ...eForm, kind: e.target.value })} />
                 <Input label="연락처" value={eForm.phone} onChange={(e) => setEForm({ ...eForm, phone: e.target.value })} />
+                <Textarea label="메모" rows="2" value={eForm.memo} onChange={(e) => setEForm({ ...eForm, memo: e.target.value })} />
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" checked={eForm.active} onChange={(e) => setEForm({ ...eForm, active: e.target.checked })} /> 활성
+                </label>
+                <div className="flex gap-2 justify-end pt-1">
+                  <Button variant="secondary" onClick={() => setEditing(null)}>취소</Button>
+                  <Button onClick={saveEdit}>저장</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </Card>
+      );
+    }
+
+    // v5: 고객/리드 마스터 (staff/vendors 동형 + 검색 + status 뱃지 + source 드롭다운)
+    function ClientManager({ clients, onChanged }) {
+      const toast = useToast();
+      const [q, setQ] = useState('');
+      const [form, setForm] = useState({ name: '', phone: '', source: '', status: '리드' });
+      const [editing, setEditing] = useState(null);
+      const [eForm, setEForm] = useState({ name: '', phone: '', email: '', source: '', status: '리드', address: '', memo: '', active: true });
+      const filtered = useMemo(() => {
+        const needle = q.trim().toLowerCase();
+        if (!needle) return clients;
+        return clients.filter((c) => [c.name, c.phone, c.email, c.source, c.status].some((f) => String(f || '').toLowerCase().includes(needle)));
+      }, [clients, q]);
+      const add = async (e) => {
+        e.preventDefault();
+        if (!form.name.trim()) { toast('고객/리드명을 입력하세요.', 'error'); return; }
+        try { await api.createClient({ name: form.name.trim(), phone: form.phone.trim(), source: form.source.trim(), status: form.status }); setForm({ name: '', phone: '', source: '', status: '리드' }); toast('고객/리드 추가됨', 'success'); await onChanged(); }
+        catch (err) { toast(err.status === 400 ? err.message : '추가 실패', 'error'); }
+      };
+      const startEdit = (c) => { setEditing(c); setEForm({ name: c.name, phone: c.phone || '', email: c.email || '', source: c.source || '', status: CLIENT_STATES.includes(c.status) ? c.status : '리드', address: c.address || '', memo: c.memo || '', active: c.active !== false }); };
+      const saveEdit = async () => {
+        if (!eForm.name.trim()) { toast('고객/리드명을 입력하세요.', 'error'); return; }
+        try { await api.updateClient(editing.id, { name: eForm.name.trim(), phone: eForm.phone.trim(), email: eForm.email.trim(), source: eForm.source.trim(), status: eForm.status, address: eForm.address.trim(), memo: eForm.memo.trim(), active: eForm.active }); setEditing(null); toast('수정됨', 'success'); await onChanged(); }
+        catch (err) { toast('수정 실패', 'error'); }
+      };
+      const toggle = async (c) => { try { await api.updateClient(c.id, { active: !(c.active !== false) }); await onChanged(); } catch (e) { toast('변경 실패', 'error'); } };
+      const remove = async (c) => { try { await api.removeClient(c.id); toast('삭제됨', 'info'); await onChanged(); } catch (e) { toast('삭제 실패', 'error'); } };
+      return (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-base font-bold text-slate-800">고객/리드 마스터 <span className="text-[11px] font-normal text-slate-400">(전역 · 프로젝트가 참조)</span></h2>
+            <input className="px-3 py-2 rounded-lg border border-slate-300 text-sm w-full sm:w-56 focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="🔍 이름/연락처/출처 검색" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          <form onSubmit={add} className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr_1fr_1fr_auto] gap-2 mb-4">
+            <Input placeholder="고객/리드명 *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <Input placeholder="연락처" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Combo placeholder="출처" value={form.source} options={CLIENT_SOURCES} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+            <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+              {CLIENT_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </Select>
+            <Button type="submit">추가</Button>
+          </form>
+          {filtered.length === 0 ? <p className="text-sm text-slate-400 text-center py-6">{clients.length === 0 ? '등록된 고객/리드가 없습니다.' : '검색 결과가 없습니다.'}</p> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                  <th className="py-2 pr-3 font-medium">이름</th><th className="py-2 pr-3 font-medium">연락처</th>
+                  <th className="py-2 pr-3 font-medium">이메일</th><th className="py-2 pr-3 font-medium">출처</th>
+                  <th className="py-2 pr-3 font-medium">상태</th><th className="py-2 pr-3 font-medium">활성</th>
+                  <th className="py-2 font-medium text-right">관리</th></tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.map((c) => (
+                    <tr key={c.id} className={c.active === false ? 'opacity-50' : ''}>
+                      <td className="py-2 pr-3 font-medium text-slate-700">{c.name}</td>
+                      <td className="py-2 pr-3 text-slate-500">{c.phone || '-'}</td>
+                      <td className="py-2 pr-3 text-slate-500 truncate max-w-[160px]">{c.email || '-'}</td>
+                      <td className="py-2 pr-3 text-slate-500">{c.source || '-'}</td>
+                      <td className="py-2 pr-3"><Badge color={CLIENT_STATUS_COLOR[c.status] || 'bg-slate-400'}>{c.status || '리드'}</Badge></td>
+                      <td className="py-2 pr-3"><button onClick={() => toggle(c)}><Badge color={c.active === false ? 'bg-slate-400' : 'bg-emerald-500'}>{c.active === false ? '비활성' : '활성'}</Badge></button></td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        <button onClick={() => startEdit(c)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                        <button onClick={() => remove(c)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="고객/리드 수정" size="md">
+            {editing && (
+              <div className="space-y-3">
+                <Input label="이름 *" value={eForm.name} onChange={(e) => setEForm({ ...eForm, name: e.target.value })} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input label="연락처" value={eForm.phone} onChange={(e) => setEForm({ ...eForm, phone: e.target.value })} />
+                  <Input label="이메일" value={eForm.email} onChange={(e) => setEForm({ ...eForm, email: e.target.value })} />
+                  <Combo label="출처" value={eForm.source} options={CLIENT_SOURCES} onChange={(e) => setEForm({ ...eForm, source: e.target.value })} />
+                  <Select label="상태" value={eForm.status} onChange={(e) => setEForm({ ...eForm, status: e.target.value })}>
+                    {CLIENT_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </Select>
+                </div>
+                <Input label="주소" value={eForm.address} onChange={(e) => setEForm({ ...eForm, address: e.target.value })} />
                 <Textarea label="메모" rows="2" value={eForm.memo} onChange={(e) => setEForm({ ...eForm, memo: e.target.value })} />
                 <label className="flex items-center gap-2 text-sm text-slate-700">
                   <input type="checkbox" checked={eForm.active} onChange={(e) => setEForm({ ...eForm, active: e.target.checked })} /> 활성
@@ -3584,11 +4279,12 @@
       const [staffAll, setStaffAll] = useState([]);
       const [vendorsAll, setVendorsAll] = useState([]);
       const [catsAll, setCatsAll] = useState({ cost: [], process: [] });
+      const [clientsAll, setClientsAll] = useState([]); // v5: 고객/리드 마스터
       const staffNames = useMemo(() => staffAll.map((s) => s.name), [staffAll]);
       const reloadMasters = useCallback(async () => {
         try {
-          const [s, v, c] = await Promise.all([api.listStaff(true), api.listVendors(true), api.listCategories(true)]);
-          setStaffAll(s); setVendorsAll(v); setCatsAll(c);
+          const [s, v, c, cl] = await Promise.all([api.listStaff(true), api.listVendors(true), api.listCategories(true), api.listClients(true)]);
+          setStaffAll(s); setVendorsAll(v); setCatsAll(c); setClientsAll(cl);
         } catch (e) { /* keep */ }
         if (onMastersChanged) onMastersChanged();
       }, [onMastersChanged]);
@@ -3596,6 +4292,7 @@
       const subs = [
         { id: 'staff', label: '담당자', icon: '👷' },
         { id: 'vendors', label: '거래처', icon: '🏪' },
+        { id: 'clients', label: '고객/리드', icon: '👤' },
         { id: 'categories', label: '카테고리', icon: '🏷️' },
         { id: 'catalog', label: '단가 카탈로그', icon: '📚' },
         { id: 'sites', label: '현장 마스터', icon: '🏗️' },
@@ -3617,6 +4314,7 @@
           </Card>
           {sub === 'staff' && <StaffManager staff={staffAll} onChanged={reloadMasters} />}
           {sub === 'vendors' && <VendorManager vendors={vendorsAll} onChanged={reloadMasters} />}
+          {sub === 'clients' && <ClientManager clients={clientsAll} onChanged={reloadMasters} />}
           {sub === 'categories' && <CategoryManager cats={catsAll} onChanged={reloadMasters} />}
           {sub === 'catalog' && <CatalogManager />}
           {sub === 'sites' && <SiteMaster sites={sites} onChanged={onSitesChanged} staffNames={staffNames} />}
@@ -3948,7 +4646,7 @@
                 <div className="text-5xl mb-3">🏗️</div>
                 <h2 className="text-lg font-bold text-slate-700 mb-1">{sites.length === 0 ? '현장을 먼저 등록하세요' : '현장을 선택하세요'}</h2>
                 <p className="text-sm text-slate-400 mb-5">
-                  현장을 {sites.length === 0 ? '등록' : '선택'}하면 요약·비용·일정·견적을 관리할 수 있어요.<br />
+                  현장을 {sites.length === 0 ? '등록' : '선택'}하면 요약·비용·일정·견적·발주·미팅·AS를 관리할 수 있어요.<br />
                   담당자·거래처·카테고리 마스터는 <span className="font-semibold text-slate-500">⚙️ 관리</span> 탭에서 현장 없이도 설정할 수 있습니다.
                 </p>
                 {sites.length === 0 && <Button size="lg" onClick={() => { setEditingSite(null); setSiteModalOpen(true); }}>+ 첫 현장 등록하기</Button>}
@@ -3985,6 +4683,12 @@
                 {activeTab === 'estimate' && (
                   <EstimateTab key={'est-' + selectedSite.id} site={selectedSite} estimates={estimates} loading={detailLoading}
                     procNames={procCatNames} onChanged={() => loadSites(selectedSite.id)} onPrint={handlePrint} />
+                )}
+                {activeTab === 'orders' && (
+                  <OrdersTab key={'ord-' + selectedSite.id} site={selectedSite} vendorNames={vendorNames} />
+                )}
+                {activeTab === 'meetings_as' && (
+                  <MeetingsAsTab key={'mas-' + selectedSite.id} site={selectedSite} staffNames={staffNames} />
                 )}
               </>
             )}
