@@ -728,6 +728,16 @@
         }
       },
 
+      // ── v7: 영수증 분석 (OpenAI 비전 OCR) ──
+      // 서버 OpenAI 전용 기능 → localStorage 폴백 없음.
+      // 키없음(503)·이미지없음(400)·호출/파싱실패(502)·네트워크오류는 그대로 throw → UI 가 토스트 처리.
+      async analyzeReceipt({ image, site_id }) {
+        return this._tryFetch(`${API_BASE_URL}/receipts/analyze`, {
+          method: 'POST',
+          body: JSON.stringify({ image, site_id: site_id != null ? site_id : undefined }),
+        });
+      },
+
       async updateCost(id, body) {
         try {
           const data = await this._tryFetch(`${API_BASE_URL}/costs/${id}`, { method: 'PUT', body: JSON.stringify(body) });
@@ -1715,13 +1725,20 @@
     // ========================================
     // 🧩 비용 등록/수정 폼
     // ========================================
-    function CostForm({ onSubmit, editing, onCancelEdit, catNames = [], procNames = [], staffNames = [], vendorNames = [], scheduleOptions = [] }) {
+    function CostForm({ onSubmit, editing, onCancelEdit, siteId, catNames = [], procNames = [], staffNames = [], vendorNames = [], scheduleOptions = [] }) {
       const blank = { date: todayStr(), amount: '', category: '', process: '', manager: '', vendor: '', memo: '', schedule_id: '' };
       const [form, setForm] = useState(blank);
       const [errors, setErrors] = useState({});
       const [submitting, setSubmitting] = useState(false);
+      // v7: 영수증 카메라 자동기입
+      const toast = useToast();
+      const fileRef = useRef(null);
+      const [analyzing, setAnalyzing] = useState(false);
+      const [receipt, setReceipt] = useState(null);   // { thumb: dataURL, confidence: 0~1|null }
+      const [catFromAI, setCatFromAI] = useState(false); // 카테고리가 AI 추정값인지
 
       useEffect(() => {
+        setReceipt(null); setCatFromAI(false); // 등록↔수정 전환 시 AI 힌트 초기화
         if (editing) {
           setForm({
             date: editing.date || todayStr(), amount: String(editing.amount || ''),
@@ -1732,6 +1749,42 @@
           setErrors({});
         }
       }, [editing]);
+
+      // v7: 파일 선택 → base64 → POST /api/receipts/analyze → 폼 프리필 (서버 OpenAI 전용, 폴백 없음)
+      const handleReceiptFile = (ev) => {
+        const file = ev.target.files && ev.target.files[0];
+        ev.target.value = ''; // 같은 파일 재선택 허용
+        if (!file) return;    // 취소(미선택) graceful
+        const reader = new FileReader();
+        reader.onerror = () => toast('이미지를 읽지 못했습니다. 다시 시도하세요.', 'error');
+        reader.onload = async () => {
+          const dataUrl = reader.result; // "data:image/...;base64,..."
+          setAnalyzing(true);
+          try {
+            const r = await api.analyzeReceipt({ image: dataUrl, site_id: siteId });
+            const amt = Number(r && r.amount);
+            const dateOk = r && typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date);
+            setForm((prev) => ({
+              ...prev,
+              amount: amt > 0 ? String(Math.round(amt)) : prev.amount, // 금액 = 정확 채움
+              date: dateOk ? r.date : prev.date,                       // 날짜 = 정확 채움
+              category: r && r.category ? String(r.category) : prev.category, // 카테고리 = AI 추정
+              vendor: r && r.vendor ? String(r.vendor) : prev.vendor,
+              memo: r && r.memo ? String(r.memo) : prev.memo,
+            }));
+            setCatFromAI(!!(r && r.category));
+            setReceipt({ thumb: dataUrl, confidence: (r && typeof r.confidence === 'number') ? r.confidence : null });
+            setErrors({});
+            toast('영수증 분석 완료 — 카테고리를 확인하세요.', 'success');
+          } catch (e) {
+            // 503(키없음)·400·502·네트워크오류 모두 안내 후 수동 입력 유지
+            toast((e && e.message ? e.message + ' · ' : '') + '영수증 분석 실패 — 수동 입력하세요.', 'error');
+          } finally {
+            setAnalyzing(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      };
 
       const validate = () => {
         const e = {};
@@ -1754,7 +1807,7 @@
           schedule_id: form.schedule_id ? form.schedule_id : null,
         });
         setSubmitting(false);
-        if (ok && !editing) setForm({ ...blank, date: form.date });
+        if (ok && !editing) { setForm({ ...blank, date: form.date }); setReceipt(null); setCatFromAI(false); }
       };
 
       return (
@@ -1764,15 +1817,62 @@
             {editing && <Button variant="ghost" size="sm" onClick={onCancelEdit}>수정 취소</Button>}
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* v7: 영수증 카메라 자동기입 (OpenAI 비전 OCR) — 보조 수단, 수동 입력은 그대로 가능 */}
+            <div className="rounded-xl border border-dashed border-blue-300 bg-blue-50/60 p-4">
+              <input ref={fileRef} type="file" accept="image/*" capture="environment"
+                className="hidden" onChange={handleReceiptFile} aria-hidden="true" tabIndex={-1} />
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" variant="secondary" size="md" disabled={analyzing}
+                  onClick={() => fileRef.current && fileRef.current.click()}
+                  aria-label="영수증 촬영 또는 업로드">
+                  {analyzing ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block w-4 h-4 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" aria-hidden="true"></span>
+                      영수증 분석 중…
+                    </span>
+                  ) : '📷 영수증 촬영/업로드'}
+                </Button>
+                <span className="text-xs text-slate-500 leading-relaxed">
+                  영수증을 찍으면 <b className="text-slate-700">금액·날짜는 자동</b>으로, 카테고리는 AI가 추정해 채워요. <span className="text-slate-400">(선택 — 직접 입력도 가능)</span>
+                </span>
+              </div>
+              {receipt && (
+                <div className="mt-3 flex items-center gap-3">
+                  <img src={receipt.thumb} alt="영수증 미리보기"
+                    className="w-16 h-16 rounded-lg object-cover border border-slate-200 bg-white shrink-0" />
+                  <div className="text-xs space-y-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-emerald-600 font-semibold">✓ 분석 완료</span>
+                      {receipt.confidence != null && (
+                        <Badge color="bg-blue-500">AI 신뢰도 {Math.round(receipt.confidence * 100)}%</Badge>
+                      )}
+                    </div>
+                    <div className="text-slate-500">아래 값을 확인하고 필요하면 수정한 뒤 <b className="text-slate-700">저장</b>하세요.</div>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="날짜 *" type="date" value={form.date} error={errors.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })} />
               <Input label="금액 (원) *" type="number" inputMode="numeric" min="0" placeholder="예: 1500000"
                 value={form.amount} error={errors.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-              <Combo label="비용 카테고리 *" placeholder="선택 또는 직접 입력" value={form.category} error={errors.category}
+              <Combo
+                label={
+                  <span className="inline-flex flex-wrap items-center gap-1.5">
+                    비용 카테고리 *
+                    {catFromAI && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[11px] font-semibold border border-amber-300">
+                        🤖 AI 추정 — 확인하세요
+                      </span>
+                    )}
+                  </span>
+                }
+                placeholder="선택 또는 직접 입력" value={form.category} error={errors.category}
+                className={catFromAI ? 'ring-2 ring-amber-300 border-amber-400' : ''}
                 options={catNames.length ? catNames : COST_CATEGORIES}
-                onChange={(e) => setForm({ ...form, category: e.target.value })} />
+                onChange={(e) => { setForm({ ...form, category: e.target.value }); setCatFromAI(false); }} />
               <Combo label="공정 카테고리" placeholder="선택 또는 직접 입력 (선택)" value={form.process}
                 options={procNames.length ? procNames : PROCESS_CATEGORIES}
                 onChange={(e) => setForm({ ...form, process: e.target.value })} />
@@ -5155,7 +5255,7 @@
                 {activeTab === 'cost' && (
                   <div className="space-y-6">
                     <div ref={formRef}>
-                      <CostForm onSubmit={handleSubmitCost} editing={editingCost} onCancelEdit={() => setEditingCost(null)}
+                      <CostForm onSubmit={handleSubmitCost} editing={editingCost} onCancelEdit={() => setEditingCost(null)} siteId={selectedSite.id}
                         catNames={costCatNames} procNames={procCatNames} staffNames={staffNames} vendorNames={vendorNames} scheduleOptions={schedule} />
                     </div>
                     <div className="flex items-center justify-between">

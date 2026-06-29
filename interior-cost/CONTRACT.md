@@ -544,3 +544,31 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - **6-1**: PUT archived=true → 기본 보드에서 숨김, [완료·보관] 토글에서 보임, 복원 가능. `GET /api/sites` 는 여전히 전체+archived 필드(회귀).
 - **6-2/6-3**(프론트): 드래그 기간 프리필, 임시저장 복원/삭제, 공종 그룹 접기·페이지분할 인쇄, 일정표 PDF 출력.
 - **v1~v5 회귀 무손상**(엔드포인트/totals/탭/폴더/CSV/.ics/카탈로그/서브DB).
+
+---
+
+# v7 확장 — 영수증 카메라 자동기입 (① OpenAI 비전 OCR)
+
+> 비용 입력 시 영수증을 카메라로 촬영/업로드 → **OpenAI 비전(gpt-4o)** 이 **금액·날짜는 정확 추출**, **카테고리는 영수증 내용으로 추론(틀릴 수 있음 → 담당자가 쉽게 수정)** → 비용 폼 프리필. **v1~v6 동작/엔드포인트/UI 100% 보존**(새 엔드포인트만 추가, 새 패키지 설치 없음).
+
+## 서버 (server.js)
+- **패키지 추가 없음.** Node 18+ 내장 `fetch` 로 OpenAI REST 직접 호출. 키는 `process.env.OPENAI_API_KEY`(.env 에 이미 있음).
+- **`express.json()` 본문 한도 상향**: 영수증 base64 가 크므로 JSON 파서 `limit` 을 `'15mb'` 로(기존 미들웨어 수정; 다른 라우트 영향 없음).
+- **`POST /api/receipts/analyze`** body `{ image: "data:image/jpeg;base64,...", site_id? }`:
+  - `interior_categories`(kind='cost') 목록을 조회해 프롬프트에 포함(현재 카테고리에 맞춰 추론).
+  - OpenAI **Chat Completions**(model `gpt-4o`, `response_format {type:'json_object'}`, 이미지 = image_url 에 data URI). 시스템 지시: "한국 인테리어 현장 영수증. **amount(정수 원, 합계/총액), date(YYYY-MM-DD, 없으면 빈문자)** 는 정확히. **category 는 주어진 비용 카테고리 목록 중 가장 가까운 1개**(불명확하면 '기타'). vendor(상호), memo(주요 품목 요약), confidence(0~1)." 
+  - 응답 raw JSON `{ amount, date, category, vendor, memo, confidence, model }`. amount 는 Number(정수), date 는 'YYYY-MM-DD' 또는 ''. 
+  - **`OPENAI_API_KEY` 없으면 503** `{error:'OPENAI_API_KEY 미설정'}`. image 없으면 400. OpenAI 호출 실패/파싱 실패 502 `{error,detail}`. 
+  - **(선택) site_id 있으면** 해당 현장 `sites/<folder>/receipts/` 에 이미지 저장(파일명 `receipt-<timestamp>.jpg`, 경로탈출 방지 기존 새니타이즈 재사용). 저장 실패해도 분석 결과는 정상 반환(베스트 에포트).
+- 비용 생성(`POST /api/sites/:id/costs`)은 **기존 그대로**(영수증은 폼 프리필만; 저장은 기존 경로).
+
+## 프론트 (index.html)
+- **💸 비용 탭**의 비용 입력 영역(또는 비용 추가 모달)에 **[📷 영수증 촬영/업로드]** 버튼 + 숨김 `<input type="file" accept="image/*" capture="environment">`(모바일=후면카메라 자동).
+- 선택 시: FileReader 로 **base64** → `POST /api/receipts/analyze`(현재 선택 현장 site_id 동봉) → **"영수증 분석 중…" 로딩** → 결과로 **비용 폼 프리필**:
+  - **금액·날짜 = 정확 채움**. **카테고리 = AI 추정값 + "🤖 AI 추정 — 확인하세요" 뱃지**(노란 톤)로 강조(담당자가 드롭다운으로 쉽게 변경). vendor/memo 도 채움.
+  - **신뢰도(confidence)** 표시, **영수증 미리보기 썸네일**. 담당자가 폼을 수정 후 기존 [저장] 으로 등록.
+- 실패/키없음(503) 시 안내 토스트 + **수동 입력 폴백**(버튼은 비활성 또는 "서버 연결 필요"). 서버 OpenAI 전용 기능이라 localStorage 폴백 대상 아님(버튼만 graceful 처리).
+
+## 검증
+- 키 있으면 **합성 영수증 이미지 1장**(흰 배경에 '○○상회 / 2026-06-29 / 합계 55,000원 / 실리콘·피스' 류 텍스트를 헤드리스로 PNG 화 등)으로 **1회 실호출**(비용 최소화) → amount/date/category JSON 파싱·정수/날짜 형식 확인. 키 없으면 **503**, image 누락 **400** 구조검증.
+- 프론트: 버튼→파일선택→(목 응답)으로 폼 프리필·AI추정 뱃지·썸네일 렌더, 미선택/실패 graceful. v1~v6 회귀(8탭·기존 비용입력).

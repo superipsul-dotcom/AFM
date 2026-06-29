@@ -505,7 +505,7 @@ async function seedCatalogIfEmpty() {
 // ========================================
 // 미들웨어
 // ========================================
-app.use(express.json());
+app.use(express.json({ limit: '15mb' })); // v7: 영수증 base64(이미지)가 커서 본문 한도 상향
 app.use(express.static(path.join(__dirname))); // index.html 같은 origin 서빙
 
 // /api/* 는 처리 전 테이블 보장 (lazy init: cold start 대응 + 부팅 DB 지연 자가복구)
@@ -3458,6 +3458,195 @@ app.delete('/api/as/:id', async (req, res) => {
   } catch (err) {
     console.error('DELETE /api/as/:id 오류:', err.message);
     res.status(500).json({ success: false, message: 'AS 를 삭제하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// v7 — 영수증 OCR 분석 (POST /api/receipts/analyze) — OpenAI gpt-4o 비전
+// 금액·날짜는 정확 추출, 카테고리는 비용 카테고리 목록 기반 추론(틀릴 수 있음 → 폼에서 수정).
+// 새 패키지 없이 Node 내장 fetch 로 OpenAI Chat Completions 직접 호출. 응답은 raw JSON.
+// ========================================
+app.post('/api/receipts/analyze', async (req, res) => {
+  try {
+    const apiKey = (process.env.OPENAI_API_KEY || '').trim();
+    if (!apiKey) {
+      // 키는 절대 로그/응답에 노출하지 않는다.
+      return res.status(503).json({ error: 'OPENAI_API_KEY 미설정' });
+    }
+
+    const body = req.body || {};
+    const image = typeof body.image === 'string' ? body.image.trim() : '';
+    if (!image) {
+      return res.status(400).json({ error: 'image(영수증 data URI)는 필수입니다.' });
+    }
+
+    // 현재 비용 카테고리(kind='cost', active) 목록 → 추론 가이드로 프롬프트에 포함.
+    let catNames = [];
+    try {
+      const catQ = await pool.query(
+        "SELECT name FROM interior_categories WHERE kind='cost' AND active = TRUE ORDER BY sort_order ASC, name ASC"
+      );
+      catNames = catQ.rows.map((r) => r.name).filter(Boolean);
+    } catch (_) {
+      /* 카테고리 조회 실패 시 기본값으로 폴백 */
+    }
+    if (catNames.length === 0) {
+      catNames = ['자재비', '인건비', '장비/공구', '운반/물류', '폐기물처리', '가설/안전', '외주(하도급)', '경비(식대/유류)', '임대료', '기타'];
+    }
+
+    const systemPrompt =
+      '당신은 한국 인테리어 현장의 영수증/세금계산서 이미지를 분석하는 어시스턴트입니다. ' +
+      '이미지에서 아래 항목을 추출해 JSON 객체 하나로만 응답하세요.\n' +
+      '- amount: 합계/총액을 원(KRW) 정수로(콤마·"원" 제거, 예: 55000). 불명확하면 0.\n' +
+      '- date: 거래일자를 "YYYY-MM-DD" 형식으로. 없으면 빈 문자열 "".\n' +
+      '- category: 다음 비용 카테고리 중 영수증 내용에 가장 가까운 1개만 고르세요: [' +
+      catNames.join(', ') +
+      ']. 불명확하면 "기타".\n' +
+      '- vendor: 상호(거래처명). 없으면 "".\n' +
+      '- memo: 주요 품목 요약(짧게). 없으면 "".\n' +
+      '- confidence: 추출 신뢰도 0~1 사이 숫자.\n' +
+      '반드시 위 키들만 가진 JSON 객체로 답하세요.';
+
+    const payload = {
+      model: 'gpt-4o',
+      response_format: { type: 'json_object' },
+      max_tokens: 500,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: '이 영수증을 분석해 위 JSON 형식으로만 답하세요.' },
+            { type: 'image_url', image_url: { url: image } },
+          ],
+        },
+      ],
+    };
+
+    // OpenAI 호출 (Node 18+ 내장 fetch + 타임아웃)
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60000);
+    let apiRes;
+    try {
+      apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      const detail = e && e.name === 'AbortError' ? '응답 시간 초과(60초)' : String((e && e.message) || e);
+      return res.status(502).json({ error: 'OpenAI 호출에 실패했습니다.', detail });
+    }
+    clearTimeout(timer);
+
+    if (!apiRes.ok) {
+      let detail = `OpenAI 응답 코드 ${apiRes.status}`;
+      try {
+        const errBody = await apiRes.json();
+        if (errBody && errBody.error && errBody.error.message) detail = errBody.error.message;
+      } catch (_) {
+        /* 본문 파싱 실패는 무시하고 상태코드만 */
+      }
+      console.error('OpenAI receipts/analyze 실패 status:', apiRes.status); // 키는 로깅하지 않음
+      return res.status(502).json({ error: 'OpenAI 호출에 실패했습니다.', detail });
+    }
+
+    let apiJson;
+    try {
+      apiJson = await apiRes.json();
+    } catch (e) {
+      return res.status(502).json({ error: 'OpenAI 응답을 파싱하지 못했습니다.', detail: String((e && e.message) || e) });
+    }
+
+    const content =
+      apiJson && apiJson.choices && apiJson.choices[0] && apiJson.choices[0].message
+        ? apiJson.choices[0].message.content
+        : '';
+    if (!content) {
+      return res.status(502).json({ error: 'OpenAI 응답이 비어 있습니다.', detail: '분석 결과 없음' });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch (e) {
+      return res.status(502).json({ error: '분석 결과 JSON 파싱에 실패했습니다.', detail: String((e && e.message) || e) });
+    }
+
+    // 값 정규화 (계약: amount 정수, date 'YYYY-MM-DD'|'', category 목록 내 1개)
+    const toIntAmount = (v) => {
+      if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v);
+      if (typeof v === 'string') {
+        const digits = v.replace(/[^0-9]/g, '');
+        if (digits) return parseInt(digits, 10);
+      }
+      return 0;
+    };
+    const toYmd = (v) => {
+      if (typeof v !== 'string') return '';
+      const s = v.trim().replace(/[./]/g, '-');
+      const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!m) return '';
+      const ymd = `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
+      return isRealDate(ymd) ? ymd : '';
+    };
+
+    let category = typeof parsed.category === 'string' ? parsed.category.trim() : '';
+    if (!catNames.includes(category)) category = '기타';
+
+    let confidence = Number(parsed.confidence);
+    if (!Number.isFinite(confidence)) confidence = 0;
+    confidence = Math.max(0, Math.min(1, confidence));
+
+    const result = {
+      amount: toIntAmount(parsed.amount),
+      date: toYmd(parsed.date),
+      category,
+      vendor: typeof parsed.vendor === 'string' ? parsed.vendor.trim() : '',
+      memo: typeof parsed.memo === 'string' ? parsed.memo.trim() : '',
+      confidence,
+      model: 'gpt-4o',
+    };
+
+    // (선택, 베스트에포트) site_id 있으면 현장 폴더 sites/<folder>/receipts/ 에 이미지 저장.
+    // 저장 실패해도 분석 결과는 정상 반환(try/catch 격리).
+    const siteIdRaw = body.site_id;
+    if (siteIdRaw !== undefined && siteIdRaw !== null && siteIdRaw !== '') {
+      try {
+        const sid = parseId(siteIdRaw);
+        if (sid) {
+          const siteQ = await pool.query('SELECT name, folder FROM interior_sites WHERE id=$1', [sid]);
+          if (siteQ.rows.length > 0) {
+            const m = /^data:image\/[a-zA-Z0-9.+-]+;base64,(.+)$/.exec(image);
+            if (m) {
+              const buf = Buffer.from(m[1], 'base64');
+              let folderRel = siteQ.rows[0].folder;
+              if (!folderRel) folderRel = createSiteFolder(siteQ.rows[0].name);
+              // 경로 탈출 방어: 반드시 sites/ 하위
+              const sitesRoot = path.join(__dirname, 'sites');
+              const folderAbs = path.join(__dirname, folderRel);
+              if (folderAbs !== sitesRoot && !folderAbs.startsWith(sitesRoot + path.sep)) {
+                folderRel = createSiteFolder(siteQ.rows[0].name);
+              }
+              const receiptsDir = path.join(__dirname, folderRel, 'receipts');
+              fs.mkdirSync(receiptsDir, { recursive: true });
+              const fname = `receipt-${Date.now()}.jpg`;
+              fs.writeFileSync(path.join(receiptsDir, fname), buf);
+              result.saved = path.join(folderRel, 'receipts', fname);
+            }
+          }
+        }
+      } catch (saveErr) {
+        console.error('영수증 이미지 저장 실패(무시):', saveErr.message);
+      }
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/receipts/analyze 오류:', err.message);
+    res.status(502).json({ error: '영수증 분석 중 오류가 발생했습니다.', detail: err.message });
   }
 });
 
