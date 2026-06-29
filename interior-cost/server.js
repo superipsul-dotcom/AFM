@@ -33,6 +33,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { Pool } = require('pg');
+const archiver = require('archiver'); // (v8) 프로젝트 zip 백업 스트리밍 (유일하게 추가된 패키지)
 
 const app = express();
 
@@ -428,8 +429,30 @@ async function initDB() {
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_schedule_deps_pred ON interior_schedule_deps (predecessor_id);');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_schedule_deps_succ ON interior_schedule_deps (successor_id);');
 
+  // ====================================================================
+  // (v8) 스케치업/실측 물량 takeoff (interior_takeoff)
+  //   CREATE TABLE / CREATE INDEX IF NOT EXISTS → v1~v7 데이터 100% 보존, 멱등.
+  //   미래의 스케치업 플러그인이 물량/치수를 보내는 "받는 쪽" 구조 (지금은 수동/테스트).
+  // ====================================================================
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_takeoff (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      site_id BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      trade TEXT NOT NULL DEFAULT '',
+      name TEXT NOT NULL,
+      spec TEXT NOT NULL DEFAULT '',
+      unit TEXT NOT NULL DEFAULT '',
+      qty NUMERIC NOT NULL DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'manual',
+      source_guid TEXT NOT NULL DEFAULT '',
+      memo TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_takeoff_site ON interior_takeoff (site_id, created_at DESC);');
+
   dbInitialized = true;
-  console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as) 준비 완료 + 카테고리/카탈로그 시드.');
+  console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as/takeoff) 준비 완료 + 카테고리/카탈로그 시드.');
 }
 
 // (v3) 카탈로그가 비어 있을 때만 seed/catalog.json 을 읽어 일괄 적재 (트랜잭션). 실패해도 부팅은 계속.
@@ -3648,6 +3671,388 @@ app.post('/api/receipts/analyze', async (req, res) => {
     console.error('POST /api/receipts/analyze 오류:', err.message);
     res.status(502).json({ error: '영수증 분석 중 오류가 발생했습니다.', detail: err.message });
   }
+});
+
+// ========================================
+// (v8) 스케치업/실측 물량(takeoff) + 프로젝트 zip 백업
+//   v1~v7 동작/엔드포인트/스키마 100% 보존. 아래 라우트는 catch-all('*') 앞.
+// ========================================
+
+// takeoff SELECT 컬럼 (qty 는 rowToTakeoff 에서 Number 직렬화)
+const TAKEOFF_COLS = 'id, site_id, trade, name, spec, unit, qty, source, source_guid, memo, created_at';
+
+function rowToTakeoff(row) {
+  return {
+    id: row.id,
+    site_id: row.site_id,
+    trade: row.trade || '',
+    name: row.name,
+    spec: row.spec || '',
+    unit: row.unit || '',
+    qty: Number(row.qty), // NUMERIC → Number (물량/길이/면적)
+    source: row.source || 'manual',
+    source_guid: row.source_guid || '',
+    memo: row.memo || '',
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
+// takeoff 항목 검증. name 필수, qty≥0(기본0), source 화이트리스트('sketchup'|'manual', 기본 manual).
+function validateTakeoff(body) {
+  const b = body || {};
+  const name = typeof b.name === 'string' ? b.name.trim() : '';
+  if (!name) return { valid: false, message: 'name(품목/부재명) 은 필수입니다.' };
+
+  let qty = 0;
+  if (b.qty !== undefined && b.qty !== null && b.qty !== '') {
+    qty = Number(b.qty);
+    if (!Number.isFinite(qty) || qty < 0) {
+      return { valid: false, message: 'qty(물량) 은 0 이상의 숫자여야 합니다.' };
+    }
+  }
+
+  let source = 'manual';
+  if (typeof b.source === 'string' && b.source.trim()) {
+    source = b.source.trim() === 'sketchup' ? 'sketchup' : 'manual';
+  }
+
+  return {
+    valid: true,
+    values: {
+      trade: typeof b.trade === 'string' ? b.trade.trim() : '',
+      name,
+      spec: typeof b.spec === 'string' ? b.spec.trim() : '',
+      unit: typeof b.unit === 'string' ? b.unit.trim() : '',
+      qty,
+      source,
+      source_guid: typeof b.source_guid === 'string' ? b.source_guid.trim() : '',
+      memo: typeof b.memo === 'string' ? b.memo.trim() : '',
+    },
+  };
+}
+
+// 여러 takeoff 행을 한 번의 multi-row INSERT 로 적재 → rowToTakeoff 배열 반환.
+async function insertTakeoffRows(siteId, valsArr) {
+  if (!valsArr || valsArr.length === 0) return [];
+  const cols = ['site_id', 'trade', 'name', 'spec', 'unit', 'qty', 'source', 'source_guid', 'memo'];
+  const placeholders = [];
+  const params = [];
+  valsArr.forEach((v, i) => {
+    const base = i * cols.length;
+    placeholders.push('(' + cols.map((_, j) => '$' + (base + j + 1)).join(',') + ')');
+    params.push(siteId, v.trade, v.name, v.spec, v.unit, v.qty, v.source, v.source_guid, v.memo);
+  });
+  const { rows } = await pool.query(
+    `INSERT INTO interior_takeoff (${cols.join(', ')}) VALUES ${placeholders.join(', ')} RETURNING ${TAKEOFF_COLS}`,
+    params
+  );
+  return rows.map(rowToTakeoff);
+}
+
+// GET /api/sites/:id/takeoff — 현장 물량 목록 (created_at DESC)
+app.get('/api/sites/:id/takeoff', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${TAKEOFF_COLS} FROM interior_takeoff WHERE site_id=$1 ORDER BY created_at DESC, id DESC`,
+      [id]
+    );
+    res.json(rows.map(rowToTakeoff));
+  } catch (err) {
+    console.error('GET /api/sites/:id/takeoff 오류:', err.message);
+    res.status(500).json({ success: false, message: '물량 목록을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/takeoff — 단건 {..} 또는 배치 {items:[..]} → 201
+app.post('/api/sites/:id/takeoff', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+
+    const site = await pool.query('SELECT id FROM interior_sites WHERE id=$1', [id]);
+    if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+    const body = req.body || {};
+    const isBatch = Array.isArray(body.items);
+    const rawItems = isBatch ? body.items : [body];
+    if (rawItems.length === 0) return res.status(400).json({ success: false, message: '저장할 물량 항목이 없습니다.' });
+
+    const vals = [];
+    for (const it of rawItems) {
+      const check = validateTakeoff(it);
+      if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+      vals.push(check.values);
+    }
+
+    const inserted = await insertTakeoffRows(id, vals);
+    // 단건 요청 → 객체, 배치 요청 → 배열 (orders 등 단건 객체 규약과 일관)
+    res.status(201).json(isBatch ? inserted : inserted[0]);
+  } catch (err) {
+    console.error('POST /api/sites/:id/takeoff 오류:', err.message);
+    res.status(500).json({ success: false, message: '물량을 저장하지 못했습니다.' });
+  }
+});
+
+// PUT /api/takeoff/:id — 물량 수정
+app.put('/api/takeoff/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 물량 id 형식입니다.' });
+    const check = validateTakeoff(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+    const { rows } = await pool.query(
+      `UPDATE interior_takeoff
+       SET trade=$1, name=$2, spec=$3, unit=$4, qty=$5, source=$6, source_guid=$7, memo=$8
+       WHERE id=$9 RETURNING ${TAKEOFF_COLS}`,
+      [v.trade, v.name, v.spec, v.unit, v.qty, v.source, v.source_guid, v.memo, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 물량 항목을 찾을 수 없습니다.' });
+    res.json(rowToTakeoff(rows[0]));
+  } catch (err) {
+    console.error('PUT /api/takeoff/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '물량을 수정하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/takeoff/:id
+app.delete('/api/takeoff/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 물량 id 형식입니다.' });
+    const { rowCount } = await pool.query('DELETE FROM interior_takeoff WHERE id=$1', [id]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 물량 항목을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/takeoff/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '물량을 삭제하지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/import/sketchup — 스케치업 물량 일괄 import (전부 source='sketchup')
+//   body {items:[{trade,name,spec?,unit?,qty,source_guid?}]} → {imported:n, items:[...]}
+//   이 JSON 포맷이 스케치업↔앱 계약(물량/치수만; 단가·내용은 앱에서 입력).
+//   NOTE: source_guid 멱등(있으면 update)은 향후 플러그인 연동 시 도입 — 지금은 단순 일괄 insert.
+app.post('/api/sites/:id/import/sketchup', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+
+    const site = await pool.query('SELECT id FROM interior_sites WHERE id=$1', [id]);
+    if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+    const body = req.body || {};
+    if (!Array.isArray(body.items) || body.items.length === 0) {
+      return res.status(400).json({ success: false, message: 'items 배열(스케치업 물량) 이 필요합니다.' });
+    }
+
+    const vals = [];
+    for (const it of body.items) {
+      const check = validateTakeoff(it);
+      if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+      const v = check.values;
+      v.source = 'sketchup'; // 출처 강제
+      vals.push(v);
+    }
+
+    const inserted = await insertTakeoffRows(id, vals);
+    res.status(201).json({ imported: inserted.length, items: inserted });
+  } catch (err) {
+    console.error('POST /api/sites/:id/import/sketchup 오류:', err.message);
+    res.status(500).json({ success: false, message: '스케치업 물량을 가져오지 못했습니다.' });
+  }
+});
+
+// ----------------------------------------
+// (v8) 백업 데이터 수집 — 기존 도메인 SELECT/COLS/rowTo*/computeTotals 를 그대로 재사용.
+//   현장 없으면 null. 이 객체가 data.json 본문이 된다.
+// ----------------------------------------
+async function buildSiteBackup(siteId) {
+  const siteQ = await pool.query(`SELECT ${SITE_COLS} FROM interior_sites WHERE id=$1`, [siteId]);
+  if (siteQ.rows.length === 0) return null;
+  const site = rowToSite(siteQ.rows[0]);
+
+  // costs (GET /costs 와 동일)
+  const costsQ = await pool.query(
+    `SELECT ${COST_COLS} FROM interior_costs WHERE site_id=$1 ORDER BY date DESC, created_at DESC`,
+    [siteId]
+  );
+  const costs = costsQ.rows.map(rowToCost);
+
+  // schedule + deps (GET /schedule 와 동일 — N+1 없이 dep 1회 조회 매핑)
+  const schQ = await pool.query(
+    `SELECT ${SCHEDULE_SELECT_COLS} FROM interior_schedule s WHERE s.site_id=$1
+     ORDER BY s.start_date ASC, s.sort_order ASC, s.id ASC`,
+    [siteId]
+  );
+  const schedules = schQ.rows.map(rowToSchedule);
+  const schIds = schedules.map((s) => s.id);
+  const predMap = {};
+  const succMap = {};
+  if (schIds.length > 0) {
+    const depQ = await pool.query(
+      `SELECT predecessor_id, successor_id FROM interior_schedule_deps
+       WHERE predecessor_id = ANY($1::bigint[]) OR successor_id = ANY($1::bigint[])`,
+      [schIds]
+    );
+    for (const d of depQ.rows) {
+      const p = String(d.predecessor_id);
+      const su = String(d.successor_id);
+      (succMap[p] = succMap[p] || []).push(su);
+      (predMap[su] = predMap[su] || []).push(p);
+    }
+  }
+  const schedule = schedules.map((s) => ({ ...s, predecessors: predMap[s.id] || [], successors: succMap[s.id] || [] }));
+
+  // estimates + items + totals (GET /estimates/:id 와 동일)
+  const estQ = await pool.query(
+    `SELECT ${ESTIMATE_COLS} FROM interior_estimates WHERE site_id=$1 ORDER BY created_at DESC, id DESC`,
+    [siteId]
+  );
+  const estimates = [];
+  for (const r of estQ.rows) {
+    const est = rowToEstimate(r);
+    const itemsQ = await pool.query(
+      `SELECT ${ITEM_COLS} FROM interior_estimate_items WHERE estimate_id=$1 ORDER BY sort_order ASC, id ASC`,
+      [est.id]
+    );
+    const items = itemsQ.rows.map(rowToItem);
+    const totals = computeTotals(est, items);
+    estimates.push({ ...est, items, totals });
+  }
+
+  // orders / meetings / as (각 GET 과 동일)
+  const ordersQ = await pool.query(
+    `SELECT ${ORDER_COLS} FROM interior_orders WHERE site_id=$1 ORDER BY order_date DESC NULLS LAST, id DESC`,
+    [siteId]
+  );
+  const orders = ordersQ.rows.map(rowToOrder);
+
+  const meetingsQ = await pool.query(
+    `SELECT ${MEETING_COLS} FROM interior_meetings WHERE site_id=$1 ORDER BY meeting_date DESC NULLS LAST, id DESC`,
+    [siteId]
+  );
+  const meetings = meetingsQ.rows.map(rowToMeeting);
+
+  const asQ = await pool.query(
+    `SELECT ${AS_COLS} FROM interior_as WHERE site_id=$1 ORDER BY received_date DESC NULLS LAST, id DESC`,
+    [siteId]
+  );
+  const as = asQ.rows.map(rowToAS);
+
+  // takeoff (v8)
+  const takeoffQ = await pool.query(
+    `SELECT ${TAKEOFF_COLS} FROM interior_takeoff WHERE site_id=$1 ORDER BY created_at DESC, id DESC`,
+    [siteId]
+  );
+  const takeoff = takeoffQ.rows.map(rowToTakeoff);
+
+  return { site, costs, schedule, estimates, orders, meetings, as, takeoff, exportedAt: new Date().toISOString() };
+}
+
+// 백업 README.txt (한글 요약)
+function buildBackupReadme(backup) {
+  const s = backup.site;
+  const L = [];
+  L.push('인테리어 현장 프로젝트 백업');
+  L.push('========================================');
+  L.push(`현장명     : ${s.name}`);
+  L.push(`주소       : ${s.address || '-'}`);
+  L.push(`고객/발주처 : ${s.client || '-'}`);
+  L.push(`진행상태   : ${s.progress_status || '-'}`);
+  L.push(`백업일시   : ${backup.exportedAt}`);
+  L.push('');
+  L.push('[포함 항목 요약]');
+  L.push(`- 비용 내역(costs)   : ${backup.costs.length} 건`);
+  L.push(`- 일정(schedule)     : ${backup.schedule.length} 건`);
+  L.push(`- 견적서(estimates)  : ${backup.estimates.length} 건`);
+  L.push(`- 발주서(orders)     : ${backup.orders.length} 건`);
+  L.push(`- 미팅(meetings)     : ${backup.meetings.length} 건`);
+  L.push(`- AS(as)             : ${backup.as.length} 건`);
+  L.push(`- 물량(takeoff)      : ${backup.takeoff.length} 건`);
+  L.push('');
+  L.push('[파일 구성]');
+  L.push('- data.json  : 현장 전체 데이터(JSON)');
+  L.push('- receipts/  : 영수증 이미지(있는 경우)');
+  L.push('- README.txt : 본 안내 파일');
+  L.push('');
+  L.push('※ data.json 은 보관용이며, 앱에서 다시 참조할 수 있습니다.');
+  return L.join('\n');
+}
+
+// GET /api/sites/:id/backup.zip — 현장 전체를 zip 스트림으로 다운로드
+app.get('/api/sites/:id/backup.zip', async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+
+  let backup;
+  try {
+    backup = await buildSiteBackup(id);
+  } catch (err) {
+    console.error('GET /api/sites/:id/backup.zip 데이터 수집 오류:', err.message);
+    return res.status(500).json({ success: false, message: '백업 데이터를 수집하지 못했습니다.' });
+  }
+  if (!backup) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+  const site = backup.site;
+  const dateStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const downloadBase = `${site.name}-backup-${dateStr}.zip`;
+  // 현장명 ASCII 안전 처리(헤더값) + filename* 로 UTF-8 원본도 전달.
+  const asciiName =
+    downloadBase.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_') || `backup-${dateStr}.zip`;
+
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(downloadBase)}`
+  );
+
+  const archive = archiver('zip', { zlib: { level: 9 } });
+
+  archive.on('warning', (err) => {
+    console.warn('backup.zip archiver 경고:', err && err.message);
+  });
+  archive.on('error', (err) => {
+    console.error('backup.zip archiver 오류:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'zip 생성 중 오류가 발생했습니다.' });
+    } else {
+      try {
+        res.destroy(err);
+      } catch (_) {
+        /* noop */
+      }
+    }
+  });
+
+  archive.pipe(res);
+
+  // 1) data.json — 현장 전체 데이터
+  archive.append(JSON.stringify(backup, null, 2), { name: 'data.json' });
+  // 2) README.txt — 한글 요약
+  archive.append(buildBackupReadme(backup), { name: 'README.txt' });
+
+  // 3) receipts/ — sites/<folder>/receipts/ 의 파일 전부 (있으면; 경로탈출 가드)
+  try {
+    const folderRel = site.folder || path.join('sites', sanitizeSiteName(site.name));
+    const sitesRoot = path.join(__dirname, 'sites');
+    const receiptsAbs = path.join(__dirname, folderRel, 'receipts');
+    // 반드시 sites/ 하위여야 포함 (경로 탈출 방어)
+    const underSites = receiptsAbs === sitesRoot || receiptsAbs.startsWith(sitesRoot + path.sep);
+    if (underSites && fs.existsSync(receiptsAbs) && fs.statSync(receiptsAbs).isDirectory()) {
+      for (const ent of fs.readdirSync(receiptsAbs, { withFileTypes: true })) {
+        if (ent.isFile()) {
+          archive.file(path.join(receiptsAbs, ent.name), { name: path.join('receipts', ent.name) });
+        }
+      }
+    }
+  } catch (rErr) {
+    console.warn('backup.zip receipts 포함 실패(무시):', rErr.message);
+  }
+
+  archive.finalize();
 });
 
 // ========================================

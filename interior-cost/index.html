@@ -139,6 +139,7 @@
     // v3: 실무 견적 엔진 (공종 · 3분할단가 · 원가계산서 · 단가 카탈로그)
     // ──────────────────────────────────────────
     const CATALOG_KEY = 'interior_catalog_v1';
+    const TAKEOFF_KEY = 'interior_takeoff_v1'; // v8 스케치업/실측 물량(takeoff) 폴백
     // 공종 마스터 21종 (서버 TRADE_MASTER / catalog.json.trade_master 와 1:1)
     const TRADE_MASTER = ['가설공사', '철거공사', '창호공사', '단열/기밀공사', '설비공사', '방수공사', '경량공사', '목공사', '전기공사', '에어컨공사', '공조공사', '금속공사', '유리공사', '타일공사', '도장공사', '도배공사', '필름공사', '화장실셋팅공사', '바닥공사', '가구공사', '기타공사'];
     // 공종 색상 (소계/배지용)
@@ -385,6 +386,7 @@
     const scheduleDepsStore = makeStore(SCHEDULE_DEPS_KEY); // v6-4 [{id, predecessor_id, successor_id, created_at}]
     const estimatesStore = makeStore(ESTIMATES_KEY);
     const catalogStore = makeStore(CATALOG_KEY); // v3 단가 카탈로그
+    const takeoffStore = makeStore(TAKEOFF_KEY); // v8 스케치업/실측 물량(takeoff)
     // v5: 노션 관계형 서브-DB 스토어 (고객/리드 · 발주 · 미팅 · AS)
     const clientsStore = makeStore(CLIENTS_KEY);
     const ordersStore = makeStore(ORDERS_KEY);
@@ -783,6 +785,7 @@
       // 서버 모드면 서버 URL로 다운로드, 폴백이면 Blob 생성하도록 정보 반환
       exportUrl(siteId) { return `${API_BASE_URL}/sites/${siteId}/export`; },
       scheduleIcsUrl(siteId) { return `${API_BASE_URL}/sites/${siteId}/schedule.ics`; },
+      backupUrl(siteId) { return `${API_BASE_URL}/sites/${siteId}/backup.zip`; }, // v8 프로젝트 zip 백업(서버 전용)
 
       // ════════ v2: 담당자 (staff) ════════
       async listStaff(all) {
@@ -1178,6 +1181,51 @@
       async removeCatalog(id) {
         try { await this._tryFetch(`${API_BASE_URL}/catalog/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
         catch (e) { if (e.status) throw e; this._useMock = true; catalogStore.write(ensureCatalog().filter((c) => String(c.id) !== String(id))); return { success: true }; }
+      },
+
+      // ════════ v8: 스케치업/실측 물량 (takeoff) ════════
+      async listTakeoff(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/takeoff`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          return takeoffStore.read().filter((x) => String(x.site_id) === String(siteId))
+            .map((x) => ({ ...x, qty: Number(x.qty) || 0 }))
+            .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+        }
+      },
+      // 단건 {trade?,name,spec?,unit?,qty?,source?,source_guid?,memo?} 또는 배치 {items:[...]} (CONTRACT v8)
+      async createTakeoff(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/takeoff`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const mk = (b) => ({
+            id: uid(), site_id: siteId, trade: b.trade || '', name: String(b.name || '').trim(), spec: b.spec || '',
+            unit: b.unit || '', qty: Number(b.qty) || 0, source: b.source || 'manual', source_guid: b.source_guid || '',
+            memo: b.memo || '', created_at: new Date().toISOString(),
+          });
+          if (Array.isArray(body && body.items)) {
+            const rows = body.items.filter((b) => String(b.name || '').trim()).map(mk);
+            takeoffStore.write([...takeoffStore.read(), ...rows]);
+            return { imported: rows.length, items: rows };
+          }
+          if (!String(body.name || '').trim()) { const err = new Error('품목명은 필수입니다.'); err.status = 400; throw err; }
+          const item = mk(body);
+          takeoffStore.write([...takeoffStore.read(), item]);
+          return item;
+        }
+      },
+      async updateTakeoff(id, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/takeoff/${id}`, { method: 'PUT', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const patch = { ...body }; if (patch.qty != null) patch.qty = Number(patch.qty) || 0;
+          const next = takeoffStore.read().map((x) => (String(x.id) === String(id) ? { ...x, ...patch } : x));
+          takeoffStore.write(next); return next.find((x) => String(x.id) === String(id));
+        }
+      },
+      async removeTakeoff(id) {
+        try { await this._tryFetch(`${API_BASE_URL}/takeoff/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; takeoffStore.write(takeoffStore.read().filter((x) => String(x.id) !== String(id))); return { success: true }; }
       },
 
       // ════════ v5: 고객/리드 (clients) — 전역 마스터 (staff/vendors 동형) ════════
@@ -2402,7 +2450,16 @@
 
     // 📊 요약 상단 프로젝트 헤더 카드 (노션 프로젝트 페이지 상단 느낌)
     function ProjectHeader({ site }) {
+      const toast = useToast();
       if (!site) return null;
+      // (v8) 프로젝트 전체 zip 백업 — 서버 전용(폴백은 안내 토스트)
+      const handleBackup = () => {
+        if (api._useMock) { toast('프로젝트 백업(zip)은 서버 연결이 필요합니다.', 'info'); return; }
+        const a = document.createElement('a');
+        a.href = api.backupUrl(site.id); // 서버 Content-Disposition(attachment)으로 파일명 지정
+        document.body.appendChild(a); a.click(); a.remove();
+        toast('프로젝트 백업(zip) 다운로드를 시작합니다.', 'success');
+      };
       const period = site.start_date ? `${site.start_date} ~ ${site.end_date || '미정'}` : '미정';
       const metas = [
         { label: '건물종류', value: site.building_type || '-' },
@@ -2417,10 +2474,14 @@
       ];
       return (
         <Card className="p-5 bg-gradient-to-br from-slate-50 to-white">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h2 className="text-xl font-extrabold text-slate-800 break-words">{site.name}</h2>
-            <Badge color={PROGRESS_STATUS_COLOR[site.progress_status] || 'bg-slate-400'}>{site.progress_status || '준비'}</Badge>
-            {site.status && <Badge color={SITE_STATUS_COLOR[site.status] || 'bg-blue-500'}>{site.status}</Badge>}
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <h2 className="text-xl font-extrabold text-slate-800 break-words">{site.name}</h2>
+              <Badge color={PROGRESS_STATUS_COLOR[site.progress_status] || 'bg-slate-400'}>{site.progress_status || '준비'}</Badge>
+              {site.status && <Badge color={SITE_STATUS_COLOR[site.status] || 'bg-blue-500'}>{site.status}</Badge>}
+            </div>
+            <Button size="sm" variant="secondary" onClick={handleBackup} className="shrink-0"
+              title="이 현장의 전체 데이터(비용·일정·견적·발주·미팅·AS·물량·영수증)를 zip으로 백업합니다.">💾 프로젝트 백업(zip)</Button>
           </div>
           <p className="text-sm text-slate-500 mb-4">📍 {site.address || '주소 미입력'}{site.client ? ` · 발주처 ${site.client}` : ''}{site.client_name ? ` · 👤 고객 ${site.client_name}` : ''}</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
@@ -3224,6 +3285,87 @@
       );
     }
 
+    // (v8) 물량(takeoff) 불러오기 모달 — 현재 현장 물량 목록 다중 선택 → 견적 행으로 추가
+    function TakeoffPickerModal({ isOpen, onClose, siteId, onAdd }) {
+      const [list, setList] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [sel, setSel] = useState(() => new Set());
+      const [q, setQ] = useState('');
+      useEffect(() => {
+        if (!isOpen) { setSel(new Set()); setQ(''); return; }
+        let alive = true; setLoading(true);
+        api.listTakeoff(siteId)
+          .then((d) => { if (alive) setList(Array.isArray(d) ? d : []); })
+          .catch(() => { if (alive) setList([]); })
+          .finally(() => { if (alive) setLoading(false); });
+        return () => { alive = false; };
+      }, [isOpen, siteId]);
+      const filtered = useMemo(() => {
+        const n = q.trim().toLowerCase();
+        if (!n) return list;
+        return list.filter((t) => [t.name, t.trade, t.spec, t.unit].some((f) => String(f || '').toLowerCase().includes(n)));
+      }, [list, q]);
+      const toggle = (id) => setSel((s) => { const x = new Set(s); x.has(id) ? x.delete(id) : x.add(id); return x; });
+      const allSel = filtered.length > 0 && filtered.every((t) => sel.has(t.id));
+      const toggleAll = () => setSel((s) => { const x = new Set(s); if (allSel) filtered.forEach((t) => x.delete(t.id)); else filtered.forEach((t) => x.add(t.id)); return x; });
+      const confirm = () => { const picked = list.filter((t) => sel.has(t.id)); onAdd(picked); };
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="📐 물량 불러오기 (스케치업·실측)" size="xl">
+          <div className="space-y-3">
+            <p className="text-[11px] text-slate-400">선택한 물량을 견적 행으로 추가합니다. 공종/품목/규격/단위/수량이 채워지고 <b>단가는 카탈로그/수동 입력</b>으로 넣으세요.</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="품목·공종·규격 검색"
+                className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+              {filtered.length > 0 && (
+                <button type="button" onClick={toggleAll} className="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm text-slate-600 whitespace-nowrap">
+                  {allSel ? '전체 해제' : '전체 선택'}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span>{loading ? '불러오는 중…' : `${fmtNum(filtered.length)}개 물량`}</span>
+              <span>{sel.size > 0 ? `${sel.size}개 선택됨` : '항목을 체크하세요'}</span>
+            </div>
+            <div className="border border-slate-100 rounded-xl overflow-hidden">
+              {loading ? (
+                <div className="p-8 text-center text-sm text-slate-400">불러오는 중…</div>
+              ) : filtered.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-400">
+                  {list.length === 0 ? '등록된 물량이 없습니다. 아래 “물량 산출(Takeoff)” 섹션에서 추가하거나 스케치업에서 가져오세요.' : '검색 결과가 없습니다.'}
+                </div>
+              ) : (
+                <ul className="divide-y divide-slate-100 max-h-[46vh] overflow-y-auto">
+                  {filtered.map((t) => {
+                    const on = sel.has(t.id);
+                    return (
+                      <li key={t.id}>
+                        <button type="button" onClick={() => toggle(t.id)} className={`w-full text-left px-3 py-2.5 transition flex items-center gap-3 ${on ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                          <input type="checkbox" readOnly checked={on} className="w-4 h-4 shrink-0 accent-blue-600 pointer-events-none" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {t.trade && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white shrink-0" style={{ backgroundColor: tradeHex(t.trade) }}>{t.trade}</span>}
+                              <span className="font-medium text-slate-800 truncate">{t.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${t.source === 'sketchup' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>{t.source === 'sketchup' ? '스케치업' : '수기'}</span>
+                            </div>
+                            {(t.spec || t.memo) && <p className="mt-0.5 text-[11px] text-slate-400 truncate">{[t.spec, t.memo].filter(Boolean).join(' · ')}</p>}
+                          </div>
+                          <span className="font-bold text-slate-700 shrink-0 whitespace-nowrap">{fmtNum(t.qty)} {t.unit || ''}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" onClick={onClose}>닫기</Button>
+              <Button onClick={confirm} disabled={sel.size === 0}>선택한 {sel.size > 0 ? sel.size + '개 ' : ''}견적 행으로 추가</Button>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
     // (v3) 공종별 그룹 소계 (총괄표)
     function TradeSubtotals({ items }) {
       const groups = useMemo(() => {
@@ -3399,6 +3541,7 @@
       );
       const [saving, setSaving] = useState(false);
       const [picker, setPicker] = useState({ open: false, targetIdx: null });
+      const [takeoffOpen, setTakeoffOpen] = useState(false); // v8 물량 불러오기 모달
       const setItem = (idx, patch) => setItems((arr) => arr.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
       const addRow = () => setItems((arr) => [...arr, mk()]);
       const delRow = (idx) => setItems((arr) => (arr.length <= 1 ? [mk()] : arr.filter((_, i) => i !== idx)));
@@ -3418,6 +3561,21 @@
           setItem(picker.targetIdx, patch);
           setPicker({ open: false, targetIdx: null });
         }
+      };
+      // (v8) 물량(takeoff) 선택 항목들 → 견적 행으로 추가 (단가는 0/수동 — 카탈로그·직접입력으로 채움)
+      const addTakeoffRows = (picked) => {
+        setTakeoffOpen(false);
+        if (!picked || !picked.length) return;
+        setItems((arr) => [
+          ...arr,
+          ...picked.map((t) => ({
+            _k: uid(), trade: t.trade || '', name: t.name || '', spec: t.spec || '', unit: t.unit || '',
+            qty: String(t.qty != null ? t.qty : ''),
+            material_price: '', labor_price: '', sub_price: '', // 단가 미정 → 수동/카탈로그 입력
+            memo: t.memo || '', catalog_id: null,
+          })),
+        ]);
+        toast(`물량 ${picked.length}개를 견적 행으로 추가했습니다. 단가를 입력하세요.`, 'success');
       };
       const parseItem = (it, i) => {
         const m = Math.round(Number(it.material_price) || 0), l = Math.round(Number(it.labor_price) || 0), s = Math.round(Number(it.sub_price) || 0);
@@ -3563,6 +3721,7 @@
               <h3 className="text-sm font-bold text-slate-700">견적 항목 <span className="text-[11px] font-normal text-slate-400">공종별 그룹 · 재료/노무/부자재 3분할</span></h3>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="ghost" onClick={saveDraftManual}>💾 임시저장</Button>
+                <Button size="sm" variant="secondary" onClick={() => setTakeoffOpen(true)}>📐 물량 불러오기</Button>
                 <Button size="sm" variant="secondary" onClick={() => setPicker({ open: true, targetIdx: null })}>📚 단가 카탈로그</Button>
                 <Button size="sm" variant="secondary" onClick={addRow}>+ 행 추가</Button>
               </div>
@@ -3680,6 +3839,8 @@
 
           <CatalogPickerModal isOpen={picker.open} onClose={() => setPicker({ open: false, targetIdx: null })}
             trades={trades} mode={picker.targetIdx == null ? 'append' : 'replace'} onPick={pickCatalog} />
+          <TakeoffPickerModal isOpen={takeoffOpen} onClose={() => setTakeoffOpen(false)}
+            siteId={site && site.id} onAdd={addTakeoffRows} />
         </div>
       );
     }
@@ -3842,6 +4003,138 @@
     }
 
     // 🧩 견적 탭
+    // ========================================
+    // 📐 물량 산출(Takeoff) — 수동 CRUD (스케치업 연동 전 직접 입력)
+    // ========================================
+    function TakeoffForm({ initial, trades, onSave, onCancel }) {
+      const toast = useToast();
+      const [f, setF] = useState(initial ? {
+        trade: initial.trade || '', name: initial.name || '', spec: initial.spec || '', unit: initial.unit || '',
+        qty: initial.qty != null ? String(initial.qty) : '', source: initial.source || 'manual', memo: initial.memo || '',
+      } : { trade: '', name: '', spec: '', unit: '', qty: '', source: 'manual', memo: '' });
+      const [saving, setSaving] = useState(false);
+      const submit = async (e) => {
+        e.preventDefault();
+        if (!f.name.trim()) { toast('품목/부재명을 입력하세요.', 'error'); return; }
+        setSaving(true);
+        await onSave({
+          trade: f.trade.trim(), name: f.name.trim(), spec: f.spec.trim(), unit: f.unit.trim(),
+          qty: Math.max(0, Number(f.qty) || 0), source: f.source || 'manual', memo: f.memo.trim(),
+        });
+        setSaving(false);
+      };
+      return (
+        <form onSubmit={submit} className="space-y-4">
+          <Input label="품목 / 부재명 *" placeholder="예: 강마루, 석고보드 2겹, 천장 몰딩" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Combo label="공종" placeholder="공종 선택/입력" value={f.trade} options={trades} onChange={(e) => setF({ ...f, trade: e.target.value })} />
+            <Input label="규격 / 치수" placeholder="예: 12T, 600x600" value={f.spec} onChange={(e) => setF({ ...f, spec: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input label="단위" placeholder="M2 / M / EA / 식" value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} />
+            <Input label="물량(수량) *" type="number" inputMode="decimal" min="0" step="any" placeholder="예: 84.5" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} />
+            <Select label="출처" value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })}>
+              <option value="manual">수기(실측/직접입력)</option>
+              <option value="sketchup">스케치업</option>
+            </Select>
+          </div>
+          <Textarea label="메모" rows="2" placeholder="비고" value={f.memo} onChange={(e) => setF({ ...f, memo: e.target.value })} />
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button type="submit" disabled={saving}>{saving ? '저장 중...' : '저장'}</Button>
+          </div>
+        </form>
+      );
+    }
+
+    function TakeoffSection({ site, trades }) {
+      const toast = useToast();
+      const [open, setOpen] = useState(false); // 접이식 — 기본 접힘(기존 견적 UX 보존)
+      const [list, setList] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [editorOpen, setEditorOpen] = useState(false);
+      const [editing, setEditing] = useState(null);
+      const [delTarget, setDelTarget] = useState(null);
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try { const d = await api.listTakeoff(site.id); setList(Array.isArray(d) ? d : []); }
+        catch (e) { setList([]); }
+        finally { setLoading(false); }
+      }, [site.id]);
+      useEffect(() => { reload(); }, [reload]);
+      const save = async (body) => {
+        try {
+          if (editing) { await api.updateTakeoff(editing.id, body); toast('물량이 수정되었습니다.', 'success'); }
+          else { await api.createTakeoff(site.id, body); toast('물량이 추가되었습니다.', 'success'); }
+          setEditorOpen(false); setEditing(null); await reload();
+        } catch (e) { toast(e.status === 400 ? e.message : '저장 실패', 'error'); }
+      };
+      const confirmDel = async () => {
+        const t = delTarget; setDelTarget(null);
+        try { await api.removeTakeoff(t.id); toast('물량이 삭제되었습니다.', 'info'); await reload(); }
+        catch (e) { toast('삭제 실패', 'error'); }
+      };
+      return (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 min-w-0 text-left">
+              <span className="text-slate-400 text-xs w-3 shrink-0">{open ? '▼' : '▶'}</span>
+              <h2 className="text-base font-bold text-slate-800">📐 물량 산출 (Takeoff) <span className="text-sm font-normal text-slate-400">· 스케치업/실측</span></h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 shrink-0">{list.length}건</span>
+            </button>
+            <Button size="sm" variant="secondary" onClick={() => { setOpen(true); setEditing(null); setEditorOpen(true); }}>+ 물량 추가</Button>
+          </div>
+          {!open ? (
+            <p className="mt-2 text-xs text-slate-400">스케치업/실측 물량을 입력해 두면 견적 에디터의 <b>📐 물량 불러오기</b>로 견적 행에 바로 채울 수 있어요.</p>
+          ) : loading ? (
+            <div className="mt-4 h-24 bg-slate-100 rounded-xl animate-pulse"></div>
+          ) : list.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-400 text-center py-8">등록된 물량이 없습니다. <span className="text-slate-300">+ 물량 추가로 시작하세요.</span><br /><span className="text-[11px]">향후 스케치업 플러그인이 보낸 물량은 source=스케치업으로 표시됩니다.</span></p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                  <th className="py-2 pr-3 font-medium">공종</th><th className="py-2 pr-3 font-medium">품목/부재</th>
+                  <th className="py-2 pr-3 font-medium">규격</th><th className="py-2 pr-3 font-medium text-right">물량</th>
+                  <th className="py-2 pr-3 font-medium">단위</th><th className="py-2 pr-3 font-medium">출처</th>
+                  <th className="py-2 font-medium text-right">관리</th></tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {list.map((t) => (
+                    <tr key={t.id}>
+                      <td className="py-2 pr-3">{t.trade ? <span className="text-xs px-2 py-0.5 rounded-full text-white whitespace-nowrap" style={{ backgroundColor: tradeHex(t.trade) }}>{t.trade}</span> : <span className="text-slate-300">-</span>}</td>
+                      <td className="py-2 pr-3 font-medium text-slate-700 min-w-[120px]">{t.name}{t.memo ? <span className="block text-[11px] font-normal text-slate-400 truncate max-w-[200px]">{t.memo}</span> : null}</td>
+                      <td className="py-2 pr-3 text-slate-500">{t.spec || '-'}</td>
+                      <td className="py-2 pr-3 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtNum(t.qty)}</td>
+                      <td className="py-2 pr-3 text-slate-500">{t.unit || '-'}</td>
+                      <td className="py-2 pr-3"><span className={`text-[11px] px-2 py-0.5 rounded-full whitespace-nowrap ${t.source === 'sketchup' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>{t.source === 'sketchup' ? '📐 스케치업' : '수기'}</span></td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        <button onClick={() => { setEditing(t); setEditorOpen(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50" aria-label="수정">✏️</button>
+                        <button onClick={() => setDelTarget(t)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" aria-label="삭제">🗑️</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <Modal isOpen={editorOpen} onClose={() => { setEditorOpen(false); setEditing(null); }} title={editing ? '물량 수정' : '물량 추가'} size="lg">
+            <TakeoffForm key={editing ? editing.id : 'new'} initial={editing} trades={trades} onSave={save} onCancel={() => { setEditorOpen(false); setEditing(null); }} />
+          </Modal>
+          <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="물량 삭제 확인" size="sm">
+            {delTarget && (
+              <div>
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{delTarget.name}</span>' 물량을 삭제하시겠습니까?</p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setDelTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDel}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </Card>
+      );
+    }
+
     function EstimateTab({ site, estimates, procNames, loading, onChanged, onPrint }) {
       const toast = useToast();
       const [editorOpen, setEditorOpen] = useState(false);
@@ -3885,6 +4178,7 @@
       };
       return (
         <div className="space-y-6">
+          <TakeoffSection site={site} trades={trades} />
           {loading ? (
             <Card className="p-5"><div className="h-40 bg-slate-100 rounded-xl animate-pulse"></div></Card>
           ) : (

@@ -572,3 +572,50 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 ## 검증
 - 키 있으면 **합성 영수증 이미지 1장**(흰 배경에 '○○상회 / 2026-06-29 / 합계 55,000원 / 실리콘·피스' 류 텍스트를 헤드리스로 PNG 화 등)으로 **1회 실호출**(비용 최소화) → amount/date/category JSON 파싱·정수/날짜 형식 확인. 키 없으면 **503**, image 누락 **400** 구조검증.
 - 프론트: 버튼→파일선택→(목 응답)으로 폼 프리필·AI추정 뱃지·썸네일 렌더, 미선택/실패 graceful. v1~v6 회귀(8탭·기존 비용입력).
+
+---
+
+# v8 확장 — 스케치업 물량 import 구조(⑥) + 프로젝트 zip 백업(⑨-b)
+
+> **v1~v7 동작/엔드포인트/UI 100% 보존**(새 테이블 CREATE IF NOT EXISTS). 8-1 은 **미래의 스케치업 플러그인이 물량/치수를 보낼 "받는 쪽" 구조**(지금 플러그인은 만들지 않음 — 테이블+엔드포인트+JSON 포맷+견적 연동만 준비). 8-2 는 프로젝트 전체 데이터 zip 다운로드(유일하게 `archiver` 패키지 추가 허용).
+
+## 8-1 스케치업/실측 물량 (interior_takeoff)
+### 새 테이블 interior_takeoff (CREATE TABLE IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| site_id | bigint NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE | |
+| trade | text default '' | 공종(21종 중) |
+| name | text NOT NULL | 품목/부재명 |
+| spec | text default '' | 규격/치수 설명 |
+| unit | text default '' | 단위(M2/M/EA/식 등) |
+| qty | numeric NOT NULL default 0 | 물량(수량/길이/면적) |
+| source | text default 'manual' | 출처: 'sketchup' \| 'manual' |
+| source_guid | text default '' | 스케치업 엔티티 식별자(추후 연동·idempotent용) |
+| memo | text default '' | |
+| created_at | timestamptz default now() | |
+- 인덱스 site_id. qty 는 Number 로 직렬화.
+
+### 엔드포인트
+- `GET /api/sites/:id/takeoff` → 배열(created_at DESC). 
+- `POST /api/sites/:id/takeoff` → **단건** `{trade?,name,spec?,unit?,qty?,source?,source_guid?,memo?}` 또는 **배치** `{items:[...]}` → 201. name 필수(배치는 각 항목 name 필수), qty≥0(기본0), source 기본 'manual'.
+- `PUT /api/takeoff/:id` → 동일 필드 수정. `DELETE /api/takeoff/:id` → `{success:true}`/404.
+- **`POST /api/sites/:id/import/sketchup`** (미래 플러그인 호출용; 지금은 수동/테스트) → body `{items:[{trade,name,spec?,unit?,qty,source_guid?}]}` → 전부 `source='sketchup'` 로 일괄 insert → `{imported:n, items:[...]}`. **이 JSON 포맷이 스케치업↔앱 계약**(물량/치수만; 단가·내용은 앱에서 입력). source_guid 동일값 재전송 시 멱등(있으면 update, 권장; 단순화로 매번 insert 도 허용하되 주석 명시).
+
+### UI
+- **견적 에디터**에 **[📐 물량 불러오기]** 버튼 → 현재 현장 takeoff 목록 모달 → 선택 항목을 견적 행으로 추가(trade/name/spec/unit/qty 채움, **단가는 카탈로그/수동 입력**). 
+- takeoff 수동 CRUD 간단 섹션(스케치업 연동 전엔 직접 입력 — 관리 탭 또는 견적/현장 영역 적절히). 폴백 localStorage(키 `interior_takeoff_v1`).
+
+## 8-2 프로젝트 zip 백업 (⑨-b)
+- **`npm install archiver`** (zip 스트리밍; Node 내장 zip 없음 → 이 패키지만 추가). package.json dependencies 반영.
+- **`GET /api/sites/:id/backup.zip`** → 해당 현장 전체를 zip 스트림으로 다운로드:
+  - `data.json` = `{ site, costs, schedule(+deps), estimates(+items, totals), orders, meetings, as, takeoff, exportedAt }` (각 도메인 기존 조회 재사용).
+  - `receipts/` = 현장 폴더(`sites/<folder>/receipts/`)의 영수증 이미지 전부(있으면; 경로 가드).
+  - `README.txt` = 현장명/주소/백업일시/포함 항목 요약(한글).
+  - 헤더 `Content-Type: application/zip`, `Content-Disposition: attachment; filename="<현장명>-backup-<YYYY-MM-DD>.zip"`. 현장 없으면 404. 스트림 오류 500.
+- UI: **요약 탭 프로젝트 헤더**(또는 관리)에 **[💾 프로젝트 백업(zip)]** 버튼 → 위 URL 로 다운로드(window.location 또는 a[download]). 서버 전용(폴백은 안내).
+
+## 검증
+- 8-1: takeoff 단건/배치 POST·GET·PUT·DELETE, `import/sketchup` 배치 → source='sketchup' 확인. 견적 에디터 물량 불러오기 → 행 채움.
+- 8-2: `GET /api/sites/:id/backup.zip` → 200 `application/zip`, 받은 zip unzip 시 `data.json`(site/costs/... 키 포함)·`README.txt` 존재. 없는 현장 404.
+- v1~v7 회귀 무손상.
