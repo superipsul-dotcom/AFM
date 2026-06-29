@@ -488,3 +488,59 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - 탭 순서: 🗂 프로젝트 · 📊 요약 · 💸 비용 · 📅 일정 · 📋 견적 · 🧾 발주 · 📒 미팅·AS · ⚙️ 관리.
 - 상태 뱃지 색감(노션풍): 고객(리드 회색→계약 파랑→완료 초록), 발주(대기 회색/발주 파랑/입고 청록/정산완료 초록), AS(접수 빨강/처리중 주황/완료 초록).
 - 폴백(localStorage): 4개 도메인 각각 키로 CRUD + 현장 client_id 연결. 서버 우선.
+
+---
+
+# v6 확장 — 현장 운영 강화 1차 (진행/완료 분리 · 견적 공종그룹/임시저장 · 캘린더 드래그/PDF · 일정 선후관계)
+
+> 사용자 실무 요청 1차 묶음. **v1~v5 동작/엔드포인트/UI 100% 보존**(새 테이블 CREATE TABLE IF NOT EXISTS, 컬럼 ADD COLUMN IF NOT EXISTS).
+> 분담: **6-2(견적)·6-3(캘린더)는 순수 프론트**(서버/DB 무변경). **6-1(진행/완료)·6-4(일정 선후관계)는 서버+프론트**.
+
+## 6-1. 프로젝트 진행/완료 분리 + 보관 (⑨ 일부 — zip 백업은 v7)
+### interior_sites 확장 (ADD COLUMN IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| archived | boolean NOT NULL default false | 보관(아카이브) 여부. true면 진행중 목록/보드에서 숨김 |
+- progress_status(준비/착수/완료/마감/인수)와 **독립**. 보관은 사용자가 명시적으로 토글(자동분류 안 함). UI는 progress_status='인수'/'마감'을 "완료" 그룹으로 시각 구분할 수 있음.
+### 엔드포인트 (호환 우선)
+- `GET /api/sites` → **기존처럼 전체 반환(동작 불변)** + 각 행에 `archived`(boolean) 필드 추가. (기존 프론트/회귀 안전. 진행중/보관 분리는 프론트가 archived로 수행)
+- `POST /api/sites`·`PUT /api/sites/:id` → body 에 `archived`(boolean) 허용. 미전달 시 기존값/false 유지.
+### UI (🗂 프로젝트 탭)
+- 보드/테이블 상단에 **[진행중] / [완료·보관] 토글**(기본 진행중 = archived=false). 각 카드에 **보관/복원 버튼**(PUT archived 토글). progress_status '인수'/'마감' 카드는 "완료" 톤으로 구분 표시. "정신사납지 않게" 완료 프로젝트는 기본 화면에서 빠지고 [완료·보관] 토글에서만 보임.
+
+## 6-2. 견적 공종 그룹/페이지 + 임시저장 (⑤ — 순수 프론트, 서버/DB 무변경)
+- 견적 에디터 항목을 **공종(trade)별 접기 섹션(accordion)** 으로 묶기 + 상단 **공종 점프 칩 네비**(클릭 시 해당 그룹으로 스크롤/펼침). 공종별 소계(v3 기존) 유지.
+- **작성 중 자동 임시저장**: 에디터 입력값(헤더+items)을 디바운스로 localStorage 저장. 키 `interior_estimate_draft_<siteId>_<estimateId|new>`. 에디터 진입 시 draft 있으면 **"임시저장 복원하시겠어요?"** 안내(복원/무시). 서버 저장(POST/PUT) 성공 시 해당 draft 삭제. **[임시저장]** 버튼(수동)도 제공.
+- 인쇄(A4): **공종별 페이지 분할** 옵션 토글(on이면 공종 그룹마다 `page-break-before`). 기존 견적 인쇄/원가계산 레이아웃 유지.
+
+## 6-3. 캘린더 드래그 일정생성 + 일정표 PDF (② — 순수 프론트, 기존 schedule API 사용)
+- ScheduleTab 월간 캘린더: 날짜 셀에서 **mousedown→mousemove→mouseup 드래그**로 기간 선택(드래그 중 하이라이트, 역방향도 start≤end 정규화) → 마우스 업 시 **일정 생성 폼에 start_date/end_date 프리필**(모달/인라인 오픈). 단일 클릭 = 하루 일정.
+- **일정표 인쇄/PDF**: ScheduleTab 상단 **[일정표 PDF]** 버튼 → window.print + @media print A4. 헤더(현장명·공사기간) + **일정 리스트(또는 간트형 막대 표)**: 작업명/공종/기간/상태/담당자. 견적 인쇄 CSS 패턴 재사용.
+
+## 6-4. 일정 선후관계(의존성) + 딜레이 연쇄이동 (③ — 서버+프론트)
+### 새 테이블 interior_schedule_deps (CREATE TABLE IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| predecessor_id | bigint NOT NULL REFERENCES interior_schedule(id) ON DELETE CASCADE | 선행 일정(이게 끝나야) |
+| successor_id | bigint NOT NULL REFERENCES interior_schedule(id) ON DELETE CASCADE | 후행 일정(시작) |
+| created_at | timestamptz default now() | |
+- **UNIQUE(predecessor_id, successor_id)**. 자기참조 금지(pred≠succ, 400). **사이클 금지**(추가 시 succ→...→pred 경로 있으면 400). 같은 현장 일정끼리만(다르면 400). 인덱스: predecessor_id, successor_id.
+### 엔드포인트
+- `GET /api/sites/:id/schedule` → 각 일정에 `predecessors:[id...]`(이 일정의 선행들), `successors:[id...]`(후행들) 추가. (현장 전체 dep 1회 조회 후 매핑, N+1 금지)
+- `POST /api/schedule/:id/deps` → body `{predecessor_id}` (`:id` = successor). 선행 추가. 검증(같은현장/자기참조/사이클/중복 UNIQUE 409 or 멱등). → 201 `{id, predecessor_id, successor_id}`.
+- `DELETE /api/schedule/:id/deps/:predId` → (`:id`=successor, `:predId`=predecessor) 링크 삭제 → `{success:true}`/404.
+- **연쇄이동**: `PUT /api/schedule/:id` 에 옵션 플래그 `cascade`(body `cascade:true`, 기본 false=기존 동작 그대로). cascade=true 이고 start_date/end_date 가 바뀌면:
+  - `delta = 새 start_date − 기존 start_date`(일수). 트랜잭션으로 **모든 transitive successor**(BFS/DFS, 사이클 안전·방문체크)의 start_date/end_date 를 각각 `+delta` shift. 본 일정은 요청대로 갱신.
+  - 응답에 `shifted:[{id, start_date, end_date}]`(본 일정 제외, 이동된 후속들) 포함. cascade=false 면 shifted=[] (또는 키 없음).
+- 날짜 직렬화는 기존 규칙(`to_char 'YYYY-MM-DD'`). delta 계산은 UTC 자정 기준 일수 차.
+### UI (ScheduleTab)
+- 일정 항목/상세에 **선행·후행 표시 + [선행 추가]/[삭제]**(같은 현장 다른 일정 선택 드롭다운). **"선후관계 리스트" 뷰**(predecessor → successor 목록).
+- 일정 날짜 수정 시 **"연결된 후속 일정도 함께 이동"(cascade) 체크** → PUT cascade=true. 성공 토스트 "후속 N개 함께 이동". 캘린더/막대에 의존 화살표/표식(가능하면).
+- 폴백(localStorage): deps 키(`interior_schedule_deps_v1`) CRUD + 클라이언트 연쇄계산(같은 delta shift, 사이클 가드).
+
+## 검증
+- **6-4**: 철거(6/1~6/3)→전기(6/4~6/6) 선행링크 후, 철거를 6/3~6/5로 PUT(cascade=true) → 전기가 6/6~6/8 로 자동 이동(shifted 1건). 자기참조/사이클 추가 시 400. cascade=false 면 전기 불변(기존 동작).
+- **6-1**: PUT archived=true → 기본 보드에서 숨김, [완료·보관] 토글에서 보임, 복원 가능. `GET /api/sites` 는 여전히 전체+archived 필드(회귀).
+- **6-2/6-3**(프론트): 드래그 기간 프리필, 임시저장 복원/삭제, 공종 그룹 접기·페이지분할 인쇄, 일정표 PDF 출력.
+- **v1~v5 회귀 무손상**(엔드포인트/totals/탭/폴더/CSV/.ics/카탈로그/서브DB).

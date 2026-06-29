@@ -86,6 +86,7 @@
     const VENDORS_KEY = 'interior_vendors_v1';
     const CATS_KEY = 'interior_categories_v1';
     const SCHEDULE_KEY = 'interior_schedule_v1';
+    const SCHEDULE_DEPS_KEY = 'interior_schedule_deps_v1'; // v6-4 일정 선후관계(의존성) 폴백
     const ESTIMATES_KEY = 'interior_estimates_v1';
     const TAB_KEY = 'interior_active_tab_v1';
 
@@ -381,6 +382,7 @@
     const vendorsStore = makeStore(VENDORS_KEY);
     const catsStore = makeStore(CATS_KEY);
     const scheduleStore = makeStore(SCHEDULE_KEY);
+    const scheduleDepsStore = makeStore(SCHEDULE_DEPS_KEY); // v6-4 [{id, predecessor_id, successor_id, created_at}]
     const estimatesStore = makeStore(ESTIMATES_KEY);
     const catalogStore = makeStore(CATALOG_KEY); // v3 단가 카탈로그
     // v5: 노션 관계형 서브-DB 스토어 (고객/리드 · 발주 · 미팅 · AS)
@@ -636,6 +638,7 @@
             move_in_date: s.move_in_date || null,
             pm: s.pm || '', construction_manager: s.construction_manager || '', designer: s.designer || '',
             progress_status: PROGRESS_STATES.includes(s.progress_status) ? s.progress_status : '준비',
+            archived: !!s.archived, // v6-1 보관 여부
             client_id: s.client_id != null ? s.client_id : null,
             client_name: cli ? cli.name : null,
             spent, estimateTotal,
@@ -885,7 +888,19 @@
           if (e.status) throw e; this._useMock = true;
           const tasks = scheduleStore.read().filter((t) => String(t.site_id) === String(siteId));
           const costs = costsStore.read().filter((c) => String(c.site_id) === String(siteId));
-          return withActual(tasks, costs).sort((a, b) => {
+          // v6-4: 선후관계(predecessors/successors) 매핑 (현장 전체 1회 조회 후 매핑)
+          const deps = scheduleDepsStore.read();
+          const rel = {}; tasks.forEach((t) => { rel[String(t.id)] = { preds: [], succs: [] }; });
+          deps.forEach((d) => {
+            const s = String(d.successor_id), p = String(d.predecessor_id);
+            if (rel[s]) rel[s].preds.push(d.predecessor_id);
+            if (rel[p]) rel[p].succs.push(d.successor_id);
+          });
+          return withActual(tasks, costs).map((t) => ({
+            ...t,
+            predecessors: (rel[String(t.id)] && rel[String(t.id)].preds) || [],
+            successors: (rel[String(t.id)] && rel[String(t.id)].succs) || [],
+          })).sort((a, b) => {
             if (a.start_date !== b.start_date) return a.start_date < b.start_date ? -1 : 1;
             return (a.sort_order || 0) - (b.sort_order || 0);
           });
@@ -911,10 +926,34 @@
         catch (e) {
           if (e.status) throw e; this._useMock = true;
           if (body.start_date && body.end_date && body.start_date > body.end_date) throw new Error('종료일은 시작일 이후여야 합니다.');
-          const patch = { ...body };
+          const { cascade, ...rest } = body;
+          const patch = { ...rest };
           if (patch.planned_cost != null) patch.planned_cost = Math.round(Number(patch.planned_cost) || 0);
-          const next = scheduleStore.read().map((t) => (String(t.id) === String(id) ? { ...t, ...patch } : t));
-          scheduleStore.write(next); return next.find((t) => String(t.id) === String(id));
+          const list = scheduleStore.read();
+          const before = list.find((t) => String(t.id) === String(id));
+          // v6-4 연쇄이동: delta = 새 start_date − 기존 start_date (UTC 자정 기준 일수)
+          let shifted = [];
+          let toShift = new Set();
+          const delta = (cascade && before && body.start_date) ? daysBetween(before.start_date, body.start_date) : 0;
+          if (cascade && delta) {
+            const deps = scheduleDepsStore.read();
+            const succAdj = {}; deps.forEach((d) => { const p = String(d.predecessor_id); (succAdj[p] = succAdj[p] || []).push(String(d.successor_id)); });
+            const visited = new Set([String(id)]); const q = [String(id)];
+            while (q.length) { const cur = q.shift(); (succAdj[cur] || []).forEach((s) => { if (!visited.has(s)) { visited.add(s); toShift.add(s); q.push(s); } }); }
+          }
+          const next = list.map((t) => {
+            if (String(t.id) === String(id)) return { ...t, ...patch };
+            if (toShift.has(String(t.id))) {
+              const ns = t.start_date ? addDays(t.start_date, delta) : t.start_date;
+              const ne = t.end_date ? addDays(t.end_date, delta) : t.end_date;
+              shifted.push({ id: t.id, start_date: ns, end_date: ne });
+              return { ...t, start_date: ns, end_date: ne };
+            }
+            return t;
+          });
+          scheduleStore.write(next);
+          const updated = next.find((t) => String(t.id) === String(id));
+          return cascade ? { ...updated, shifted } : updated;
         }
       },
       async removeSchedule(id) {
@@ -922,8 +961,40 @@
         catch (e) {
           if (e.status) throw e; this._useMock = true;
           scheduleStore.write(scheduleStore.read().filter((t) => String(t.id) !== String(id)));
+          // v6-4: 이 일정과 연결된 선후관계도 함께 제거 (서버 ON DELETE CASCADE 대응)
+          scheduleDepsStore.write(scheduleDepsStore.read().filter((d) => String(d.predecessor_id) !== String(id) && String(d.successor_id) !== String(id)));
           // 연결 비용의 schedule_id 는 null 처리 (비용 자체는 보존)
           costsStore.write(costsStore.read().map((c) => (String(c.schedule_id) === String(id) ? { ...c, schedule_id: null } : c)));
+          return { success: true };
+        }
+      },
+      // ════════ v6-4: 일정 선후관계(의존성) ════════
+      async addDep(succId, predId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/schedule/${succId}/deps`, { method: 'POST', body: JSON.stringify({ predecessor_id: predId }) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          if (String(succId) === String(predId)) { const err = new Error('자기 자신은 선행으로 지정할 수 없습니다.'); err.status = 400; throw err; }
+          const tasks = scheduleStore.read();
+          const succ = tasks.find((t) => String(t.id) === String(succId));
+          const pred = tasks.find((t) => String(t.id) === String(predId));
+          if (!succ || !pred) { const err = new Error('일정을 찾을 수 없습니다.'); err.status = 404; throw err; }
+          if (String(succ.site_id) !== String(pred.site_id)) { const err = new Error('같은 현장의 일정끼리만 연결할 수 있습니다.'); err.status = 400; throw err; }
+          const deps = scheduleDepsStore.read();
+          const dup = deps.find((d) => String(d.predecessor_id) === String(predId) && String(d.successor_id) === String(succId));
+          if (dup) return dup; // 멱등
+          // 사이클 가드: succ → ... → pred 경로가 이미 있으면 추가 시 순환
+          const succAdj = {}; deps.forEach((d) => { const p = String(d.predecessor_id); (succAdj[p] = succAdj[p] || []).push(String(d.successor_id)); });
+          const visited = new Set([String(succId)]); const q = [String(succId)];
+          while (q.length) { const cur = q.shift(); for (const n of (succAdj[cur] || [])) { if (n === String(predId)) { const err = new Error('순환 의존성은 만들 수 없습니다.'); err.status = 400; throw err; } if (!visited.has(n)) { visited.add(n); q.push(n); } } }
+          const item = { id: uid(), predecessor_id: predId, successor_id: succId, created_at: new Date().toISOString() };
+          scheduleDepsStore.write([...deps, item]); return item;
+        }
+      },
+      async removeDep(succId, predId) {
+        try { await this._tryFetch(`${API_BASE_URL}/schedule/${succId}/deps/${predId}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          scheduleDepsStore.write(scheduleDepsStore.read().filter((d) => !(String(d.predecessor_id) === String(predId) && String(d.successor_id) === String(succId))));
           return { success: true };
         }
       },
@@ -1966,6 +2037,7 @@
       move_in_date: s.move_in_date || null,
       pm: s.pm || '', construction_manager: s.construction_manager || '', designer: s.designer || '',
       progress_status: PROGRESS_STATES.includes(s.progress_status) ? s.progress_status : '준비',
+      archived: !!s.archived, // v6-1
     });
     // 집행률 (spent/budget, 프론트 계산)
     const execOf = (s) => {
@@ -1994,28 +2066,34 @@
     }
 
     // 프로젝트 카드 (칸반)
-    function ProjectCard({ site, onSelect, onChangeStatus, onDragStart }) {
+    function ProjectCard({ site, onSelect, onChangeStatus, onDragStart, onToggleArchive }) {
       const period = site.start_date ? `${site.start_date} ~ ${site.end_date || '미정'}` : '기간 미정';
+      const done = site.progress_status === '인수' || site.progress_status === '마감'; // v6-1 완료 톤
       return (
         <div draggable onDragStart={(e) => onDragStart(e, site)} onClick={() => onSelect(site.id)}
           role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onSelect(site.id); }}
-          className="bg-white rounded-xl border border-slate-200 p-3 shadow-sm hover:shadow-md hover:border-blue-300 cursor-pointer transition">
+          className={`rounded-xl border p-3 shadow-sm hover:shadow-md cursor-pointer transition ${site.archived ? 'bg-slate-50 border-slate-200 opacity-80 hover:border-slate-300' : done ? 'bg-emerald-50/40 border-emerald-200 hover:border-emerald-300' : 'bg-white border-slate-200 hover:border-blue-300'}`}>
           <div className="flex items-start justify-between gap-2">
             <h4 className="font-bold text-slate-800 text-sm leading-tight flex-1 break-words">{site.name}</h4>
             <Badge color={PROGRESS_STATUS_COLOR[site.progress_status] || 'bg-slate-400'}>{site.progress_status || '준비'}</Badge>
           </div>
           <div className="mt-1.5 flex flex-wrap gap-1 text-[11px] text-slate-500">
+            {site.archived && <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 font-medium">📦 보관</span>}
             {site.building_type && <span className="px-1.5 py-0.5 rounded bg-slate-100">{site.building_type}</span>}
             {Number(site.floor_area) > 0 && <span className="px-1.5 py-0.5 rounded bg-slate-100">{fmtNum(site.floor_area)}㎡</span>}
           </div>
           <p className="mt-1.5 text-[11px] text-slate-400 truncate">📅 {period}</p>
           {site.pm && <p className="mt-0.5 text-[11px] text-slate-400 truncate">👷 PM {site.pm}</p>}
           <div className="mt-2"><ExecBar site={site} /></div>
-          <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+          <div className="mt-2 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <select value={site.progress_status || '준비'} onChange={(e) => onChangeStatus(site, e.target.value)} aria-label="진행상태 변경"
-              className="w-full text-[11px] px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+              className="flex-1 text-[11px] px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
               {PROGRESS_STATES.map((p) => <option key={p} value={p}>{p}(으)로 변경</option>)}
             </select>
+            <button onClick={() => onToggleArchive(site)} title={site.archived ? '진행중으로 복원' : '완료·보관 처리'}
+              className={`shrink-0 text-[11px] px-2 py-1 rounded-lg border font-medium transition ${site.archived ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+              {site.archived ? '복원' : '보관'}
+            </button>
           </div>
         </div>
       );
@@ -2029,11 +2107,24 @@
       const [sort, setSort] = useState('default');
       const [dragId, setDragId] = useState(null);
       const [overCol, setOverCol] = useState(null);
+      const [archView, setArchView] = useState('active'); // v6-1 'active'(진행중) | 'archived'(완료·보관)
+
+      // v6-1: 보관 여부로 분리 (기본=진행중만). 완료 프로젝트는 [완료·보관]에서만 노출
+      const scoped = useMemo(() => sites.filter((s) => (archView === 'archived' ? !!s.archived : !s.archived)), [sites, archView]);
+      const archivedCount = useMemo(() => sites.filter((s) => !!s.archived).length, [sites]);
+      const activeCount = sites.length - archivedCount;
 
       const changeStatus = async (site, status) => {
         if ((site.progress_status || '준비') === status) return;
         try { await api.updateSite(site.id, { ...siteToBody(site), progress_status: status }); toast(`'${site.name}' → ${status}`, 'success'); await onChanged(); }
         catch (e) { toast('상태 변경에 실패했습니다.', 'error'); }
+      };
+      const toggleArchive = async (site) => {
+        try {
+          await api.updateSite(site.id, { ...siteToBody(site), archived: !site.archived });
+          toast(site.archived ? `'${site.name}' 진행중으로 복원` : `'${site.name}' 완료·보관 처리`, 'success');
+          await onChanged();
+        } catch (e) { toast('보관 상태 변경에 실패했습니다.', 'error'); }
       };
       const onDragStart = (e, site) => { setDragId(site.id); try { e.dataTransfer.effectAllowed = 'move'; } catch (err) {} };
       const onDrop = async (status) => {
@@ -2044,13 +2135,13 @@
       };
 
       const tableRows = useMemo(() => {
-        let rows = sites.slice();
+        let rows = scoped.slice();
         if (filter !== 'all') rows = rows.filter((s) => (s.progress_status || '준비') === filter);
         if (sort === 'name') rows.sort((a, b) => (a.name < b.name ? -1 : 1));
         else if (sort === 'budget') rows.sort((a, b) => (Number(b.budget) || 0) - (Number(a.budget) || 0));
         else if (sort === 'rate') rows.sort((a, b) => execOf(b).rate - execOf(a).rate);
         return rows;
-      }, [sites, filter, sort]);
+      }, [scoped, filter, sort]);
 
       if (loading && (!sites || sites.length === 0)) return <Card className="p-5"><div className="h-72 bg-slate-100 rounded-xl animate-pulse"></div></Card>;
 
@@ -2070,6 +2161,18 @@
                 <Button size="sm" onClick={onNew}>+ 새 프로젝트</Button>
               </div>
             </div>
+            {/* v6-1: 진행중 / 완료·보관 분리 토글 */}
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5">
+              <button onClick={() => setArchView('active')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${archView === 'active' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                진행중 <span className={`ml-1 ${archView === 'active' ? 'text-blue-100' : 'text-slate-400'}`}>{activeCount}</span>
+              </button>
+              <button onClick={() => setArchView('archived')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${archView === 'archived' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                완료·보관 <span className={`ml-1 ${archView === 'archived' ? 'text-slate-300' : 'text-slate-400'}`}>{archivedCount}</span>
+              </button>
+              <span className="text-[11px] text-slate-400 ml-1">{archView === 'active' ? '진행 중인 프로젝트만 표시됩니다.' : '보관된 프로젝트만 표시됩니다. (카드의 ‘복원’으로 진행중 복귀)'}</span>
+            </div>
           </Card>
 
           {(!sites || sites.length === 0) ? (
@@ -2079,10 +2182,19 @@
               <p className="text-sm text-slate-400 mb-5">새 프로젝트를 등록하면 보드에 카드로 표시됩니다.</p>
               <Button size="lg" onClick={onNew}>+ 첫 프로젝트 등록</Button>
             </Card>
+          ) : scoped.length === 0 ? (
+            <Card className="p-12 text-center">
+              <div className="text-5xl mb-3">{archView === 'archived' ? '📦' : '🗂'}</div>
+              <h3 className="text-lg font-bold text-slate-700 mb-1">{archView === 'archived' ? '보관된 프로젝트가 없습니다' : '진행중인 프로젝트가 없습니다'}</h3>
+              <p className="text-sm text-slate-400 mb-5">{archView === 'archived' ? '프로젝트 카드의 ‘보관’ 버튼으로 완료된 현장을 정리할 수 있습니다.' : '모든 프로젝트가 완료·보관되었거나, 새 프로젝트를 등록하세요.'}</p>
+              <Button size="sm" variant="secondary" onClick={() => setArchView(archView === 'archived' ? 'active' : 'archived')}>
+                {archView === 'archived' ? '진행중 보기' : '완료·보관 보기'}
+              </Button>
+            </Card>
           ) : view === 'board' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {PROGRESS_STATES.map((status) => {
-                const col = sites.filter((s) => (s.progress_status || '준비') === status);
+                const col = scoped.filter((s) => (s.progress_status || '준비') === status);
                 return (
                   <div key={status}
                     onDragOver={(e) => { e.preventDefault(); if (overCol !== status) setOverCol(status); }}
@@ -2099,7 +2211,7 @@
                       {col.length === 0 ? (
                         <p className="text-[11px] text-slate-300 text-center py-5">여기로 카드를 끌어다 놓으세요</p>
                       ) : col.map((s) => (
-                        <ProjectCard key={s.id} site={s} onSelect={onSelect} onChangeStatus={changeStatus} onDragStart={onDragStart} />
+                        <ProjectCard key={s.id} site={s} onSelect={onSelect} onChangeStatus={changeStatus} onDragStart={onDragStart} onToggleArchive={toggleArchive} />
                       ))}
                     </div>
                   </div>
@@ -2142,7 +2254,8 @@
                         <th className="py-2 pr-3 font-medium">디자이너</th>
                         <th className="py-2 pr-3 font-medium text-right">예산</th>
                         <th className="py-2 pr-3 font-medium text-right">집행</th>
-                        <th className="py-2 font-medium text-right">집행률</th>
+                        <th className="py-2 pr-3 font-medium text-right">집행률</th>
+                        <th className="py-2 font-medium text-center">관리</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2167,7 +2280,13 @@
                             <td className="py-2 pr-3 text-slate-600">{s.designer || '-'}</td>
                             <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">{fmtNum(budget)}</td>
                             <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">{fmtNum(spent)}</td>
-                            <td className={`py-2 text-right font-bold whitespace-nowrap ${over ? 'text-red-600' : 'text-slate-700'}`}>{budget > 0 ? rate.toFixed(0) + '%' : '—'}</td>
+                            <td className={`py-2 pr-3 text-right font-bold whitespace-nowrap ${over ? 'text-red-600' : 'text-slate-700'}`}>{budget > 0 ? rate.toFixed(0) + '%' : '—'}</td>
+                            <td className="py-2 text-center">
+                              <button onClick={() => toggleArchive(s)} title={s.archived ? '진행중으로 복원' : '완료·보관 처리'}
+                                className={`text-xs px-2 py-1 rounded-lg border font-medium transition whitespace-nowrap ${s.archived ? 'border-blue-200 text-blue-600 hover:bg-blue-50' : 'border-slate-200 text-slate-500 hover:bg-slate-100'}`}>
+                                {s.archived ? '복원' : '보관'}
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
@@ -2383,9 +2502,25 @@
     // ========================================
     // 🧩 일정 — 월간 캘린더
     // ========================================
-    function ScheduleCalendar({ tasks, onEditTask }) {
+    function ScheduleCalendar({ tasks, onEditTask, onRangeSelect }) {
       const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
       const today = todayStr();
+      // v6-3: 드래그로 기간 선택 (mousedown → mousemove(enter) → mouseup)
+      const [dragStart, setDragStart] = useState(null);
+      const [dragEnd, setDragEnd] = useState(null);
+      const dragging = dragStart != null;
+      const normRange = (a, b) => (a <= b ? [a, b] : [b, a]);
+      const inDragRange = (ds) => { if (!dragging) return false; const [s, e] = normRange(dragStart, dragEnd || dragStart); return s <= ds && ds <= e; };
+      useEffect(() => {
+        if (!dragging) return;
+        const up = () => {
+          const [s, e] = normRange(dragStart, dragEnd || dragStart);
+          setDragStart(null); setDragEnd(null);
+          if (onRangeSelect) onRangeSelect(s, e);
+        };
+        window.addEventListener('mouseup', up);
+        return () => window.removeEventListener('mouseup', up);
+      }, [dragging, dragStart, dragEnd, onRangeSelect]);
       const startWeekday = new Date(cursor.y, cursor.m, 1).getDay();
       const daysInMonth = new Date(cursor.y, cursor.m + 1, 0).getDate();
       const cells = [];
@@ -2412,14 +2547,19 @@
               <div key={w} className={`text-center text-xs font-semibold py-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>{w}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+          <p className="text-[11px] text-slate-400 mb-1">🖱️ 날짜를 드래그하면 그 기간으로 새 일정을 만들 수 있어요. (단일 클릭 = 하루)</p>
+          <div className="grid grid-cols-7 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100 select-none">
             {cells.map((ds, i) => {
               if (!ds) return <div key={i} className="bg-slate-50 min-h-[78px] sm:min-h-[92px]"></div>;
               const wd = i % 7;
               const isToday = ds === today;
               const dayTasks = tasksOn(ds);
+              const sel = inDragRange(ds);
               return (
-                <div key={i} className="bg-white min-h-[78px] sm:min-h-[92px] p-1 align-top">
+                <div key={i}
+                  onMouseDown={(e) => { e.preventDefault(); setDragStart(ds); setDragEnd(ds); }}
+                  onMouseEnter={() => { if (dragging) setDragEnd(ds); }}
+                  className={`min-h-[78px] sm:min-h-[92px] p-1 align-top cursor-pointer transition-colors ${sel ? 'bg-blue-100 ring-1 ring-inset ring-blue-300' : 'bg-white hover:bg-slate-50'}`}>
                   <div className="flex justify-end">
                     <span className={`inline-flex items-center justify-center w-5 h-5 text-[11px] rounded-full
                       ${isToday ? 'bg-blue-600 text-white font-bold' : wd === 0 ? 'text-red-500' : wd === 6 ? 'text-blue-500' : 'text-slate-500'}`}>
@@ -2432,7 +2572,7 @@
                       const showLabel = isStart || wd === 0;
                       const bg = t.color || procHex(t.process);
                       return (
-                        <button key={t.id} onClick={() => onEditTask(t)} title={t.title} style={{ backgroundColor: bg }}
+                        <button key={t.id} onMouseDown={(e) => e.stopPropagation()} onClick={() => onEditTask(t)} title={t.title} style={{ backgroundColor: bg }}
                           className={`block w-full text-left text-[10px] leading-tight text-white px-1 py-0.5 truncate
                             ${isStart ? 'rounded-l-md' : ''} ${isEnd ? 'rounded-r-md' : ''}`}>
                           {showLabel ? t.title : ' '}
@@ -2450,8 +2590,9 @@
     }
 
     // 🧩 일정 — 태스크 목록(타임라인)
-    function ScheduleList({ tasks, onEdit, onAskDelete }) {
+    function ScheduleList({ tasks, onEdit, onAskDelete, taskMap = {}, onAddDep, onRemoveDep }) {
       const sorted = useMemo(() => [...(tasks || [])].sort((a, b) => (a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0)), [tasks]);
+      const titleOf = (id) => (taskMap[String(id)] ? taskMap[String(id)].title : '(삭제됨)');
       return (
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
@@ -2489,6 +2630,28 @@
                           )}
                         </p>
                         {t.memo && <p className="mt-0.5 text-xs text-slate-500 truncate">{t.memo}</p>}
+                        {/* v6-4: 선후관계(선행·후행) */}
+                        {(onAddDep || (t.predecessors && t.predecessors.length) || (t.successors && t.successors.length)) && (
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] text-slate-400">선행</span>
+                            {(t.predecessors || []).length === 0 && <span className="text-[11px] text-slate-300">없음</span>}
+                            {(t.predecessors || []).map((pid) => (
+                              <span key={'p' + pid} className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                {titleOf(pid)}
+                                {onRemoveDep && <button onClick={() => onRemoveDep(t.id, pid)} className="text-indigo-300 hover:text-red-500" aria-label="선행 해제" title="선행 연결 해제">✕</button>}
+                              </span>
+                            ))}
+                            {onAddDep && <button onClick={() => onAddDep(t)} className="text-[11px] px-1.5 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50">+ 선행</button>}
+                            {(t.successors || []).length > 0 && (
+                              <>
+                                <span className="text-[11px] text-slate-400 ml-1">→ 후행</span>
+                                {(t.successors || []).map((sid) => (
+                                  <span key={'s' + sid} className="text-[11px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">{titleOf(sid)}</span>
+                                ))}
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-1 shrink-0">
                         <button onClick={() => onEdit(t)} aria-label="수정" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
@@ -2505,14 +2668,17 @@
     }
 
     // 🧩 일정 등록/수정 폼 (모달)
-    function ScheduleForm({ editing, procNames, staffNames, onSubmit, onCancel }) {
-      const blank = { title: '', process: '', start_date: todayStr(), end_date: todayStr(), status: '예정', planned_cost: '', staff: '', color: '', memo: '' };
+    function ScheduleForm({ editing, prefill, hasSuccessors, onSubmit, onCancel, procNames, staffNames }) {
+      // v6-3: 캘린더 드래그로 받은 prefill(start/end)을 신규 폼 기본값으로
+      const blank = { title: '', process: '', start_date: (prefill && prefill.start) || todayStr(), end_date: (prefill && prefill.end) || todayStr(), status: '예정', planned_cost: '', staff: '', color: '', memo: '' };
       const [form, setForm] = useState(editing ? {
         title: editing.title || '', process: editing.process || '',
         start_date: editing.start_date || todayStr(), end_date: editing.end_date || todayStr(),
         status: editing.status || '예정', planned_cost: editing.planned_cost != null ? String(editing.planned_cost) : '',
         staff: editing.staff || '', color: editing.color || '', memo: editing.memo || '',
       } : blank);
+      const [cascade, setCascade] = useState(false); // v6-4 연결된 후속 일정 함께 이동
+      const dateChanged = !!editing && (form.start_date !== (editing.start_date || '') || form.end_date !== (editing.end_date || ''));
       const [errors, setErrors] = useState({});
       const [submitting, setSubmitting] = useState(false);
       const validate = () => {
@@ -2531,6 +2697,7 @@
           title: form.title.trim(), process: form.process.trim(), start_date: form.start_date, end_date: form.end_date,
           status: form.status, planned_cost: Math.round(Number(form.planned_cost) || 0), staff: form.staff.trim(),
           color: form.color, memo: form.memo.trim(),
+          ...(editing && hasSuccessors && cascade && dateChanged ? { cascade: true } : {}),
         });
         setSubmitting(false);
       };
@@ -2566,6 +2733,15 @@
             </div>
           </div>
           <Textarea label="메모 (선택)" rows="2" value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
+          {editing && hasSuccessors && (
+            <label className={`flex items-start gap-2 p-3 rounded-xl border text-sm cursor-pointer transition ${dateChanged ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50 opacity-70'}`}>
+              <input type="checkbox" className="mt-0.5" checked={cascade} onChange={(e) => setCascade(e.target.checked)} disabled={!dateChanged} />
+              <span>
+                <span className="font-medium text-slate-700">연결된 후속 일정도 함께 이동</span>
+                <span className="block text-[11px] text-slate-400">선행(이 일정)의 날짜 변경분만큼 후속 일정을 자동으로 밀어줍니다. {dateChanged ? '' : '(날짜를 변경하면 활성화됩니다)'}</span>
+              </span>
+            </label>
+          )}
           <div className="flex gap-2 justify-end pt-1">
             <Button variant="secondary" onClick={onCancel}>취소</Button>
             <Button type="submit" disabled={submitting}>{submitting ? '저장 중...' : (editing ? '수정 저장' : '일정 추가')}</Button>
@@ -2574,18 +2750,38 @@
       );
     }
 
-    // 🧩 일정 탭 (캘린더 + 목록 + 폼 + .ics)
-    function ScheduleTab({ site, tasks, procNames, staffNames, loading, onChanged }) {
+    // 🧩 일정 탭 (캘린더 + 목록 + 폼 + .ics + 선후관계 + 일정표 PDF)
+    function ScheduleTab({ site, tasks, procNames, staffNames, loading, onChanged, onPrintSchedule }) {
       const toast = useToast();
       const [formOpen, setFormOpen] = useState(false);
       const [editing, setEditing] = useState(null);
+      const [prefill, setPrefill] = useState(null); // v6-3 드래그 기간 프리필
       const [delTarget, setDelTarget] = useState(null);
+      const [depTarget, setDepTarget] = useState(null); // v6-4 선행 추가 대상(=successor)
+      const [depPredId, setDepPredId] = useState('');
+      const [showDepList, setShowDepList] = useState(false);
+
+      const taskMap = useMemo(() => { const m = {}; (tasks || []).forEach((t) => { m[String(t.id)] = t; }); return m; }, [tasks]);
+      const depPairs = useMemo(() => {
+        const pairs = [];
+        (tasks || []).forEach((t) => { (t.successors || []).forEach((sid) => { if (taskMap[String(sid)]) pairs.push({ pred: t, succ: taskMap[String(sid)] }); }); });
+        return pairs;
+      }, [tasks, taskMap]);
+
+      const closeForm = () => { setFormOpen(false); setEditing(null); setPrefill(null); };
+      const openAdd = () => { setEditing(null); setPrefill(null); setFormOpen(true); };
+      const openEdit = (t) => { setEditing(t); setPrefill(null); setFormOpen(true); };
+      const onRangeSelect = (s, e) => { setEditing(null); setPrefill({ start: s, end: e }); setFormOpen(true); };
+
       const save = async (body) => {
         try {
-          if (editing) await api.updateSchedule(editing.id, body);
-          else await api.createSchedule(site.id, body);
-          toast(editing ? '일정이 수정되었습니다.' : '일정이 추가되었습니다.', 'success');
-          setFormOpen(false); setEditing(null);
+          let res;
+          if (editing) res = await api.updateSchedule(editing.id, body);
+          else res = await api.createSchedule(site.id, body);
+          let msg = editing ? '일정이 수정되었습니다.' : '일정이 추가되었습니다.';
+          if (res && res.shifted && res.shifted.length) msg = `일정 수정 · 후속 ${res.shifted.length}개 함께 이동`;
+          toast(msg, 'success');
+          closeForm();
           await onChanged();
           return true;
         } catch (e) { toast(e.message || '저장에 실패했습니다.', 'error'); return false; }
@@ -2594,6 +2790,16 @@
         const t = delTarget; setDelTarget(null);
         try { await api.removeSchedule(t.id); toast('일정이 삭제되었습니다.', 'info'); await onChanged(); }
         catch (e) { toast('삭제에 실패했습니다.', 'error'); }
+      };
+      // v6-4 선후관계
+      const addDep = async () => {
+        if (!depTarget || !depPredId) return;
+        try { await api.addDep(depTarget.id, depPredId); toast('선행 일정을 연결했습니다.', 'success'); setDepTarget(null); setDepPredId(''); await onChanged(); }
+        catch (e) { toast(e.message || '연결에 실패했습니다.', 'error'); }
+      };
+      const removeDep = async (succId, predId) => {
+        try { await api.removeDep(succId, predId); toast('선후관계를 해제했습니다.', 'info'); await onChanged(); }
+        catch (e) { toast('해제에 실패했습니다.', 'error'); }
       };
       const exportICS = async () => {
         if (!tasks || tasks.length === 0) { toast('내보낼 일정이 없습니다.', 'error'); return; }
@@ -2610,6 +2816,13 @@
         downloadBlob(new Blob([ics], { type: 'text/calendar;charset=utf-8' }), `${site.name}-schedule.ics`);
         toast('일정(.ics)을 내보냈습니다. (브라우저 생성)', 'success');
       };
+      const printSchedule = () => {
+        if (!tasks || tasks.length === 0) { toast('인쇄할 일정이 없습니다.', 'error'); return; }
+        if (onPrintSchedule) onPrintSchedule();
+      };
+      // 선행 추가 모달 후보: 자기 자신·이미 선행인 것 제외
+      const depCandidates = depTarget ? (tasks || []).filter((t) => String(t.id) !== String(depTarget.id) && !(depTarget.predecessors || []).map(String).includes(String(t.id))) : [];
+
       return (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2617,27 +2830,76 @@
               <h2 className="text-base font-bold text-slate-800">공정 일정 (캘린더)</h2>
               <p className="text-[11px] text-slate-400">📆 .ics 파일은 구글/네이버/아웃룩 캘린더에서 ‘가져오기’로 불러올 수 있습니다.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm" onClick={printSchedule}>🖨 일정표 PDF</Button>
               <Button variant="secondary" size="sm" onClick={exportICS}>📆 .ics 내보내기</Button>
-              <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }}>+ 일정 추가</Button>
+              <Button size="sm" onClick={openAdd}>+ 일정 추가</Button>
             </div>
           </div>
           {loading ? (
             <Card className="p-5"><div className="h-72 bg-slate-100 rounded-xl animate-pulse"></div></Card>
           ) : (
             <>
-              <ScheduleCalendar tasks={tasks} onEditTask={(t) => { setEditing(t); setFormOpen(true); }} />
-              <ScheduleList tasks={tasks} onEdit={(t) => { setEditing(t); setFormOpen(true); }} onAskDelete={setDelTarget} />
+              <ScheduleCalendar tasks={tasks} onEditTask={openEdit} onRangeSelect={onRangeSelect} />
+              <ScheduleList tasks={tasks} onEdit={openEdit} onAskDelete={setDelTarget}
+                taskMap={taskMap} onAddDep={setDepTarget} onRemoveDep={removeDep} />
+              {/* v6-4 선후관계 리스트 뷰 */}
+              <Card className="p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-700">🔗 선후관계 <span className="text-[11px] font-normal text-slate-400">(선행 → 후행 {depPairs.length}건)</span></h3>
+                  <button onClick={() => setShowDepList((v) => !v)} className="text-xs text-blue-600 hover:underline">{showDepList ? '접기' : '펼치기'}</button>
+                </div>
+                {showDepList && (
+                  depPairs.length === 0 ? (
+                    <p className="mt-3 text-sm text-slate-400 text-center py-4">등록된 선후관계가 없습니다.<br />일정 목록의 ‘+ 선행’ 버튼으로 연결하세요.</p>
+                  ) : (
+                    <ul className="mt-3 space-y-1.5">
+                      {depPairs.map((p) => (
+                        <li key={p.pred.id + '-' + p.succ.id} className="flex items-center gap-2 text-sm py-1.5 border-b border-slate-50 last:border-0">
+                          <span className="inline-flex items-center gap-1.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.pred.color || procHex(p.pred.process) }}></span>
+                            <span className="font-medium text-slate-700 truncate">{p.pred.title}</span>
+                          </span>
+                          <span className="text-slate-300 shrink-0">→</span>
+                          <span className="inline-flex items-center gap-1.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.succ.color || procHex(p.succ.process) }}></span>
+                            <span className="font-medium text-slate-700 truncate">{p.succ.title}</span>
+                          </span>
+                          <button onClick={() => removeDep(p.succ.id, p.pred.id)} className="ml-auto shrink-0 text-slate-400 hover:text-red-500 p-1" aria-label="해제" title="선후관계 해제">✕</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                )}
+              </Card>
             </>
           )}
-          <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); setEditing(null); }} title={editing ? '일정 수정' : '일정 추가'} size="lg">
-            <ScheduleForm key={editing ? editing.id : 'new'} editing={editing} procNames={procNames} staffNames={staffNames}
-              onSubmit={save} onCancel={() => { setFormOpen(false); setEditing(null); }} />
+          <Modal isOpen={formOpen} onClose={closeForm} title={editing ? '일정 수정' : '일정 추가'} size="lg">
+            <ScheduleForm key={editing ? editing.id : ('new' + (prefill ? prefill.start + prefill.end : ''))}
+              editing={editing} prefill={prefill} hasSuccessors={!!(editing && editing.successors && editing.successors.length)}
+              procNames={procNames} staffNames={staffNames} onSubmit={save} onCancel={closeForm} />
+          </Modal>
+          {/* v6-4 선행 추가 모달 */}
+          <Modal isOpen={!!depTarget} onClose={() => { setDepTarget(null); setDepPredId(''); }} title="선행 일정 추가" size="sm">
+            {depTarget && (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{depTarget.title}</span>' 보다 <span className="font-semibold">먼저 끝나야 하는</span> 선행 일정을 선택하세요.</p>
+                <Select label="선행 일정" value={depPredId} onChange={(e) => setDepPredId(e.target.value)}>
+                  <option value="">선택하세요</option>
+                  {depCandidates.map((t) => <option key={t.id} value={t.id}>{t.title} ({t.start_date}~{t.end_date})</option>)}
+                </Select>
+                {depCandidates.length === 0 && <p className="text-xs text-slate-400">연결 가능한 다른 일정이 없습니다.</p>}
+                <div className="flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => { setDepTarget(null); setDepPredId(''); }}>취소</Button>
+                  <Button onClick={addDep} disabled={!depPredId}>연결</Button>
+                </div>
+              </div>
+            )}
           </Modal>
           <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="일정 삭제 확인" size="sm">
             {delTarget && (
               <div>
-                <p className="text-sm text-slate-600">'<span className="font-semibold">{delTarget.title}</span>' 일정을 삭제하시겠습니까?<br />연결된 비용은 보존되며 연결만 해제됩니다.</p>
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{delTarget.title}</span>' 일정을 삭제하시겠습니까?<br />연결된 비용은 보존되며 연결만 해제됩니다. 선후관계도 함께 해제됩니다.</p>
                 <div className="mt-5 flex gap-2 justify-end">
                   <Button variant="secondary" onClick={() => setDelTarget(null)}>취소</Button>
                   <Button variant="danger" onClick={confirmDel}>삭제</Button>
@@ -2645,6 +2907,90 @@
               </div>
             )}
           </Modal>
+        </div>
+      );
+    }
+
+    // 🧩 일정표 인쇄(A4) — 현장명·공사기간 + 리스트 + 간트형 막대 (v6-3)
+    function SchedulePrint({ site, tasks }) {
+      if (!site) return null;
+      const pb = '1px solid #94a3b8';
+      const th = { border: pb, padding: '6px 8px', fontWeight: 600, background: '#f1f5f9' };
+      const td = { border: pb, padding: '6px 8px' };
+      const tdC = { border: pb, padding: '6px 8px', textAlign: 'center' };
+      const sorted = [...(tasks || [])].sort((a, b) => (a.start_date < b.start_date ? -1 : a.start_date > b.start_date ? 1 : 0));
+      const dates = sorted.flatMap((t) => [t.start_date, t.end_date]).filter(Boolean);
+      const minD = dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : null;
+      const maxD = dates.length ? dates.reduce((a, b) => (a > b ? a : b)) : null;
+      const span = (minD && maxD) ? Math.max(1, daysBetween(minD, maxD) + 1) : 1;
+      const projPeriod = (minD && maxD) ? `${minD} ~ ${maxD} (${span}일)` : (site.start_date ? `${site.start_date} ~ ${site.end_date || '미정'}` : '미정');
+      return (
+        <div className="text-slate-900" style={{ fontFamily: 'sans-serif', padding: '4px' }}>
+          <div className="flex items-start justify-between" style={{ borderBottom: '2px solid #1e293b', paddingBottom: '10px', marginBottom: '14px' }}>
+            <div>
+              <h1 style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '6px', margin: 0 }}>공 정 일 정 표</h1>
+              <p style={{ fontSize: '11px', color: '#64748b', margin: '4px 0 0' }}>WORK SCHEDULE</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>{SUPPLIER.name} <span style={{ fontSize: '11px', fontWeight: 400, color: '#64748b' }}>{SUPPLIER.en}</span></p>
+              <p style={{ fontSize: '11px', color: '#475569', margin: '2px 0 0' }}>{SUPPLIER.biz}</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 32px', fontSize: '13px', marginBottom: '14px' }}>
+            <div><span style={{ color: '#64748b' }}>현장명: </span><b>{site.name}</b></div>
+            <div><span style={{ color: '#64748b' }}>공사기간: </span><b>{projPeriod}</b></div>
+            <div><span style={{ color: '#64748b' }}>현장주소: </span>{site.address || '-'}</div>
+            <div><span style={{ color: '#64748b' }}>총 작업: </span>{sorted.length}건</div>
+          </div>
+          <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr>
+                <th style={th}>No</th><th style={th}>작업명</th><th style={th}>공종</th>
+                <th style={th}>시작일</th><th style={th}>종료일</th><th style={th}>기간(일)</th><th style={th}>상태</th><th style={th}>담당자</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.length === 0 ? (
+                <tr><td style={{ ...tdC, color: '#94a3b8' }} colSpan="8">등록된 일정 없음</td></tr>
+              ) : sorted.map((t, i) => {
+                const len = (t.start_date && t.end_date) ? (daysBetween(t.start_date, t.end_date) + 1) : '-';
+                return (
+                  <tr key={i}>
+                    <td style={tdC}>{i + 1}</td>
+                    <td style={td}>{t.title}</td>
+                    <td style={td}>{t.process || '-'}</td>
+                    <td style={tdC}>{t.start_date || '-'}</td>
+                    <td style={tdC}>{t.end_date || '-'}</td>
+                    <td style={tdC}>{len}</td>
+                    <td style={tdC}>{t.status || '-'}</td>
+                    <td style={td}>{t.staff || '-'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {sorted.length > 0 && minD && (
+            <div style={{ marginTop: '18px' }}>
+              <p style={{ fontWeight: 700, fontSize: '12.5px', margin: '0 0 6px' }}>간트 차트</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                {sorted.map((t, i) => {
+                  const off = daysBetween(minD, t.start_date) || 0;
+                  const len = (daysBetween(t.start_date, t.end_date) || 0) + 1;
+                  const left = (off / span) * 100, width = Math.max((len / span) * 100, 1.5);
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', fontSize: '10px' }}>
+                      <div style={{ width: '120px', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '6px' }}>{t.title}</div>
+                      <div style={{ position: 'relative', flex: 1, height: '14px', background: '#f1f5f9', borderRadius: '3px' }}>
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, left: left + '%', width: width + '%', background: t.color || procHex(t.process), borderRadius: '3px' }}></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: '10px', color: '#94a3b8', margin: '6px 0 0' }}>기간 기준 {minD} ~ {maxD}</p>
+            </div>
+          )}
+          <p style={{ marginTop: '28px', textAlign: 'center', fontSize: '11px', color: '#94a3b8' }}>본 일정표는 {SUPPLIER.name}에서 발행되었습니다.</p>
         </div>
       );
     }
@@ -2956,10 +3302,7 @@
       const setItem = (idx, patch) => setItems((arr) => arr.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
       const addRow = () => setItems((arr) => [...arr, mk()]);
       const delRow = (idx) => setItems((arr) => (arr.length <= 1 ? [mk()] : arr.filter((_, i) => i !== idx)));
-      const move = (idx, dir) => setItems((arr) => {
-        const j = idx + dir; if (j < 0 || j >= arr.length) return arr;
-        const next = arr.slice(); const tmp = next[idx]; next[idx] = next[j]; next[j] = tmp; return next;
-      });
+      // (v6-2) 행 이동은 공종 그룹 내부에서만 — moveInGroup 으로 대체
       // 카탈로그 항목 → 행 채우기
       const pickCatalog = (c) => {
         const patch = {
@@ -3011,14 +3354,98 @@
         Object.keys(BUILDUP_DEFAULTS).forEach((k) => { body[k] = Number(header[k]); });
         return body;
       };
-      const handleSave = async () => { setSaving(true); await onSave(buildBody()); setSaving(false); };
       const inputCls = 'w-full px-2 py-1.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300';
       const tradeBase = (trades && trades.length ? trades : TRADE_MASTER);
+
+      // ── v6-2: 작성 중 자동 임시저장(draft) ──
+      const draftKey = `interior_estimate_draft_${(site && site.id) || 'x'}_${(initial && initial.id) || 'new'}`;
+      const [pendingDraft] = useState(() => { try { const r = localStorage.getItem(draftKey); return r ? JSON.parse(r) : null; } catch { return null; } });
+      const [showDraftBanner, setShowDraftBanner] = useState(!!pendingDraft);
+      const firstAutosave = useRef(true);
+      useEffect(() => {
+        if (firstAutosave.current) { firstAutosave.current = false; return; } // 진입 직후엔 저장 안 함(빈 draft 방지)
+        const t = setTimeout(() => { try { localStorage.setItem(draftKey, JSON.stringify({ header, items, savedAt: new Date().toISOString() })); } catch (err) {} }, 600);
+        return () => clearTimeout(t);
+      }, [header, items]);
+      const restoreDraft = () => {
+        if (pendingDraft) { if (pendingDraft.header) setHeader(pendingDraft.header); if (pendingDraft.items) setItems(pendingDraft.items); }
+        setShowDraftBanner(false); toast('임시저장을 복원했습니다.', 'success');
+      };
+      const ignoreDraft = () => setShowDraftBanner(false);
+      const saveDraftManual = () => {
+        try { localStorage.setItem(draftKey, JSON.stringify({ header, items, savedAt: new Date().toISOString() })); toast('임시저장했습니다.', 'success'); }
+        catch (err) { toast('임시저장에 실패했습니다.', 'error'); }
+      };
+      const handleSave = async () => {
+        setSaving(true); const ok = await onSave(buildBody()); setSaving(false);
+        if (ok) { try { localStorage.removeItem(draftKey); } catch (err) {} setShowDraftBanner(false); } // 서버 저장 성공 시 draft 삭제
+      };
+
+      // ── v6-2: 공종 그룹 / 접기(accordion) / 점프 / 페이지 분할 ──
+      const [collapsed, setCollapsed] = useState(() => new Set());
+      const [pageBreakByTrade, setPageBreakByTrade] = useState(false);
+      const sectionRefs = useRef({});
+      const grouped = useMemo(() => {
+        const order = []; const map = {};
+        items.forEach((it, idx) => { const k = it.trade || '미분류'; if (!map[k]) { map[k] = []; order.push(k); } map[k].push(idx); });
+        return order.map((k) => [k, map[k]]);
+      }, [items]);
+      const toggleGroup = (k) => setCollapsed((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
+      const jumpTo = (k) => { setCollapsed((s) => { const n = new Set(s); n.delete(k); return n; }); setTimeout(() => { const el = sectionRefs.current[k]; if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 30); };
+      const addRowTo = (k) => setItems((arr) => [...arr, { ...mk(), trade: k === '미분류' ? '' : k }]);
+      const moveInGroup = (idx, dir) => setItems((arr) => {
+        const key = (x) => x.trade || '미분류'; const cur = key(arr[idx]);
+        let j = idx + dir; while (j >= 0 && j < arr.length && key(arr[j]) !== cur) j += dir;
+        if (j < 0 || j >= arr.length) return arr;
+        const next = arr.slice(); const tmp = next[idx]; next[idx] = next[j]; next[j] = tmp; return next;
+      });
+      const groupTotal = (idxs) => idxs.reduce((s, i) => s + rowAmount({ qty: items[i].qty, material_price: items[i].material_price, labor_price: items[i].labor_price, sub_price: items[i].sub_price }), 0);
+      const renderRow = (idx) => {
+        const it = items[idx];
+        const inList = !it.trade || tradeBase.includes(it.trade);
+        return (
+          <tr key={it._k} className="align-top">
+            <td className="py-1 pr-2 text-slate-400">{idx + 1}</td>
+            <td className="py-1 pr-2">
+              <select className={inputCls} value={it.trade} onChange={(e) => setItem(idx, { trade: e.target.value })}>
+                <option value="">공종 선택</option>
+                {!inList && <option value={it.trade}>{it.trade}</option>}
+                {tradeBase.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </td>
+            <td className="py-1 pr-2"><input className={inputCls} value={it.name} onChange={(e) => setItem(idx, { name: e.target.value })} placeholder="예: 강마루 시공" /></td>
+            <td className="py-1 pr-2"><input className={inputCls} value={it.spec} onChange={(e) => setItem(idx, { spec: e.target.value })} placeholder="규격" /></td>
+            <td className="py-1 pr-2"><input className={inputCls} value={it.unit} onChange={(e) => setItem(idx, { unit: e.target.value })} placeholder="개" /></td>
+            <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.qty} onChange={(e) => setItem(idx, { qty: e.target.value })} /></td>
+            <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.material_price} onChange={(e) => setItem(idx, { material_price: e.target.value })} /></td>
+            <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.labor_price} onChange={(e) => setItem(idx, { labor_price: e.target.value })} /></td>
+            <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.sub_price} onChange={(e) => setItem(idx, { sub_price: e.target.value })} /></td>
+            <td className="py-1 pr-2 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtNum(rowAmount({ qty: it.qty, material_price: it.material_price, labor_price: it.labor_price, sub_price: it.sub_price }))}</td>
+            <td className="py-1">
+              <div className="flex items-center justify-center gap-0.5">
+                <button type="button" onClick={() => setPicker({ open: true, targetIdx: idx })} className="p-1 rounded text-slate-400 hover:text-blue-600" aria-label="카탈로그에서 채우기" title="단가 카탈로그에서 이 행 채우기">📖</button>
+                <button type="button" onClick={() => moveInGroup(idx, -1)} className="p-1 rounded text-slate-400 hover:text-slate-700" aria-label="위로">▲</button>
+                <button type="button" onClick={() => moveInGroup(idx, 1)} className="p-1 rounded text-slate-400 hover:text-slate-700" aria-label="아래로">▼</button>
+                <button type="button" onClick={() => delRow(idx)} className="p-1 rounded text-slate-400 hover:text-red-600" aria-label="삭제">✕</button>
+              </div>
+            </td>
+          </tr>
+        );
+      };
       return (
         <div className="space-y-5">
           {confirmed && (
             <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700">
               ✅ 확정된 견적입니다. 편집했다면 다시 ‘확정’을 눌러 현장 예산에 반영하세요.
+            </div>
+          )}
+          {showDraftBanner && (
+            <div className="px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs text-amber-800">📝 작성 중이던 임시저장 내용이 있습니다{pendingDraft && pendingDraft.savedAt ? ` (${String(pendingDraft.savedAt).slice(0, 16).replace('T', ' ')})` : ''}. 복원하시겠어요?</span>
+              <span className="flex gap-1.5">
+                <Button size="sm" onClick={restoreDraft}>복원</Button>
+                <Button size="sm" variant="ghost" onClick={ignoreDraft}>무시</Button>
+              </span>
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3033,65 +3460,72 @@
           </div>
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <h3 className="text-sm font-bold text-slate-700">견적 항목 <span className="text-[11px] font-normal text-slate-400">재료/노무/부자재 3분할</span></h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="secondary" onClick={() => setPicker({ open: true, targetIdx: null })}>📚 단가 카탈로그 불러오기</Button>
+              <h3 className="text-sm font-bold text-slate-700">견적 항목 <span className="text-[11px] font-normal text-slate-400">공종별 그룹 · 재료/노무/부자재 3분할</span></h3>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="ghost" onClick={saveDraftManual}>💾 임시저장</Button>
+                <Button size="sm" variant="secondary" onClick={() => setPicker({ open: true, targetIdx: null })}>📚 단가 카탈로그</Button>
                 <Button size="sm" variant="secondary" onClick={addRow}>+ 행 추가</Button>
               </div>
             </div>
-            <div className="overflow-x-auto -mx-1 px-1">
-              <table className="w-full text-sm" style={{ minWidth: '1180px' }}>
-                <thead>
-                  <tr className="text-left text-xs text-slate-400">
-                    <th className="py-1 pr-2 font-medium w-6">#</th>
-                    <th className="py-1 pr-2 font-medium w-32">공종</th>
-                    <th className="py-1 pr-2 font-medium">품목명 *</th>
-                    <th className="py-1 pr-2 font-medium w-28">규격</th>
-                    <th className="py-1 pr-2 font-medium w-12">단위</th>
-                    <th className="py-1 pr-2 font-medium w-16 text-right">수량</th>
-                    <th className="py-1 pr-2 font-medium w-24 text-right">재료비단가</th>
-                    <th className="py-1 pr-2 font-medium w-24 text-right">노무비단가</th>
-                    <th className="py-1 pr-2 font-medium w-24 text-right">부자재단가</th>
-                    <th className="py-1 pr-2 font-medium w-28 text-right">행합계</th>
-                    <th className="py-1 font-medium w-24 text-center">관리</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((it, idx) => {
-                    const inList = !it.trade || tradeBase.includes(it.trade);
-                    return (
-                      <tr key={it._k} className="align-top">
-                        <td className="py-1 pr-2 text-slate-400">{idx + 1}</td>
-                        <td className="py-1 pr-2">
-                          <select className={inputCls} value={it.trade} onChange={(e) => setItem(idx, { trade: e.target.value })}>
-                            <option value="">공종 선택</option>
-                            {!inList && <option value={it.trade}>{it.trade}</option>}
-                            {tradeBase.map((t) => <option key={t} value={t}>{t}</option>)}
-                          </select>
-                        </td>
-                        <td className="py-1 pr-2"><input className={inputCls} value={it.name} onChange={(e) => setItem(idx, { name: e.target.value })} placeholder="예: 강마루 시공" /></td>
-                        <td className="py-1 pr-2"><input className={inputCls} value={it.spec} onChange={(e) => setItem(idx, { spec: e.target.value })} placeholder="규격" /></td>
-                        <td className="py-1 pr-2"><input className={inputCls} value={it.unit} onChange={(e) => setItem(idx, { unit: e.target.value })} placeholder="개" /></td>
-                        <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.qty} onChange={(e) => setItem(idx, { qty: e.target.value })} /></td>
-                        <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.material_price} onChange={(e) => setItem(idx, { material_price: e.target.value })} /></td>
-                        <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.labor_price} onChange={(e) => setItem(idx, { labor_price: e.target.value })} /></td>
-                        <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.sub_price} onChange={(e) => setItem(idx, { sub_price: e.target.value })} /></td>
-                        <td className="py-1 pr-2 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtNum(rowAmount({ qty: it.qty, material_price: it.material_price, labor_price: it.labor_price, sub_price: it.sub_price }))}</td>
-                        <td className="py-1">
-                          <div className="flex items-center justify-center gap-0.5">
-                            <button type="button" onClick={() => setPicker({ open: true, targetIdx: idx })} className="p-1 rounded text-slate-400 hover:text-blue-600" aria-label="카탈로그에서 채우기" title="단가 카탈로그에서 이 행 채우기">📖</button>
-                            <button type="button" onClick={() => move(idx, -1)} className="p-1 rounded text-slate-400 hover:text-slate-700" aria-label="위로">▲</button>
-                            <button type="button" onClick={() => move(idx, 1)} className="p-1 rounded text-slate-400 hover:text-slate-700" aria-label="아래로">▼</button>
-                            <button type="button" onClick={() => delRow(idx)} className="p-1 rounded text-slate-400 hover:text-red-600" aria-label="삭제">✕</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            {/* 공종 점프 칩 네비 */}
+            {grouped.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {grouped.map(([k, idxs]) => (
+                  <button type="button" key={k} onClick={() => jumpTo(k)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600">
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tradeHex(k === '미분류' ? '' : k) }}></span>
+                    {k}<span className="text-slate-400">{idxs.length}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* 공종별 접기 섹션(accordion) */}
+            <div className="space-y-3">
+              {grouped.map(([k, idxs]) => {
+                const isCol = collapsed.has(k);
+                return (
+                  <div key={k} ref={(el) => { sectionRefs.current[k] = el; }} className="rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-50">
+                      <button type="button" onClick={() => toggleGroup(k)} className="flex items-center gap-2 min-w-0 text-left">
+                        <span className="text-slate-400 text-xs w-3 shrink-0">{isCol ? '▶' : '▼'}</span>
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: tradeHex(k === '미분류' ? '' : k) }}></span>
+                        <span className="font-semibold text-slate-700 truncate">{k}</span>
+                        <span className="text-[11px] text-slate-400 shrink-0">{idxs.length}개</span>
+                      </button>
+                      <span className="text-sm font-bold text-slate-700 whitespace-nowrap">{fmtWon(groupTotal(idxs))}</span>
+                    </div>
+                    {!isCol && (
+                      <div className="p-2">
+                        <div className="overflow-x-auto -mx-1 px-1">
+                          <table className="w-full text-sm" style={{ minWidth: '1180px' }}>
+                            <thead>
+                              <tr className="text-left text-xs text-slate-400">
+                                <th className="py-1 pr-2 font-medium w-6">#</th>
+                                <th className="py-1 pr-2 font-medium w-32">공종</th>
+                                <th className="py-1 pr-2 font-medium">품목명 *</th>
+                                <th className="py-1 pr-2 font-medium w-28">규격</th>
+                                <th className="py-1 pr-2 font-medium w-12">단위</th>
+                                <th className="py-1 pr-2 font-medium w-16 text-right">수량</th>
+                                <th className="py-1 pr-2 font-medium w-24 text-right">재료비단가</th>
+                                <th className="py-1 pr-2 font-medium w-24 text-right">노무비단가</th>
+                                <th className="py-1 pr-2 font-medium w-24 text-right">부자재단가</th>
+                                <th className="py-1 pr-2 font-medium w-28 text-right">행합계</th>
+                                <th className="py-1 font-medium w-24 text-center">관리</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {idxs.map((idx) => renderRow(idx))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <button type="button" onClick={() => addRowTo(k)} className="mt-1 text-xs text-blue-600 hover:underline">+ ‘{k}’에 행 추가</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <p className="mt-1 text-[11px] text-slate-400">행합계 = 수량 × (재료비 + 노무비 + 부자재). 카탈로그에서 불러오면 단가가 자동 입력됩니다.</p>
+            <p className="mt-2 text-[11px] text-slate-400">행합계 = 수량 × (재료비 + 노무비 + 부자재). 행의 공종을 바꾸면 해당 그룹으로 이동합니다. 작성 내용은 자동 임시저장됩니다.</p>
           </div>
 
           <TradeSubtotals items={est.items} />
@@ -3129,8 +3563,12 @@
           </div>
           <div className="flex flex-wrap gap-2 justify-between pt-3 border-t border-slate-100">
             <div>{isSaved && <Button variant="ghost" className="text-red-600 hover:bg-red-50" onClick={onDelete}>삭제</Button>}</div>
-            <div className="flex flex-wrap gap-2 justify-end">
-              <Button variant="secondary" onClick={() => onPrint(toEstimate())}>🖨 인쇄(PDF)</Button>
+            <div className="flex flex-wrap gap-2 justify-end items-center">
+              <label className="inline-flex items-center gap-1.5 text-xs text-slate-500 mr-1 cursor-pointer" title="인쇄 시 공종 그룹마다 새 페이지로 나눕니다.">
+                <input type="checkbox" checked={pageBreakByTrade} onChange={(e) => setPageBreakByTrade(e.target.checked)} />
+                공종별 페이지 분할
+              </label>
+              <Button variant="secondary" onClick={() => onPrint({ ...toEstimate(), _splitByTrade: pageBreakByTrade })}>🖨 인쇄(PDF)</Button>
               {isSaved && (confirmed
                 ? <Button variant="ghost" onClick={onUnconfirm}>초안으로</Button>
                 : <Button variant="ghost" className="text-emerald-700 hover:bg-emerald-50" onClick={onConfirm} title="확정 시 현장 예산이 이 견적 합계로 갱신됩니다.">✅ 확정</Button>)}
@@ -3164,6 +3602,9 @@
       items.forEach((it) => { const tr = it.trade || it.process || '미분류'; gmap[tr] = (gmap[tr] || 0) + rowAmount(it); });
       const groupArr = Object.entries(gmap).map(([trade, total]) => ({ trade, total })).sort((a, b2) => b2.total - a.total);
       const directTotal = groupArr.reduce((s, g) => s + g.total, 0);
+      // v6-2: 공종별 페이지 분할 인쇄 — 그룹마다 별도 표 + page-break-before
+      const splitByTrade = !!estimate._splitByTrade;
+      const itemsByTrade = splitByTrade ? groupArr.map((g) => ({ trade: g.trade, rows: items.filter((it) => (it.trade || it.process || '미분류') === g.trade) })) : null;
       return (
         <div className="text-slate-900" style={{ fontFamily: 'sans-serif', padding: '4px' }}>
           <div className="flex items-start justify-between" style={{ borderBottom: '2px solid #1e293b', paddingBottom: '10px', marginBottom: '14px' }}>
@@ -3187,30 +3628,64 @@
           <div style={{ background: '#f1f5f9', textAlign: 'center', padding: '8px', fontSize: '14px', marginBottom: '10px' }}>
             합계금액(부가세 {VAT_MODE_LABEL[estimate.vat_mode || 'exclusive']}) : <b>일금 {wonToKorean(t.total)}원정 (₩{fmtNum(t.total)})</b>
           </div>
-          <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-            <thead>
-              <tr>
-                <th style={cellTh}>No</th><th style={cellTh}>공종</th><th style={cellTh}>품목</th><th style={cellTh}>규격</th>
-                <th style={cellTh}>수량</th><th style={cellTh}>단위</th><th style={cellTh}>단가</th><th style={cellTh}>금액</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr><td style={{ ...cellTdC, color: '#94a3b8' }} colSpan="8">항목 없음</td></tr>
-              ) : items.map((it, i) => (
-                <tr key={i}>
-                  <td style={cellTdC}>{i + 1}</td>
-                  <td style={cellTd}>{it.trade || it.process || ''}</td>
-                  <td style={cellTd}>{it.name}</td>
-                  <td style={cellTd}>{it.spec || ''}</td>
-                  <td style={cellTdR}>{fmtNum(it.qty)}</td>
-                  <td style={cellTdC}>{it.unit || ''}</td>
-                  <td style={cellTdR}>{fmtNum(effUnitPrice(it))}</td>
-                  <td style={cellTdR}>{fmtNum(rowAmount(it))}</td>
+          {splitByTrade ? (
+            itemsByTrade.map((grp, gi) => (
+              <div key={grp.trade} style={gi > 0 ? { pageBreakBefore: 'always' } : undefined}>
+                <p style={{ fontWeight: 700, fontSize: '13px', margin: gi > 0 ? '0 0 5px' : '0 0 5px' }}>■ {grp.trade}</p>
+                <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '6px' }}>
+                  <thead>
+                    <tr>
+                      <th style={cellTh}>No</th><th style={cellTh}>공종</th><th style={cellTh}>품목</th><th style={cellTh}>규격</th>
+                      <th style={cellTh}>수량</th><th style={cellTh}>단위</th><th style={cellTh}>단가</th><th style={cellTh}>금액</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grp.rows.map((it, i) => (
+                      <tr key={i}>
+                        <td style={cellTdC}>{i + 1}</td>
+                        <td style={cellTd}>{it.trade || it.process || ''}</td>
+                        <td style={cellTd}>{it.name}</td>
+                        <td style={cellTd}>{it.spec || ''}</td>
+                        <td style={cellTdR}>{fmtNum(it.qty)}</td>
+                        <td style={cellTdC}>{it.unit || ''}</td>
+                        <td style={cellTdR}>{fmtNum(effUnitPrice(it))}</td>
+                        <td style={cellTdR}>{fmtNum(rowAmount(it))}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td style={{ ...cellTd, fontWeight: 700, background: '#f8fafc' }} colSpan="7">{grp.trade} 소계</td>
+                      <td style={{ ...cellTdR, fontWeight: 700, background: '#f8fafc' }}>{fmtNum(grp.rows.reduce((s, it) => s + rowAmount(it), 0))}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ))
+          ) : (
+            <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr>
+                  <th style={cellTh}>No</th><th style={cellTh}>공종</th><th style={cellTh}>품목</th><th style={cellTh}>규격</th>
+                  <th style={cellTh}>수량</th><th style={cellTh}>단위</th><th style={cellTh}>단가</th><th style={cellTh}>금액</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
+                  <tr><td style={{ ...cellTdC, color: '#94a3b8' }} colSpan="8">항목 없음</td></tr>
+                ) : items.map((it, i) => (
+                  <tr key={i}>
+                    <td style={cellTdC}>{i + 1}</td>
+                    <td style={cellTd}>{it.trade || it.process || ''}</td>
+                    <td style={cellTd}>{it.name}</td>
+                    <td style={cellTd}>{it.spec || ''}</td>
+                    <td style={cellTdR}>{fmtNum(it.qty)}</td>
+                    <td style={cellTdC}>{it.unit || ''}</td>
+                    <td style={cellTdR}>{fmtNum(effUnitPrice(it))}</td>
+                    <td style={cellTdR}>{fmtNum(rowAmount(it))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
           {/* 공종별 소계 (총괄표) */}
           {groupArr.length > 0 && (
@@ -3290,7 +3765,8 @@
           else { saved = await api.createEstimate(site.id, body); toast('견적이 생성되었습니다.', 'success'); }
           const fresh = await api.getEstimate(saved.id); setDetail(fresh);
           await onChanged();
-        } catch (e) { toast('저장에 실패했습니다.', 'error'); }
+          return true; // v6-2: 성공 시 에디터에서 draft 삭제
+        } catch (e) { toast('저장에 실패했습니다.', 'error'); return false; }
       };
       const doConfirm = async () => {
         if (!detail || !detail.id) return;
@@ -4352,6 +4828,7 @@
       const [schedule, setSchedule] = useState([]);
       const [estimates, setEstimates] = useState([]);
       const [printData, setPrintData] = useState(null);
+      const [schedulePrintData, setSchedulePrintData] = useState(null); // v6-3 일정표 PDF
 
       const formRef = useRef(null);
 
@@ -4436,6 +4913,18 @@
         window.addEventListener('afterprint', after);
         return () => { clearTimeout(t); window.removeEventListener('afterprint', after); };
       }, [printData]);
+
+      // ── 일정표 인쇄(PDF): schedulePrintData 세팅 → 인쇄 → 정리 (견적 인쇄와 영역 분리) ──
+      const handlePrintSchedule = useCallback(() => {
+        setSchedulePrintData({ site: selectedSite, tasks: schedule });
+      }, [selectedSite, schedule]);
+      useEffect(() => {
+        if (!schedulePrintData) return;
+        const t = setTimeout(() => window.print(), 80);
+        const after = () => setSchedulePrintData(null);
+        window.addEventListener('afterprint', after);
+        return () => { clearTimeout(t); window.removeEventListener('afterprint', after); };
+      }, [schedulePrintData]);
 
       // ── 현장 등록/수정 ──
       const handleSaveSite = async (body) => {
@@ -4678,7 +5167,7 @@
                 )}
                 {activeTab === 'schedule' && (
                   <ScheduleTab key={'sch-' + selectedSite.id} site={selectedSite} tasks={schedule} loading={detailLoading}
-                    procNames={procCatNames} staffNames={staffNames} onChanged={refreshDetail} />
+                    procNames={procCatNames} staffNames={staffNames} onChanged={refreshDetail} onPrintSchedule={handlePrintSchedule} />
                 )}
                 {activeTab === 'estimate' && (
                   <EstimateTab key={'est-' + selectedSite.id} site={selectedSite} estimates={estimates} loading={detailLoading}
@@ -4753,6 +5242,10 @@
         {/* 견적서 인쇄 영역 (화면 숨김 / 인쇄 시에만 표시) */}
         <div id="print-area" className="print-only">
           {printData && <EstimatePrint site={printData.site} estimate={printData.estimate} totals={printData.totals} />}
+        </div>
+        {/* 일정표 인쇄 영역 (견적과 분리 — 데이터가 세팅된 쪽만 내용이 렌더됨) */}
+        <div id="schedule-print-area" className="print-only">
+          {schedulePrintData && <SchedulePrint site={schedulePrintData.site} tasks={schedulePrintData.tasks} />}
         </div>
         </>
       );

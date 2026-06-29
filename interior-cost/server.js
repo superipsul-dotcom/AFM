@@ -405,8 +405,31 @@ async function initDB() {
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_meetings_site ON interior_meetings (site_id, meeting_date DESC, id DESC);');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_as_site ON interior_as (site_id, received_date DESC, id DESC);');
 
+  // ====================================================================
+  // (v6) 현장 운영 강화 1차 — 진행/완료 분리(archived) + 일정 선후관계(deps)
+  //   전부 ADD COLUMN / CREATE TABLE / CREATE INDEX IF NOT EXISTS → v1~v5 데이터 100% 보존, 멱등.
+  // ====================================================================
+
+  // 23) (6-1) 현장 보관(아카이브) 플래그. progress_status 와 독립 — 사용자가 명시적으로 토글.
+  //     기존 행은 DEFAULT FALSE 로 백필 → GET /api/sites 는 여전히 전체 반환(회귀 안전).
+  await pool.query('ALTER TABLE interior_sites ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE');
+
+  // 24) (6-4) 일정 선후관계(의존성). 같은 현장 일정끼리만·자기참조/사이클 금지(앱 레벨 검증).
+  //     UNIQUE(predecessor_id, successor_id) → 중복 링크 방지. 일정 삭제 시 양방향 CASCADE.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_schedule_deps (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      predecessor_id BIGINT NOT NULL REFERENCES interior_schedule(id) ON DELETE CASCADE,
+      successor_id BIGINT NOT NULL REFERENCES interior_schedule(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (predecessor_id, successor_id)
+    );
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_schedule_deps_pred ON interior_schedule_deps (predecessor_id);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_schedule_deps_succ ON interior_schedule_deps (successor_id);');
+
   dbInitialized = true;
-  console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/estimates/estimate_items/catalog/clients/orders/meetings/as) 준비 완료 + 카테고리/카탈로그 시드.');
+  console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as) 준비 완료 + 카테고리/카탈로그 시드.');
 }
 
 // (v3) 카탈로그가 비어 있을 때만 seed/catalog.json 을 읽어 일괄 적재 (트랜잭션). 실패해도 부팅은 계속.
@@ -592,6 +615,8 @@ function rowToSite(row) {
     // (v5) 고객/리드 연결. id 는 다른 id 들과 동일하게 문자열, client_name 은 JOIN 된 경우만(아니면 null).
     client_id: row.client_id == null ? null : String(row.client_id),
     client_name: row.client_name == null ? null : row.client_name,
+    // (v6) 보관(아카이브) 여부 — 진행중/완료·보관 분리. 누락 시 false.
+    archived: row.archived == null ? false : !!row.archived,
     created_at: new Date(row.created_at).toISOString(),
   };
 }
@@ -804,7 +829,7 @@ function rowToAS(row) {
 // ----------------------------------------
 const SITE_COLS =
   "id, name, client, address, manager, budget, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, folder, status, tags, " +
-  "building_type, floor_area, to_char(move_in_date,'YYYY-MM-DD') AS move_in_date, pm, construction_manager, designer, progress_status, client_id, created_at";
+  "building_type, floor_area, to_char(move_in_date,'YYYY-MM-DD') AS move_in_date, pm, construction_manager, designer, progress_status, client_id, archived, created_at";
 const COST_COLS =
   "id, site_id, to_char(date,'YYYY-MM-DD') AS date, amount, category, process, manager, vendor, memo, schedule_id, created_at";
 const STAFF_COLS = 'id, name, role, phone, active, created_at';
@@ -993,6 +1018,16 @@ function icsDatePlusOne(s) {
   return `${yy}${mm}${dd}`;
 }
 
+// (v6 / 6-4) 'YYYY-MM-DD' 두 날짜의 일수 차 (a - b). UTC 자정 기준이라 DST/타임존 영향 없음.
+//   연쇄이동 delta = dayDiff(새 start_date, 기존 start_date). 음수(앞당김)/0/양수 모두 가능.
+function dayDiff(a, b) {
+  const pa = String(a).split('-').map(Number);
+  const pb = String(b).split('-').map(Number);
+  const ta = Date.UTC(pa[0], pa[1] - 1, pa[2]);
+  const tb = Date.UTC(pb[0], pb[1] - 1, pb[2]);
+  return Math.round((ta - tb) / 86400000);
+}
+
 // ----------------------------------------
 // 입력 검증
 // ----------------------------------------
@@ -1062,6 +1097,14 @@ function validateSite(body) {
     }
   }
 
+  // (v6) 보관(archived): 본문에 키가 있을 때만 반영 → PUT 미전달 시 기존값 보존, POST 미전달 시 false.
+  let archived; // undefined = 본문 미전달
+  let archived_provided = false;
+  if (Object.prototype.hasOwnProperty.call(b, 'archived')) {
+    archived_provided = true;
+    archived = parseBool(b.archived, false);
+  }
+
   return {
     valid: true,
     values: {
@@ -1085,6 +1128,9 @@ function validateSite(body) {
       // (v5) 고객/리드 연결 (undefined=미전달 → PUT 보존, null=해제, '문자열'=연결)
       client_id,
       client_id_provided,
+      // (v6) 보관 여부 (undefined=미전달 → PUT 보존 / POST false)
+      archived,
+      archived_provided,
     },
   };
 }
@@ -1574,7 +1620,7 @@ app.get('/api/sites', async (_req, res) => {
         interior_sites.building_type, interior_sites.floor_area,
         to_char(interior_sites.move_in_date,'YYYY-MM-DD') AS move_in_date,
         interior_sites.pm, interior_sites.construction_manager, interior_sites.designer,
-        interior_sites.progress_status, interior_sites.client_id, interior_sites.created_at,
+        interior_sites.progress_status, interior_sites.client_id, interior_sites.archived, interior_sites.created_at,
         cl.name AS client_name,
         (SELECT COALESCE(SUM(c.amount),0)::bigint FROM interior_costs c WHERE c.site_id = interior_sites.id) AS spent,
         est.id                        AS conf_id,
@@ -1671,13 +1717,14 @@ app.post('/api/sites', async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO interior_sites
          (name, client, address, manager, budget, start_date, end_date, folder, status, tags,
-          building_type, floor_area, move_in_date, pm, construction_manager, designer, progress_status, client_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+          building_type, floor_area, move_in_date, pm, construction_manager, designer, progress_status, client_id, archived)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING ${SITE_COLS}`,
       [
         v.name, v.client, v.address, v.manager, v.budget, v.start_date, v.end_date, folder, v.status, v.tags,
         v.building_type, v.floor_area, v.move_in_date, v.pm, v.construction_manager, v.designer, v.progress_status,
         v.client_id != null ? v.client_id : null, // (v5) 미전달/null → null
+        v.archived_provided ? v.archived : false, // (v6) 미전달 → false
       ]
     );
     res.status(201).json(rowToSite(rows[0]));
@@ -1713,6 +1760,11 @@ app.put('/api/sites/:id', async (req, res) => {
     if (v.client_id_provided) {
       params.push(v.client_id != null ? v.client_id : null);
       sets.push(`client_id=$${params.length}`);
+    }
+    // (v6) archived 도 본문에 키가 있을 때만 SET → 미전달 시 기존값 보존.
+    if (v.archived_provided) {
+      params.push(v.archived);
+      sets.push(`archived=$${params.length}`);
     }
     params.push(id);
     const { rows } = await pool.query(
@@ -2099,7 +2151,33 @@ app.get('/api/sites/:id/schedule', async (req, res) => {
        ORDER BY s.start_date ASC, s.sort_order ASC, s.id ASC`,
       [id]
     );
-    res.json(rows.map(rowToSchedule));
+    const schedules = rows.map(rowToSchedule);
+
+    // (6-4) 현장 전체 선후관계를 1회 조회해 매핑 (N+1 금지). id 는 다른 id 와 동일하게 문자열로 통일.
+    const ids = schedules.map((s) => s.id);
+    const predMap = {}; // successor id → [predecessor id...]
+    const succMap = {}; // predecessor id → [successor id...]
+    if (ids.length > 0) {
+      const depQ = await pool.query(
+        `SELECT predecessor_id, successor_id FROM interior_schedule_deps
+         WHERE predecessor_id = ANY($1::bigint[]) OR successor_id = ANY($1::bigint[])`,
+        [ids]
+      );
+      for (const d of depQ.rows) {
+        const p = String(d.predecessor_id);
+        const su = String(d.successor_id);
+        (succMap[p] = succMap[p] || []).push(su);
+        (predMap[su] = predMap[su] || []).push(p);
+      }
+    }
+
+    res.json(
+      schedules.map((s) => ({
+        ...s,
+        predecessors: predMap[s.id] || [],
+        successors: succMap[s.id] || [],
+      }))
+    );
   } catch (err) {
     console.error('GET /api/sites/:id/schedule 오류:', err.message);
     res.status(500).json({ success: false, message: '일정을 불러오지 못했습니다.' });
@@ -2140,15 +2218,108 @@ app.put('/api/schedule/:id', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
 
-    const { rows } = await pool.query(
-      `UPDATE interior_schedule
-       SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10
-       WHERE id=$11
-       RETURNING ${SCHEDULE_RETURNING_COLS}`,
-      [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, id]
-    );
-    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 일정을 찾을 수 없습니다.' });
-    res.json(rowToSchedule(rows[0]));
+    const cascade = parseBool(req.body && req.body.cascade, false);
+
+    // ===== cascade 미전달/false: v1~v5 동작 100% 보존 (단일 UPDATE, shifted 키 없음) =====
+    if (!cascade) {
+      const { rows } = await pool.query(
+        `UPDATE interior_schedule
+         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10
+         WHERE id=$11
+         RETURNING ${SCHEDULE_RETURNING_COLS}`,
+        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, id]
+      );
+      if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 일정을 찾을 수 없습니다.' });
+      return res.json(rowToSchedule(rows[0]));
+    }
+
+    // ===== (6-4) cascade=true: 트랜잭션으로 본 일정 갱신 + 모든 후속(transitive)을 +delta 연쇄이동 =====
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1) 기존 start_date 확보(delta 계산용) + 현장 식별. 본 행 잠금.
+      const cur = await client.query(
+        `SELECT site_id, to_char(start_date,'YYYY-MM-DD') AS start_date
+         FROM interior_schedule WHERE id=$1 FOR UPDATE`,
+        [id]
+      );
+      if (cur.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ success: false, message: '해당 일정을 찾을 수 없습니다.' });
+      }
+      const oldStart = cur.rows[0].start_date;
+      const siteId = cur.rows[0].site_id;
+
+      // 2) 본 일정 갱신 (cascade=false 와 동일한 풀-리플레이스)
+      const upd = await client.query(
+        `UPDATE interior_schedule
+         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10
+         WHERE id=$11
+         RETURNING ${SCHEDULE_RETURNING_COLS}`,
+        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, id]
+      );
+      const self = rowToSchedule(upd.rows[0]);
+
+      // 3) delta = 새 start − 기존 start (일수). 0 이면 후속 이동 없음.
+      const delta = dayDiff(v.start_date, oldStart);
+      let shifted = [];
+
+      if (delta !== 0) {
+        // 4) 현장 deps 1회 조회 → 후행 adjacency (predecessor → [successor...])
+        const depsQ = await client.query(
+          `SELECT predecessor_id, successor_id FROM interior_schedule_deps
+           WHERE predecessor_id IN (SELECT id FROM interior_schedule WHERE site_id=$1)`,
+          [siteId]
+        );
+        const succMap = {};
+        for (const d of depsQ.rows) {
+          const p = String(d.predecessor_id);
+          (succMap[p] = succMap[p] || []).push(String(d.successor_id));
+        }
+        // 5) BFS — 모든 transitive successor 수집 (방문체크로 사이클·중복 안전, 본 일정 제외)
+        const visited = new Set([String(id)]);
+        const toShift = [];
+        const queue = [String(id)];
+        while (queue.length) {
+          const cu = queue.shift();
+          for (const nx of succMap[cu] || []) {
+            if (!visited.has(nx)) {
+              visited.add(nx);
+              toShift.push(nx);
+              queue.push(nx);
+            }
+          }
+        }
+        // 6) 후속들 start/end 를 +delta 이동 (PG date + int = N일 가감 → 타임존 무관)
+        if (toShift.length > 0) {
+          const shiftQ = await client.query(
+            `UPDATE interior_schedule
+             SET start_date = start_date + ($2::int), end_date = end_date + ($2::int)
+             WHERE id = ANY($1::bigint[])
+             RETURNING id, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date`,
+            [toShift, delta]
+          );
+          shifted = shiftQ.rows.map((r) => ({
+            id: String(r.id),
+            start_date: r.start_date,
+            end_date: r.end_date,
+          }));
+        }
+      }
+
+      await client.query('COMMIT');
+      return res.json({ ...self, shifted });
+    } catch (e) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (_) {
+        /* noop */
+      }
+      throw e; // 바깥 catch 가 로깅 + 500 처리
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('PUT /api/schedule/:id 오류:', err.message);
     res.status(500).json({ success: false, message: '일정을 수정하지 못했습니다.' });
@@ -2169,6 +2340,129 @@ app.delete('/api/schedule/:id', async (req, res) => {
   } catch (err) {
     console.error('DELETE /api/schedule/:id 오류:', err.message);
     res.status(500).json({ success: false, message: '일정을 삭제하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// (v6 / 6-4) 일정 선후관계(의존성) — predecessor(선행)가 끝나야 successor(후행) 시작
+//   :id = successor 기준. 검증: 같은 현장 / 자기참조 금지 / 사이클 금지 / 중복 멱등.
+// ========================================
+
+// POST /api/schedule/:id/deps — 선행 추가. body {predecessor_id} (:id = successor)
+app.post('/api/schedule/:id/deps', async (req, res) => {
+  try {
+    const succId = parseId(req.params.id);
+    if (!succId) return res.status(400).json({ success: false, message: '잘못된 일정 id 형식입니다.' });
+
+    const rawPred = req.body && req.body.predecessor_id;
+    if (rawPred === undefined || rawPred === null || rawPred === '' || !/^\d+$/.test(String(rawPred))) {
+      return res.status(400).json({ success: false, message: 'predecessor_id 는 양의 정수여야 합니다.' });
+    }
+    const predId = String(rawPred);
+
+    // 자기참조 금지
+    if (predId === String(succId)) {
+      return res.status(400).json({ success: false, message: '자기 자신을 선행으로 지정할 수 없습니다.' });
+    }
+
+    // 두 일정 존재 + 같은 현장 확인
+    const both = await pool.query('SELECT id, site_id FROM interior_schedule WHERE id = ANY($1::bigint[])', [
+      [predId, succId],
+    ]);
+    if (both.rows.length < 2) {
+      return res.status(404).json({ success: false, message: '선행/후행 일정을 찾을 수 없습니다.' });
+    }
+    const siteSet = new Set(both.rows.map((r) => String(r.site_id)));
+    if (siteSet.size > 1) {
+      return res.status(400).json({ success: false, message: '같은 현장의 일정끼리만 선후관계를 지정할 수 있습니다.' });
+    }
+    const siteId = both.rows[0].site_id;
+
+    // 이미 동일 링크가 있으면 멱등 200
+    const existing = await pool.query(
+      'SELECT id, predecessor_id, successor_id FROM interior_schedule_deps WHERE predecessor_id=$1 AND successor_id=$2',
+      [predId, succId]
+    );
+    if (existing.rows.length > 0) {
+      const r = existing.rows[0];
+      return res
+        .status(200)
+        .json({ id: String(r.id), predecessor_id: String(r.predecessor_id), successor_id: String(r.successor_id) });
+    }
+
+    // 사이클 검사: 기존 그래프에서 succ 가 pred 에 도달 가능하면 pred→succ 추가 시 순환 발생.
+    const depsQ = await pool.query(
+      `SELECT predecessor_id, successor_id FROM interior_schedule_deps
+       WHERE predecessor_id IN (SELECT id FROM interior_schedule WHERE site_id=$1)`,
+      [siteId]
+    );
+    const succMap = {};
+    for (const d of depsQ.rows) {
+      const p = String(d.predecessor_id);
+      (succMap[p] = succMap[p] || []).push(String(d.successor_id));
+    }
+    const visited = new Set([String(succId)]);
+    const queue = [String(succId)];
+    while (queue.length) {
+      const cu = queue.shift();
+      for (const nx of succMap[cu] || []) {
+        if (nx === predId) {
+          return res.status(400).json({ success: false, message: '선후관계에 순환(사이클)이 생깁니다.' });
+        }
+        if (!visited.has(nx)) {
+          visited.add(nx);
+          queue.push(nx);
+        }
+      }
+    }
+
+    // 통과 → INSERT (201). 동시성 레이스의 UNIQUE 충돌은 멱등 200 으로 흡수.
+    try {
+      const ins = await pool.query(
+        'INSERT INTO interior_schedule_deps (predecessor_id, successor_id) VALUES ($1,$2) RETURNING id, predecessor_id, successor_id',
+        [predId, succId]
+      );
+      const r = ins.rows[0];
+      return res
+        .status(201)
+        .json({ id: String(r.id), predecessor_id: String(r.predecessor_id), successor_id: String(r.successor_id) });
+    } catch (e) {
+      if (e.code === '23505') {
+        const re = await pool.query(
+          'SELECT id, predecessor_id, successor_id FROM interior_schedule_deps WHERE predecessor_id=$1 AND successor_id=$2',
+          [predId, succId]
+        );
+        if (re.rows.length > 0) {
+          const r = re.rows[0];
+          return res
+            .status(200)
+            .json({ id: String(r.id), predecessor_id: String(r.predecessor_id), successor_id: String(r.successor_id) });
+        }
+      }
+      throw e;
+    }
+  } catch (err) {
+    console.error('POST /api/schedule/:id/deps 오류:', err.message);
+    res.status(500).json({ success: false, message: '선후관계를 추가하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/schedule/:id/deps/:predId — 선행 링크 삭제 (:id = successor, :predId = predecessor)
+app.delete('/api/schedule/:id/deps/:predId', async (req, res) => {
+  try {
+    const succId = parseId(req.params.id);
+    const predId = parseId(req.params.predId);
+    if (!succId || !predId) return res.status(400).json({ success: false, message: '잘못된 일정 id 형식입니다.' });
+
+    const { rowCount } = await pool.query(
+      'DELETE FROM interior_schedule_deps WHERE predecessor_id=$1 AND successor_id=$2',
+      [predId, succId]
+    );
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 선후관계를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/schedule/:id/deps/:predId 오류:', err.message);
+    res.status(500).json({ success: false, message: '선후관계를 삭제하지 못했습니다.' });
   }
 });
 
