@@ -619,3 +619,41 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - 8-1: takeoff 단건/배치 POST·GET·PUT·DELETE, `import/sketchup` 배치 → source='sketchup' 확인. 견적 에디터 물량 불러오기 → 행 채움.
 - 8-2: `GET /api/sites/:id/backup.zip` → 200 `application/zip`, 받은 zip unzip 시 `data.json`(site/costs/... 키 포함)·`README.txt` 존재. 없는 현장 404.
 - v1~v7 회귀 무손상.
+
+---
+
+# v9 확장 — 노션 협력업체 import(④) + 단가 카탈로그 자동수집(⑧)
+
+> v1~v8 100% 보존(컬럼 ADD COLUMN IF NOT EXISTS). 9-1 = 안도공간 노션 "협력업체 DB"(공정/기술력 보존)를 interior_vendors 로 가져오기. 9-2 = research 스킬(주간 웹 단가 리서치) 결과를 interior_catalog 로 반영하는 import 경로. **실제 데이터 적재는 Claude 가 노션/웹에서 읽어 import 엔드포인트로 수행**(서버에 노션/외부 토큰 불필요).
+
+## 9-1 협력업체(vendors) 확장 + import (④)
+### interior_vendors 확장 (ADD COLUMN IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| trade | text default '' | 공정(노션 '공정 이름') |
+| grade | text default '' | 기술력/등급(노션 '기술력' 콤마 문자열, 예 '상,고가') |
+- 기존 name/kind/phone/memo/active 유지. **노션 매핑**: 업체명→name, 자재/시공→kind, 연락처→phone, 공정이름→trade, 기술력→grade, 업체설명+성명직급+최근거래현장/날짜→memo.
+### 엔드포인트
+- GET/POST/PUT `/api/vendors` 응답·body 에 `trade`, `grade` 포함(기존 시그니처 확장, 미전달 시 기존값/'').
+- **POST /api/vendors/import** body `{items:[{name, kind?, phone?, trade?, grade?, memo?}]}` → **name 기준 upsert**(있으면 update, 없으면 insert; name 없는 항목 skip) → 200 `{imported, updated, total}`.
+### UI
+- 관리탭 거래처 섹션 폼/목록에 `trade`(공정)·`grade`(기술력) 필드 추가. 기존 CRUD/검색 그대로. 폴백 localStorage 에도 trade/grade 보존.
+
+## 9-2 단가 카탈로그 import (⑧)
+### interior_catalog 확장 (ADD COLUMN IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| source | text default 'manual' | 단가 출처('research'/'manual'/업체명 등) |
+| price_date | date | 단가 기준일(리서치 수집일, YYYY-MM-DD) |
+### 엔드포인트
+- **POST /api/catalog/import** body `{items:[{trade,name,unit?,material_price?,labor_price?,sub_price?,grp?,product_name?,vendor?,code?,source?,price_date?}]}` → **중복(trade+name+product_name 동일) 회피**: 있으면 가격/source/price_date update, 없으면 insert. → 200 `{imported, updated, total}`. trade·name 필수 항목만 반영.
+- 기존 GET/POST/PUT `/api/catalog` 응답·body 에 source/price_date 포함(확장).
+### research 스킬 연계 (Claude 가 SKILL.md 수정)
+- `.claude/skills/research/SKILL.md` 에 "interior-cost 카탈로그 반영" 단계 추가: 리서치 결과를 위 import 포맷으로 `POST /api/catalog/import`(배포된 interior-cost URL; 로컬 localhost:3010), source='research', price_date=수집일.
+### UI
+- 관리탭 카탈로그 섹션에 source/price_date 표시(있으면). 자동 수집은 research 스킬/cron, 수동 추가는 기존 그대로.
+
+## 검증
+- 9-1: vendors trade/grade CRUD, `/api/vendors/import` upsert(신규 insert + 동일 name 재import 시 update).
+- 9-2: `/api/catalog/import` 신규/중복 upsert, source/price_date 반영. 기존 catalog GET 회귀.
+- v1~v8 회귀 무손상.

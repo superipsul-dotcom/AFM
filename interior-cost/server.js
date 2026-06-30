@@ -180,6 +180,11 @@ async function initDB() {
     );
   `);
 
+  // (v9) 협력업체 trade(공정)/grade(기술력) 컬럼 — 노션 협력업체 DB import 용.
+  //   ADD COLUMN IF NOT EXISTS → 기존 vendors 데이터 100% 보존, 멱등.
+  await pool.query(`ALTER TABLE interior_vendors ADD COLUMN IF NOT EXISTS trade TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_vendors ADD COLUMN IF NOT EXISTS grade TEXT NOT NULL DEFAULT ''`);
+
   // 6) 카테고리 (비용/공정, 편집 가능). UNIQUE(kind,name) → 시드 ON CONFLICT 키.
   await pool.query(`
     CREATE TABLE IF NOT EXISTS interior_categories (
@@ -301,6 +306,11 @@ async function initDB() {
     );
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_catalog_trade_name ON interior_catalog (trade, name);');
+
+  // (v9) 카탈로그 source(단가 출처)/price_date(단가 기준일) 컬럼 — research 단가 import 용.
+  //   ADD COLUMN IF NOT EXISTS → 기존 562 시드 포함 카탈로그 데이터 100% 보존, 멱등.
+  await pool.query(`ALTER TABLE interior_catalog ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual'`);
+  await pool.query('ALTER TABLE interior_catalog ADD COLUMN IF NOT EXISTS price_date DATE');
 
   // 14) 견적 항목 3분할/공종/출처 컬럼 (기존 unit_price/amount 와 공존, 기존 데이터 보존)
   await pool.query(`ALTER TABLE interior_estimate_items ADD COLUMN IF NOT EXISTS trade TEXT NOT NULL DEFAULT ''`);
@@ -678,6 +688,8 @@ function rowToVendor(row) {
     kind: row.kind || '',
     phone: row.phone || '',
     memo: row.memo || '',
+    trade: row.trade || '', // (v9) 공정
+    grade: row.grade || '', // (v9) 기술력/등급
     active: row.active,
     created_at: new Date(row.created_at).toISOString(),
   };
@@ -778,6 +790,8 @@ function rowToCatalog(row) {
     product_name: row.product_name || '',
     vendor: row.vendor || '',
     code: row.code || '',
+    source: row.source || 'manual', // (v9) 단가 출처
+    price_date: row.price_date || null, // (v9) 단가 기준일 (to_char 'YYYY-MM-DD' 또는 null)
     active: row.active,
     created_at: new Date(row.created_at).toISOString(),
   };
@@ -856,7 +870,7 @@ const SITE_COLS =
 const COST_COLS =
   "id, site_id, to_char(date,'YYYY-MM-DD') AS date, amount, category, process, manager, vendor, memo, schedule_id, created_at";
 const STAFF_COLS = 'id, name, role, phone, active, created_at';
-const VENDOR_COLS = 'id, name, kind, phone, memo, active, created_at';
+const VENDOR_COLS = 'id, name, kind, phone, memo, trade, grade, active, created_at';
 const CATEGORY_COLS = 'id, kind, name, sort_order, active';
 const ESTIMATE_COLS =
   "id, site_id, title, client_name, client_contact, to_char(estimate_date,'YYYY-MM-DD') AS estimate_date, to_char(valid_until,'YYYY-MM-DD') AS valid_until, vat_mode, vat_rate, discount, status, memo, created_at, " +
@@ -864,9 +878,9 @@ const ESTIMATE_COLS =
   'safety_mgmt_rate, other_expense_rate, admin_rate, design_rate, profit_rate, round_unit';
 const ITEM_COLS =
   'id, estimate_id, trade, process, name, spec, qty, unit, material_price, labor_price, sub_price, unit_price, amount, catalog_id, memo, sort_order';
-// (v3) 카탈로그 컬럼 (가격은 rowToCatalog 에서 Number 변환)
+// (v3) 카탈로그 컬럼 (가격은 rowToCatalog 에서 Number 변환). (v9) source/price_date 확장.
 const CATALOG_COLS =
-  'id, trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, active, created_at';
+  "id, trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, source, to_char(price_date,'YYYY-MM-DD') AS price_date, active, created_at";
 // (v5) 노션 서브-DB 컬럼 (DATE 는 to_char 직렬화, BIGINT 금액은 rowTo* 에서 Number)
 const CLIENT_COLS = 'id, name, phone, email, source, status, address, memo, active, created_at';
 const ORDER_COLS =
@@ -1224,6 +1238,11 @@ function validateVendor(body) {
       kind: typeof b.kind === 'string' ? b.kind.trim() : '',
       phone: typeof b.phone === 'string' ? b.phone.trim() : '',
       memo: typeof b.memo === 'string' ? b.memo.trim() : '',
+      // (v9) trade(공정)/grade(기술력). PUT 에서 미전달 시 기존값 보존(provided-flag).
+      trade: typeof b.trade === 'string' ? b.trade.trim() : '',
+      grade: typeof b.grade === 'string' ? b.grade.trim() : '',
+      tradeProvided: b.trade !== undefined,
+      gradeProvided: b.grade !== undefined,
       active: parseBool(b.active, true),
     },
   };
@@ -1603,6 +1622,16 @@ function validateCatalog(body) {
     }
   }
 
+  // (v9) price_date 유효성 (있으면 실제 달력 날짜여야 함)
+  let price_date = null;
+  if (b.price_date !== undefined && b.price_date !== null && b.price_date !== '') {
+    const pd = String(b.price_date).trim();
+    if (!isRealDate(pd)) {
+      return { valid: false, message: 'price_date 는 유효한 YYYY-MM-DD 형식이어야 합니다.' };
+    }
+    price_date = pd;
+  }
+
   return {
     valid: true,
     values: {
@@ -1616,6 +1645,11 @@ function validateCatalog(body) {
       product_name: typeof b.product_name === 'string' ? b.product_name.trim() : '',
       vendor: typeof b.vendor === 'string' ? b.vendor.trim() : '',
       code: typeof b.code === 'string' ? b.code.trim() : '',
+      // (v9) source(단가 출처)/price_date(단가 기준일). PUT 에서 미전달 시 기존값 보존(provided-flag).
+      source: typeof b.source === 'string' && b.source.trim() ? b.source.trim() : 'manual',
+      price_date,
+      sourceProvided: b.source !== undefined,
+      priceDateProvided: b.price_date !== undefined,
       active: parseBool(b.active, true),
     },
   };
@@ -2009,14 +2043,75 @@ app.post('/api/vendors', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `INSERT INTO interior_vendors (name, kind, phone, memo, active) VALUES ($1,$2,$3,$4,$5) RETURNING ${VENDOR_COLS}`,
-      [v.name, v.kind, v.phone, v.memo, v.active]
+      `INSERT INTO interior_vendors (name, kind, phone, memo, trade, grade, active) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${VENDOR_COLS}`,
+      [v.name, v.kind, v.phone, v.memo, v.trade, v.grade, v.active]
     );
     res.status(201).json(rowToVendor(rows[0]));
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ success: false, message: '이미 존재하는 거래처명입니다.' });
     console.error('POST /api/vendors 오류:', err.message);
     res.status(500).json({ success: false, message: '거래처를 생성하지 못했습니다.' });
+  }
+});
+
+// (v9) POST /api/vendors/import — 노션 협력업체 일괄 import (name 기준 upsert).
+//   body { items:[{name, kind?, phone?, trade?, grade?, memo?}] }
+//   name 있으면 update / 없으면 insert / name 빈 항목 skip → { imported(신규), updated(갱신), total }.
+//   미전달 필드는 update 시 기존값 보존(provided-flag → COALESCE), insert 시 '' 기본.
+//   POST 메서드 + 리터럴 '/import' 라 PUT/DELETE :id 와 충돌 없음. 트랜잭션으로 일괄 처리.
+app.post('/api/vendors/import', async (req, res) => {
+  const body = req.body || {};
+  const items = Array.isArray(body.items) ? body.items : null;
+  if (!items) return res.status(400).json({ success: false, message: 'items 배열이 필요합니다.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let imported = 0;
+    let updated = 0;
+    for (const raw of items) {
+      const it = raw || {};
+      const name = typeof it.name === 'string' ? it.name.trim() : '';
+      if (!name) continue; // name 빈 항목 skip
+
+      // 미전달(undefined) → null(보존), 전달 → trim 값. (insert 시 null 은 '' 로 대체)
+      const norm = (key) => (it[key] !== undefined ? (typeof it[key] === 'string' ? it[key].trim() : String(it[key])) : null);
+      const kind = norm('kind');
+      const phone = norm('phone');
+      const trade = norm('trade');
+      const grade = norm('grade');
+      const memo = norm('memo');
+
+      const existing = await client.query('SELECT id FROM interior_vendors WHERE name=$1', [name]);
+      if (existing.rows.length > 0) {
+        await client.query(
+          `UPDATE interior_vendors
+             SET kind=COALESCE($1,kind), phone=COALESCE($2,phone), trade=COALESCE($3,trade),
+                 grade=COALESCE($4,grade), memo=COALESCE($5,memo)
+           WHERE name=$6`,
+          [kind, phone, trade, grade, memo, name]
+        );
+        updated++;
+      } else {
+        await client.query(
+          `INSERT INTO interior_vendors (name, kind, phone, trade, grade, memo) VALUES ($1,$2,$3,$4,$5,$6)`,
+          [name, kind || '', phone || '', trade || '', grade || '', memo || '']
+        );
+        imported++;
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ imported, updated, total: imported + updated });
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      /* noop */
+    }
+    console.error('POST /api/vendors/import 오류:', err.message);
+    res.status(500).json({ success: false, message: '거래처 import 에 실패했습니다.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -2028,8 +2123,10 @@ app.put('/api/vendors/:id', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `UPDATE interior_vendors SET name=$1, kind=$2, phone=$3, memo=$4, active=$5 WHERE id=$6 RETURNING ${VENDOR_COLS}`,
-      [v.name, v.kind, v.phone, v.memo, v.active, id]
+      `UPDATE interior_vendors SET name=$1, kind=$2, phone=$3, memo=$4, active=$5,
+              trade=COALESCE($6, trade), grade=COALESCE($7, grade)
+       WHERE id=$8 RETURNING ${VENDOR_COLS}`,
+      [v.name, v.kind, v.phone, v.memo, v.active, v.tradeProvided ? v.trade : null, v.gradeProvided ? v.grade : null, id]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 거래처를 찾을 수 없습니다.' });
     res.json(rowToVendor(rows[0]));
@@ -3128,15 +3225,108 @@ app.post('/api/catalog', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `INSERT INTO interior_catalog (trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      `INSERT INTO interior_catalog (trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, source, price_date, active)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING ${CATALOG_COLS}`,
-      [v.trade, v.grp, v.name, v.unit, v.material_price, v.labor_price, v.sub_price, v.product_name, v.vendor, v.code, v.active]
+      [v.trade, v.grp, v.name, v.unit, v.material_price, v.labor_price, v.sub_price, v.product_name, v.vendor, v.code, v.source, v.price_date, v.active]
     );
     res.status(201).json(rowToCatalog(rows[0]));
   } catch (err) {
     console.error('POST /api/catalog 오류:', err.message);
     res.status(500).json({ success: false, message: '카탈로그 항목을 생성하지 못했습니다.' });
+  }
+});
+
+// (v9) POST /api/catalog/import — research 단가 일괄 import.
+//   body { items:[{trade,name,unit?,material_price?,labor_price?,sub_price?,grp?,product_name?,vendor?,code?,source?,price_date?}] }
+//   중복 회피 upsert 키 = (trade + name + product_name): 있으면 가격/source/price_date 등 update, 없으면 insert.
+//   trade·name 필수 항목만 반영(둘 중 하나라도 없으면 skip). 가격은 0 이상 정수만 반영(아니면 무시→보존/0),
+//   price_date 는 실제 달력 날짜만 반영. 미전달 필드는 update 시 기존값 보존(provided-flag → COALESCE).
+//   POST 메서드 + 리터럴 '/import' 라 PUT/DELETE :id 와 충돌 없음. 트랜잭션으로 일괄 처리.
+app.post('/api/catalog/import', async (req, res) => {
+  const body = req.body || {};
+  const items = Array.isArray(body.items) ? body.items : null;
+  if (!items) return res.status(400).json({ success: false, message: 'items 배열이 필요합니다.' });
+
+  // 가격: 미전달/무효 → null(update 보존, insert 0), 유효 정수 → 그 값(0 포함).
+  const normPrice = (x) => {
+    if (x === undefined || x === null || x === '') return null;
+    const n = Number(x);
+    return Number.isFinite(n) && Number.isInteger(n) && n >= 0 ? n : null;
+  };
+  // 텍스트: 미전달 → null(update 보존, insert ''), 전달 → trim.
+  const normText = (x) => (x !== undefined ? (typeof x === 'string' ? x.trim() : String(x)) : null);
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let imported = 0;
+    let updated = 0;
+    for (const raw of items) {
+      const it = raw || {};
+      const trade = typeof it.trade === 'string' ? it.trade.trim() : '';
+      const name = typeof it.name === 'string' ? it.name.trim() : '';
+      if (!trade || !name) continue; // trade·name 필수 항목만 반영
+      const product_name = typeof it.product_name === 'string' ? it.product_name.trim() : '';
+
+      const unit = normText(it.unit);
+      const grp = normText(it.grp);
+      const vendor = normText(it.vendor);
+      const code = normText(it.code);
+      const material_price = normPrice(it.material_price);
+      const labor_price = normPrice(it.labor_price);
+      const sub_price = normPrice(it.sub_price);
+      // source: 미전달 → null(update 보존, insert 'manual'), 전달(비어있지않음) → 값.
+      const source = it.source !== undefined && String(it.source).trim() ? String(it.source).trim() : (it.source !== undefined ? 'manual' : null);
+      // price_date: 미전달 → null(update 보존, insert null). 전달이면 유효 날짜만, 무효는 null.
+      let price_date = null;
+      if (it.price_date !== undefined && it.price_date !== null && it.price_date !== '') {
+        const pd = String(it.price_date).trim();
+        price_date = isRealDate(pd) ? pd : null;
+      }
+      const priceDateProvided = it.price_date !== undefined;
+
+      // upsert 키 = trade + name + product_name
+      const existing = await client.query(
+        'SELECT id FROM interior_catalog WHERE trade=$1 AND name=$2 AND product_name=$3 ORDER BY id ASC LIMIT 1',
+        [trade, name, product_name]
+      );
+      if (existing.rows.length > 0) {
+        await client.query(
+          `UPDATE interior_catalog
+             SET unit=COALESCE($1,unit), grp=COALESCE($2,grp), vendor=COALESCE($3,vendor), code=COALESCE($4,code),
+                 material_price=COALESCE($5,material_price), labor_price=COALESCE($6,labor_price), sub_price=COALESCE($7,sub_price),
+                 source=COALESCE($8,source), price_date=COALESCE($9,price_date)
+           WHERE id=$10`,
+          [unit, grp, vendor, code, material_price, labor_price, sub_price, source, priceDateProvided ? price_date : null, existing.rows[0].id]
+        );
+        updated++;
+      } else {
+        await client.query(
+          `INSERT INTO interior_catalog
+             (trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, source, price_date)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          [
+            trade, grp || '', name, unit || '',
+            material_price || 0, labor_price || 0, sub_price || 0,
+            product_name, vendor || '', code || '', source || 'manual', priceDateProvided ? price_date : null,
+          ]
+        );
+        imported++;
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ imported, updated, total: imported + updated });
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      /* noop */
+    }
+    console.error('POST /api/catalog/import 오류:', err.message);
+    res.status(500).json({ success: false, message: '카탈로그 import 에 실패했습니다.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -3150,10 +3340,11 @@ app.put('/api/catalog/:id', async (req, res) => {
     const v = check.values;
     const { rows } = await pool.query(
       `UPDATE interior_catalog
-       SET trade=$1, grp=$2, name=$3, unit=$4, material_price=$5, labor_price=$6, sub_price=$7, product_name=$8, vendor=$9, code=$10, active=$11
-       WHERE id=$12
+       SET trade=$1, grp=$2, name=$3, unit=$4, material_price=$5, labor_price=$6, sub_price=$7, product_name=$8, vendor=$9, code=$10, active=$11,
+           source=COALESCE($12, source), price_date=COALESCE($13, price_date)
+       WHERE id=$14
        RETURNING ${CATALOG_COLS}`,
-      [v.trade, v.grp, v.name, v.unit, v.material_price, v.labor_price, v.sub_price, v.product_name, v.vendor, v.code, v.active, id]
+      [v.trade, v.grp, v.name, v.unit, v.material_price, v.labor_price, v.sub_price, v.product_name, v.vendor, v.code, v.active, v.sourceProvided ? v.source : null, v.priceDateProvided ? v.price_date : null, id]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 카탈로그 항목을 찾을 수 없습니다.' });
     res.json(rowToCatalog(rows[0]));

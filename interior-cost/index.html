@@ -402,6 +402,7 @@
           ...c,
           id: uid(), active: true, created_at: new Date(now - i).toISOString(),
           grp: c.grp || '', product_name: c.product_name || '', vendor: c.vendor || '', code: c.code || '',
+          source: c.source || 'manual', price_date: c.price_date || '',
           material_price: Number(c.material_price) || 0, labor_price: Number(c.labor_price) || 0, sub_price: Number(c.sub_price) || 0,
         }));
         catalogStore.write(list);
@@ -838,7 +839,7 @@
           if (e.status) throw e; this._useMock = true;
           const list = vendorsStore.read();
           if (list.some((v) => v.name === body.name)) { const err = new Error('이미 등록된 거래처입니다.'); err.status = 409; throw err; }
-          const item = { id: uid(), name: body.name, kind: body.kind || '', phone: body.phone || '', memo: body.memo || '', active: true, created_at: new Date().toISOString() };
+          const item = { id: uid(), name: body.name, kind: body.kind || '', phone: body.phone || '', trade: body.trade || '', grade: body.grade || '', memo: body.memo || '', active: true, created_at: new Date().toISOString() };
           vendorsStore.write([...list, item]); return item;
         }
       },
@@ -855,6 +856,26 @@
       async removeVendor(id) {
         try { await this._tryFetch(`${API_BASE_URL}/vendors/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
         catch (e) { if (e.status) throw e; this._useMock = true; vendorsStore.write(vendorsStore.read().filter((v) => String(v.id) !== String(id))); return { success: true }; }
+      },
+      // v9: 노션 협력업체 일괄 import (name 기준 upsert)
+      async importVendors(items) {
+        const arr = Array.isArray(items) ? items : (items && items.items) || [];
+        try { const d = await this._tryFetch(`${API_BASE_URL}/vendors/import`, { method: 'POST', body: JSON.stringify({ items: arr }) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = vendorsStore.read(); let imported = 0, updated = 0;
+          arr.forEach((it) => {
+            const name = String((it && it.name) || '').trim(); if (!name) return;
+            const idx = list.findIndex((v) => v.name === name);
+            if (idx >= 0) {
+              const patch = {}; ['kind', 'phone', 'trade', 'grade', 'memo'].forEach((k) => { if (it[k] != null) patch[k] = it[k]; });
+              list[idx] = { ...list[idx], ...patch }; updated++;
+            } else {
+              list.push({ id: uid(), name, kind: it.kind || '', phone: it.phone || '', trade: it.trade || '', grade: it.grade || '', memo: it.memo || '', active: true, created_at: new Date().toISOString() }); imported++;
+            }
+          });
+          vendorsStore.write(list); return { imported, updated, total: list.length };
+        }
       },
 
       // ════════ v2: 카테고리 (categories) ════════
@@ -1163,7 +1184,8 @@
           const item = {
             id: uid(), trade: body.trade, grp: body.grp || '', name: body.name, unit: body.unit || '',
             material_price: Math.round(Number(body.material_price) || 0), labor_price: Math.round(Number(body.labor_price) || 0), sub_price: Math.round(Number(body.sub_price) || 0),
-            product_name: body.product_name || '', vendor: body.vendor || '', code: body.code || '', active: true, created_at: new Date().toISOString(),
+            product_name: body.product_name || '', vendor: body.vendor || '', code: body.code || '',
+            source: body.source || 'manual', price_date: body.price_date || '', active: true, created_at: new Date().toISOString(),
           };
           catalogStore.write([...ensureCatalog(), item]); return item;
         }
@@ -1181,6 +1203,31 @@
       async removeCatalog(id) {
         try { await this._tryFetch(`${API_BASE_URL}/catalog/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
         catch (e) { if (e.status) throw e; this._useMock = true; catalogStore.write(ensureCatalog().filter((c) => String(c.id) !== String(id))); return { success: true }; }
+      },
+      // v9: 단가 리서치 결과 일괄 import (trade+name+product_name 기준 upsert)
+      async importCatalog(items) {
+        const arr = Array.isArray(items) ? items : (items && items.items) || [];
+        try { const d = await this._tryFetch(`${API_BASE_URL}/catalog/import`, { method: 'POST', body: JSON.stringify({ items: arr }) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = ensureCatalog(); let imported = 0, updated = 0;
+          const num = (x) => Math.round(Number(x) || 0);
+          arr.forEach((it) => {
+            const trade = String((it && it.trade) || '').trim(); const name = String((it && it.name) || '').trim();
+            if (!trade || !name) return;
+            const pn = String(it.product_name || '');
+            const idx = list.findIndex((c) => c.trade === trade && c.name === name && String(c.product_name || '') === pn);
+            if (idx >= 0) {
+              const patch = {};
+              ['material_price', 'labor_price', 'sub_price'].forEach((k) => { if (it[k] != null) patch[k] = num(it[k]); });
+              ['unit', 'grp', 'vendor', 'code', 'source', 'price_date'].forEach((k) => { if (it[k] != null) patch[k] = it[k]; });
+              list[idx] = { ...list[idx], ...patch }; updated++;
+            } else {
+              list.push({ id: uid(), trade, name, grp: it.grp || '', unit: it.unit || '', material_price: num(it.material_price), labor_price: num(it.labor_price), sub_price: num(it.sub_price), product_name: pn, vendor: it.vendor || '', code: it.code || '', source: it.source || 'manual', price_date: it.price_date || '', active: true, created_at: new Date().toISOString() }); imported++;
+            }
+          });
+          catalogStore.write(list); return { imported, updated, total: list.length };
+        }
       },
 
       // ════════ v8: 스케치업/실측 물량 (takeoff) ════════
@@ -4660,38 +4707,45 @@
 
     function VendorManager({ vendors, onChanged }) {
       const toast = useToast();
-      const [form, setForm] = useState({ name: '', kind: '', phone: '', memo: '' });
+      const [form, setForm] = useState({ name: '', kind: '', phone: '', trade: '', grade: '', memo: '' });
       const [editing, setEditing] = useState(null);
-      const [eForm, setEForm] = useState({ name: '', kind: '', phone: '', memo: '', active: true });
+      const [eForm, setEForm] = useState({ name: '', kind: '', phone: '', trade: '', grade: '', memo: '', active: true });
       const add = async (e) => {
         e.preventDefault();
         if (!form.name.trim()) { toast('거래처명을 입력하세요.', 'error'); return; }
-        try { await api.createVendor({ name: form.name.trim(), kind: form.kind.trim(), phone: form.phone.trim(), memo: form.memo.trim() }); setForm({ name: '', kind: '', phone: '', memo: '' }); toast('거래처 추가됨', 'success'); await onChanged(); }
+        try { await api.createVendor({ name: form.name.trim(), kind: form.kind.trim(), phone: form.phone.trim(), trade: form.trade.trim(), grade: form.grade.trim(), memo: form.memo.trim() }); setForm({ name: '', kind: '', phone: '', trade: '', grade: '', memo: '' }); toast('거래처 추가됨', 'success'); await onChanged(); }
         catch (err) { toast(err.status === 409 ? err.message : '추가 실패', 'error'); }
       };
-      const startEdit = (v) => { setEditing(v); setEForm({ name: v.name, kind: v.kind || '', phone: v.phone || '', memo: v.memo || '', active: v.active !== false }); };
+      const startEdit = (v) => { setEditing(v); setEForm({ name: v.name, kind: v.kind || '', phone: v.phone || '', trade: v.trade || '', grade: v.grade || '', memo: v.memo || '', active: v.active !== false }); };
       const saveEdit = async () => {
         if (!eForm.name.trim()) { toast('거래처명을 입력하세요.', 'error'); return; }
-        try { await api.updateVendor(editing.id, { name: eForm.name.trim(), kind: eForm.kind.trim(), phone: eForm.phone.trim(), memo: eForm.memo.trim(), active: eForm.active }); setEditing(null); toast('수정됨', 'success'); await onChanged(); }
+        try { await api.updateVendor(editing.id, { name: eForm.name.trim(), kind: eForm.kind.trim(), phone: eForm.phone.trim(), trade: eForm.trade.trim(), grade: eForm.grade.trim(), memo: eForm.memo.trim(), active: eForm.active }); setEditing(null); toast('수정됨', 'success'); await onChanged(); }
         catch (err) { toast(err.status === 409 ? err.message : '수정 실패', 'error'); }
       };
-      const toggle = async (v) => { try { await api.updateVendor(v.id, { name: v.name, kind: v.kind || '', phone: v.phone || '', memo: v.memo || '', active: !(v.active !== false) }); await onChanged(); } catch (e) { toast('변경 실패', 'error'); } };
+      const toggle = async (v) => { try { await api.updateVendor(v.id, { name: v.name, kind: v.kind || '', phone: v.phone || '', trade: v.trade || '', grade: v.grade || '', memo: v.memo || '', active: !(v.active !== false) }); await onChanged(); } catch (e) { toast('변경 실패', 'error'); } };
       const remove = async (v) => { try { await api.removeVendor(v.id); toast('삭제됨', 'info'); await onChanged(); } catch (e) { toast('삭제 실패', 'error'); } };
       return (
         <Card className="p-5">
           <h2 className="text-base font-bold text-slate-800 mb-4">거래처 마스터</h2>
-          <form onSubmit={add} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-2">
-            <Input placeholder="거래처명 *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <Combo placeholder="구분" value={form.kind} options={VENDOR_KINDS} onChange={(e) => setForm({ ...form, kind: e.target.value })} />
-            <Input placeholder="연락처" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Button type="submit">추가</Button>
+          <form onSubmit={add} className="space-y-2 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2">
+              <Input placeholder="거래처명 *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Combo placeholder="구분" value={form.kind} options={VENDOR_KINDS} onChange={(e) => setForm({ ...form, kind: e.target.value })} />
+              <Input placeholder="연락처" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Button type="submit">추가</Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <Combo placeholder="공정 (예: 목공사)" value={form.trade} options={TRADE_MASTER} onChange={(e) => setForm({ ...form, trade: e.target.value })} />
+              <Combo placeholder="기술력/등급 (예: 상,고가)" value={form.grade} options={['상', '중', '하']} onChange={(e) => setForm({ ...form, grade: e.target.value })} />
+              <Input placeholder="메모 (선택)" value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
+            </div>
           </form>
-          <Input placeholder="메모 (선택)" className="mb-4" value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
           {vendors.length === 0 ? <p className="text-sm text-slate-400 text-center py-6">등록된 거래처가 없습니다.</p> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
                   <th className="py-2 pr-3 font-medium">거래처</th><th className="py-2 pr-3 font-medium">구분</th>
+                  <th className="py-2 pr-3 font-medium">공정</th><th className="py-2 pr-3 font-medium">등급</th>
                   <th className="py-2 pr-3 font-medium">연락처</th><th className="py-2 pr-3 font-medium">메모</th>
                   <th className="py-2 pr-3 font-medium">상태</th><th className="py-2 font-medium text-right">관리</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">
@@ -4699,6 +4753,8 @@
                     <tr key={v.id} className={v.active === false ? 'opacity-50' : ''}>
                       <td className="py-2 pr-3 font-medium text-slate-700">{v.name}</td>
                       <td className="py-2 pr-3 text-slate-500">{v.kind || '-'}</td>
+                      <td className="py-2 pr-3">{v.trade ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white" style={{ backgroundColor: tradeHex(v.trade) }}>{v.trade}</span> : <span className="text-slate-300">-</span>}</td>
+                      <td className="py-2 pr-3">{v.grade ? <span className="flex flex-wrap gap-1">{String(v.grade).split(',').map((g, i) => g.trim() ? <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px]">{g.trim()}</span> : null)}</span> : <span className="text-slate-300">-</span>}</td>
                       <td className="py-2 pr-3 text-slate-500">{v.phone || '-'}</td>
                       <td className="py-2 pr-3 text-slate-500 truncate max-w-[140px]">{v.memo || '-'}</td>
                       <td className="py-2 pr-3"><button onClick={() => toggle(v)}><Badge color={v.active === false ? 'bg-slate-400' : 'bg-emerald-500'}>{v.active === false ? '비활성' : '활성'}</Badge></button></td>
@@ -4717,6 +4773,8 @@
               <div className="space-y-3">
                 <Input label="거래처명 *" value={eForm.name} onChange={(e) => setEForm({ ...eForm, name: e.target.value })} />
                 <Combo label="구분" value={eForm.kind} options={VENDOR_KINDS} onChange={(e) => setEForm({ ...eForm, kind: e.target.value })} />
+                <Combo label="공정" placeholder="예: 목공사" value={eForm.trade} options={TRADE_MASTER} onChange={(e) => setEForm({ ...eForm, trade: e.target.value })} />
+                <Combo label="기술력/등급" placeholder="예: 상,고가" value={eForm.grade} options={['상', '중', '하']} onChange={(e) => setEForm({ ...eForm, grade: e.target.value })} />
                 <Input label="연락처" value={eForm.phone} onChange={(e) => setEForm({ ...eForm, phone: e.target.value })} />
                 <Textarea label="메모" rows="2" value={eForm.memo} onChange={(e) => setEForm({ ...eForm, memo: e.target.value })} />
                 <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -5075,7 +5133,16 @@
                   {pageItems.map((c) => (
                     <tr key={c.id} className={c.active === false ? 'opacity-50' : ''}>
                       <td className="py-2 pr-2"><span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white" style={{ backgroundColor: tradeHex(c.trade) }}>{c.trade}</span></td>
-                      <td className="py-2 pr-2 text-slate-700"><span className="font-medium">{c.name}</span>{c.product_name && <span className="block text-[11px] text-slate-400 truncate max-w-[220px]">{c.product_name}</span>}</td>
+                      <td className="py-2 pr-2 text-slate-700">
+                        <span className="font-medium">{c.name}</span>
+                        {c.product_name && <span className="block text-[11px] text-slate-400 truncate max-w-[220px]">{c.product_name}</span>}
+                        {((c.source && c.source !== 'manual') || c.price_date) && (
+                          <span className="flex flex-wrap items-center gap-1 mt-0.5">
+                            {c.source && c.source !== 'manual' && <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 text-[10px] font-medium">{c.source === 'research' ? '🔎 리서치' : c.source}</span>}
+                            {c.price_date && <span className="text-[10px] text-slate-400">{c.price_date} 기준</span>}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2 pr-2 text-slate-500">{c.unit || '-'}</td>
                       <td className="py-2 pr-2 text-right text-slate-600">{fmtNum(c.material_price)}</td>
                       <td className="py-2 pr-2 text-right text-slate-600">{fmtNum(c.labor_price)}</td>
