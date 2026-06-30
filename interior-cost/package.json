@@ -8,8 +8,10 @@
   },
   "dependencies": {
     "archiver": "^7.0.1",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^16.4.7",
     "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.13.1"
   }
 }

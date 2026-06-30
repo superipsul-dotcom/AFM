@@ -640,11 +640,29 @@
     // ========================================
     // API 레이어 (서버 우선, 실패 시 localStorage 폴백)
     // ========================================
+    // ── v13: 인증 토큰 (localStorage) ──
+    const TOKEN_KEY = 'interior_token';
+    function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+    function setToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); } catch (e) {} }
+    function clearToken() { try { localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+
     const api = {
       _useMock: false,
+      _onUnauthorized: null, // v13: 보호 API가 401 응답 시 AuthGate가 등록한 콜백(세션만료 → 로그인화면)
 
       async _tryFetch(url, opts) {
-        const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+        opts = opts || {};
+        const { _skipAuthRedirect, headers: optHeaders, ...rest } = opts;
+        const headers = { 'Content-Type': 'application/json', ...(optHeaders || {}) };
+        const tk = getToken();
+        if (tk) headers['Authorization'] = 'Bearer ' + tk; // v13: 토큰 있으면 공통 부착
+        const res = await fetch(url, { ...rest, headers });
+        // v13: 401 = 서버는 살아있으나 인증 필요/만료 → 토큰 삭제 + 로그인화면 전환.
+        // (auth 호출은 _skipAuthRedirect 로 제외 → 잘못된 비번 등은 폼이 직접 메시지 처리)
+        if (res.status === 401 && !_skipAuthRedirect) {
+          clearToken();
+          if (typeof api._onUnauthorized === 'function') api._onUnauthorized();
+        }
         if (!res.ok) {
           let msg = 'HTTP ' + res.status;
           try { const j = await res.json(); if (j && j.error) msg = j.error; else if (j && j.message) msg = j.message; } catch {}
@@ -652,6 +670,11 @@
         }
         return res.json();
       },
+
+      // ── v13: 인증 (서버 전용 — localStorage 폴백 없음, 4xx는 폼이 메시지 표시) ──
+      async authMe() { return this._tryFetch(`${API_BASE_URL}/auth/me`, { _skipAuthRedirect: true }); },
+      async authLogin(body) { return this._tryFetch(`${API_BASE_URL}/auth/login`, { method: 'POST', body: JSON.stringify(body), _skipAuthRedirect: true }); },
+      async authSignup(body) { return this._tryFetch(`${API_BASE_URL}/auth/signup`, { method: 'POST', body: JSON.stringify(body), _skipAuthRedirect: true }); },
 
       _ensureSeed() {
         if (!localStorage.getItem(SITES_KEY)) seedSites();
@@ -2644,12 +2667,21 @@
       const toast = useToast();
       if (!site) return null;
       // (v8) 프로젝트 전체 zip 백업 — 서버 전용(폴백은 안내 토스트)
-      const handleBackup = () => {
+      // (v13) 인증 게이트 하에서 anchor href 는 Bearer 헤더를 못 실어 401 → fetch+토큰→blob 다운로드
+      const handleBackup = async () => {
         if (api._useMock) { toast('프로젝트 백업(zip)은 서버 연결이 필요합니다.', 'info'); return; }
-        const a = document.createElement('a');
-        a.href = api.backupUrl(site.id); // 서버 Content-Disposition(attachment)으로 파일명 지정
-        document.body.appendChild(a); a.click(); a.remove();
-        toast('프로젝트 백업(zip) 다운로드를 시작합니다.', 'success');
+        try {
+          const tk = getToken();
+          const res = await fetch(api.backupUrl(site.id), { headers: tk ? { Authorization: 'Bearer ' + tk } : {} });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const blob = await res.blob();
+          const today = new Date().toISOString().slice(0, 10);
+          const safe = String(site.name || 'project').replace(/[\\/:*?"<>|]+/g, '_');
+          downloadBlob(blob, `${safe}-backup-${today}.zip`);
+          toast('프로젝트 백업(zip)을 내려받았습니다.', 'success');
+        } catch (e) {
+          toast('백업 다운로드 실패: ' + (e.message || ''), 'error');
+        }
       };
       const period = site.start_date ? `${site.start_date} ~ ${site.end_date || '미정'}` : '미정';
       const metas = [
@@ -3465,7 +3497,7 @@
         if (!tasks || tasks.length === 0) { toast('내보낼 일정이 없습니다.', 'error'); return; }
         if (!api._useMock) {
           try {
-            const res = await fetch(api.scheduleIcsUrl(site.id));
+            const res = await fetch(api.scheduleIcsUrl(site.id), { headers: getToken() ? { Authorization: 'Bearer ' + getToken() } : {} });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const blob = await res.blob();
             downloadBlob(blob, `${site.name}-schedule.ics`);
@@ -5871,7 +5903,7 @@
     // ========================================
     // 🚀 App
     // ========================================
-    function App() {
+    function App({ authUser = null, demoMode = false, onLogout = () => {} }) {
       const toast = useToast();
       const [sites, setSites] = useState([]);
       const [selectedId, setSelectedId] = useState(null);
@@ -6094,7 +6126,7 @@
         // 서버 모드: 서버 export 엔드포인트로 다운로드 시도
         if (!api._useMock) {
           try {
-            const res = await fetch(api.exportUrl(selectedSite.id));
+            const res = await fetch(api.exportUrl(selectedSite.id), { headers: getToken() ? { Authorization: 'Bearer ' + getToken() } : {} });
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const blob = await res.blob();
             downloadBlob(blob, `${selectedSite.name}-비용내역.csv`);
@@ -6128,12 +6160,33 @@
               <h1 className="text-lg sm:text-xl font-extrabold text-slate-800 flex items-center gap-2">
                 <span>🏗️</span> <span className="hidden sm:inline">인테리어 현장 비용관리</span><span className="sm:hidden">현장 비용관리</span>
               </h1>
-              {usingMock && (
-                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 shrink-0"
-                  title="서버 연결 없이 브라우저(localStorage) 데이터로 동작 중입니다.">
-                  오프라인 데모 모드
-                </span>
-              )}
+              {/* v13: 로그인 시 사용자·팀·로그아웃 / 데모(오프라인)면 배너 */}
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                {demoMode ? (
+                  <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700"
+                    title="서버에 연결하지 않고 브라우저(localStorage) 데이터로 동작 중입니다. 로그인 없이 둘러보기 모드입니다.">
+                    데모(오프라인)
+                  </span>
+                ) : (
+                  <>
+                    {usingMock && (
+                      <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700"
+                        title="서버 연결이 끊겨 브라우저(localStorage) 데이터로 동작 중입니다.">
+                        오프라인 데모 모드
+                      </span>
+                    )}
+                    {authUser && (
+                      <>
+                        <div className="text-right leading-tight hidden sm:block">
+                          <p className="text-sm font-semibold text-slate-700 truncate max-w-[160px]">{authUser.name || authUser.email}</p>
+                          <p className="text-[11px] text-slate-400 truncate max-w-[160px]">{authUser.team_name || '팀'}</p>
+                        </div>
+                        <Button variant="secondary" size="sm" onClick={onLogout}>로그아웃</Button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </header>
 
@@ -6339,11 +6392,173 @@
     }
 
     // ========================================
+    // v13: 인증 화면 (로그인 / 회원가입 탭 + 초대코드)
+    // ========================================
+    function AuthScreen({ onAuthed }) {
+      const [mode, setMode] = useState('login'); // login | signup
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [name, setName] = useState('');
+      const [invite, setInvite] = useState('');
+      const [error, setError] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+
+      const switchMode = (m) => { setMode(m); setError(''); setPassword(''); };
+
+      const submit = async (e) => {
+        e.preventDefault();
+        setError('');
+        const em = email.trim().toLowerCase();
+        if (!em) { setError('이메일을 입력하세요.'); return; }
+        if (!password) { setError('비밀번호를 입력하세요.'); return; }
+        if (mode === 'signup') {
+          if (password.length < 6) { setError('비밀번호는 6자 이상이어야 합니다.'); return; }
+          if (!invite.trim()) { setError('초대코드를 입력하세요.'); return; }
+        }
+        setSubmitting(true);
+        try {
+          const data = mode === 'login'
+            ? await api.authLogin({ email: em, password })
+            : await api.authSignup({ email: em, password, name: name.trim(), invite_code: invite.trim() });
+          if (!data || !data.token) throw new Error('인증 응답이 올바르지 않습니다.');
+          onAuthed(data.user, data.token);
+        } catch (err) {
+          // 서버 메시지 우선(초대코드 오류/이메일 중복/로그인 실패/짧은 비번). status 없으면 = 네트워크 실패.
+          if (err && err.status) setError(err.message || '요청을 처리하지 못했습니다.');
+          else setError('서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.');
+        } finally {
+          setSubmitting(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-10">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-6">
+              <div className="text-4xl mb-2">🏗️</div>
+              <h1 className="text-xl font-extrabold text-slate-800">인테리어 현장 비용관리</h1>
+              <p className="text-sm text-slate-400 mt-1">현장 비용 · 일정 · 견적 · 발주 통합 관리</p>
+            </div>
+            <Card className="p-6 sm:p-7">
+              {/* 로그인 / 회원가입 탭 */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl mb-5">
+                {[['login', '로그인'], ['signup', '회원가입']].map(([m, label]) => (
+                  <button key={m} type="button" onClick={() => switchMode(m)}
+                    className={`py-2 rounded-lg text-sm font-semibold transition ${mode === m ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <form onSubmit={submit} className="space-y-4">
+                <Input label="이메일" type="email" autoComplete="email" value={email}
+                  onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+                <Input label="비밀번호" type="password"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder={mode === 'signup' ? '6자 이상' : '비밀번호'} />
+                {mode === 'signup' && (
+                  <>
+                    <Input label="이름 (선택)" type="text" value={name}
+                      onChange={(e) => setName(e.target.value)} placeholder="표시할 이름" />
+                    <Input label="초대코드" type="text" value={invite}
+                      onChange={(e) => setInvite(e.target.value)} placeholder="팀 초대코드 (예: ANDO-2026)" />
+                  </>
+                )}
+
+                {error && (
+                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{error}</div>
+                )}
+
+                <Button type="submit" size="lg" disabled={submitting} className="w-full">
+                  {submitting ? '처리 중…' : (mode === 'login' ? '로그인' : '회원가입')}
+                </Button>
+              </form>
+
+              <p className="text-center text-xs text-slate-400 mt-5">
+                {mode === 'login'
+                  ? <>계정이 없으신가요? <button type="button" className="text-blue-600 font-medium hover:underline" onClick={() => switchMode('signup')}>회원가입</button> (초대코드 필요)</>
+                  : <>이미 계정이 있으신가요? <button type="button" className="text-blue-600 font-medium hover:underline" onClick={() => switchMode('login')}>로그인</button></>}
+              </p>
+            </Card>
+            <p className="text-center text-[11px] text-slate-400 mt-4">초대코드는 팀 관리자에게 문의하세요.</p>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // v13: 인증 게이트 (부팅 → 토큰검사: 앱 / 로그인화면 / 오프라인 데모)
+    // ========================================
+    function AuthGate() {
+      const [status, setStatus] = useState('checking'); // checking | guest | authed | demo
+      const [user, setUser] = useState(null);
+      const statusRef = useRef('checking');
+      useEffect(() => { statusRef.current = status; }, [status]);
+
+      // 보호 API 401(세션만료) 시 api 레이어가 호출 — 데모모드는 보존(오프라인 락아웃 방지)
+      useEffect(() => {
+        api._onUnauthorized = () => {
+          if (statusRef.current === 'demo') return;
+          clearToken();
+          setUser(null);
+          setStatus('guest');
+        };
+        return () => { api._onUnauthorized = null; };
+      }, []);
+
+      const boot = useCallback(async () => {
+        setStatus('checking');
+        try {
+          const data = await api.authMe(); // 토큰 있으면 Bearer 부착; 없으면 서버가 401
+          setUser(data.user || null);
+          setStatus('authed');
+        } catch (e) {
+          if (e && e.status) {
+            // 서버는 살아있고 401 등 응답 → 로그인 필요
+            clearToken();
+            setUser(null);
+            setStatus('guest');
+          } else {
+            // 네트워크 실패(서버 다운) → 기존 오프라인 데모모드 (로그인 없이 localStorage)
+            setStatus('demo');
+          }
+        }
+      }, []);
+      useEffect(() => { boot(); }, [boot]);
+
+      const handleAuthed = useCallback((u, token) => {
+        setToken(token);
+        setUser(u || null);
+        setStatus('authed');
+      }, []);
+
+      const handleLogout = useCallback(() => {
+        clearToken();
+        setUser(null);
+        setStatus('guest');
+      }, []);
+
+      if (status === 'checking') {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-100">
+            <div className="flex flex-col items-center gap-3 text-slate-400">
+              <div className="w-8 h-8 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin"></div>
+              <span className="text-sm">불러오는 중…</span>
+            </div>
+          </div>
+        );
+      }
+      if (status === 'guest') return <AuthScreen onAuthed={handleAuthed} />;
+      return <App authUser={user} demoMode={status === 'demo'} onLogout={handleLogout} />;
+    }
+
+    // ========================================
     // Rendering
     // ========================================
     ReactDOM.createRoot(document.getElementById('root')).render(
       <ToastProvider>
-        <App />
+        <AuthGate />
       </ToastProvider>
     );
   </script>

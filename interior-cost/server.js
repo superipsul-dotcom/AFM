@@ -34,6 +34,8 @@ const path = require('path');
 const fs = require('fs');
 const { Pool } = require('pg');
 const archiver = require('archiver'); // (v8) 프로젝트 zip 백업 스트리밍 (유일하게 추가된 패키지)
+const bcrypt = require('bcryptjs'); // (v13) 비밀번호 해시(네이티브 빌드 불필요)
+const jwt = require('jsonwebtoken'); // (v13) JWT 발급/검증
 
 const app = express();
 
@@ -64,6 +66,11 @@ pool.on('error', (err) => {
 //   서버리스 cold start 중복 방지 flag.
 // ----------------------------------------
 let dbInitialized = false;
+
+// (v13) 인증 시크릿 + 기본팀 id. JWT_SECRET 미설정 시 dev 기본값(.trim 으로 trailing newline 방어).
+//   토큰 payload { userId, teamId }. DEFAULT_TEAM_ID 는 initDB 에서 "안도공간" 팀으로 확정(기존 데이터 backfill 대상).
+const JWT_SECRET = (process.env.JWT_SECRET || 'interior-cost-dev-secret-change-me-v13').trim();
+let DEFAULT_TEAM_ID = null;
 
 // 카테고리 기본값 (CONTRACT "카테고리 기본값") — sort_order 0..N
 const SEED_COST = [
@@ -472,6 +479,60 @@ async function initDB() {
   await pool.query('ALTER TABLE interior_orders ADD COLUMN IF NOT EXISTS need_date DATE');
   await pool.query('ALTER TABLE interior_orders ADD COLUMN IF NOT EXISTS auto_generated BOOLEAN NOT NULL DEFAULT FALSE');
 
+  // ----------------------------------------
+  // (v13) 로그인/회원가입 + 팀(워크스페이스) 멀티테넌트
+  //   - interior_teams(테넌트) / interior_users(이메일·비번·소속팀)
+  //   - 기본팀 "안도공간" 시드 → DEFAULT_TEAM_ID 확보
+  //   - 소유 엔티티 6종에 team_id 컬럼 추가 + 기존 행 전부 기본팀으로 backfill
+  //     ⚠️ backfill 누락 = 로그인 사용자에게 기존 데이터(현장2·협력업체283)가 사라짐 → 절대 빠뜨리지 말 것.
+  //   - 이 블록은 모든 시드(카테고리 11), 카탈로그 시드(seedCatalogIfEmpty 340))보다 뒤에 실행되므로
+  //     그 시드 행들도 backfill 로 함께 team_id 가 채워진다.
+  // ----------------------------------------
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_teams (
+      id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      name        TEXT NOT NULL,
+      invite_code TEXT NOT NULL UNIQUE,
+      plan        TEXT NOT NULL DEFAULT 'free',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_users (
+      id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      email         TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      name          TEXT NOT NULL DEFAULT '',
+      team_id       BIGINT NOT NULL REFERENCES interior_teams(id),
+      role          TEXT NOT NULL DEFAULT 'member',
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  // 기본팀 "안도공간" 확보 (이름 우선 조회 → 없으면 생성). invite_code 는 env 또는 'ANDO-2026'.
+  const inviteCode = (process.env.INTERIOR_INVITE_CODE || 'ANDO-2026').trim();
+  let teamRow = await pool.query(`SELECT id FROM interior_teams WHERE name=$1 ORDER BY id ASC LIMIT 1`, ['안도공간']);
+  if (teamRow.rows.length === 0) {
+    await pool.query(
+      `INSERT INTO interior_teams (name, invite_code) VALUES ($1,$2) ON CONFLICT (invite_code) DO NOTHING`,
+      ['안도공간', inviteCode]
+    );
+    teamRow = await pool.query(`SELECT id FROM interior_teams WHERE name=$1 ORDER BY id ASC LIMIT 1`, ['안도공간']);
+    if (teamRow.rows.length === 0) {
+      teamRow = await pool.query(`SELECT id FROM interior_teams WHERE invite_code=$1`, [inviteCode]);
+    }
+  }
+  DEFAULT_TEAM_ID = teamRow.rows[0].id;
+
+  // 소유 엔티티 6종: team_id 컬럼 추가 + 기존 행 backfill(기본팀 귀속). 멱등.
+  for (const t of [
+    'interior_sites', 'interior_staff', 'interior_vendors',
+    'interior_categories', 'interior_catalog', 'interior_clients',
+  ]) {
+    await pool.query(`ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS team_id BIGINT`);
+    await pool.query(`UPDATE ${t} SET team_id = $1 WHERE team_id IS NULL`, [DEFAULT_TEAM_ID]);
+  }
+
   dbInitialized = true;
   console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as/takeoff) 준비 완료 + 카테고리/카탈로그 시드.');
 }
@@ -562,6 +623,189 @@ app.use('/api', async (_req, res, next) => {
     res
       .status(500)
       .json({ success: false, message: '데이터베이스 초기화에 실패했습니다. .env(DATABASE_URL)를 확인해 주세요.' });
+  }
+});
+
+// ========================================
+// (v13) 인증 — JWT Bearer + 팀 멀티테넌트
+//   - 모든 /api/* 보호. 예외: POST /api/auth/login, POST /api/auth/signup (비보호).
+//   - 정적(비 /api, SPA 셸)은 비보호 → 앱이 로그인 게이트를 직접 렌더.
+//   - 토큰 검증 성공 시 req.userId / req.teamId 세팅.
+//   - 소유 검증 미들웨어들은 인증 뒤에 등록(req.teamId 필요) + 실제 라우트들보다 먼저 실행됨.
+// ========================================
+
+// 사용자 행 → 클라이언트 모델. password_hash 는 절대 노출하지 않는다. team_name 은 JOIN 된 경우만.
+function rowToUser(row) {
+  return {
+    id: Number(row.id),
+    email: row.email,
+    name: row.name || '',
+    team_id: Number(row.team_id),
+    team_name: row.team_name == null ? null : row.team_name,
+    role: row.role || 'member',
+  };
+}
+
+function signToken(user) {
+  return jwt.sign(
+    { userId: Number(user.id), teamId: Number(user.team_id) },
+    JWT_SECRET,
+    { algorithm: 'HS256', expiresIn: '30d' }
+  );
+}
+
+// 인증 게이트: /api/* 전부 보호(login/signup 만 예외). originalUrl 로 판별(마운트 경로 영향 없음).
+app.use('/api', (req, res, next) => {
+  const pathOnly = (req.originalUrl || '').split('?')[0];
+  if (req.method === 'POST' && (pathOnly === '/api/auth/login' || pathOnly === '/api/auth/signup')) {
+    return next(); // 비보호 (로그인/회원가입)
+  }
+  const header = req.headers.authorization || '';
+  const [scheme, token] = header.split(' ');
+  if (scheme !== 'Bearer' || !token) {
+    return res.status(401).json({ error: '인증이 필요합니다' });
+  }
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.userId = payload.userId;
+    req.teamId = payload.teamId;
+    return next();
+  } catch (_) {
+    return res.status(401).json({ error: '인증이 필요합니다' });
+  }
+});
+
+// 현장 소유 검증: /api/sites/:id 및 모든 /api/sites/:id/* 일괄 보호.
+//   id 형식 오류는 통과(각 핸들러가 기존 400 반환 → 동작 보존). 미존재/타팀 → 404.
+app.use('/api/sites/:id', async (req, res, next) => {
+  const id = parseId(req.params.id);
+  if (!id) return next();
+  try {
+    const r = await pool.query('SELECT 1 FROM interior_sites WHERE id=$1 AND team_id=$2', [id, req.teamId]);
+    if (r.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// 자식(by id) 소유 검증 팩토리: child → site 조인으로 팀 일치 확인. 미존재/타팀 → 404.
+//   /api/<resource>/:id 와 그 하위(예: /schedule/:id/deps)까지 한 번에 보호.
+function requireChildOwned(table, label) {
+  return async (req, res, next) => {
+    const id = parseId(req.params.id);
+    if (!id) return next(); // 형식 오류 → 핸들러가 기존 400/404 처리
+    try {
+      const r = await pool.query(
+        `SELECT 1 FROM ${table} t JOIN interior_sites s ON s.id = t.site_id WHERE t.id=$1 AND s.team_id=$2`,
+        [id, req.teamId]
+      );
+      if (r.rows.length === 0) {
+        return res.status(404).json({ success: false, message: `해당 ${label}을(를) 찾을 수 없습니다.` });
+      }
+      return next();
+    } catch (err) {
+      return next(err);
+    }
+  };
+}
+app.use('/api/costs/:id', requireChildOwned('interior_costs', '비용 내역'));
+app.use('/api/schedule/:id', requireChildOwned('interior_schedule', '일정'));
+app.use('/api/estimates/:id', requireChildOwned('interior_estimates', '견적서'));
+app.use('/api/orders/:id', requireChildOwned('interior_orders', '발주서'));
+app.use('/api/meetings/:id', requireChildOwned('interior_meetings', '미팅'));
+app.use('/api/as/:id', requireChildOwned('interior_as', 'A/S'));
+app.use('/api/takeoff/:id', requireChildOwned('interior_takeoff', '물량'));
+
+// ----------------------------------------
+// 인증 라우트 (signup/login 은 비보호, me 는 보호)
+// ----------------------------------------
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
+    const password = typeof b.password === 'string' ? b.password : '';
+    const name = typeof b.name === 'string' ? b.name.trim() : '';
+    const inviteCode = typeof b.invite_code === 'string' ? b.invite_code.trim() : '';
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, message: '올바른 이메일을 입력해 주세요.' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: '비밀번호는 6자 이상이어야 합니다.' });
+    }
+
+    // 초대코드 → 팀 조회 (없으면 400)
+    const teamQ = await pool.query('SELECT id, name FROM interior_teams WHERE invite_code=$1', [inviteCode]);
+    if (teamQ.rows.length === 0) {
+      return res.status(400).json({ success: false, message: '초대코드가 올바르지 않습니다.' });
+    }
+    const team = teamQ.rows[0];
+
+    // 이메일 중복 사전 체크(409) + INSERT UNIQUE 위반도 409 로 동일 처리(경합 방어)
+    const dup = await pool.query('SELECT 1 FROM interior_users WHERE email=$1', [email]);
+    if (dup.rows.length > 0) {
+      return res.status(409).json({ success: false, message: '이미 가입된 이메일입니다.' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const { rows } = await pool.query(
+      `INSERT INTO interior_users (email, password_hash, name, team_id, role)
+       VALUES ($1,$2,$3,$4,'member')
+       RETURNING id, email, name, team_id, role`,
+      [email, hash, name, team.id]
+    );
+    const userRow = { ...rows[0], team_name: team.name };
+    const token = signToken(userRow);
+    res.status(201).json({ token, user: rowToUser(userRow) });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ success: false, message: '이미 가입된 이메일입니다.' });
+    }
+    console.error('POST /api/auth/signup 오류:', err.message);
+    res.status(500).json({ success: false, message: '회원가입에 실패했습니다.' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
+    const password = typeof b.password === 'string' ? b.password : '';
+
+    const { rows } = await pool.query(
+      `SELECT u.id, u.email, u.password_hash, u.name, u.team_id, u.role, t.name AS team_name
+         FROM interior_users u JOIN interior_teams t ON t.id = u.team_id
+        WHERE u.email=$1`,
+      [email]
+    );
+    const row = rows[0];
+    // 이메일 존재 여부를 노출하지 않도록 동일한 401 메시지
+    const match = row ? await bcrypt.compare(password, row.password_hash) : false;
+    if (!row || !match) {
+      return res.status(401).json({ success: false, message: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+    }
+    const token = signToken(row);
+    res.json({ token, user: rowToUser(row) });
+  } catch (err) {
+    console.error('POST /api/auth/login 오류:', err.message);
+    res.status(500).json({ success: false, message: '로그인에 실패했습니다.' });
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT u.id, u.email, u.name, u.team_id, u.role, t.name AS team_name
+         FROM interior_users u JOIN interior_teams t ON t.id = u.team_id
+        WHERE u.id=$1`,
+      [req.userId]
+    );
+    if (rows.length === 0) return res.status(401).json({ error: '인증이 필요합니다' });
+    res.json({ user: rowToUser(rows[0]) });
+  } catch (err) {
+    console.error('GET /api/auth/me 오류:', err.message);
+    res.status(500).json({ success: false, message: '사용자 정보를 불러오지 못했습니다.' });
   }
 });
 
@@ -1707,7 +1951,7 @@ function validateCatalog(body) {
 //   ⚠️ 단일 쿼리(LATERAL/서브쿼리)로 N+1 금지. 확정 견적의 헤더 율 + 항목합계를 한 번에 가져와
 //      JS totalsFromParts 로 계산 → 견적 상세/요약 endpoint 와 값이 원 단위까지 정확히 일치.
 //   site 컬럼은 LATERAL 별칭(est)과의 모호성 방지를 위해 interior_sites. 로 완전수식(= SITE_COLS 미러).
-app.get('/api/sites', async (_req, res) => {
+app.get('/api/sites', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT
@@ -1757,8 +2001,9 @@ app.get('/api/sites', async (_req, res) => {
           COALESCE(SUM(round(i.qty * i.sub_price)),0)::bigint      AS sub_material
         FROM interior_estimate_items i WHERE i.estimate_id = est.id
       ) agg ON TRUE
+      WHERE interior_sites.team_id = $1
       ORDER BY interior_sites.created_at DESC
-    `);
+    `, [req.teamId]);
 
     const out = rows.map((r) => {
       const spent = Number(r.spent || 0);
@@ -1816,14 +2061,16 @@ app.post('/api/sites', async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO interior_sites
          (name, client, address, manager, budget, start_date, end_date, folder, status, tags,
-          building_type, floor_area, move_in_date, pm, construction_manager, designer, progress_status, client_id, archived)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+          building_type, floor_area, move_in_date, pm, construction_manager, designer, progress_status, client_id, archived,
+          team_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING ${SITE_COLS}`,
       [
         v.name, v.client, v.address, v.manager, v.budget, v.start_date, v.end_date, folder, v.status, v.tags,
         v.building_type, v.floor_area, v.move_in_date, v.pm, v.construction_manager, v.designer, v.progress_status,
         v.client_id != null ? v.client_id : null, // (v5) 미전달/null → null
         v.archived_provided ? v.archived : false, // (v6) 미전달 → false
+        req.teamId, // (v13) 소속 팀
       ]
     );
     res.status(201).json(rowToSite(rows[0]));
@@ -2009,8 +2256,8 @@ app.delete('/api/costs/:id', async (req, res) => {
 // ========================================
 app.get('/api/staff', async (req, res) => {
   try {
-    const where = wantAll(req) ? '' : 'WHERE active = TRUE';
-    const { rows } = await pool.query(`SELECT ${STAFF_COLS} FROM interior_staff ${where} ORDER BY active DESC, name ASC`);
+    const where = wantAll(req) ? 'WHERE team_id = $1' : 'WHERE team_id = $1 AND active = TRUE';
+    const { rows } = await pool.query(`SELECT ${STAFF_COLS} FROM interior_staff ${where} ORDER BY active DESC, name ASC`, [req.teamId]);
     res.json(rows.map(rowToStaff));
   } catch (err) {
     console.error('GET /api/staff 오류:', err.message);
@@ -2024,8 +2271,8 @@ app.post('/api/staff', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `INSERT INTO interior_staff (name, role, phone, active) VALUES ($1,$2,$3,$4) RETURNING ${STAFF_COLS}`,
-      [v.name, v.role, v.phone, v.active]
+      `INSERT INTO interior_staff (name, role, phone, active, team_id) VALUES ($1,$2,$3,$4,$5) RETURNING ${STAFF_COLS}`,
+      [v.name, v.role, v.phone, v.active, req.teamId]
     );
     res.status(201).json(rowToStaff(rows[0]));
   } catch (err) {
@@ -2043,8 +2290,8 @@ app.put('/api/staff/:id', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `UPDATE interior_staff SET name=$1, role=$2, phone=$3, active=$4 WHERE id=$5 RETURNING ${STAFF_COLS}`,
-      [v.name, v.role, v.phone, v.active, id]
+      `UPDATE interior_staff SET name=$1, role=$2, phone=$3, active=$4 WHERE id=$5 AND team_id=$6 RETURNING ${STAFF_COLS}`,
+      [v.name, v.role, v.phone, v.active, id, req.teamId]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 담당자를 찾을 수 없습니다.' });
     res.json(rowToStaff(rows[0]));
@@ -2059,7 +2306,7 @@ app.delete('/api/staff/:id', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 담당자 id 형식입니다.' });
-    const { rowCount } = await pool.query('DELETE FROM interior_staff WHERE id=$1', [id]);
+    const { rowCount } = await pool.query('DELETE FROM interior_staff WHERE id=$1 AND team_id=$2', [id, req.teamId]);
     if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 담당자를 찾을 수 없습니다.' });
     res.json({ success: true });
   } catch (err) {
@@ -2073,8 +2320,8 @@ app.delete('/api/staff/:id', async (req, res) => {
 // ========================================
 app.get('/api/vendors', async (req, res) => {
   try {
-    const where = wantAll(req) ? '' : 'WHERE active = TRUE';
-    const { rows } = await pool.query(`SELECT ${VENDOR_COLS} FROM interior_vendors ${where} ORDER BY active DESC, name ASC`);
+    const where = wantAll(req) ? 'WHERE team_id = $1' : 'WHERE team_id = $1 AND active = TRUE';
+    const { rows } = await pool.query(`SELECT ${VENDOR_COLS} FROM interior_vendors ${where} ORDER BY active DESC, name ASC`, [req.teamId]);
     res.json(rows.map(rowToVendor));
   } catch (err) {
     console.error('GET /api/vendors 오류:', err.message);
@@ -2088,8 +2335,8 @@ app.post('/api/vendors', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `INSERT INTO interior_vendors (name, kind, phone, memo, trade, grade, active) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${VENDOR_COLS}`,
-      [v.name, v.kind, v.phone, v.memo, v.trade, v.grade, v.active]
+      `INSERT INTO interior_vendors (name, kind, phone, memo, trade, grade, active, team_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${VENDOR_COLS}`,
+      [v.name, v.kind, v.phone, v.memo, v.trade, v.grade, v.active, req.teamId]
     );
     res.status(201).json(rowToVendor(rows[0]));
   } catch (err) {
@@ -2127,20 +2374,20 @@ app.post('/api/vendors/import', async (req, res) => {
       const grade = norm('grade');
       const memo = norm('memo');
 
-      const existing = await client.query('SELECT id FROM interior_vendors WHERE name=$1', [name]);
+      const existing = await client.query('SELECT id FROM interior_vendors WHERE name=$1 AND team_id=$2', [name, req.teamId]);
       if (existing.rows.length > 0) {
         await client.query(
           `UPDATE interior_vendors
              SET kind=COALESCE($1,kind), phone=COALESCE($2,phone), trade=COALESCE($3,trade),
                  grade=COALESCE($4,grade), memo=COALESCE($5,memo)
-           WHERE name=$6`,
-          [kind, phone, trade, grade, memo, name]
+           WHERE name=$6 AND team_id=$7`,
+          [kind, phone, trade, grade, memo, name, req.teamId]
         );
         updated++;
       } else {
         await client.query(
-          `INSERT INTO interior_vendors (name, kind, phone, trade, grade, memo) VALUES ($1,$2,$3,$4,$5,$6)`,
-          [name, kind || '', phone || '', trade || '', grade || '', memo || '']
+          `INSERT INTO interior_vendors (name, kind, phone, trade, grade, memo, team_id) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [name, kind || '', phone || '', trade || '', grade || '', memo || '', req.teamId]
         );
         imported++;
       }
@@ -2170,8 +2417,8 @@ app.put('/api/vendors/:id', async (req, res) => {
     const { rows } = await pool.query(
       `UPDATE interior_vendors SET name=$1, kind=$2, phone=$3, memo=$4, active=$5,
               trade=COALESCE($6, trade), grade=COALESCE($7, grade)
-       WHERE id=$8 RETURNING ${VENDOR_COLS}`,
-      [v.name, v.kind, v.phone, v.memo, v.active, v.tradeProvided ? v.trade : null, v.gradeProvided ? v.grade : null, id]
+       WHERE id=$8 AND team_id=$9 RETURNING ${VENDOR_COLS}`,
+      [v.name, v.kind, v.phone, v.memo, v.active, v.tradeProvided ? v.trade : null, v.gradeProvided ? v.grade : null, id, req.teamId]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 거래처를 찾을 수 없습니다.' });
     res.json(rowToVendor(rows[0]));
@@ -2186,7 +2433,7 @@ app.delete('/api/vendors/:id', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 거래처 id 형식입니다.' });
-    const { rowCount } = await pool.query('DELETE FROM interior_vendors WHERE id=$1', [id]);
+    const { rowCount } = await pool.query('DELETE FROM interior_vendors WHERE id=$1 AND team_id=$2', [id, req.teamId]);
     if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 거래처를 찾을 수 없습니다.' });
     res.json({ success: true });
   } catch (err) {
@@ -2201,9 +2448,10 @@ app.delete('/api/vendors/:id', async (req, res) => {
 // ========================================
 app.get('/api/categories', async (req, res) => {
   try {
-    const where = wantAll(req) ? '' : 'WHERE active = TRUE';
+    const where = wantAll(req) ? 'WHERE team_id = $1' : 'WHERE team_id = $1 AND active = TRUE';
     const { rows } = await pool.query(
-      `SELECT ${CATEGORY_COLS} FROM interior_categories ${where} ORDER BY kind ASC, sort_order ASC, name ASC`
+      `SELECT ${CATEGORY_COLS} FROM interior_categories ${where} ORDER BY kind ASC, sort_order ASC, name ASC`,
+      [req.teamId]
     );
     const out = { cost: [], process: [] };
     for (const r of rows) {
@@ -2237,8 +2485,8 @@ app.post('/api/categories', async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO interior_categories (kind, name, sort_order) VALUES ($1,$2,$3) RETURNING ${CATEGORY_COLS}`,
-      [kind, name, sort_order]
+      `INSERT INTO interior_categories (kind, name, sort_order, team_id) VALUES ($1,$2,$3,$4) RETURNING ${CATEGORY_COLS}`,
+      [kind, name, sort_order, req.teamId]
     );
     res.status(201).json(rowToCategory(rows[0]));
   } catch (err) {
@@ -2255,7 +2503,7 @@ app.put('/api/categories/:id', async (req, res) => {
     const b = req.body || {};
 
     // 부분 수정 → 기존 값 읽어 병합
-    const existing = await pool.query(`SELECT ${CATEGORY_COLS} FROM interior_categories WHERE id=$1`, [id]);
+    const existing = await pool.query(`SELECT ${CATEGORY_COLS} FROM interior_categories WHERE id=$1 AND team_id=$2`, [id, req.teamId]);
     if (existing.rows.length === 0) return res.status(404).json({ success: false, message: '해당 카테고리를 찾을 수 없습니다.' });
     const cur = existing.rows[0];
 
@@ -2292,7 +2540,7 @@ app.delete('/api/categories/:id', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 카테고리 id 형식입니다.' });
-    const { rowCount } = await pool.query('DELETE FROM interior_categories WHERE id=$1', [id]);
+    const { rowCount } = await pool.query('DELETE FROM interior_categories WHERE id=$1 AND team_id=$2', [id, req.teamId]);
     if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 카테고리를 찾을 수 없습니다.' });
     res.json({ success: true });
   } catch (err) {
@@ -3256,6 +3504,10 @@ app.get('/api/catalog', async (req, res) => {
     const where = [];
     const params = [];
 
+    // (v13) 팀 스코핑 — 항상 적용 ($1)
+    params.push(req.teamId);
+    where.push(`team_id = $${params.length}`);
+
     if (!wantAll(req)) where.push('active = TRUE');
 
     const trade = typeof req.query.trade === 'string' ? req.query.trade.trim() : '';
@@ -3298,10 +3550,10 @@ app.post('/api/catalog', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `INSERT INTO interior_catalog (trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, source, price_date, active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      `INSERT INTO interior_catalog (trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, source, price_date, active, team_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING ${CATALOG_COLS}`,
-      [v.trade, v.grp, v.name, v.unit, v.material_price, v.labor_price, v.sub_price, v.product_name, v.vendor, v.code, v.source, v.price_date, v.active]
+      [v.trade, v.grp, v.name, v.unit, v.material_price, v.labor_price, v.sub_price, v.product_name, v.vendor, v.code, v.source, v.price_date, v.active, req.teamId]
     );
     res.status(201).json(rowToCatalog(rows[0]));
   } catch (err) {
@@ -3361,8 +3613,8 @@ app.post('/api/catalog/import', async (req, res) => {
 
       // upsert 키 = trade + name + product_name
       const existing = await client.query(
-        'SELECT id FROM interior_catalog WHERE trade=$1 AND name=$2 AND product_name=$3 ORDER BY id ASC LIMIT 1',
-        [trade, name, product_name]
+        'SELECT id FROM interior_catalog WHERE trade=$1 AND name=$2 AND product_name=$3 AND team_id=$4 ORDER BY id ASC LIMIT 1',
+        [trade, name, product_name, req.teamId]
       );
       if (existing.rows.length > 0) {
         await client.query(
@@ -3377,12 +3629,13 @@ app.post('/api/catalog/import', async (req, res) => {
       } else {
         await client.query(
           `INSERT INTO interior_catalog
-             (trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, source, price_date)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+             (trade, grp, name, unit, material_price, labor_price, sub_price, product_name, vendor, code, source, price_date, team_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
           [
             trade, grp || '', name, unit || '',
             material_price || 0, labor_price || 0, sub_price || 0,
             product_name, vendor || '', code || '', source || 'manual', priceDateProvided ? price_date : null,
+            req.teamId,
           ]
         );
         imported++;
@@ -3415,9 +3668,9 @@ app.put('/api/catalog/:id', async (req, res) => {
       `UPDATE interior_catalog
        SET trade=$1, grp=$2, name=$3, unit=$4, material_price=$5, labor_price=$6, sub_price=$7, product_name=$8, vendor=$9, code=$10, active=$11,
            source=COALESCE($12, source), price_date=COALESCE($13, price_date)
-       WHERE id=$14
+       WHERE id=$14 AND team_id=$15
        RETURNING ${CATALOG_COLS}`,
-      [v.trade, v.grp, v.name, v.unit, v.material_price, v.labor_price, v.sub_price, v.product_name, v.vendor, v.code, v.active, v.sourceProvided ? v.source : null, v.priceDateProvided ? v.price_date : null, id]
+      [v.trade, v.grp, v.name, v.unit, v.material_price, v.labor_price, v.sub_price, v.product_name, v.vendor, v.code, v.active, v.sourceProvided ? v.source : null, v.priceDateProvided ? v.price_date : null, id, req.teamId]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 카탈로그 항목을 찾을 수 없습니다.' });
     res.json(rowToCatalog(rows[0]));
@@ -3432,7 +3685,7 @@ app.delete('/api/catalog/:id', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 카탈로그 id 형식입니다.' });
-    const { rowCount } = await pool.query('DELETE FROM interior_catalog WHERE id=$1', [id]);
+    const { rowCount } = await pool.query('DELETE FROM interior_catalog WHERE id=$1 AND team_id=$2', [id, req.teamId]);
     if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 카탈로그 항목을 찾을 수 없습니다.' });
     res.json({ success: true });
   } catch (err) {
@@ -3447,9 +3700,10 @@ app.delete('/api/catalog/:id', async (req, res) => {
 // ========================================
 app.get('/api/clients', async (req, res) => {
   try {
-    const where = wantAll(req) ? '' : 'WHERE active = TRUE';
+    const where = wantAll(req) ? 'WHERE team_id = $1' : 'WHERE team_id = $1 AND active = TRUE';
     const { rows } = await pool.query(
-      `SELECT ${CLIENT_COLS} FROM interior_clients ${where} ORDER BY active DESC, name ASC`
+      `SELECT ${CLIENT_COLS} FROM interior_clients ${where} ORDER BY active DESC, name ASC`,
+      [req.teamId]
     );
     res.json(rows.map(rowToClient));
   } catch (err) {
@@ -3464,9 +3718,9 @@ app.post('/api/clients', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `INSERT INTO interior_clients (name, phone, email, source, status, address, memo, active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${CLIENT_COLS}`,
-      [v.name, v.phone, v.email, v.source, v.status, v.address, v.memo, v.active]
+      `INSERT INTO interior_clients (name, phone, email, source, status, address, memo, active, team_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${CLIENT_COLS}`,
+      [v.name, v.phone, v.email, v.source, v.status, v.address, v.memo, v.active, req.teamId]
     );
     res.status(201).json(rowToClient(rows[0]));
   } catch (err) {
@@ -3485,8 +3739,8 @@ app.put('/api/clients/:id', async (req, res) => {
     const { rows } = await pool.query(
       `UPDATE interior_clients
        SET name=$1, phone=$2, email=$3, source=$4, status=$5, address=$6, memo=$7, active=$8
-       WHERE id=$9 RETURNING ${CLIENT_COLS}`,
-      [v.name, v.phone, v.email, v.source, v.status, v.address, v.memo, v.active, id]
+       WHERE id=$9 AND team_id=$10 RETURNING ${CLIENT_COLS}`,
+      [v.name, v.phone, v.email, v.source, v.status, v.address, v.memo, v.active, id, req.teamId]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 고객/리드를 찾을 수 없습니다.' });
     res.json(rowToClient(rows[0]));
@@ -3501,7 +3755,7 @@ app.delete('/api/clients/:id', async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 고객/리드 id 형식입니다.' });
     // 삭제 시 현장의 client_id 는 그대로 둔다(프론트가 못 찾으면 미표시 — 단순화, 데이터 보존).
-    const { rowCount } = await pool.query('DELETE FROM interior_clients WHERE id=$1', [id]);
+    const { rowCount } = await pool.query('DELETE FROM interior_clients WHERE id=$1 AND team_id=$2', [id, req.teamId]);
     if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 고객/리드를 찾을 수 없습니다.' });
     res.json({ success: true });
   } catch (err) {
@@ -3680,8 +3934,9 @@ app.get('/api/orders/alerts', async (req, res) => {
        FROM interior_orders o JOIN interior_sites s ON s.id = o.site_id
        WHERE o.need_date IS NOT NULL AND o.need_date <= CURRENT_DATE + $1::int
          AND o.status NOT IN ('입고','정산완료')
+         AND s.team_id = $2
        ORDER BY o.need_date ASC, o.id ASC`,
-      [within]
+      [within, req.teamId]
     );
     res.json(
       rows.map((r) => ({
@@ -3910,11 +4165,20 @@ app.post('/api/receipts/analyze', async (req, res) => {
       return res.status(400).json({ error: 'image(영수증 data URI)는 필수입니다.' });
     }
 
+    // (v13) site_id 가 주어지면 팀 소유 검증 (아니면 404)
+    if (body.site_id !== undefined && body.site_id !== null && body.site_id !== '') {
+      const sid = parseId(body.site_id);
+      if (!sid) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+      const own = await pool.query('SELECT 1 FROM interior_sites WHERE id=$1 AND team_id=$2', [sid, req.teamId]);
+      if (own.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+    }
+
     // 현재 비용 카테고리(kind='cost', active) 목록 → 추론 가이드로 프롬프트에 포함.
     let catNames = [];
     try {
       const catQ = await pool.query(
-        "SELECT name FROM interior_categories WHERE kind='cost' AND active = TRUE ORDER BY sort_order ASC, name ASC"
+        "SELECT name FROM interior_categories WHERE kind='cost' AND active = TRUE AND team_id=$1 ORDER BY sort_order ASC, name ASC",
+        [req.teamId]
       );
       catNames = catQ.rows.map((r) => r.name).filter(Boolean);
     } catch (_) {

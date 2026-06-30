@@ -762,3 +762,64 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 ## 검증
 - has_invoice CRUD(생성/수정/보존). summary: 계산서 있음 1건(amount=110,000)+없음 1건(amount=50,000) → spent=160,000, spentSupply=round(110000/1.1)+50000=100,000+50,000=150,000, vatTotal=10,000, invoicedCount=1. 기존 spent/byCategory 회귀.
 - UI: 계산서 토글·뱃지, 공급가/세금포함 보기 전환 시 집행액 변화. v1~v11 회귀.
+
+---
+
+# v13 확장 — 로그인/회원가입 + 팀(워크스페이스) 멀티테넌트 (⑤)
+
+> 사용자 결정: **지금은 안도공간 단일 팀(기존 데이터 전부 귀속, 팀원 공유)**, **나중에 팀별/회사별 분리(유료 SaaS)**. **회원가입은 초대코드 필요**(공개 배포 시 회사 데이터 보호). 초대코드 = 팀 가입 열쇠.
+> **v1~v12 데이터·동작 100% 보존**(컬럼 ADD COLUMN IF NOT EXISTS, 기존 행 전부 기본팀으로 backfill → 로그인하면 기존 현장 2개·협력업체 283개 그대로 보임). 새 패키지: **bcryptjs, jsonwebtoken** (npm install).
+
+## 새 테이블
+### interior_teams (팀/워크스페이스 = 테넌트)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| name | text NOT NULL | 팀/회사명 |
+| invite_code | text NOT NULL UNIQUE | 가입 초대코드 |
+| plan | text default 'free' | 요금제(향후) |
+| created_at | timestamptz default now() | |
+- **시드**: 부팅 시 기본팀 "안도공간" 없으면 생성. invite_code = `process.env.INTERIOR_INVITE_CODE || 'ANDO-2026'`. 이 팀 id 를 DEFAULT_TEAM_ID 로 확보(기존 데이터 backfill 대상).
+
+### interior_users
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| email | text NOT NULL UNIQUE | 로그인 이메일(소문자 정규화) |
+| password_hash | text NOT NULL | bcryptjs 해시 |
+| name | text NOT NULL default '' | 표시명 |
+| team_id | bigint NOT NULL REFERENCES interior_teams(id) | 소속 팀 |
+| role | text NOT NULL default 'member' | member/admin(향후) |
+| created_at | timestamptz default now() | |
+
+## 기존 테이블에 team_id (ADD COLUMN IF NOT EXISTS + backfill)
+- 대상(소유 엔티티): **interior_sites, interior_staff, interior_vendors, interior_categories, interior_catalog, interior_clients** 에 `team_id BIGINT`.
+- **backfill**: 부팅 시 `UPDATE <t> SET team_id = DEFAULT_TEAM_ID WHERE team_id IS NULL`(각 테이블). → 기존 데이터 전부 안도공간 팀 귀속.
+- 자식 테이블(costs/schedule/schedule_deps/estimates/estimate_items/orders/meetings/as/takeoff)은 team_id 안 붙임 — **부모 site/parent 통해 귀속**(소유검증으로 스코핑).
+
+## 인증 (JWT)
+- `JWT_SECRET = process.env.JWT_SECRET || '<dev기본>'`. 토큰 payload `{ userId, teamId }`, 만료 적당(예 30d).
+- **POST /api/auth/signup** `{email, password, name?, invite_code}` → invite_code 로 팀 조회(없으면 400 `초대코드가 올바르지 않습니다`), email 중복 409, password 길이검증(≥6, 400), bcrypt 해시 → users INSERT(team_id=그 팀) → 201 `{token, user:{id,email,name,team_id,team_name,role}}`.
+- **POST /api/auth/login** `{email, password}` → 이메일 조회+bcrypt compare, 실패 401 `이메일 또는 비밀번호가 올바르지 않습니다` → 200 `{token, user}`.
+- **GET /api/auth/me** (Bearer) → `{user}` (팀명 포함). 토큰 없음/만료 401.
+- **auth 미들웨어**: 모든 `/api/*` 보호. **예외**: `/api/auth/login`, `/api/auth/signup`(비보호). 정적(GET 비-/api, SPA 셸)은 비보호(앱이 로그인화면 직접 렌더). 헤더 `Authorization: Bearer <token>` 검증 → `req.userId`, `req.teamId`. 없거나 무효 401 `{error:'인증이 필요합니다'}`.
+
+## 팀 스코핑 (멀티테넌트 — 단일팀이라 현재는 동작 동일, 미래 자동 격리)
+- **sites**: `GET /api/sites`·`GET /api/sites/:id/summary` 등 목록/집계 → `WHERE team_id = req.teamId`. `POST /api/sites` → team_id=req.teamId 세팅. `GET/PUT/DELETE /api/sites/:id` 및 **모든 `/api/sites/:id/*`**(costs/schedule/estimates/orders/meetings/as/takeoff/export/backup.zip/schedule.ics/orders.auto-generate/import.sketchup/receipts 저장) → 시작에서 **site.team_id === req.teamId 확인(아니면 404)**. 헬퍼 `assertSiteOwned(siteId, teamId)` 권장.
+- **전역 마스터(staff/vendors/categories/catalog/clients)**: GET → `WHERE team_id=req.teamId`(+기존 active 필터 유지). POST/import → team_id=req.teamId. PUT/DELETE/:id → team_id 일치 검증(아니면 404). `GET /api/catalog/trades`(상수)·카탈로그/벤더 import 도 team_id 적용.
+- **자식 by id**(PUT/DELETE `/api/costs/:id`,`/api/schedule/:id`(+/deps),`/api/estimates/:id`,`/api/orders/:id`,`/api/meetings/:id`,`/api/as/:id`,`/api/takeoff/:id`, confirm/unconfirm 등) → child→site 조인으로 site.team_id===req.teamId 검증(아니면 404). 헬퍼로 일괄.
+- **receipts/analyze**: site_id 주어지면 소유검증.
+
+## 프론트 (index.html)
+- **AuthScreen**(로그인/회원가입 탭): 로그인(email,password) / 회원가입(email,password,name,**초대코드**). 제출 → `/api/auth/*` → 성공 시 토큰 localStorage(키 `interior_token`) 저장 + 사용자 상태 set + 앱 진입. 에러 메시지 표시(초대코드 오류/중복/로그인실패).
+- **api 레이어**: 모든 요청 헤더에 토큰 있으면 `Authorization: Bearer`. 응답 **401 이면 토큰 삭제 + AuthScreen 으로**(세션만료). (기존 `if(e.status) throw e` 폴백 패턴 유지.)
+- **앱 게이트**: 부팅 시 토큰 있으면 `GET /api/auth/me` → 200 앱 진입 / 401 AuthScreen / **네트워크 실패(서버 다운, e.status 없음) → 기존 오프라인 데모모드**(로그인 없이 localStorage, "데모(오프라인)" 배너) — 락아웃 방지·기존 동작 보존. 토큰 없으면 AuthScreen(단, 서버 자체가 unreachable 이면 데모모드 허용).
+- **헤더**: 로그인 시 우측에 사용자명·팀명 + **[로그아웃]**(토큰 삭제→AuthScreen). 
+- 기존 8탭/전 기능은 로그인 후 그대로.
+
+## 검증
+- 부팅 backfill: 기본팀 생성·기존 sites/vendors/catalog team_id 채워짐.
+- 회원가입(초대코드 'ANDO-2026') → 201 토큰 → 그 사용자가 **기존 현장 2개 + 협력업체 283개** 조회됨(backfill+스코핑 정확). 잘못된 초대코드 400. email 중복 409. 로그인/잘못된 비번 401. /me. 토큰 없이 GET /api/sites 401.
+- 격리: throwaway 2번째 팀(다른 invite_code 임시 시드 또는 INSERT) 사용자 → sites/vendors 0건(격리 증명) 후 정리.
+- 프론트: 토큰 없으면 AuthScreen, 로그인 후 앱·헤더 사용자/팀·로그아웃, 서버다운 시 데모모드. v1~v12 전부 로그인 후 정상(8탭).
+- **회귀 절대**: 로그인한 안도공간 사용자에게 기존 데이터가 그대로 보여야 함(backfill 누락=데이터 사라짐 → 반드시 e2e 확인).
