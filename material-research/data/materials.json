@@ -1,0 +1,7574 @@
+{
+  "meta": {
+    "version": 1,
+    "seededAt": "2026-06-30T14:32:54.335Z"
+  },
+  "materials": [
+    {
+      "id": "바닥공사-바닥재-동화자연마루-나투스강-7-5t-광폭",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "name": "동화자연마루 나투스강",
+      "spec": "7.5T 광폭",
+      "unit": "M2",
+      "brands": [
+        "동화자연마루"
+      ],
+      "price": {
+        "min": 38000,
+        "max": 60000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실·주방 바닥",
+      "notes": "HDF 코어 강마루, 생활방수·내구성",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-구정마루-브러쉬-강마루-7-5t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "name": "구정마루 브러쉬 강마루",
+      "spec": "7.5T",
+      "unit": "M2",
+      "brands": [
+        "구정마루"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 62000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실 바닥",
+      "notes": "표면 브러시 질감, 친환경 접착",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-lx하우시스-지아마루-강-7-5t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "name": "LX하우시스 지아마루 강",
+      "spec": "7.5T",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 35000,
+        "max": 55000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주거 바닥",
+      "notes": "항균·생활방수",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-이건마루-카림-강마루-7-5t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "name": "이건마루 카림 강마루",
+      "spec": "7.5T",
+      "unit": "M2",
+      "brands": [
+        "이건마루"
+      ],
+      "price": {
+        "min": 45000,
+        "max": 70000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 바닥",
+      "notes": "수입 디자인 패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-한솔-sb-강마루-7-5t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "name": "한솔 SB 강마루",
+      "spec": "7.5T",
+      "unit": "M2",
+      "brands": [
+        "한솔홈데코"
+      ],
+      "price": {
+        "min": 33000,
+        "max": 52000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주거 바닥",
+      "notes": "가성비 강마루",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-동화-클릭-강화마루-8-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강화마루",
+      "name": "동화 클릭 강화마루",
+      "spec": "8.0T",
+      "unit": "M2",
+      "brands": [
+        "동화자연마루"
+      ],
+      "price": {
+        "min": 22000,
+        "max": 38000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "거실·방 바닥",
+      "notes": "클릭 조립, 본드리스",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-구정-강화마루-8-0t-ac4",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강화마루",
+      "name": "구정 강화마루",
+      "spec": "8.0T AC4",
+      "unit": "M2",
+      "brands": [
+        "구정마루"
+      ],
+      "price": {
+        "min": 24000,
+        "max": 40000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주거 바닥",
+      "notes": "내스크래치 AC4 등급",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-lx-강화마루-8-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강화마루",
+      "name": "LX 강화마루",
+      "spec": "8.0T",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 23000,
+        "max": 39000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주거 바닥",
+      "notes": "클릭형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-풍산-강화마루-8-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강화마루",
+      "name": "풍산 강화마루",
+      "spec": "8.0T",
+      "unit": "M2",
+      "brands": [
+        "풍산마루"
+      ],
+      "price": {
+        "min": 20000,
+        "max": 34000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "임대·상가 바닥",
+      "notes": "가성비",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-이건-원목마루-15t-상층3t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "name": "이건 원목마루",
+      "spec": "15T(상층3T)",
+      "unit": "M2",
+      "brands": [
+        "이건마루"
+      ],
+      "price": {
+        "min": 90000,
+        "max": 160000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 바닥",
+      "notes": "천연 오크 원목 질감",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-구정-프리미엄-원목마루-15t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "name": "구정 프리미엄 원목마루",
+      "spec": "15T",
+      "unit": "M2",
+      "brands": [
+        "구정마루"
+      ],
+      "price": {
+        "min": 85000,
+        "max": 150000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 바닥",
+      "notes": "오크 원목",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-동화-원목마루-14t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "name": "동화 원목마루",
+      "spec": "14T",
+      "unit": "M2",
+      "brands": [
+        "동화자연마루"
+      ],
+      "price": {
+        "min": 80000,
+        "max": 140000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "주거 바닥",
+      "notes": "친환경 도장",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-lx-spc-클릭타일-4-0-5-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "SPC·LVT타일",
+      "name": "LX SPC 클릭타일",
+      "spec": "4.0~5.0T",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 32000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주거·상가 바닥",
+      "notes": "100% 방수, 클릭형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-한화-lvt-럭셔리타일-3-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "SPC·LVT타일",
+      "name": "한화 LVT 럭셔리타일",
+      "spec": "3.0T",
+      "unit": "M2",
+      "brands": [
+        "한화L&C"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 28000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "상업 공간",
+      "notes": "접착식 럭셔리 비닐타일",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-녹수-spc-데코타일-5-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "SPC·LVT타일",
+      "name": "녹수 SPC 데코타일",
+      "spec": "5.0T",
+      "unit": "M2",
+      "brands": [
+        "녹수"
+      ],
+      "price": {
+        "min": 17000,
+        "max": 30000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주거 바닥",
+      "notes": "강성 코어 방수",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-동신-데코리치-lvt-3-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "SPC·LVT타일",
+      "name": "동신 데코리치 LVT",
+      "spec": "3.0T",
+      "unit": "M2",
+      "brands": [
+        "동신포리마"
+      ],
+      "price": {
+        "min": 14000,
+        "max": 26000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "상가 바닥",
+      "notes": "접착식",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-kcc-데코타일-우드-3-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "데코타일",
+      "name": "KCC 데코타일 우드",
+      "spec": "3.0T",
+      "unit": "M2",
+      "brands": [
+        "KCC글라스"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 22000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "상가·사무실 바닥",
+      "notes": "접착식 우드패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-lg-데코타일-3-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "데코타일",
+      "name": "LG 데코타일",
+      "spec": "3.0T",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 13000,
+        "max": 24000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "상업 바닥",
+      "notes": "마블/우드 패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-진양-데코타일-2-0t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "데코타일",
+      "name": "진양 데코타일",
+      "spec": "2.0T",
+      "unit": "M2",
+      "brands": [
+        "진양화학"
+      ],
+      "price": {
+        "min": 10000,
+        "max": 19000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "임대 바닥",
+      "notes": "가성비",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-lx-럭스-장판-1-8t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "장판",
+      "name": "LX 럭스 장판",
+      "spec": "1.8T",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 9000,
+        "max": 18000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주거 바닥",
+      "notes": "펫·생활 쿠션",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-한화-모노륨-장판-2-2t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "장판",
+      "name": "한화 모노륨 장판",
+      "spec": "2.2T",
+      "unit": "M2",
+      "brands": [
+        "한화L&C"
+      ],
+      "price": {
+        "min": 11000,
+        "max": 22000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주거 바닥",
+      "notes": "두께감 쿠션장판",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-kcc-펫토-장판-1-8t",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "장판",
+      "name": "KCC 펫토 장판",
+      "spec": "1.8T",
+      "unit": "M2",
+      "brands": [
+        "KCC글라스"
+      ],
+      "price": {
+        "min": 9000,
+        "max": 17000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "반려동물 가정",
+      "notes": "미끄럼방지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-노루-에폭시-코팅-2회-도장",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "에폭시",
+      "name": "노루 에폭시 코팅",
+      "spec": "2회 도장",
+      "unit": "M2",
+      "brands": [
+        "노루페인트"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 25000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주차장·창고 바닥",
+      "notes": "무용제 에폭시",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-kcc-에폭시-라이닝-3mm-자기수평",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "에폭시",
+      "name": "KCC 에폭시 라이닝",
+      "spec": "3mm 자기수평",
+      "unit": "M2",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 60000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "공장·상가 바닥",
+      "notes": "셀프레벨링",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-삼화-에폭시-프라이머-탑-2회",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "에폭시",
+      "name": "삼화 에폭시 프라이머+탑",
+      "spec": "2회",
+      "unit": "M2",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 13000,
+        "max": 26000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "산업 바닥",
+      "notes": "내마모",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-현대-카페트타일-500x500",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "카페트타일",
+      "name": "현대 카페트타일",
+      "spec": "500x500",
+      "unit": "장",
+      "brands": [
+        "현대카페트"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 16000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "사무실 바닥",
+      "notes": "타일형 카페트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-인터페이스-카페트타일-500x500",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "카페트타일",
+      "name": "인터페이스 카페트타일",
+      "spec": "500x500",
+      "unit": "장",
+      "brands": [
+        "인터페이스"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 40000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "오피스",
+      "notes": "수입 모듈러",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "바닥공사-바닥재-삼일-니들펀치-카페트-롤-3-6m폭",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "카페트타일",
+      "name": "삼일 니들펀치 카페트",
+      "spec": "롤 3.6m폭",
+      "unit": "M2",
+      "brands": [
+        "삼일카펫"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "전시·행사",
+      "notes": "행사용",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-lx-실크벽지-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "name": "LX 실크벽지",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 35000,
+        "max": 70000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실·침실 벽",
+      "notes": "오염방지 PVC 실크",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-개나리-베스띠-실크-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "name": "개나리 베스띠 실크",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "개나리벽지"
+      ],
+      "price": {
+        "min": 32000,
+        "max": 65000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주거 벽",
+      "notes": "친환경 실크",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-신한-더휴-실크-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "name": "신한 더휴 실크",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "신한벽지"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 60000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주거 벽",
+      "notes": "항균 실크",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-서울벽지-프리미엄-실크-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "name": "서울벽지 프리미엄 실크",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "서울벽지"
+      ],
+      "price": {
+        "min": 33000,
+        "max": 68000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실 벽",
+      "notes": "두께감",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-did-실크벽지-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "name": "DID 실크벽지",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "DID벽지"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 58000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주거 벽",
+      "notes": "디자인 패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-개나리-소폭합지-폭53cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "합지벽지",
+      "name": "개나리 소폭합지",
+      "spec": "폭53cm 롤",
+      "unit": "롤",
+      "brands": [
+        "개나리벽지"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 25000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주거 벽",
+      "notes": "종이 합지, 친환경",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-신한-광폭합지-폭93cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "합지벽지",
+      "name": "신한 광폭합지",
+      "spec": "폭93cm 롤",
+      "unit": "롤",
+      "brands": [
+        "신한벽지"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 35000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주거 벽",
+      "notes": "광폭 합지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-lx-합지벽지-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "합지벽지",
+      "name": "LX 합지벽지",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 16000,
+        "max": 32000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "임대 벽",
+      "notes": "가성비",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-개나리-에코휘앙세-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "친환경벽지",
+      "name": "개나리 에코휘앙세",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "개나리벽지"
+      ],
+      "price": {
+        "min": 38000,
+        "max": 75000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "키즈·침실 벽",
+      "notes": "친환경 인증",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-lx-지아-숨-벽지-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "친환경벽지",
+      "name": "LX 지아 숨 벽지",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 80000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 벽",
+      "notes": "공기정화 기능성",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-코스모스-한지벽지-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "친환경벽지",
+      "name": "코스모스 한지벽지",
+      "spec": "롤",
+      "unit": "롤",
+      "brands": [
+        "코스모스벽지"
+      ],
+      "price": {
+        "min": 35000,
+        "max": 70000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "한실 벽",
+      "notes": "천연 한지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-신한-방염-실크벽지-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "방염벽지",
+      "name": "신한 방염 실크벽지",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "신한벽지"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 80000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "상가·다중이용시설 벽",
+      "notes": "방염 인증",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-lx-방염벽지-폭106cm-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "방염벽지",
+      "name": "LX 방염벽지",
+      "spec": "폭106cm 롤",
+      "unit": "롤",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 42000,
+        "max": 85000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "상업 공간 벽",
+      "notes": "난연",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-수입-뮤럴벽지-맞춤-출력",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "뮤럴·포인트",
+      "name": "수입 뮤럴벽지",
+      "spec": "맞춤 출력",
+      "unit": "M2",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 70000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "포인트 벽",
+      "notes": "그림·패턴 출력",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-포인트-시트벽지-1롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "뮤럴·포인트",
+      "name": "포인트 시트벽지",
+      "spec": "1롤",
+      "unit": "롤",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 20000,
+        "max": 45000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "포인트 벽",
+      "notes": "디자인 포인트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-도배풀-쌀풀-4kg",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "도배부자재",
+      "name": "도배풀(쌀풀)",
+      "spec": "4kg",
+      "unit": "통",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 12000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "벽지 시공",
+      "notes": "친환경 전분풀",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-초배지-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "도배부자재",
+      "name": "초배지",
+      "spec": "롤",
+      "unit": "롤",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 9000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바탕 처리",
+      "notes": "운용/공간 초배",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도배공사-벽지-부직포-초배-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "도배부자재",
+      "name": "부직포 초배",
+      "spec": "롤",
+      "unit": "롤",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 16000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바탕 보강",
+      "notes": "갈라짐 방지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-삼화-홈스타-친환경수성-18l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "친환경수성",
+      "name": "삼화 홈스타 친환경수성",
+      "spec": "18L",
+      "unit": "통",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 45000,
+        "max": 85000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "실내 벽·천장",
+      "notes": "친환경 무광 수성",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-노루-순앤수-수성-18l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "친환경수성",
+      "name": "노루 순앤수 수성",
+      "spec": "18L",
+      "unit": "통",
+      "brands": [
+        "노루페인트"
+      ],
+      "price": {
+        "min": 48000,
+        "max": 90000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "실내 벽",
+      "notes": "새집증후군 저감",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-kcc-숲으로-수성-18l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "친환경수성",
+      "name": "KCC 숲으로 수성",
+      "spec": "18L",
+      "unit": "통",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 46000,
+        "max": 88000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "실내",
+      "notes": "친환경 인증",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-벤자민무어-내추라-3-78l-1갤",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "친환경수성",
+      "name": "벤자민무어 내추라",
+      "spec": "3.78L(1갤)",
+      "unit": "통",
+      "brands": [
+        "벤자민무어"
+      ],
+      "price": {
+        "min": 60000,
+        "max": 120000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "고급 인테리어",
+      "notes": "무취 프리미엄",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-던에드워드-에코쉴드-1갤",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "친환경수성",
+      "name": "던에드워드 에코쉴드",
+      "spec": "1갤",
+      "unit": "통",
+      "brands": [
+        "던에드워드"
+      ],
+      "price": {
+        "min": 55000,
+        "max": 110000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "친환경 벽",
+      "notes": "발색력",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-삼화-유성-조합페인트-4l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "유성",
+      "name": "삼화 유성 조합페인트",
+      "spec": "4L",
+      "unit": "통",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 20000,
+        "max": 40000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "철재·목재",
+      "notes": "유성 에나멜",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-노루-유성-에나멜-4l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "유성",
+      "name": "노루 유성 에나멜",
+      "spec": "4L",
+      "unit": "통",
+      "brands": [
+        "노루페인트"
+      ],
+      "price": {
+        "min": 22000,
+        "max": 42000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "금속 도장",
+      "notes": "광택",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-던에드워드-무광컬러-1갤",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "무광·유광컬러",
+      "name": "던에드워드 무광컬러",
+      "spec": "1갤",
+      "unit": "통",
+      "brands": [
+        "던에드워드"
+      ],
+      "price": {
+        "min": 50000,
+        "max": 100000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "포인트 벽",
+      "notes": "벨벳 무광",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-벤자민무어-리갈셀렉트-1갤",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "무광·유광컬러",
+      "name": "벤자민무어 리갈셀렉트",
+      "spec": "1갤",
+      "unit": "통",
+      "brands": [
+        "벤자민무어"
+      ],
+      "price": {
+        "min": 65000,
+        "max": 130000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 벽",
+      "notes": "에그쉘/유광",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-삼화-오일스테인-4l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "스테인",
+      "name": "삼화 오일스테인",
+      "spec": "4L",
+      "unit": "통",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 50000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "목재 마감",
+      "notes": "우드 보호 오일",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-벤자민무어-우드스테인-1갤",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "스테인",
+      "name": "벤자민무어 우드스테인",
+      "spec": "1갤",
+      "unit": "통",
+      "brands": [
+        "벤자민무어"
+      ],
+      "price": {
+        "min": 45000,
+        "max": 90000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "원목 가구",
+      "notes": "침투 스테인",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-삼화-수성-프라이머-18l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "프라이머·하도",
+      "name": "삼화 수성 프라이머",
+      "spec": "18L",
+      "unit": "통",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 35000,
+        "max": 65000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바탕 처리",
+      "notes": "흡수 조정 하도",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-kcc-메탈-프라이머-4l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "프라이머·하도",
+      "name": "KCC 메탈 프라이머",
+      "spec": "4L",
+      "unit": "통",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 20000,
+        "max": 40000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "철재 방청",
+      "notes": "녹방지 하도",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-삼화-핸디코트-20kg",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "퍼티",
+      "name": "삼화 핸디코트",
+      "spec": "20kg",
+      "unit": "통",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 32000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "면 고르기",
+      "notes": "수성 퍼티",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-분말-퍼티-석고-20kg",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "퍼티",
+      "name": "분말 퍼티(석고)",
+      "spec": "20kg",
+      "unit": "포",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "포",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바탕 메움",
+      "notes": "석고계",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-kcc-수성-방수페인트-18l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "방수페인트",
+      "name": "KCC 수성 방수페인트",
+      "spec": "18L",
+      "unit": "통",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 50000,
+        "max": 90000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "옥상·외벽",
+      "notes": "탄성 방수",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-노루-탄성도막-방수-18l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "방수페인트",
+      "name": "노루 탄성도막 방수",
+      "spec": "18L",
+      "unit": "통",
+      "brands": [
+        "노루페인트"
+      ],
+      "price": {
+        "min": 55000,
+        "max": 95000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "외부 방수",
+      "notes": "신축 대응",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-삼화-본타일-수성-20kg",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "본타일·뿜칠",
+      "name": "삼화 본타일 수성",
+      "spec": "20kg",
+      "unit": "통",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 55000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "외벽·계단실",
+      "notes": "스프레이 패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-kcc-수성-본타일-20kg",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "본타일·뿜칠",
+      "name": "KCC 수성 본타일",
+      "spec": "20kg",
+      "unit": "통",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 32000,
+        "max": 58000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "외부 벽",
+      "notes": "입체 질감",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-삼화-스프레이-락카-420ml",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "락카",
+      "name": "삼화 스프레이 락카",
+      "spec": "420ml",
+      "unit": "캔",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 8000,
+        "unit": "캔",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "소물 도장",
+      "notes": "속건 스프레이",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "도장공사-도장재-일신-우레탄-락카-4l",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "락카",
+      "name": "일신 우레탄 락카",
+      "spec": "4L",
+      "unit": "통",
+      "brands": [
+        "일신화학"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 35000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "가구 도장",
+      "notes": "우레탄",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-윈텍-포세린-폴리싱-600x600",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "포세린",
+      "name": "윈텍 포세린 폴리싱",
+      "spec": "600x600",
+      "unit": "장",
+      "brands": [
+        "윈텍"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 14000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실 바닥/벽",
+      "notes": "무광/유광 자기질",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-이오타일-포세린-600x1200",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "포세린",
+      "name": "이오타일 포세린",
+      "spec": "600x1200",
+      "unit": "장",
+      "brands": [
+        "이오타일"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 40000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실 바닥",
+      "notes": "대형 판형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-대보세라믹-포세린-600x600",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "포세린",
+      "name": "대보세라믹 포세린",
+      "spec": "600x600",
+      "unit": "장",
+      "brands": [
+        "대보세라믹"
+      ],
+      "price": {
+        "min": 7000,
+        "max": 15000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주거 바닥",
+      "notes": "국산 포세린",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-삼영-포세린-무광-600x600",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "포세린",
+      "name": "삼영 포세린 무광",
+      "spec": "600x600",
+      "unit": "장",
+      "brands": [
+        "삼영세라믹"
+      ],
+      "price": {
+        "min": 6500,
+        "max": 14000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "바닥",
+      "notes": "미끄럼방지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-수입-포세린-대형판-900x1800",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "포세린",
+      "name": "수입 포세린 대형판",
+      "spec": "900x1800",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 60000,
+        "max": 150000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 벽·바닥",
+      "notes": "대형 판석타일",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-폴리싱-타일-800x800",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "폴리싱",
+      "name": "폴리싱 타일",
+      "spec": "800x800",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 28000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실 바닥",
+      "notes": "광택 연마",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-수입-폴리싱-600x600",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "폴리싱",
+      "name": "수입 폴리싱",
+      "spec": "600x600",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 10000,
+        "max": 24000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "상업 바닥",
+      "notes": "미러 광택",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-자기질-무유타일-300x300",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "자기질",
+      "name": "자기질 무유타일",
+      "spec": "300x300",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2500,
+        "max": 6000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "외부 바닥",
+      "notes": "논슬립 자기질",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-자기질-벽타일-300x600",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "자기질",
+      "name": "자기질 벽타일",
+      "spec": "300x600",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3500,
+        "max": 8000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "주방·욕실 벽",
+      "notes": "광택 자기질",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-도기질-벽타일-화이트-250x400",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "도기질",
+      "name": "도기질 벽타일 화이트",
+      "spec": "250x400",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 4000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실 벽",
+      "notes": "무광/유광 도기질",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-도기질-패턴타일-200x200",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "도기질",
+      "name": "도기질 패턴타일",
+      "spec": "200x200",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 5000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "포인트 벽",
+      "notes": "디자인",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-유리-모자이크타일-300x300-시트",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "모자이크",
+      "name": "유리 모자이크타일",
+      "spec": "300x300 시트",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 14000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실 포인트",
+      "notes": "유리 모자이크",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-자기-모자이크타일-300x300-시트",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "모자이크",
+      "name": "자기 모자이크타일",
+      "spec": "300x300 시트",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 7000,
+        "max": 20000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방 벽",
+      "notes": "헥사곤/스퀘어",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-포세린-슬랩-1200x2400",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "대형판석",
+      "name": "포세린 슬랩",
+      "spec": "1200x2400",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 150000,
+        "max": 400000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "아일랜드 상판/벽",
+      "notes": "대형 슬랩",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-세라믹-슬랩-1600x3200",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "대형판석",
+      "name": "세라믹 슬랩",
+      "spec": "1600x3200",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 250000,
+        "max": 600000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "벽·상판",
+      "notes": "박판 세라믹",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-욕실-바닥-논슬립타일-300x300",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "욕실타일",
+      "name": "욕실 바닥 논슬립타일",
+      "spec": "300x300",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실 바닥",
+      "notes": "미끄럼방지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-욕실-벽타일-무광-300x600",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "욕실타일",
+      "name": "욕실 벽타일 무광",
+      "spec": "300x600",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 9000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실 벽",
+      "notes": "무광 톤",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-압착시멘트-드라이픽스-25kg",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "타일부자재",
+      "name": "압착시멘트(드라이픽스)",
+      "spec": "25kg",
+      "unit": "포",
+      "brands": [
+        "아덱스",
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "포",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "타일 접착",
+      "notes": "떠붙임/압착",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-백시멘트-줄눈재-4kg",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "타일부자재",
+      "name": "백시멘트 줄눈재",
+      "spec": "4kg",
+      "unit": "통",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "줄눈",
+      "notes": "백색 메지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-에폭시-줄눈-메지-1kg",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "타일부자재",
+      "name": "에폭시 줄눈(메지)",
+      "spec": "1kg",
+      "unit": "통",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 30000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실 줄눈",
+      "notes": "발수·오염방지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-타일-타일-스페이서-십자-1봉",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "타일부자재",
+      "name": "타일 스페이서/십자",
+      "spec": "1봉",
+      "unit": "봉",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 5000,
+        "unit": "봉",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "줄눈 간격",
+      "notes": "시공 부자재",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-석재-천연-대리석-20t-600x600",
+      "trade": "타일공사",
+      "category": "석재",
+      "subcategory": "천연·인조석",
+      "name": "천연 대리석",
+      "spec": "20T 600x600",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 120000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "바닥/벽",
+      "notes": "천연 대리석",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-석재-화강석-고흥석-등-30t",
+      "trade": "타일공사",
+      "category": "석재",
+      "subcategory": "천연·인조석",
+      "name": "화강석(고흥석 등)",
+      "spec": "30T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 50000,
+        "max": 130000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "바닥/외부",
+      "notes": "화강암",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-석재-라임스톤-20t",
+      "trade": "타일공사",
+      "category": "석재",
+      "subcategory": "천연·인조석",
+      "name": "라임스톤",
+      "spec": "20T",
+      "unit": "M2",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 70000,
+        "max": 180000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "벽/바닥",
+      "notes": "라임스톤",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-석재-트래버틴-20t",
+      "trade": "타일공사",
+      "category": "석재",
+      "subcategory": "천연·인조석",
+      "name": "트래버틴",
+      "spec": "20T",
+      "unit": "M2",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 80000,
+        "max": 200000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "벽/바닥",
+      "notes": "트래버틴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "타일공사-석재-테라조-인조석-20t",
+      "trade": "타일공사",
+      "category": "석재",
+      "subcategory": "천연·인조석",
+      "name": "테라조(인조석)",
+      "spec": "20T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 80000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "바닥/계단",
+      "notes": "테라조 패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-경량-스터드-벽체-65mm",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "경량골조",
+      "name": "경량 스터드(벽체)",
+      "spec": "65mm",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 12000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "칸막이 벽",
+      "notes": "아연도 스터드+런너",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-경량-천장틀-m-bar-천장용",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "경량골조",
+      "name": "경량 천장틀(M-bar)",
+      "spec": "천장용",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 10000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "천장 골조",
+      "notes": "엠바/캐링",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-다보-행거-세트-천장",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "경량골조",
+      "name": "다보/행거 세트",
+      "spec": "천장",
+      "unit": "식",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "식",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "천장 행거",
+      "notes": "골조 부속",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-kcc-석고보드-일반-9-5t-900x1800",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "석고보드",
+      "name": "KCC 석고보드 일반",
+      "spec": "9.5T 900x1800",
+      "unit": "장",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 7000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "벽·천장",
+      "notes": "일반 석고",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-kcc-방화석고보드-12-5t",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "석고보드",
+      "name": "KCC 방화석고보드",
+      "spec": "12.5T",
+      "unit": "장",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 10000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "방화 구획",
+      "notes": "방화 인증",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-벽산-방수석고보드-12-5t",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "석고보드",
+      "name": "벽산 방수석고보드",
+      "spec": "12.5T",
+      "unit": "장",
+      "brands": [
+        "벽산"
+      ],
+      "price": {
+        "min": 7000,
+        "max": 12000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실·주방",
+      "notes": "방수 처리",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-대보-방균-석고보드-9-5t",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "석고보드",
+      "name": "대보 방균 석고보드",
+      "spec": "9.5T",
+      "unit": "장",
+      "brands": [
+        "대보"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 9000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "습한 공간",
+      "notes": "방균",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-kcc-마이톤-텍스-600x600",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "석고텍스",
+      "name": "KCC 마이톤 텍스",
+      "spec": "600x600",
+      "unit": "장",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "사무실 천장",
+      "notes": "흡음 텍스",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-벽산-석고텍스-603x603",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "석고텍스",
+      "name": "벽산 석고텍스",
+      "spec": "603x603",
+      "unit": "장",
+      "brands": [
+        "벽산"
+      ],
+      "price": {
+        "min": 3500,
+        "max": 7500,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "상가 천장",
+      "notes": "마이크로 텍스",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-아트론-흡음텍스-600x600",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "흡음재",
+      "name": "아트론 흡음텍스",
+      "spec": "600x600",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "회의실 천장",
+      "notes": "흡음 성능",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-폴리에스터-흡음보드-9t",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "흡음재",
+      "name": "폴리에스터 흡음보드",
+      "spec": "9T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "음악실 벽",
+      "notes": "친환경 흡음",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-smc-흡음판-600x600",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "흡음재",
+      "name": "SMC 흡음판",
+      "spec": "600x600",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 14000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "습식 천장",
+      "notes": "내수 흡음",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-알루미늄-스팬드럴-100폭",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "메탈천장",
+      "name": "알루미늄 스팬드럴",
+      "spec": "100폭",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 38000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "외부 처마/천장",
+      "notes": "알루미늄 루버천장",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-메탈-smc-천장-클립인",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "메탈천장",
+      "name": "메탈 SMC 천장",
+      "spec": "클립인",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 22000,
+        "max": 45000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "상가 천장",
+      "notes": "메탈 천장",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "경량공사-천장재-타공-석고보드-9-5t",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "메탈천장",
+      "name": "타공 석고보드",
+      "spec": "9.5T",
+      "unit": "장",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "흡음 천장",
+      "notes": "타공 흡음(다공천장)",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-미송-합판-4-5t-3x6",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "미송합판",
+      "name": "미송 합판",
+      "spec": "4.5T 3x6",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 9000,
+        "max": 16000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바탕재·가설",
+      "notes": "라왕/미송 합판",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-미송-합판-12t-3x6",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "미송합판",
+      "name": "미송 합판",
+      "spec": "12T 3x6",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 22000,
+        "max": 38000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "구조 바탕",
+      "notes": "두께 합판",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-미송-합판-18t-4x8",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "미송합판",
+      "name": "미송 합판",
+      "spec": "18T 4x8",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 38000,
+        "max": 60000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "가구 바탕",
+      "notes": "후판",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-자작나무-합판-12t-4x8",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "자작합판",
+      "name": "자작나무 합판",
+      "spec": "12T 4x8",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 55000,
+        "max": 95000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "가구·노출",
+      "notes": "무절 자작",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-자작합판-18t-4x8",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "자작합판",
+      "name": "자작합판",
+      "spec": "18T 4x8",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 80000,
+        "max": 140000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "가구 마감",
+      "notes": "노출 디자인",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-일반-mdf-9t-4x8",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "MDF",
+      "name": "일반 MDF",
+      "spec": "9T 4x8",
+      "unit": "장",
+      "brands": [
+        "동화",
+        "한솔"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 22000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "가구·몰딩 바탕",
+      "notes": "표준 MDF",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-mdf-15t-4x8",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "MDF",
+      "name": "MDF",
+      "spec": "15T 4x8",
+      "unit": "장",
+      "brands": [
+        "동화",
+        "한솔"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 30000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "가구",
+      "notes": "중밀도 섬유판",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-방수-mdf-e0-18t",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "MDF",
+      "name": "방수 MDF(E0)",
+      "spec": "18T",
+      "unit": "장",
+      "brands": [
+        "동화"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 42000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "습한 공간 가구",
+      "notes": "친환경 E0",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-미송-집성목-18t-4x8",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "집성목",
+      "name": "미송 집성목",
+      "spec": "18T 4x8",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 45000,
+        "max": 75000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "선반·가구 상판",
+      "notes": "핑거조인트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-고무나무-집성목-24t",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "집성목",
+      "name": "고무나무 집성목",
+      "spec": "24T",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 60000,
+        "max": 100000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "상판·계단",
+      "notes": "원목 집성",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-멀바우-집성목-30t",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "집성목",
+      "name": "멀바우 집성목",
+      "spec": "30T",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 90000,
+        "max": 160000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "카운터 상판",
+      "notes": "하드우드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-osb-합판-11t-4x8",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "OSB",
+      "name": "OSB 합판",
+      "spec": "11T 4x8",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 13000,
+        "max": 24000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바탕·노출",
+      "notes": "배향성 스트랜드보드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-적삼목-루버-9x90",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "루버·무늬목",
+      "name": "적삼목 루버",
+      "spec": "9x90",
+      "unit": "M2",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 50000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "천장·벽 마감",
+      "notes": "사우나/포인트 루버",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-무늬목-합판-오크-3t",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "루버·무늬목",
+      "name": "무늬목 합판(오크)",
+      "spec": "3T",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 55000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "가구 마감",
+      "notes": "천연 무늬목",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-히노끼-루버-9x90",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "루버·무늬목",
+      "name": "히노끼 루버",
+      "spec": "9x90",
+      "unit": "M2",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 35000,
+        "max": 70000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "욕실/포인트",
+      "notes": "편백 루버",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-다루끼-소각재-30x69",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "각재",
+      "name": "다루끼(소각재)",
+      "spec": "30x69",
+      "unit": "본",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 6000,
+        "unit": "본",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "목틀 골조",
+      "notes": "인테리어 각재",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-투바이-2x4-38x89",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "각재",
+      "name": "투바이(2x4)",
+      "spec": "38x89",
+      "unit": "본",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 10000,
+        "unit": "본",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "구조 목틀",
+      "notes": "SPF 구조재",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-판재-목재-졸대-오림목-12x40",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "각재",
+      "name": "졸대/오림목",
+      "spec": "12x40",
+      "unit": "본",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 3500,
+        "unit": "본",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "마감 보강",
+      "notes": "보조 각재",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-몰딩-mdf-걸레받이-80mm",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "걸레받이",
+      "name": "MDF 걸레받이",
+      "spec": "80mm",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 4500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바닥 마감",
+      "notes": "도장/필름 걸레받이",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-몰딩-원목-걸레받이-100mm",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "걸레받이",
+      "name": "원목 걸레받이",
+      "spec": "100mm",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 9000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "바닥 마감",
+      "notes": "무절 원목",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-몰딩-pvc-천장몰딩-50mm",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "천장·벽몰딩",
+      "name": "PVC 천장몰딩",
+      "spec": "50mm",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 3500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "천장 마감",
+      "notes": "우물천장/평몰딩",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-몰딩-우레탄-아트몰딩-다양",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "천장·벽몰딩",
+      "name": "우레탄 아트몰딩",
+      "spec": "다양",
+      "unit": "M",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 15000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "천장/벽 장식",
+      "notes": "클래식 우레탄",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-몰딩-마이너스몰딩-졸리컷-알루미늄",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "천장·벽몰딩",
+      "name": "마이너스몰딩(졸리컷)",
+      "spec": "알루미늄",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 8000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "벽-천장 그림자선",
+      "notes": "미니멀 디테일",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-몰딩-pvc-문선몰딩-9t",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "문선·코너",
+      "name": "PVC 문선몰딩",
+      "spec": "9T",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 4500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "문틀 마감",
+      "notes": "케이싱",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "목공사-몰딩-단차-코너-몰딩-pvc",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "문선·코너",
+      "name": "단차/코너 몰딩",
+      "spec": "PVC",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 4000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "모서리 마감",
+      "notes": "코너비드형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-영림-abs-도어-단판형",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "ABS도어",
+      "name": "영림 ABS 도어",
+      "spec": "단판형",
+      "unit": "EA",
+      "brands": [
+        "영림"
+      ],
+      "price": {
+        "min": 90000,
+        "max": 160000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "방문",
+      "notes": "ABS 멤브레인",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-예림-abs-도어-디자인형",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "ABS도어",
+      "name": "예림 ABS 도어",
+      "spec": "디자인형",
+      "unit": "EA",
+      "brands": [
+        "예림"
+      ],
+      "price": {
+        "min": 100000,
+        "max": 180000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "방문",
+      "notes": "다양한 패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-우딘-abs-도어-평판형",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "ABS도어",
+      "name": "우딘 ABS 도어",
+      "spec": "평판형",
+      "unit": "EA",
+      "brands": [
+        "우딘"
+      ],
+      "price": {
+        "min": 85000,
+        "max": 150000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "방문",
+      "notes": "가성비 ABS",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-영림-멤브레인-도어-무늬목패턴",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "멤브레인도어",
+      "name": "영림 멤브레인 도어",
+      "spec": "무늬목패턴",
+      "unit": "EA",
+      "brands": [
+        "영림"
+      ],
+      "price": {
+        "min": 110000,
+        "max": 200000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "방문",
+      "notes": "진공 래핑",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-예림-평몰딩-도어-화이트",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "멤브레인도어",
+      "name": "예림 평몰딩 도어",
+      "spec": "화이트",
+      "unit": "EA",
+      "brands": [
+        "예림"
+      ],
+      "price": {
+        "min": 120000,
+        "max": 220000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실/방문",
+      "notes": "도장형 느낌",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-갑종-방화문-현관-900x2100",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "방화문",
+      "name": "갑종 방화문(현관)",
+      "spec": "900x2100",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 250000,
+        "max": 450000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "세대 현관",
+      "notes": "갑종 방화 인증",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-디지털-방화문-세트-도어록-포함",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "방화문",
+      "name": "디지털 방화문 세트",
+      "spec": "도어록 포함",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 350000,
+        "max": 650000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "현관",
+      "notes": "도어록 일체",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-3연동-중문-슬라이딩",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "중문",
+      "name": "3연동 중문",
+      "spec": "슬라이딩",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 450000,
+        "max": 900000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "현관 중문",
+      "notes": "알루미늄+유리",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-양개-스윙-중문-여닫이",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "중문",
+      "name": "양개 스윙 중문",
+      "spec": "여닫이",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 500000,
+        "max": 1100000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 입구",
+      "notes": "슬림 프레임",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-원슬라이딩-중문-1연동",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "중문",
+      "name": "원슬라이딩 중문",
+      "spec": "1연동",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 350000,
+        "max": 700000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "복도",
+      "notes": "슬림 슬라이딩",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-lx지인-시스템창-pvc-이중창",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "시스템창호",
+      "name": "LX지인 시스템창",
+      "spec": "PVC 이중창",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 200000,
+        "max": 400000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "외부 창",
+      "notes": "단열 시스템창",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-kcc-시스템창호-알루미늄",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "시스템창호",
+      "name": "KCC 시스템창호",
+      "spec": "알루미늄",
+      "unit": "M2",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 250000,
+        "max": 500000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "발코니",
+      "notes": "고단열",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-이건창호-pw-시스템창-pvc",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "시스템창호",
+      "name": "이건창호 PW 시스템창",
+      "spec": "PVC",
+      "unit": "M2",
+      "brands": [
+        "이건창호"
+      ],
+      "price": {
+        "min": 300000,
+        "max": 600000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 창",
+      "notes": "프리미엄 단열",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-lx-하이샤시-이중창-pvc",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "하이샤시",
+      "name": "LX 하이샤시 이중창",
+      "spec": "PVC",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 120000,
+        "max": 250000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "발코니",
+      "notes": "이중 단열창",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-kcc-발코니-샤시-pvc",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "하이샤시",
+      "name": "KCC 발코니 샤시",
+      "spec": "PVC",
+      "unit": "M2",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 110000,
+        "max": 230000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "발코니 확장",
+      "notes": "단창/이중창",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-한화-pvc-샤시-이중",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "하이샤시",
+      "name": "한화 PVC 샤시",
+      "spec": "이중",
+      "unit": "M2",
+      "brands": [
+        "한화L&C"
+      ],
+      "price": {
+        "min": 100000,
+        "max": 210000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "창호 교체",
+      "notes": "가성비",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-디지털-도어록-푸시풀-현관용",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "도어하드웨어",
+      "name": "디지털 도어록(푸시풀)",
+      "spec": "현관용",
+      "unit": "EA",
+      "brands": [
+        "삼성SHP",
+        "게이트맨"
+      ],
+      "price": {
+        "min": 120000,
+        "max": 300000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "현관",
+      "notes": "번호+카드+지문",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-모티스-도어록-방문용-레버",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "도어하드웨어",
+      "name": "모티스 도어록",
+      "spec": "방문용 레버",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 40000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "방문",
+      "notes": "레버형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "창호공사-도어-창호-도어-경첩-4인치-스테인리스",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "도어하드웨어",
+      "name": "도어 경첩",
+      "spec": "4인치 스테인리스",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 6000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "문짝 설치",
+      "notes": "스테인 경첩",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-삼성-스타론-아크릴상판-12t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "인조대리석",
+      "name": "삼성 스타론 아크릴상판",
+      "spec": "12T",
+      "unit": "M2",
+      "brands": [
+        "삼성",
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 80000,
+        "max": 160000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방 상판",
+      "notes": "아크릴 인조대리석",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-lx-하이막스-12t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "인조대리석",
+      "name": "LX 하이막스",
+      "spec": "12T",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 90000,
+        "max": 180000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "카운터",
+      "notes": "무이음 가공",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-한화-아크릴-인조대리석-12t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "인조대리석",
+      "name": "한화 아크릴 인조대리석",
+      "spec": "12T",
+      "unit": "M2",
+      "brands": [
+        "한화L&C"
+      ],
+      "price": {
+        "min": 75000,
+        "max": 150000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "상판",
+      "notes": "아크릴계",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-한화-칸스톤-20t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "엔지니어드스톤",
+      "name": "한화 칸스톤",
+      "spec": "20T",
+      "unit": "M2",
+      "brands": [
+        "한화L&C"
+      ],
+      "price": {
+        "min": 200000,
+        "max": 400000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "주방 상판",
+      "notes": "석영 90% 쿼츠",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-세자르스톤-20t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "엔지니어드스톤",
+      "name": "세자르스톤",
+      "spec": "20T",
+      "unit": "M2",
+      "brands": [
+        "세자르스톤"
+      ],
+      "price": {
+        "min": 250000,
+        "max": 500000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "아일랜드",
+      "notes": "수입 쿼츠",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-비안코-쿼츠-20t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "엔지니어드스톤",
+      "name": "비안코 쿼츠",
+      "spec": "20T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 180000,
+        "max": 350000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "상판",
+      "notes": "내오염 쿼츠",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-스테인리스-언더싱크볼-단조",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "싱크볼",
+      "name": "스테인리스 언더싱크볼",
+      "spec": "단조",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 60000,
+        "max": 150000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방",
+      "notes": "언더카운터",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-사각-핸드메이드-싱크볼-대형",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "싱크볼",
+      "name": "사각 핸드메이드 싱크볼",
+      "spec": "대형",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 80000,
+        "max": 200000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방",
+      "notes": "대형 단조",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-하츠-슬라이드-후드-90cm",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "후드",
+      "name": "하츠 슬라이드 후드",
+      "spec": "90cm",
+      "unit": "EA",
+      "brands": [
+        "하츠"
+      ],
+      "price": {
+        "min": 150000,
+        "max": 350000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방 환기",
+      "notes": "슬라이딩 후드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-빌트인-매립후드-매립형",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "후드",
+      "name": "빌트인 매립후드",
+      "spec": "매립형",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 200000,
+        "max": 450000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "아일랜드/벽",
+      "notes": "매립 후드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-빌트인-인덕션-3구",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "빌트인가전",
+      "name": "빌트인 인덕션",
+      "spec": "3구",
+      "unit": "EA",
+      "brands": [
+        "SK매직",
+        "쿠첸"
+      ],
+      "price": {
+        "min": 300000,
+        "max": 700000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방",
+      "notes": "빌트인 쿡탑",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-빌트인-식기세척기-12인",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "빌트인가전",
+      "name": "빌트인 식기세척기",
+      "spec": "12인",
+      "unit": "EA",
+      "brands": [
+        "SK매직",
+        "LG전자"
+      ],
+      "price": {
+        "min": 500000,
+        "max": 1200000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방",
+      "notes": "빌트인 식세기",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-lpm-도어패널-18t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "도어마감재",
+      "name": "LPM 도어패널",
+      "spec": "18T",
+      "unit": "M2",
+      "brands": [
+        "한솔",
+        "동화"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 50000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "가구 도어",
+      "notes": "저압 멜라민",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-pet-하이그로시-도어-18t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "도어마감재",
+      "name": "PET 하이그로시 도어",
+      "spec": "18T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 80000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방 도어",
+      "notes": "무광/유광 PET",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-uv-하이그로시-도어-18t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "도어마감재",
+      "name": "UV 하이그로시 도어",
+      "spec": "18T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 35000,
+        "max": 70000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "가구 도어",
+      "notes": "UV 코팅",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-무늬목-도어-18t",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "도어마감재",
+      "name": "무늬목 도어",
+      "spec": "18T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 60000,
+        "max": 120000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "고급 가구",
+      "notes": "천연 무늬목",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-블룸-댐핑-경첩-클립톱",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "가구하드웨어",
+      "name": "블룸 댐핑 경첩",
+      "spec": "클립톱",
+      "unit": "EA",
+      "brands": [
+        "Blum"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 8000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "가구 도어",
+      "notes": "소프트클로징",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-헤펠레-언더레일-풀익스텐션",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "가구하드웨어",
+      "name": "헤펠레 언더레일",
+      "spec": "풀익스텐션",
+      "unit": "조",
+      "brands": [
+        "Hafele"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 30000,
+        "unit": "조",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "서랍",
+      "notes": "댐핑 레일",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-국산-댐핑-레일-3단",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "가구하드웨어",
+      "name": "국산 댐핑 레일",
+      "spec": "3단",
+      "unit": "조",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 15000,
+        "unit": "조",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "서랍",
+      "notes": "가성비 레일",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-한샘-키친바흐-모듈-자",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "모듈가구",
+      "name": "한샘 키친바흐 모듈",
+      "spec": "자(尺)",
+      "unit": "자",
+      "brands": [
+        "한샘"
+      ],
+      "price": {
+        "min": 150000,
+        "max": 400000,
+        "unit": "자",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방",
+      "notes": "모듈 주방(자당)",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-리바트-키친-모듈-자",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "모듈가구",
+      "name": "리바트 키친 모듈",
+      "spec": "자",
+      "unit": "자",
+      "brands": [
+        "현대리바트"
+      ],
+      "price": {
+        "min": 140000,
+        "max": 380000,
+        "unit": "자",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방",
+      "notes": "모듈 주방",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "가구공사-주방-가구-붙박이장-모듈-자",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "모듈가구",
+      "name": "붙박이장 모듈",
+      "spec": "자",
+      "unit": "자",
+      "brands": [
+        "한샘",
+        "국산"
+      ],
+      "price": {
+        "min": 120000,
+        "max": 300000,
+        "unit": "자",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "드레스룸/방",
+      "notes": "슬라이딩/여닫이",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-대림바스-일체형-양변기-직수형",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "양변기",
+      "name": "대림바스 일체형 양변기",
+      "spec": "직수형",
+      "unit": "EA",
+      "brands": [
+        "대림바스"
+      ],
+      "price": {
+        "min": 150000,
+        "max": 350000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "일체형 도기",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-아메리칸스탠다드-투피스-투피스",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "양변기",
+      "name": "아메리칸스탠다드 투피스",
+      "spec": "투피스",
+      "unit": "EA",
+      "brands": [
+        "아메리칸스탠다드"
+      ],
+      "price": {
+        "min": 130000,
+        "max": 300000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "투피스 양변기",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-이누스-비데일체형-변기-일체형",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "양변기",
+      "name": "이누스 비데일체형 변기",
+      "spec": "일체형",
+      "unit": "EA",
+      "brands": [
+        "이누스"
+      ],
+      "price": {
+        "min": 250000,
+        "max": 550000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "욕실",
+      "notes": "비데 일체형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-계림-투피스-양변기-투피스",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "양변기",
+      "name": "계림 투피스 양변기",
+      "spec": "투피스",
+      "unit": "EA",
+      "brands": [
+        "계림요업"
+      ],
+      "price": {
+        "min": 90000,
+        "max": 180000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실",
+      "notes": "가성비 도기",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-대림-반다리-세면기-카운터형",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "세면기",
+      "name": "대림 반다리 세면기",
+      "spec": "카운터형",
+      "unit": "EA",
+      "brands": [
+        "대림바스"
+      ],
+      "price": {
+        "min": 60000,
+        "max": 150000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "탑볼/언더",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-더죤테크-사각-세면기-카운터",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "세면기",
+      "name": "더죤테크 사각 세면기",
+      "spec": "카운터",
+      "unit": "EA",
+      "brands": [
+        "더죤테크"
+      ],
+      "price": {
+        "min": 50000,
+        "max": 130000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "모던 사각",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.334Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-계림-벽걸이-세면기-벽부형",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "세면기",
+      "name": "계림 벽걸이 세면기",
+      "spec": "벽부형",
+      "unit": "EA",
+      "brands": [
+        "계림요업"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 90000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실",
+      "notes": "벽부형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-대림-세면수전-일반",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "수전",
+      "name": "대림 세면수전",
+      "spec": "일반",
+      "unit": "EA",
+      "brands": [
+        "대림바스"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 100000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "세면대",
+      "notes": "팝업/일반",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-아메리칸스탠다드-샤워수전-해바라기",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "수전",
+      "name": "아메리칸스탠다드 샤워수전",
+      "spec": "해바라기",
+      "unit": "EA",
+      "brands": [
+        "아메리칸스탠다드"
+      ],
+      "price": {
+        "min": 80000,
+        "max": 200000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "샤워",
+      "notes": "해바라기 헤드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-더죤-주방수전-인출형",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "수전",
+      "name": "더죤 주방수전",
+      "spec": "인출형",
+      "unit": "EA",
+      "brands": [
+        "더죤테크"
+      ],
+      "price": {
+        "min": 50000,
+        "max": 130000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "주방",
+      "notes": "인출형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-그로헤-수전-수입",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "수전",
+      "name": "그로헤 수전",
+      "spec": "수입",
+      "unit": "EA",
+      "brands": [
+        "GROHE"
+      ],
+      "price": {
+        "min": 150000,
+        "max": 400000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "욕실",
+      "notes": "수입 프리미엄",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-강화유리-샤워부스-8mm-슬라이딩",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "샤워부스",
+      "name": "강화유리 샤워부스",
+      "spec": "8mm 슬라이딩",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 350000,
+        "max": 700000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "8mm 강화유리",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-코너-샤워부스-양개",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "샤워부스",
+      "name": "코너 샤워부스",
+      "spec": "양개",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 300000,
+        "max": 600000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "코너형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-워크인-파티션-고정형",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "샤워부스",
+      "name": "워크인 파티션",
+      "spec": "고정형",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 250000,
+        "max": 550000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "건식 욕실",
+      "notes": "슬림 프레임",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-아크릴-욕조-1500",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "욕조",
+      "name": "아크릴 욕조",
+      "spec": "1500",
+      "unit": "EA",
+      "brands": [
+        "대림바스"
+      ],
+      "price": {
+        "min": 150000,
+        "max": 350000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "일반 아크릴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-매립형-욕조-1700",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "욕조",
+      "name": "매립형 욕조",
+      "spec": "1700",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 200000,
+        "max": 500000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "매립/데크",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-반신-욕조-1200",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "욕조",
+      "name": "반신 욕조",
+      "spec": "1200",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 130000,
+        "max": 300000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "소형 욕실",
+      "notes": "반신욕",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-인조대리석-젠다이-가공",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "젠다이·선반",
+      "name": "인조대리석 젠다이",
+      "spec": "가공",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 70000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕조/창턱",
+      "notes": "물막이 젠다이",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-욕실-코너-선반-도기-타일",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "젠다이·선반",
+      "name": "욕실 코너 선반",
+      "spec": "도기/타일",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 20000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실 수납",
+      "notes": "코너 선반",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-욕실-환풍기-천장-매립",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "환풍기",
+      "name": "욕실 환풍기",
+      "spec": "천장 매립",
+      "unit": "EA",
+      "brands": [
+        "힘펠",
+        "국산"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 70000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실 환기",
+      "notes": "저소음",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-습도센서-환풍기-타이머",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "환풍기",
+      "name": "습도센서 환풍기",
+      "spec": "타이머",
+      "unit": "EA",
+      "brands": [
+        "힘펠"
+      ],
+      "price": {
+        "min": 50000,
+        "max": 120000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "욕실",
+      "notes": "습도센서",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-욕실-액세서리-세트-수건걸이-외",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "액세서리",
+      "name": "욕실 액세서리 세트",
+      "spec": "수건걸이 외",
+      "unit": "식",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 80000,
+        "unit": "식",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실",
+      "notes": "휴지걸이/수건바",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "화장실셋팅공사-욕실-위생도기-샤워-코너-바스켓-스테인",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "액세서리",
+      "name": "샤워 코너 바스켓",
+      "spec": "스테인",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 10000,
+        "max": 30000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "샤워 수납",
+      "notes": "스테인 선반",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-남영-led-평판등-640x640-50w",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "LED평판등",
+      "name": "남영 LED 평판등",
+      "spec": "640x640 50W",
+      "unit": "EA",
+      "brands": [
+        "남영전자"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 55000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "거실/방 천장",
+      "notes": "면조명 평판",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-국제전기-led-엣지등-640x640",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "LED평판등",
+      "name": "국제전기 LED 엣지등",
+      "spec": "640x640",
+      "unit": "EA",
+      "brands": [
+        "국제전기"
+      ],
+      "price": {
+        "min": 28000,
+        "max": 60000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "천장",
+      "notes": "엣지형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-필립스-led-평판-600x600",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "LED평판등",
+      "name": "필립스 LED 평판",
+      "spec": "600x600",
+      "unit": "EA",
+      "brands": [
+        "필립스"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 90000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "사무실",
+      "notes": "고연색",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-led-매입-다운라이트-4인치-8w",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "다운라이트",
+      "name": "LED 매입 다운라이트",
+      "spec": "4인치 8W",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 15000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "천장 매입",
+      "notes": "일반 다운",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-cob-매입등-3인치",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "다운라이트",
+      "name": "COB 매입등",
+      "spec": "3인치",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "포인트",
+      "notes": "집중 조명",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-방습-다운라이트-욕실용-ip44",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "다운라이트",
+      "name": "방습 다운라이트",
+      "spec": "욕실용 IP44",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 9000,
+        "max": 20000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실 천장",
+      "notes": "방습",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-led-레일-스포트-1m레일-3등",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "레일조명",
+      "name": "LED 레일 스포트",
+      "spec": "1m레일+3등",
+      "unit": "식",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 70000,
+        "unit": "식",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "카페/포인트",
+      "notes": "레일+스포트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-매립-레일조명-1m",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "레일조명",
+      "name": "매립 레일조명",
+      "spec": "1m",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 40000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "갤러리",
+      "notes": "매입 레일",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-led-라인바-간접-1m",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "라인조명",
+      "name": "LED 라인바(간접)",
+      "spec": "1m",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 25000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "우물천장 간접",
+      "notes": "라인 조명",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-코브-간접-프로파일-1m",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "라인조명",
+      "name": "코브 간접 프로파일",
+      "spec": "1m",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 18000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "간접 조명",
+      "notes": "프로파일+스트립",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-led-센서-직부등-원형",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "센서·직부등",
+      "name": "LED 센서 직부등",
+      "spec": "원형",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 30000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "현관/복도",
+      "notes": "동작감지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-led-직부등-원형-15w",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "센서·직부등",
+      "name": "LED 직부등",
+      "spec": "원형 15W",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 10000,
+        "max": 25000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "방/주방",
+      "notes": "직부형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-디자인-펜던트-조명-1등",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "펜던트",
+      "name": "디자인 펜던트 조명",
+      "spec": "1등",
+      "unit": "EA",
+      "brands": [
+        "국산",
+        "수입"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 150000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "식탁/아일랜드",
+      "notes": "포인트 펜던트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-레일-펜던트-디자인",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "펜던트",
+      "name": "레일 펜던트",
+      "spec": "디자인",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 90000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "카페",
+      "notes": "디자인 조명",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-led-컨버터-smps-60w",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "컨버터",
+      "name": "LED 컨버터(SMPS)",
+      "spec": "60W",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 15000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "조명 구동",
+      "notes": "정전류/정전압",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-조명-디밍-컨버터-트라이악",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "컨버터",
+      "name": "디밍 컨버터",
+      "spec": "트라이악",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 30000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "디밍 조명",
+      "notes": "밝기조절",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-ls-전선-vctf-2-5sq-2c",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "전선",
+      "name": "LS 전선 VCTF",
+      "spec": "2.5sq 2C",
+      "unit": "M",
+      "brands": [
+        "LS전선"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 3500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "기기 배선",
+      "notes": "연선 케이블",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-iv-단선-2-5sq",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "전선",
+      "name": "IV 단선",
+      "spec": "2.5sq",
+      "unit": "M",
+      "brands": [
+        "LS전선"
+      ],
+      "price": {
+        "min": 800,
+        "max": 2000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "옥내 배선",
+      "notes": "절연 단선",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-hfix-전선-2-5sq",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "전선",
+      "name": "HFIX 전선",
+      "spec": "2.5sq",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1000,
+        "max": 2500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "친환경 배선",
+      "notes": "저독성 난연",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-르그랑-스위치-콘센트-매입",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "콘센트·스위치",
+      "name": "르그랑 스위치/콘센트",
+      "spec": "매입",
+      "unit": "EA",
+      "brands": [
+        "르그랑"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 12000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "벽 매입",
+      "notes": "디자인 배선기구",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-매입-콘센트-2구",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "콘센트·스위치",
+      "name": "매입 콘센트",
+      "spec": "2구",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 4000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "벽 콘센트",
+      "notes": "일반",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-조명-스위치-3로-4로",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "콘센트·스위치",
+      "name": "조명 스위치",
+      "spec": "3로/4로",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 6000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "조명 스위치",
+      "notes": "3로/4로",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-세대-분전반-12회로",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "분전반·배관",
+      "name": "세대 분전반",
+      "spec": "12회로",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 50000,
+        "max": 130000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "전기 분배",
+      "notes": "누전차단기 포함",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-cd-전선관-16mm",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "분전반·배관",
+      "name": "CD 전선관",
+      "spec": "16mm",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 500,
+        "max": 1500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "매입 배관",
+      "notes": "가요 전선관",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-pf-이중관-16mm",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "분전반·배관",
+      "name": "PF 이중관",
+      "spec": "16mm",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 700,
+        "max": 1800,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "콘크리트 매입",
+      "notes": "난연 이중관",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-비디오-도어폰-7인치",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "인터폰·통신",
+      "name": "비디오 도어폰",
+      "spec": "7인치",
+      "unit": "EA",
+      "brands": [
+        "코맥스",
+        "코콤"
+      ],
+      "price": {
+        "min": 80000,
+        "max": 200000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "현관",
+      "notes": "영상 인터폰",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "전기공사-전기-통신-통신-단자함-세대용",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "인터폰·통신",
+      "name": "통신 단자함",
+      "spec": "세대용",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 80000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "통신 분배",
+      "notes": "TV/인터넷",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-pb-파이프-15a",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "급수배관",
+      "name": "PB 파이프",
+      "spec": "15A",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 3500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "급수 배관",
+      "notes": "온수/냉수",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-ppc-파이프-20a",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "급수배관",
+      "name": "PPC 파이프",
+      "spec": "20A",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 4500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "급수",
+      "notes": "융착 배관",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-엑셀-파이프-xl-16mm",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "급수배관",
+      "name": "엑셀 파이프(XL)",
+      "spec": "16mm",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1000,
+        "max": 2500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "난방 배관",
+      "notes": "바닥난방 온수",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-동관-15-88",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "급수배관",
+      "name": "동관",
+      "spec": "15.88",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "냉매/급탕",
+      "notes": "동 파이프",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-볼밸브-황동-15a",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "밸브·부속",
+      "name": "볼밸브(황동)",
+      "spec": "15A",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 8000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "급수 차단",
+      "notes": "황동 볼밸브",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-앵글밸브-15a",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "밸브·부속",
+      "name": "앵글밸브",
+      "spec": "15A",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2500,
+        "max": 6000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "위생기구",
+      "notes": "스톱 앵글",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-경동-콘덴싱-보일러-가정용-16k",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "보일러",
+      "name": "경동 콘덴싱 보일러",
+      "spec": "가정용 16K",
+      "unit": "EA",
+      "brands": [
+        "경동나비엔"
+      ],
+      "price": {
+        "min": 600000,
+        "max": 1100000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "난방/온수",
+      "notes": "콘덴싱 친환경",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-귀뚜라미-콘덴싱-가정용",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "보일러",
+      "name": "귀뚜라미 콘덴싱",
+      "spec": "가정용",
+      "unit": "EA",
+      "brands": [
+        "귀뚜라미"
+      ],
+      "price": {
+        "min": 550000,
+        "max": 1000000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "난방",
+      "notes": "거꾸로 콘덴싱",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-pvc-배수관-50a",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "배수·환기",
+      "name": "PVC 배수관",
+      "spec": "50A",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 3500,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "배수",
+      "notes": "일반 배수관",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-pvc-오배수관-100a",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "배수·환기",
+      "name": "PVC 오배수관",
+      "spec": "100A",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "오수/잡배수",
+      "notes": "입상관",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-트랩-사이폰-세트-배수",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "배수·환기",
+      "name": "트랩/사이폰 세트",
+      "spec": "배수",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 12000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "배수 봉수",
+      "notes": "악취 차단",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "설비공사-설비-배관-전열교환기-세대용",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "배수·환기",
+      "name": "전열교환기",
+      "spec": "세대용",
+      "unit": "EA",
+      "brands": [
+        "경동",
+        "국산"
+      ],
+      "price": {
+        "min": 400000,
+        "max": 900000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "환기",
+      "notes": "폐열회수",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "에어컨공사-냉방기기-시스템에어컨-1way-천장형",
+      "trade": "에어컨공사",
+      "category": "냉방기기",
+      "subcategory": "시스템에어컨",
+      "name": "시스템에어컨 1way",
+      "spec": "천장형",
+      "unit": "EA",
+      "brands": [
+        "삼성",
+        "LG전자"
+      ],
+      "price": {
+        "min": 800000,
+        "max": 1500000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "룸 냉방",
+      "notes": "천장 매립 1way",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "에어컨공사-냉방기기-시스템에어컨-4way-천장형",
+      "trade": "에어컨공사",
+      "category": "냉방기기",
+      "subcategory": "시스템에어컨",
+      "name": "시스템에어컨 4way",
+      "spec": "천장형",
+      "unit": "EA",
+      "brands": [
+        "삼성",
+        "LG전자"
+      ],
+      "price": {
+        "min": 1200000,
+        "max": 2500000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실",
+      "notes": "4방향 카세트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "에어컨공사-냉방기기-벽걸이-에어컨-스탠다드",
+      "trade": "에어컨공사",
+      "category": "냉방기기",
+      "subcategory": "일반에어컨",
+      "name": "벽걸이 에어컨",
+      "spec": "스탠다드",
+      "unit": "EA",
+      "brands": [
+        "삼성",
+        "LG전자",
+        "캐리어"
+      ],
+      "price": {
+        "min": 400000,
+        "max": 800000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "방 냉방",
+      "notes": "벽걸이",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "에어컨공사-냉방기기-스탠드-에어컨-거실형",
+      "trade": "에어컨공사",
+      "category": "냉방기기",
+      "subcategory": "일반에어컨",
+      "name": "스탠드 에어컨",
+      "spec": "거실형",
+      "unit": "EA",
+      "brands": [
+        "삼성",
+        "LG전자"
+      ],
+      "price": {
+        "min": 1000000,
+        "max": 2200000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "거실",
+      "notes": "스탠드형",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "에어컨공사-냉방기기-에어컨-배관자재-1식",
+      "trade": "에어컨공사",
+      "category": "냉방기기",
+      "subcategory": "일반에어컨",
+      "name": "에어컨 배관자재",
+      "spec": "1식",
+      "unit": "식",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 50000,
+        "max": 150000,
+        "unit": "식",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "냉매 배관",
+      "notes": "동관+드레인+전선",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "공조공사-공조-덕트-아연도-각덕트-표준",
+      "trade": "공조공사",
+      "category": "공조·덕트",
+      "subcategory": "덕트",
+      "name": "아연도 각덕트",
+      "spec": "표준",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 50000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "환기 덕트",
+      "notes": "함석 덕트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "공조공사-공조-덕트-스파이럴-덕트-200mm",
+      "trade": "공조공사",
+      "category": "공조·덕트",
+      "subcategory": "덕트",
+      "name": "스파이럴 덕트",
+      "spec": "200mm",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "원형 덕트",
+      "notes": "나선 덕트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "공조공사-공조-덕트-후렉시블-덕트-알루미늄",
+      "trade": "공조공사",
+      "category": "공조·덕트",
+      "subcategory": "덕트",
+      "name": "후렉시블 덕트",
+      "spec": "알루미늄",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 8000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "연결 덕트",
+      "notes": "자바라",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "공조공사-공조-덕트-인라인-환기팬-덕트형",
+      "trade": "공조공사",
+      "category": "공조·덕트",
+      "subcategory": "팬·그릴",
+      "name": "인라인 환기팬",
+      "spec": "덕트형",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 100000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "강제 환기",
+      "notes": "인라인 팬",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "공조공사-공조-덕트-디퓨저-그릴-사각",
+      "trade": "공조공사",
+      "category": "공조·덕트",
+      "subcategory": "팬·그릴",
+      "name": "디퓨저/그릴",
+      "spec": "사각",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 25000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "급배기구",
+      "notes": "알루미늄 그릴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-스테인리스-헤어라인판-1-2t",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "스테인리스",
+      "name": "스테인리스 헤어라인판",
+      "spec": "1.2T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 35000,
+        "max": 70000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "가구/포인트 마감",
+      "notes": "SUS304 헤어라인",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-스테인리스-미러판-1-5t",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "스테인리스",
+      "name": "스테인리스 미러판",
+      "spec": "1.5T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 45000,
+        "max": 90000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "포인트 벽",
+      "notes": "거울 마감",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-스테인-골드-티타늄-1-2t",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "스테인리스",
+      "name": "스테인 골드(티타늄)",
+      "spec": "1.2T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 70000,
+        "max": 140000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "럭셔리 포인트",
+      "notes": "티타늄 코팅",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-각파이프-철-50x50x1-6t",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "각파이프·환봉",
+      "name": "각파이프(철)",
+      "spec": "50x50x1.6T",
+      "unit": "본",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "본",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "구조 골조",
+      "notes": "일반 SS 각관",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-환봉-철-16mm",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "각파이프·환봉",
+      "name": "환봉(철)",
+      "spec": "16mm",
+      "unit": "본",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "본",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "난간/구조",
+      "notes": "철 환봉",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-스테인-각파이프-40x40",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "각파이프·환봉",
+      "name": "스테인 각파이프",
+      "spec": "40x40",
+      "unit": "본",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 35000,
+        "unit": "본",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "난간/가구",
+      "notes": "SUS 각관",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-논슬립-계단-알루미늄",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "금속부속",
+      "name": "논슬립(계단)",
+      "spec": "알루미늄",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 10000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "계단 끝",
+      "notes": "미끄럼방지",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-코너비드-메탈-2-4m",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "금속부속",
+      "name": "코너비드(메탈)",
+      "spec": "2.4m",
+      "unit": "본",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1500,
+        "max": 4000,
+        "unit": "본",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "미장 모서리",
+      "notes": "아연도 비드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-익스펜션-조인트-알루미늄",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "금속부속",
+      "name": "익스펜션 조인트",
+      "spec": "알루미늄",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 15000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "신축 줄눈",
+      "notes": "바닥/벽",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-앵글-l형강-50x50",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "금속부속",
+      "name": "앵글(L형강)",
+      "spec": "50x50",
+      "unit": "본",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 14000,
+        "unit": "본",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "구조 보강",
+      "notes": "철 앵글",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "금속공사-금속재-강판-그레이팅-아연",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "금속부속",
+      "name": "강판 그레이팅",
+      "spec": "아연",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 70000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "측구/통로",
+      "notes": "그레이팅 데크",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "유리공사-유리-거울-강화유리-10t",
+      "trade": "유리공사",
+      "category": "유리·거울",
+      "subcategory": "강화유리",
+      "name": "강화유리",
+      "spec": "10T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 60000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "파티션/도어",
+      "notes": "안전 강화유리",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "유리공사-유리-거울-강화유리-12t",
+      "trade": "유리공사",
+      "category": "유리·거울",
+      "subcategory": "강화유리",
+      "name": "강화유리",
+      "spec": "12T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 75000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "샤워/난간",
+      "notes": "후판 강화",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "유리공사-유리-거울-접합유리-라미-5-5",
+      "trade": "유리공사",
+      "category": "유리·거울",
+      "subcategory": "접합·복층",
+      "name": "접합유리(라미)",
+      "spec": "5+5",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 45000,
+        "max": 90000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "안전/방범",
+      "notes": "PVB 접합",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "유리공사-유리-거울-복층유리-페어-24mm",
+      "trade": "유리공사",
+      "category": "유리·거울",
+      "subcategory": "접합·복층",
+      "name": "복층유리(페어)",
+      "spec": "24mm",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 55000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "창호",
+      "notes": "단열 복층",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "유리공사-유리-거울-로이유리-복층-24mm",
+      "trade": "유리공사",
+      "category": "유리·거울",
+      "subcategory": "접합·복층",
+      "name": "로이유리 복층",
+      "spec": "24mm",
+      "unit": "M2",
+      "brands": [
+        "국산",
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 80000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "외부 창",
+      "notes": "로이 코팅 단열",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "유리공사-유리-거울-미스트-불투명-유리-5t",
+      "trade": "유리공사",
+      "category": "유리·거울",
+      "subcategory": "특수유리·거울",
+      "name": "미스트(불투명) 유리",
+      "spec": "5T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 20000,
+        "max": 45000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실/칸막이",
+      "notes": "샌드/아쿠아",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "유리공사-유리-거울-거울-미러-5t",
+      "trade": "유리공사",
+      "category": "유리·거울",
+      "subcategory": "특수유리·거울",
+      "name": "거울(미러)",
+      "spec": "5T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 40000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실/드레스룸",
+      "notes": "일반 거울",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "유리공사-유리-거울-시스템-유리파티션-슬림프레임",
+      "trade": "유리공사",
+      "category": "유리·거울",
+      "subcategory": "특수유리·거울",
+      "name": "시스템 유리파티션",
+      "spec": "슬림프레임",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 90000,
+        "max": 180000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "사무실",
+      "notes": "슬라이딩/고정",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "필름공사-필름-lx-인테리어필름-단색-1220폭",
+      "trade": "필름공사",
+      "category": "필름",
+      "subcategory": "인테리어필름",
+      "name": "LX 인테리어필름 단색",
+      "spec": "1220폭",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "가구/문 리폼",
+      "notes": "단색 솔리드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "필름공사-필름-lx-무늬목-필름-우드",
+      "trade": "필름공사",
+      "category": "필름",
+      "subcategory": "인테리어필름",
+      "name": "LX 무늬목 필름",
+      "spec": "우드",
+      "unit": "M2",
+      "brands": [
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 10000,
+        "max": 22000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "도어/벽",
+      "notes": "우드 패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "필름공사-필름-현대-보닥-필름-메탈",
+      "trade": "필름공사",
+      "category": "필름",
+      "subcategory": "인테리어필름",
+      "name": "현대 보닥 필름",
+      "spec": "메탈",
+      "unit": "M2",
+      "brands": [
+        "현대L&C"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 26000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "포인트",
+      "notes": "메탈/펄",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "필름공사-필름-대리석-무늬-필름-마블",
+      "trade": "필름공사",
+      "category": "필름",
+      "subcategory": "인테리어필름",
+      "name": "대리석 무늬 필름",
+      "spec": "마블",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 11000,
+        "max": 24000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "상판/벽",
+      "notes": "마블 패턴",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "필름공사-필름-시트지-단색-일반",
+      "trade": "필름공사",
+      "category": "필름",
+      "subcategory": "시트·썬팅",
+      "name": "시트지(단색)",
+      "spec": "일반",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 10000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "소품/가구",
+      "notes": "가성비 시트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "필름공사-필름-유리-썬팅-단열-필름",
+      "trade": "필름공사",
+      "category": "필름",
+      "subcategory": "시트·썬팅",
+      "name": "유리 썬팅(단열)",
+      "spec": "필름",
+      "unit": "M2",
+      "brands": [
+        "3M",
+        "국산"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 40000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "창문",
+      "notes": "열차단/UV",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "필름공사-필름-안개시트-불투명-무광",
+      "trade": "필름공사",
+      "category": "필름",
+      "subcategory": "시트·썬팅",
+      "name": "안개시트(불투명)",
+      "spec": "무광",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 15000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "유리 가림",
+      "notes": "프라이버시",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "단열-기밀공사-단열재-비드법-단열재-eps-1종-50t",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "비드법·압출법",
+      "name": "비드법 단열재(EPS) 1종",
+      "spec": "50T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 9000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "외단열/바닥",
+      "notes": "스티로폼",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "단열-기밀공사-단열재-압출법-단열재-xps-50t",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "비드법·압출법",
+      "name": "압출법 단열재(XPS)",
+      "spec": "50T",
+      "unit": "M2",
+      "brands": [
+        "벽산",
+        "KCC"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 16000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "바닥/외벽",
+      "notes": "아이소핑크 고밀도",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "단열-기밀공사-단열재-아이소핑크-30t",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "비드법·압출법",
+      "name": "아이소핑크",
+      "spec": "30T",
+      "unit": "M2",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 13000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "바닥 단열",
+      "notes": "압출법 30T",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "단열-기밀공사-단열재-글라스울-50t",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "글라스울·미네랄울",
+      "name": "글라스울",
+      "spec": "50T",
+      "unit": "M2",
+      "brands": [
+        "KCC",
+        "벽산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "경량벽/천장",
+      "notes": "흡음+단열",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "단열-기밀공사-단열재-미네랄울-암면-50t",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "글라스울·미네랄울",
+      "name": "미네랄울(암면)",
+      "spec": "50T",
+      "unit": "M2",
+      "brands": [
+        "KCC",
+        "벽산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "방화 구획",
+      "notes": "불연 단열",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "단열-기밀공사-단열재-열반사-단열재-10t-양면",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "기능성단열",
+      "name": "열반사 단열재",
+      "spec": "10T 양면",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 14000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "보조 단열",
+      "notes": "복사열 차단",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "단열-기밀공사-단열재-우레탄폼-스프레이-1캔",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "기능성단열",
+      "name": "우레탄폼(스프레이)",
+      "spec": "1캔",
+      "unit": "캔",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "캔",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "틈새 충진",
+      "notes": "일액형 폼",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "단열-기밀공사-단열재-이보드-단열보드-30t",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "기능성단열",
+      "name": "이보드(단열보드)",
+      "spec": "30T",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 25000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "결로 방지",
+      "notes": "EPS+석고 일체",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "방수공사-방수재-우레탄-도막방수-3mm",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "도막·시트방수",
+      "name": "우레탄 도막방수",
+      "spec": "3mm",
+      "unit": "M2",
+      "brands": [
+        "노루페인트",
+        "국산"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 35000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "옥상/주차장",
+      "notes": "탄성 도막",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "방수공사-방수재-시트방수-자착-3mm",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "도막·시트방수",
+      "name": "시트방수(자착)",
+      "spec": "3mm",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 18000,
+        "max": 40000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "지하/옥상",
+      "notes": "자착식 시트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "방수공사-방수재-복합방수-시트-도막-1식",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "도막·시트방수",
+      "name": "복합방수(시트+도막)",
+      "spec": "1식",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 50000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "옥상",
+      "notes": "복합 공법",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "방수공사-방수재-아스팔트-방수시트-4mm",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "도막·시트방수",
+      "name": "아스팔트 방수시트",
+      "spec": "4mm",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 12000,
+        "max": 28000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "지하/옥상",
+      "notes": "토치 시트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "방수공사-방수재-액체방수-방수몰탈-1-2",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "액체·침투방수",
+      "name": "액체방수(방수몰탈)",
+      "spec": "1:2",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실/발코니",
+      "notes": "시멘트 액방",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "방수공사-방수재-침투성-방수제-1액형",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "액체·침투방수",
+      "name": "침투성 방수제",
+      "spec": "1액형",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 15000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "콘크리트",
+      "notes": "침투 발수",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "방수공사-방수재-방수-몰탈-분말-25kg",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "액체·침투방수",
+      "name": "방수 몰탈(분말)",
+      "spec": "25kg",
+      "unit": "포",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 9000,
+        "max": 18000,
+        "unit": "포",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "욕실 바탕",
+      "notes": "분말 방수",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "가설공사-가설재-시스템-비계-1단-임대",
+      "trade": "가설공사",
+      "category": "가설재",
+      "subcategory": "비계·안전",
+      "name": "시스템 비계",
+      "spec": "1단 임대",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 8000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "외부 작업",
+      "notes": "강관/시스템 비계",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "가설공사-가설재-안전망-추락방지-수직-수평",
+      "trade": "가설공사",
+      "category": "가설재",
+      "subcategory": "비계·안전",
+      "name": "안전망(추락방지)",
+      "spec": "수직/수평",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1000,
+        "max": 3000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "안전",
+      "notes": "그물망",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "가설공사-가설재-가설-울타리-휀스-1-8m",
+      "trade": "가설공사",
+      "category": "가설재",
+      "subcategory": "비계·안전",
+      "name": "가설 울타리(휀스)",
+      "spec": "1.8m",
+      "unit": "M",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 8000,
+        "max": 20000,
+        "unit": "M",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "현장 경계",
+      "notes": "EGI 펜스",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "가설공사-가설재-보양재-부직포-마스킹-롤",
+      "trade": "가설공사",
+      "category": "가설재",
+      "subcategory": "보양·가설전기",
+      "name": "보양재(부직포/마스킹)",
+      "spec": "롤",
+      "unit": "롤",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 15000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바닥/마감 보양",
+      "notes": "현장 보호",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "가설공사-가설재-코너가드-보양대-모서리",
+      "trade": "가설공사",
+      "category": "가설재",
+      "subcategory": "보양·가설전기",
+      "name": "코너가드/보양대",
+      "spec": "모서리",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 6000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "모서리 보호",
+      "notes": "양생 보호대",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "가설공사-가설재-가설-조명-전기-1식",
+      "trade": "가설공사",
+      "category": "가설재",
+      "subcategory": "보양·가설전기",
+      "name": "가설 조명/전기",
+      "spec": "1식",
+      "unit": "식",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 100000,
+        "unit": "식",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "임시 전기",
+      "notes": "가설 분전반",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "철거공사-철거부자재-폐기물-마대-pp-대형",
+      "trade": "철거공사",
+      "category": "철거부자재",
+      "subcategory": "폐기·보양",
+      "name": "폐기물 마대(PP)",
+      "spec": "대형",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 500,
+        "max": 1500,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "잔재 수거",
+      "notes": "톤백/마대",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "철거공사-철거부자재-보양-합판-철거-12t",
+      "trade": "철거공사",
+      "category": "철거부자재",
+      "subcategory": "폐기·보양",
+      "name": "보양 합판(철거)",
+      "spec": "12T",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 30000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바닥 보양",
+      "notes": "철거 양생",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "철거공사-철거부자재-비닐-보양-전실-롤",
+      "trade": "철거공사",
+      "category": "철거부자재",
+      "subcategory": "폐기·보양",
+      "name": "비닐 보양(전실)",
+      "spec": "롤",
+      "unit": "롤",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 6000,
+        "max": 15000,
+        "unit": "롤",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "분진 차단",
+      "notes": "가림 비닐",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "철거공사-철거부자재-톤백-1톤",
+      "trade": "철거공사",
+      "category": "철거부자재",
+      "subcategory": "폐기·보양",
+      "name": "톤백",
+      "spec": "1톤",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 5000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "폐기물",
+      "notes": "마대백",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-바이오-실리콘-300ml",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "실란트·접착",
+      "name": "바이오 실리콘",
+      "spec": "300ml",
+      "unit": "개",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "개",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "줄눈/마감",
+      "notes": "곰팡이방지 실리콘",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-우레탄-실란트-300ml",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "실란트·접착",
+      "name": "우레탄 실란트",
+      "spec": "300ml",
+      "unit": "개",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 9000,
+        "unit": "개",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "외부 코킹",
+      "notes": "내후성 실란트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-목공용-본드-1kg",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "실란트·접착",
+      "name": "목공용 본드",
+      "spec": "1kg",
+      "unit": "통",
+      "brands": [
+        "오공",
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 9000,
+        "unit": "통",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "목재 접착",
+      "notes": "백색 목공본드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-타카핀-422j-1박스",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "고정철물",
+      "name": "타카핀(422J)",
+      "spec": "1박스",
+      "unit": "박스",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 4000,
+        "max": 9000,
+        "unit": "박스",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "목공 고정",
+      "notes": "에어타카 핀",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-피스-나사-접시머리-1박스",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "고정철물",
+      "name": "피스/나사(접시머리)",
+      "spec": "1박스",
+      "unit": "박스",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "박스",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "고정",
+      "notes": "일반/콘크리트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-칼블럭-세트앙카-1봉",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "고정철물",
+      "name": "칼블럭/세트앙카",
+      "spec": "1봉",
+      "unit": "봉",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 6000,
+        "unit": "봉",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "콘크리트 고정",
+      "notes": "플라스틱/세트앙카",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-와이어메시-8x150x150",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "고정철물",
+      "name": "와이어메시",
+      "spec": "8x150x150",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 5000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "바닥 보강",
+      "notes": "용접 철망",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-가구-손잡이-알루미늄-황동",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "가구철물",
+      "name": "가구 손잡이",
+      "spec": "알루미늄/황동",
+      "unit": "EA",
+      "brands": [
+        "국산",
+        "수입"
+      ],
+      "price": {
+        "min": 2000,
+        "max": 12000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "가구 도어",
+      "notes": "디자인 손잡이",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-하드웨어-부자재-일반-경첩-스테인",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "가구철물",
+      "name": "일반 경첩",
+      "spec": "스테인",
+      "unit": "EA",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 1000,
+        "max": 4000,
+        "unit": "EA",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "가구/문",
+      "notes": "일반 경첩",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-외장재-외장-점토벽돌-표준형",
+      "trade": "기타공사",
+      "category": "외장재",
+      "subcategory": "벽돌·사이딩",
+      "name": "외장 점토벽돌",
+      "spec": "표준형",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 400,
+        "max": 1200,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "외벽",
+      "notes": "적벽돌/파벽돌",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-외장재-롱브릭-타일-점토",
+      "trade": "기타공사",
+      "category": "외장재",
+      "subcategory": "벽돌·사이딩",
+      "name": "롱브릭 타일",
+      "spec": "점토",
+      "unit": "장",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 800,
+        "max": 2500,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "외벽/포인트",
+      "notes": "슬림 롱브릭",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-외장재-세라믹-사이딩-kmew-16mm",
+      "trade": "기타공사",
+      "category": "외장재",
+      "subcategory": "벽돌·사이딩",
+      "name": "세라믹 사이딩(KMEW)",
+      "spec": "16mm",
+      "unit": "M2",
+      "brands": [
+        "KMEW",
+        "수입"
+      ],
+      "price": {
+        "min": 40000,
+        "max": 90000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "외벽",
+      "notes": "세라믹 패널",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-외장재-스타코-외단열-마감-1식",
+      "trade": "기타공사",
+      "category": "외장재",
+      "subcategory": "벽돌·사이딩",
+      "name": "스타코(외단열 마감)",
+      "spec": "1식",
+      "unit": "M2",
+      "brands": [
+        "국산"
+      ],
+      "price": {
+        "min": 15000,
+        "max": 35000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "보급",
+      "use": "외벽 마감",
+      "notes": "드라이비트",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-외장재-징크-아연도금강판-0-7t",
+      "trade": "기타공사",
+      "category": "외장재",
+      "subcategory": "패널·데크",
+      "name": "징크(아연도금강판)",
+      "spec": "0.7T",
+      "unit": "M2",
+      "brands": [
+        "국산",
+        "수입"
+      ],
+      "price": {
+        "min": 35000,
+        "max": 80000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "외벽/지붕",
+      "notes": "리얼/알징크",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-외장재-알루미늄-복합패널-acm-4t",
+      "trade": "기타공사",
+      "category": "외장재",
+      "subcategory": "패널·데크",
+      "name": "알루미늄 복합패널(ACM)",
+      "spec": "4T",
+      "unit": "M2",
+      "brands": [
+        "알루코",
+        "국산"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 55000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "외벽",
+      "notes": "복합 패널",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-외장재-방부목-데크재-38x140",
+      "trade": "기타공사",
+      "category": "외장재",
+      "subcategory": "패널·데크",
+      "name": "방부목 데크재",
+      "spec": "38x140",
+      "unit": "M2",
+      "brands": [
+        "국산",
+        "수입"
+      ],
+      "price": {
+        "min": 30000,
+        "max": 70000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "발코니/테라스",
+      "notes": "ACQ/하드우드",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    },
+    {
+      "id": "기타공사-외장재-세라믹-데크-2t-포세린-600x600",
+      "trade": "기타공사",
+      "category": "외장재",
+      "subcategory": "패널·데크",
+      "name": "세라믹 데크(2T 포세린)",
+      "spec": "600x600",
+      "unit": "장",
+      "brands": [
+        "수입"
+      ],
+      "price": {
+        "min": 25000,
+        "max": 60000,
+        "unit": "장",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "중급",
+      "use": "옥외 바닥",
+      "notes": "2T 포세린 데크",
+      "source": "seed",
+      "collected_date": "2026-06-30",
+      "updated_at": "2026-06-30T14:32:54.335Z"
+    }
+  ]
+}

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>국내 인테리어 자재 종합 DB</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1f242e; --line:#2b313d;
+    --txt:#e8ecf3; --mut:#9aa4b2; --mut2:#6b7480;
+    --accent:#4f8cff; --accent2:#7aa7ff; --ok:#34c77b; --up:#ff6b6b; --down:#36b5e0; --new:#9b8cff;
+    --chip:#242a35; --shadow:0 8px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.5}
+  a{color:var(--accent2);text-decoration:none}
+  .wrap{max-width:1320px;margin:0 auto;padding:0 18px}
+
+  header.top{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,#141821,#10131a);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+  .top .wrap{display:flex;align-items:center;gap:16px;padding:14px 18px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#4f8cff,#9b8cff);display:flex;align-items:center;justify-content:center;font-size:18px}
+  .brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.2px}
+  .brand .sub{font-size:11.5px;color:var(--mut)}
+  .head-stats{display:flex;gap:18px;margin-left:auto;flex-wrap:wrap}
+  .hstat{text-align:right}
+  .hstat .n{font-size:18px;font-weight:800;color:#fff}
+  .hstat .l{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+
+  nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);background:#10131a;position:sticky;top:62px;z-index:20}
+  nav.tabs .wrap{display:flex;gap:4px;padding:0 18px}
+  .tab{padding:11px 16px;cursor:pointer;color:var(--mut);font-weight:600;font-size:13.5px;border-bottom:2px solid transparent;user-select:none}
+  .tab:hover{color:var(--txt)}
+  .tab.active{color:#fff;border-bottom-color:var(--accent)}
+
+  main{padding:18px 0 60px}
+  .layout{display:grid;grid-template-columns:268px 1fr;gap:18px;align-items:start}
+  @media(max-width:880px){.layout{grid-template-columns:1fr}.sidebar{position:static}}
+
+  .sidebar{position:sticky;top:120px;background:var(--panel);border:1px solid var(--line);border-radius:14px;max-height:calc(100vh - 140px);overflow:auto}
+  .sidebar .sb-head{padding:13px 15px;border-bottom:1px solid var(--line);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .tree{padding:6px 6px 12px}
+  .tnode .trow{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:8px;cursor:pointer;font-size:13px}
+  .tnode .trow:hover{background:var(--panel2)}
+  .tnode .trow.active{background:rgba(79,140,255,.16);color:#fff}
+  .caret{width:14px;display:inline-block;color:var(--mut2);transition:transform .12s;font-size:10px}
+  .caret.open{transform:rotate(90deg)}
+  .tname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tcount{font-size:11px;color:var(--mut);background:var(--chip);border-radius:20px;padding:1px 8px;min-width:26px;text-align:center}
+  .cats{margin:2px 0 4px 16px;border-left:1px solid var(--line);padding-left:6px}
+  .crow{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--mut)}
+  .crow:hover{background:var(--panel2);color:var(--txt)}
+  .crow.active{color:#fff;background:rgba(79,140,255,.13)}
+
+  .content{min-width:0}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .search{flex:1;min-width:220px;position:relative}
+  .search input{width:100%;padding:11px 13px 11px 38px;background:var(--panel);border:1px solid var(--line);border-radius:11px;color:var(--txt);font-size:14px;outline:none}
+  .search input:focus{border-color:var(--accent)}
+  .search .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--mut2)}
+  select.f{padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:11px;color:var(--txt);font-size:13px;outline:none;cursor:pointer}
+  select.f:focus{border-color:var(--accent)}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;min-height:0}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:rgba(79,140,255,.14);border:1px solid rgba(79,140,255,.3);color:#cdddff;border-radius:20px;padding:4px 10px;font-size:12px}
+  .chip b{font-weight:700}
+  .chip .x{cursor:pointer;color:#9bb6ee;font-weight:700}
+  .result-meta{font-size:12.5px;color:var(--mut);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:13px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:9px}
+  .card:hover{border-color:#42506a;transform:translateY(-1px);box-shadow:var(--shadow)}
+  .card .ct{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .card .nm{font-weight:700;font-size:14.5px;color:#fff;letter-spacing:-.2px}
+  .card .badge{font-size:10.5px;padding:2px 8px;border-radius:20px;white-space:nowrap;border:1px solid var(--line);color:var(--mut)}
+  .badge.보급{color:#9fe6c0;border-color:rgba(52,199,123,.4);background:rgba(52,199,123,.1)}
+  .badge.중급{color:#bcd2ff;border-color:rgba(79,140,255,.4);background:rgba(79,140,255,.1)}
+  .badge.고급{color:#ddc8ff;border-color:rgba(155,140,255,.4);background:rgba(155,140,255,.1)}
+  .card .specrow{font-size:12px;color:var(--mut)}
+  .card .tagline{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;color:var(--mut);background:var(--chip);border-radius:6px;padding:2px 7px}
+  .price{display:flex;align-items:baseline;gap:7px;margin-top:auto;padding-top:6px;border-top:1px dashed var(--line)}
+  .price .v{font-size:15.5px;font-weight:800;color:#ffd479}
+  .price .u{font-size:11px;color:var(--mut)}
+  .price .est{font-size:9.5px;color:var(--mut2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;margin-left:auto}
+  .brands{font-size:11.5px;color:var(--accent2)}
+
+  .empty{padding:60px 20px;text-align:center;color:var(--mut)}
+
+  /* modal */
+  .ov{position:fixed;inset:0;background:rgba(5,7,10,.62);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+  .ov.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow:auto;box-shadow:var(--shadow)}
+  .modal .mh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+  .modal .mh h2{margin:0;font-size:18px;color:#fff}
+  .modal .mh .path{font-size:11.5px;color:var(--mut);margin-top:4px}
+  .modal .close{background:var(--panel2);border:1px solid var(--line);color:var(--txt);width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:16px;flex-shrink:0}
+  .mb{padding:18px 20px}
+  .kv{display:grid;grid-template-columns:88px 1fr;gap:8px 12px;font-size:13px;margin-bottom:14px}
+  .kv .k{color:var(--mut)}
+  .kv .v{color:var(--txt)}
+  .pricebox{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+  .pricebox .big{font-size:22px;font-weight:800;color:#ffd479}
+  .pricebox .note{font-size:11.5px;color:var(--mut);margin-top:5px}
+  .seclabel{font-size:11px;color:var(--mut2);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px}
+  .hist{display:flex;flex-direction:column;gap:8px}
+  .hitem{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12.5px;display:flex;gap:10px;align-items:flex-start}
+  .htype{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .htype.new{color:#cfc6ff;background:rgba(155,140,255,.16)}
+  .htype.price_up{color:#ffc0c0;background:rgba(255,107,107,.16)}
+  .htype.price_down{color:#bce8f7;background:rgba(54,181,224,.16)}
+  .htype.update{color:#d6deea;background:rgba(120,140,170,.16)}
+  .hdetail{flex:1}
+  .hts{color:var(--mut2);font-size:11px;margin-top:2px}
+
+  /* updates tab */
+  .week-group{margin-bottom:22px}
+  .week-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .week-head .wk{font-size:15px;font-weight:800;color:#fff}
+  .week-head .wc{font-size:12px;color:var(--mut);background:var(--chip);border-radius:20px;padding:2px 10px}
+  .feed{display:flex;flex-direction:column;gap:8px}
+  .feed .row{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 14px;display:flex;gap:12px;align-items:center;cursor:pointer}
+  .feed .row:hover{border-color:#42506a}
+  .feed .nm{font-weight:700;color:#fff;font-size:13.5px}
+  .feed .meta{font-size:11.5px;color:var(--mut)}
+  .feed .det{flex:1;min-width:0}
+
+  /* stats tab */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px;margin-bottom:24px}
+  .scard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px}
+  .scard .n{font-size:26px;font-weight:800;color:#fff}
+  .scard .l{font-size:12px;color:var(--mut);margin-top:3px}
+  .bars{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px}
+  .bars h3{margin:0 0 14px;font-size:14px}
+  .bar{display:grid;grid-template-columns:140px 1fr 48px;gap:10px;align-items:center;margin-bottom:8px;font-size:12.5px}
+  .bar .bl{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bar .bt{height:9px;background:var(--panel2);border-radius:20px;overflow:hidden}
+  .bar .bf{height:100%;background:linear-gradient(90deg,#4f8cff,#9b8cff);border-radius:20px}
+  .bar .bn{text-align:right;color:var(--txt);font-weight:600}
+
+  .loading{padding:40px;text-align:center;color:var(--mut)}
+  .spin{display:inline-block;width:20px;height:20px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">🧱</div>
+      <div>
+        <h1>국내 인테리어 자재 종합 DB</h1>
+        <div class="sub">베이스라인 시드 + 매주 월요일 누적 업데이트 · 가격은 기준선/추정 시세</div>
+      </div>
+    </div>
+    <div class="head-stats">
+      <div class="hstat"><div class="n" id="hsTotal">–</div><div class="l">총 자재</div></div>
+      <div class="hstat"><div class="n" id="hsCat">–</div><div class="l">대분류</div></div>
+      <div class="hstat"><div class="n" id="hsWeek">–</div><div class="l">이번 주 변경</div></div>
+      <div class="hstat"><div class="n" id="hsUpd" style="font-size:13px;font-weight:600">–</div><div class="l">마지막 업데이트</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap">
+    <div class="tab active" data-tab="browse">자재 브라우저</div>
+    <div class="tab" data-tab="updates">이번 주 업데이트</div>
+    <div class="tab" data-tab="stats">통계</div>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap">
+    <!-- BROWSE -->
+    <section id="view-browse">
+      <div class="layout">
+        <aside class="sidebar">
+          <div class="sb-head"><span>공종 · 분류</span><span class="tcount" id="treeTotal">–</span></div>
+          <div class="tree" id="tree"><div class="loading"><span class="spin"></span>로딩…</div></div>
+        </aside>
+        <div class="content">
+          <div class="controls">
+            <div class="search">
+              <span class="ic">🔍</span>
+              <input id="q" type="text" placeholder="자재명·규격·브랜드·용도 검색 (예: 강마루, 포세린, 칸스톤)" />
+            </div>
+            <select class="f" id="fGrade"><option value="">전체 등급</option><option>보급</option><option>중급</option><option>고급</option></select>
+            <select class="f" id="fSort">
+              <option value="trade">공종순</option>
+              <option value="name">이름순</option>
+              <option value="priceAsc">가격 낮은순</option>
+              <option value="priceDesc">가격 높은순</option>
+            </select>
+          </div>
+          <div class="chips" id="chips"></div>
+          <div class="result-meta">
+            <span id="resultCount">–</span>
+            <span style="color:var(--mut2)">가격은 자재 기준선 시세 범위(추정) — 정밀 견적 아님</span>
+          </div>
+          <div class="grid" id="grid"><div class="loading"><span class="spin"></span>자재를 불러오는 중…</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- UPDATES -->
+    <section id="view-updates" class="hide">
+      <div class="result-meta" style="margin-bottom:16px">
+        <span style="font-size:14px;color:var(--txt)">주간 업데이트 피드 — research 에이전트가 <b>POST /api/materials/import</b> 로 누적한 변경 이력</span>
+      </div>
+      <div id="feed"><div class="loading"><span class="spin"></span>로딩…</div></div>
+    </section>
+
+    <!-- STATS -->
+    <section id="view-stats" class="hide">
+      <div class="stat-grid" id="statCards"></div>
+      <div class="bars" id="catBars"><div class="loading"><span class="spin"></span>로딩…</div></div>
+      <div style="height:14px"></div>
+      <div class="bars" id="tradeBars"></div>
+    </section>
+  </div>
+</main>
+
+<!-- DETAIL MODAL -->
+<div class="ov" id="ov">
+  <div class="modal" id="modal"><div class="loading"><span class="spin"></span>로딩…</div></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var API = "/api";
+  var state = { tree:[], cats:{}, items:[], filter:{trade:"",category:"",subcategory:"",grade:"",search:""}, sort:"trade", expanded:{} };
+
+  function el(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+  function comma(n){ return n==null?"-":Number(n).toLocaleString("ko-KR"); }
+  function priceText(p){
+    if(!p || (p.min==null && p.max==null)) return {v:"시세 미정", u:""};
+    if(p.min!=null && p.max!=null && p.min!==p.max) return {v:comma(p.min)+"~"+comma(p.max)+"원", u:"/ "+(p.unit||"")};
+    var one = p.min!=null?p.min:p.max;
+    return {v:comma(one)+"원", u:"/ "+(p.unit||"")};
+  }
+  function api(path){
+    return fetch(API+path).then(function(r){ return r.json().then(function(j){ if(!r.ok||j.success===false) throw new Error(j.message||("HTTP "+r.status)); return j; }); });
+  }
+  function fmtDate(iso){ if(!iso) return "–"; try{ var d=new Date(iso); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }catch(e){ return String(iso).slice(0,10);} }
+
+  /* ---------- 탭 ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(t){
+    t.addEventListener("click", function(){
+      document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("active");});
+      t.classList.add("active");
+      var v=t.getAttribute("data-tab");
+      el("view-browse").classList.toggle("hide", v!=="browse");
+      el("view-updates").classList.toggle("hide", v!=="updates");
+      el("view-stats").classList.toggle("hide", v!=="stats");
+      if(v==="updates") loadFeed();
+      if(v==="stats") loadStats();
+    });
+  });
+
+  /* ---------- 헤더/트리 ---------- */
+  function loadHeaderAndTree(){
+    Promise.all([api("/stats"), api("/categories")]).then(function(res){
+      var s=res[0].data, c=res[1].data;
+      el("hsTotal").textContent=comma(s.total);
+      el("hsCat").textContent=comma(c.totals.categories);
+      el("hsWeek").textContent=comma(s.thisWeek.total);
+      el("hsUpd").textContent=fmtDate(s.lastUpdated);
+      el("treeTotal").textContent=comma(c.totals.materials);
+      state.tree=c.tree;
+      renderTree();
+    }).catch(function(e){ el("tree").innerHTML='<div class="empty">트리 로딩 실패: '+esc(e.message)+'</div>'; });
+  }
+  function renderTree(){
+    var html='<div class="tnode"><div class="trow'+(!state.filter.trade?' active':'')+'" data-all="1"><span class="caret"></span><span class="tname">전체 자재</span><span class="tcount">'+comma(el("hsTotal").textContent.replace(/,/g,""))+'</span></div></div>';
+    state.tree.forEach(function(t){
+      var open=!!state.expanded[t.trade] || state.filter.trade===t.trade;
+      html+='<div class="tnode">';
+      html+='<div class="trow'+(state.filter.trade===t.trade&&!state.filter.category?' active':'')+'" data-trade="'+esc(t.trade)+'">';
+      html+='<span class="caret'+(open?' open':'')+'">▶</span><span class="tname">'+esc(t.trade)+'</span><span class="tcount">'+t.count+'</span></div>';
+      if(open){
+        html+='<div class="cats">';
+        t.categories.forEach(function(c){
+          html+='<div class="crow'+(state.filter.trade===t.trade&&state.filter.category===c.category?' active':'')+'" data-trade="'+esc(t.trade)+'" data-cat="'+esc(c.category)+'"><span class="tname">'+esc(c.category)+'</span><span class="tcount">'+c.count+'</span></div>';
+        });
+        html+='</div>';
+      }
+      html+='</div>';
+    });
+    el("tree").innerHTML=html;
+    el("tree").querySelectorAll("[data-all]").forEach(function(n){ n.addEventListener("click",function(){ state.filter.trade="";state.filter.category="";state.filter.subcategory="";renderTree();applyFilter(); }); });
+    el("tree").querySelectorAll(".trow[data-trade]").forEach(function(n){
+      n.addEventListener("click",function(){
+        var tr=n.getAttribute("data-trade");
+        if(state.filter.trade===tr && !state.filter.category){ state.expanded[tr]=!state.expanded[tr]; }
+        else { state.expanded[tr]=true; state.filter.trade=tr; state.filter.category=""; state.filter.subcategory=""; }
+        renderTree(); applyFilter();
+      });
+    });
+    el("tree").querySelectorAll(".crow[data-cat]").forEach(function(n){
+      n.addEventListener("click",function(){
+        state.filter.trade=n.getAttribute("data-trade");
+        state.filter.category=n.getAttribute("data-cat");
+        state.filter.subcategory="";
+        renderTree(); applyFilter();
+      });
+    });
+  }
+
+  /* ---------- 목록 ---------- */
+  function loadAll(){
+    api("/materials?limit=5000").then(function(j){ state.items=j.data; applyFilter(); })
+      .catch(function(e){ el("grid").innerHTML='<div class="empty">목록 로딩 실패: '+esc(e.message)+'</div>'; });
+  }
+  function applyFilter(){
+    var f=state.filter, q=(f.search||"").toLowerCase();
+    var rows=state.items.filter(function(m){
+      if(f.trade && m.trade!==f.trade) return false;
+      if(f.category && m.category!==f.category) return false;
+      if(f.subcategory && (m.subcategory||"")!==f.subcategory) return false;
+      if(f.grade && (m.grade||"")!==f.grade) return false;
+      if(q){
+        var hay=[m.name,m.spec,m.subcategory,m.category,m.trade,m.use,m.notes,(m.brands||[]).join(" ")].join(" ").toLowerCase();
+        if(hay.indexOf(q)<0) return false;
+      }
+      return true;
+    });
+    var s=state.sort;
+    rows.sort(function(a,b){
+      if(s==="name") return a.name.localeCompare(b.name,"ko");
+      if(s==="priceAsc") return (mid(a)||0)-(mid(b)||0);
+      if(s==="priceDesc") return (mid(b)||0)-(mid(a)||0);
+      return 0;
+    });
+    renderChips();
+    el("resultCount").innerHTML="<b style='color:#fff'>"+comma(rows.length)+"</b>건 표시";
+    renderGrid(rows);
+  }
+  function mid(m){ if(!m.price) return null; var a=m.price.min,b=m.price.max; if(a!=null&&b!=null) return (a+b)/2; return a!=null?a:b; }
+
+  function renderChips(){
+    var f=state.filter, parts=[];
+    if(f.trade) parts.push(chip("공종",f.trade,"trade"));
+    if(f.category) parts.push(chip("대분류",f.category,"category"));
+    if(f.subcategory) parts.push(chip("중분류",f.subcategory,"subcategory"));
+    if(f.grade) parts.push(chip("등급",f.grade,"grade"));
+    if(f.search) parts.push(chip("검색",f.search,"search"));
+    el("chips").innerHTML=parts.join("");
+    el("chips").querySelectorAll(".x").forEach(function(x){
+      x.addEventListener("click",function(){ var k=x.getAttribute("data-k"); state.filter[k]=""; if(k==="search") el("q").value=""; if(k==="trade"){state.filter.category="";state.filter.subcategory="";} renderTree(); applyFilter(); });
+    });
+  }
+  function chip(label,val,k){ return '<span class="chip"><b>'+esc(label)+'</b> '+esc(val)+' <span class="x" data-k="'+k+'">✕</span></span>'; }
+
+  function renderGrid(rows){
+    if(!rows.length){ el("grid").innerHTML='<div class="empty">조건에 맞는 자재가 없습니다.</div>'; return; }
+    var html="";
+    rows.forEach(function(m){
+      var p=priceText(m.price);
+      var g=m.grade||"";
+      html+='<div class="card" data-id="'+esc(m.id)+'">';
+      html+='<div class="ct"><div class="nm">'+esc(m.name)+'</div>'+(g?'<div class="badge '+esc(g)+'">'+esc(g)+'</div>':'')+'</div>';
+      html+='<div class="specrow">'+esc(m.spec||"")+(m.spec?' · ':'')+esc(m.subcategory||"")+'</div>';
+      html+='<div class="tagline"><span class="tag">'+esc(m.trade)+'</span><span class="tag">'+esc(m.category)+'</span>'+(m.use?'<span class="tag">'+esc(m.use)+'</span>':'')+'</div>';
+      if(m.brands&&m.brands.length) html+='<div class="brands">'+esc(m.brands.join(", "))+'</div>';
+      html+='<div class="price"><span class="v">'+esc(p.v)+'</span><span class="u">'+esc(p.u)+'</span><span class="est">기준선</span></div>';
+      html+='</div>';
+    });
+    el("grid").innerHTML=html;
+    el("grid").querySelectorAll(".card").forEach(function(c){ c.addEventListener("click",function(){ openDetail(c.getAttribute("data-id")); }); });
+  }
+
+  /* ---------- 상세 ---------- */
+  function openDetail(id){
+    el("ov").classList.add("show");
+    el("modal").innerHTML='<div class="loading"><span class="spin"></span>로딩…</div>';
+    api("/materials/"+encodeURIComponent(id)).then(function(j){ renderDetail(j.data); })
+      .catch(function(e){ el("modal").innerHTML='<div class="mb"><div class="empty">'+esc(e.message)+'</div></div>'; });
+  }
+  function renderDetail(m){
+    var p=priceText(m.price);
+    var h='<div class="mh"><div><h2>'+esc(m.name)+'</h2><div class="path">'+esc(m.trade)+' › '+esc(m.category)+' › '+esc(m.subcategory||"-")+'</div></div><button class="close" id="mClose">✕</button></div>';
+    h+='<div class="mb">';
+    h+='<div class="pricebox"><div class="big">'+esc(p.v)+' <span style="font-size:13px;color:var(--mut);font-weight:600">'+esc(p.u)+'</span></div><div class="note">'+esc((m.price&&m.price.note)||"기준선/추정 시세")+'</div></div>';
+    h+='<div class="kv">';
+    h+='<div class="k">규격</div><div class="v">'+esc(m.spec||"-")+'</div>';
+    h+='<div class="k">단위</div><div class="v">'+esc(m.unit||"-")+'</div>';
+    h+='<div class="k">등급</div><div class="v">'+esc(m.grade||"-")+'</div>';
+    h+='<div class="k">브랜드</div><div class="v">'+esc((m.brands||[]).join(", ")||"-")+'</div>';
+    h+='<div class="k">용도</div><div class="v">'+esc(m.use||"-")+'</div>';
+    h+='<div class="k">특징</div><div class="v">'+esc(m.notes||"-")+'</div>';
+    h+='<div class="k">출처</div><div class="v">'+esc(m.source||"-")+' · 수집 '+esc(m.collected_date||"-")+'</div>';
+    h+='</div>';
+    var hist=m.history||[];
+    h+='<div class="seclabel">변경 이력 / 가격 히스토리 ('+hist.length+')</div>';
+    if(!hist.length){ h+='<div style="font-size:12.5px;color:var(--mut)">아직 업데이트 이력이 없습니다. 매주 월요일 research 갱신 시 여기에 누적됩니다.</div>'; }
+    else{
+      h+='<div class="hist">';
+      hist.forEach(function(e){
+        h+='<div class="hitem"><span class="htype '+esc(e.type)+'">'+typeLabel(e.type)+'</span><div class="hdetail">'+esc(e.detail||"")+'<div class="hts">'+esc(e.week||"")+' · '+fmtDate(e.ts)+' · '+esc(e.source||"")+'</div></div></div>';
+      });
+      h+='</div>';
+    }
+    h+='</div>';
+    el("modal").innerHTML=h;
+    el("mClose").addEventListener("click",closeOv);
+  }
+  function typeLabel(t){ return {new:"신규",price_up:"가격↑",price_down:"가격↓",update:"수정"}[t]||t; }
+  function closeOv(){ el("ov").classList.remove("show"); }
+  el("ov").addEventListener("click",function(e){ if(e.target===el("ov")) closeOv(); });
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeOv(); });
+
+  /* ---------- 업데이트 피드 ---------- */
+  function loadFeed(){
+    el("feed").innerHTML='<div class="loading"><span class="spin"></span>로딩…</div>';
+    api("/changelog?limit=500").then(function(j){
+      var entries=j.data;
+      if(!entries.length){ el("feed").innerHTML='<div class="empty">아직 주간 업데이트가 없습니다.<br><span style="font-size:12px">research 에이전트가 <b>POST /api/materials/import</b>(source=research) 로 단가를 보내면 여기에 신규/가격변동이 주차별로 쌓입니다.</span></div>'; return; }
+      var groups={}, order=[];
+      entries.forEach(function(e){ var w=e.week||"기타"; if(!groups[w]){groups[w]=[];order.push(w);} groups[w].push(e); });
+      var html="";
+      order.forEach(function(w){
+        var list=groups[w];
+        html+='<div class="week-group"><div class="week-head"><span class="wk">'+esc(w)+'</span><span class="wc">'+list.length+'건</span></div><div class="feed">';
+        list.forEach(function(e){
+          html+='<div class="row" data-id="'+esc(e.materialId)+'"><span class="htype '+esc(e.type)+'">'+typeLabel(e.type)+'</span><div class="det"><div class="nm">'+esc(e.name)+'</div><div class="meta">'+esc(e.trade)+' › '+esc(e.category)+' · '+esc(e.detail||"")+'</div></div><div class="meta">'+fmtDate(e.ts)+'</div></div>';
+        });
+        html+='</div></div>';
+      });
+      el("feed").innerHTML=html;
+      el("feed").querySelectorAll(".row").forEach(function(r){ r.addEventListener("click",function(){ openDetail(r.getAttribute("data-id")); }); });
+    }).catch(function(e){ el("feed").innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+  }
+
+  /* ---------- 통계 ---------- */
+  function loadStats(){
+    Promise.all([api("/stats"),api("/categories")]).then(function(res){
+      var s=res[0].data, c=res[1].data;
+      el("statCards").innerHTML=[
+        scard(comma(s.total),"총 자재 수"),
+        scard(comma(c.totals.categories),"대분류"),
+        scard(comma(c.totals.subcategories),"중분류"),
+        scard(comma(c.totals.trades),"공종(trade)"),
+        scard(comma(s.thisWeek.added),"이번 주 신규"),
+        scard(comma(s.thisWeek.changed),"이번 주 변경"),
+        scard(comma(s.changelogTotal),"누적 changelog"),
+        scard(fmtDate(s.seededAt),"베이스라인 시드일")
+      ].join("");
+      el("catBars").innerHTML=barBlock("대분류별 자재 수", s.byCategory);
+      el("tradeBars").innerHTML=barBlock("공종별 자재 수", s.byTrade);
+    }).catch(function(e){ el("catBars").innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+  }
+  function scard(n,l){ return '<div class="scard"><div class="n">'+esc(n)+'</div><div class="l">'+esc(l)+'</div></div>'; }
+  function barBlock(title,obj){
+    var arr=Object.keys(obj).map(function(k){return [k,obj[k]];}).sort(function(a,b){return b[1]-a[1];});
+    var max=arr.reduce(function(m,x){return Math.max(m,x[1]);},1);
+    var h='<h3>'+esc(title)+'</h3>';
+    arr.forEach(function(x){ h+='<div class="bar"><div class="bl">'+esc(x[0])+'</div><div class="bt"><div class="bf" style="width:'+Math.round(x[1]/max*100)+'%"></div></div><div class="bn">'+x[1]+'</div></div>'; });
+    return h;
+  }
+
+  /* ---------- 검색/정렬 입력 ---------- */
+  var qt;
+  el("q").addEventListener("input",function(){ clearTimeout(qt); qt=setTimeout(function(){ state.filter.search=el("q").value.trim(); applyFilter(); },180); });
+  el("fGrade").addEventListener("change",function(){ state.filter.grade=el("fGrade").value; applyFilter(); });
+  el("fSort").addEventListener("change",function(){ state.sort=el("fSort").value; applyFilter(); });
+
+  /* ---------- init ---------- */
+  loadHeaderAndTree();
+  loadAll();
+})();
+</script>
+</body>
+</html>
