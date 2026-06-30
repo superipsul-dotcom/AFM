@@ -3121,6 +3121,117 @@ app.get('/api/sites/:id/estimates', async (req, res) => {
   }
 });
 
+// POST /api/estimates/new — (v15) 견적에서 현장 생성: 현장+견적을 단일 트랜잭션으로 원자적 생성 (201)
+//   라우트 순서: /api/estimates/:id 보다 위에 등록. ('new'는 parseId 가 null → /api/estimates/:id 소유검증 미들웨어를 통과)
+//   body: { site:{ name(필수), client?, address?, building_type?, manager?, start_date?, end_date?,
+//                  move_in_date?, floor_area?, pm?, construction_manager?, designer?, ... },
+//           estimate:{ title?, client_name?, client_contact?, estimate_date?, valid_until?, vat_mode?, vat_rate?,
+//                      discount?, memo?, use_cost_buildup?, ...11율, items?:[...] } }
+//   ① 현장 INSERT  (POST /api/sites 로직 재사용: team_id=req.teamId, 폴더 생성·folder 컬럼, 신규필드, name 중복 시 409로 롤백)
+//   ② 그 site_id 로 견적 헤더+items INSERT (POST /api/sites/:id/estimates 로직 재사용: 각 amount 서버계산, status 기본 'draft')
+//   현장 row 와 견적 row 는 한 트랜잭션으로 원자성 보장(어느 한쪽 실패 시 둘 다 롤백).
+//   폴더 생성은 트랜잭션 밖 부수효과(POST /api/sites 와 동일하게 INSERT 전에 경로 확보) — 롤백돼도 폴더는 남을 수 있음(기존 폴더 보존 정책).
+app.post('/api/estimates/new', async (req, res) => {
+  const body = req.body || {};
+
+  // 현장 검증 (name 필수 → 400). 기존 POST /api/sites 와 동일한 validateSite 재사용.
+  const siteCheck = validateSite(body.site);
+  if (!siteCheck.valid) return res.status(400).json({ success: false, message: siteCheck.message });
+  const sv = siteCheck.values;
+
+  // 견적 헤더/항목 검증. 기존 POST /api/sites/:id/estimates 와 동일한 검증 재사용.
+  const estBody = body.estimate || {};
+  const headerCheck = validateEstimateHeader(estBody);
+  if (!headerCheck.valid) return res.status(400).json({ success: false, message: headerCheck.message });
+  const itemsCheck = validateEstimateItems(estBody.items);
+  if (!itemsCheck.valid) return res.status(400).json({ success: false, message: itemsCheck.message });
+  const h = headerCheck.values;
+  const items = itemsCheck.values;
+
+  // estimate.client_name 미전달/빈값 → site.client 로 기본.
+  const clientName = h.client_name ? h.client_name : (sv.client || '');
+
+  // 폴더 생성(부수효과) — POST /api/sites 와 동일하게 트랜잭션 밖에서 경로 확보. 경로 탈출 시 400.
+  let folder = '';
+  try {
+    folder = createSiteFolder(sv.name);
+  } catch (e) {
+    return res.status(400).json({ success: false, message: e.message });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // ① 현장 INSERT — POST /api/sites 와 동일 컬럼/파라미터 (team_id=req.teamId, 신규필드 포함).
+    const siteIns = await client.query(
+      `INSERT INTO interior_sites
+         (name, client, address, manager, budget, start_date, end_date, folder, status, tags,
+          building_type, floor_area, move_in_date, pm, construction_manager, designer, progress_status, client_id, archived,
+          team_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       RETURNING ${SITE_COLS}`,
+      [
+        sv.name, sv.client, sv.address, sv.manager, sv.budget, sv.start_date, sv.end_date, folder, sv.status, sv.tags,
+        sv.building_type, sv.floor_area, sv.move_in_date, sv.pm, sv.construction_manager, sv.designer, sv.progress_status,
+        sv.client_id != null ? sv.client_id : null, // (v5) 미전달/null → null
+        sv.archived_provided ? sv.archived : false, // (v6) 미전달 → false
+        req.teamId, // (v13) 소속 팀
+      ]
+    );
+    const site = rowToSite(siteIns.rows[0]);
+
+    // ② 그 site_id 로 견적 헤더 INSERT — POST /api/sites/:id/estimates 와 동일 컬럼/파라미터.
+    //    client_name 만 site.client 기본 적용, status 는 컬럼 DEFAULT('draft') 사용.
+    const estIns = await client.query(
+      `INSERT INTO interior_estimates
+         (site_id, title, client_name, client_contact, estimate_date, valid_until, vat_mode, vat_rate, discount, memo,
+          use_cost_buildup, indirect_material_rate, indirect_labor_rate, safety_insurance_rate, employment_insurance_rate,
+          safety_mgmt_rate, other_expense_rate, admin_rate, design_rate, profit_rate, round_unit)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+       RETURNING ${ESTIMATE_COLS}`,
+      [
+        site.id, h.title, clientName, h.client_contact, h.estimate_date, h.valid_until, h.vat_mode, h.vat_rate, h.discount, h.memo,
+        h.use_cost_buildup, h.indirect_material_rate, h.indirect_labor_rate, h.safety_insurance_rate, h.employment_insurance_rate,
+        h.safety_mgmt_rate, h.other_expense_rate, h.admin_rate, h.design_rate, h.profit_rate, h.round_unit,
+      ]
+    );
+    const est = rowToEstimate(estIns.rows[0]);
+
+    // ② items INSERT — 각 amount 는 validateEstimateItems 가 서버 계산함(POST estimates 와 동일).
+    const insertedItems = [];
+    for (const it of items) {
+      const r = await client.query(
+        `INSERT INTO interior_estimate_items
+           (estimate_id, trade, process, name, spec, qty, unit, material_price, labor_price, sub_price, unit_price, amount, catalog_id, memo, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         RETURNING ${ITEM_COLS}`,
+        [est.id, it.trade, it.process, it.name, it.spec, it.qty, it.unit, it.material_price, it.labor_price, it.sub_price, it.unit_price, it.amount, it.catalog_id, it.memo, it.sort_order]
+      );
+      insertedItems.push(rowToItem(r.rows[0]));
+    }
+
+    await client.query('COMMIT');
+
+    const totals = computeTotals(est, insertedItems);
+    res.status(201).json({ site, estimate: { ...est, items: insertedItems, totals } });
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      /* noop */
+    }
+    if (err.code === '23505') {
+      // 현장명 UNIQUE 충돌 → 현장도 견적도 생성되지 않음(롤백). 폴더는 보존 정책상 남을 수 있음.
+      return res.status(409).json({ success: false, message: '이미 존재하는 현장명입니다.' });
+    }
+    console.error('POST /api/estimates/new 오류:', err.message);
+    res.status(500).json({ success: false, message: '견적에서 현장을 생성하지 못했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
 // GET /api/estimates/:id — 헤더 + items + totals (상세)
 app.get('/api/estimates/:id', async (req, res) => {
   try {

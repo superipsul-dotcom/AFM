@@ -1238,6 +1238,22 @@
         }
       },
 
+      // ── v15: 견적에서 현장 생성 (원자적: POST /api/estimates/new). 응답 { site, estimate } ──
+      // 폴백: 명시적 검증오류(409 중복·400 등)는 그대로 노출. 서버 다운(no status) 또는 404(엔드포인트 미배포)면
+      //       클라에서 site→estimate 합성(서버 우선: createSite/createEstimate 각각 server-first → 실패 시 localStorage).
+      async createEstimateWithSite({ site, estimate }) {
+        try {
+          const d = await this._tryFetch(`${API_BASE_URL}/estimates/new`, { method: 'POST', body: JSON.stringify({ site, estimate }) });
+          this._useMock = false; return d; // { site:{...신규현장}, estimate:{...신규견적+totals} }
+        } catch (e) {
+          if (e.status && e.status !== 404) throw e; // 409/400 등은 폴백 없이 노출
+          const newSite = await this.createSite(site); // 서버 우선, 실패 시 localStorage (중복 시 409 throw)
+          const estBody = { ...(estimate || {}), client_name: (estimate && estimate.client_name) || site.client || '' };
+          const newEst = await this.createEstimate(newSite.id, estBody); // 서버 우선, 실패 시 localStorage
+          return { site: newSite, estimate: newEst };
+        }
+      },
+
       // ════════ v3: 단가 카탈로그 (catalog) ════════
       async listTrades() {
         try { const d = await this._tryFetch(`${API_BASE_URL}/catalog/trades`); this._useMock = false; return d; }
@@ -2567,7 +2583,7 @@
     }
 
     // 🗂 프로젝트 보드 — 칸반(기본) / 테이블 토글
-    function ProjectBoard({ sites, loading, onSelect, onNew, onChanged }) {
+    function ProjectBoard({ sites, loading, onSelect, onNew, onNewFromEstimate, onChanged }) {
       const toast = useToast();
       const [view, setView] = useState('board');
       const [filter, setFilter] = useState('all');
@@ -2626,6 +2642,7 @@
                   <button onClick={() => setView('table')} className={`px-3 py-1.5 text-sm font-semibold transition ${view === 'table' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>테이블</button>
                 </div>
                 <Button size="sm" onClick={onNew}>+ 새 프로젝트</Button>
+                {onNewFromEstimate && <Button size="sm" variant="secondary" onClick={onNewFromEstimate}>+ 견적으로 현장 만들기</Button>}
               </div>
             </div>
             {/* v6-1: 진행중 / 완료·보관 분리 토글 */}
@@ -4791,7 +4808,7 @@
       );
     }
 
-    function EstimateTab({ site, estimates, procNames, loading, onChanged, onPrint }) {
+    function EstimateTab({ site, estimates, procNames, loading, onChanged, onPrint, openEstimateId = null, onOpenConsumed }) {
       const toast = useToast();
       const [editorOpen, setEditorOpen] = useState(false);
       const [detail, setDetail] = useState(null);
@@ -4800,12 +4817,18 @@
       const [trades, setTrades] = useState(TRADE_MASTER);
       useEffect(() => { let alive = true; api.listTrades().then((d) => { if (alive && d && d.length) setTrades(d); }).catch(() => {}); return () => { alive = false; }; }, []);
       const openNew = () => { setDetail(null); setEditorOpen(true); };
-      const openEdit = async (e) => {
+      const openEditById = async (id) => {
         setEditorOpen(true); setDetail(null); setLoadingDetail(true);
-        try { const d = await api.getEstimate(e.id); setDetail(d); }
+        try { const d = await api.getEstimate(id); setDetail(d); }
         catch (err) { toast('견적을 불러오지 못했습니다.', 'error'); setEditorOpen(false); }
         finally { setLoadingDetail(false); }
       };
+      const openEdit = (e) => openEditById(e.id);
+      // v15: 외부(견적으로 현장 만들기)에서 지정한 신규 견적을 에디터로 자동 오픈 → 항목 입력 단계. 1회 소비.
+      useEffect(() => {
+        if (openEstimateId) { openEditById(openEstimateId); if (onOpenConsumed) onOpenConsumed(); }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [openEstimateId]);
       const close = () => { setEditorOpen(false); setDetail(null); };
       const save = async (body) => {
         try {
@@ -4861,6 +4884,90 @@
             )}
           </Modal>
         </div>
+      );
+    }
+
+    // ========================================
+    // 🆕 v15: 견적으로 현장 만들기 (현장정보 + 견적제목 → 원자적 site+estimate 생성)
+    // ========================================
+    function EstimateSiteForm({ onSubmit, onCancel, staffNames = [] }) {
+      const [form, setForm] = useState({
+        name: '', client: '', address: '', manager: '',
+        building_type: '', start_date: todayStr(), end_date: '', move_in_date: '',
+        estimate_title: '견적서',
+      });
+      const [errors, setErrors] = useState({});
+      const [submitting, setSubmitting] = useState(false);
+
+      const validate = () => {
+        const e = {};
+        if (!form.name.trim()) e.name = '현장명을 입력하세요.';
+        if (form.start_date && form.end_date && form.start_date > form.end_date) e.end_date = '준공일은 착공일 이후여야 합니다.';
+        setErrors(e);
+        return Object.keys(e).length === 0;
+      };
+
+      const handleSubmit = async (ev) => {
+        ev.preventDefault();
+        if (!validate()) return;
+        setSubmitting(true);
+        const site = {
+          name: form.name.trim(), client: form.client.trim(), address: form.address.trim(),
+          manager: form.manager.trim(), building_type: form.building_type || '',
+          start_date: form.start_date || null, end_date: form.end_date || null,
+          move_in_date: form.move_in_date || null,
+          // 견적단계 신규 현장 기본값(예산은 0 → 견적 확정 시 자동 반영)
+          budget: 0, status: '견적', progress_status: '준비',
+        };
+        const estimate = {
+          title: (form.estimate_title || '').trim() || '견적서',
+          client_name: form.client.trim(), // 미입력 시 서버/폴백이 site.client 로 보정
+          estimate_date: todayStr(), items: [],
+        };
+        const ok = await onSubmit({ site, estimate });
+        setSubmitting(false);
+        // ok=true 면 부모가 모달 닫고 에디터 오픈
+      };
+
+      return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="rounded-xl bg-blue-50 border border-blue-100 px-3.5 py-2.5 text-xs text-blue-700">
+            현장 정보를 입력하면 새 현장이 만들어지고, 바로 그 현장의 <span className="font-semibold">견적서 편집 화면</span>으로 이동합니다.
+            이후 항목을 입력하고 <span className="font-semibold">확정</span>하면 견적 금액이 현장 예산에 반영됩니다.
+          </div>
+          <Input label="현장(프로젝트)명 *" placeholder="예: 래미안 아파트 34평 리모델링" value={form.name} error={errors.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="발주처 / 고객" placeholder="예: 김철수" value={form.client}
+              onChange={(e) => setForm({ ...form, client: e.target.value })} />
+            <Combo label="현장 담당자" placeholder="담당자 선택/입력" value={form.manager} options={staffNames}
+              onChange={(e) => setForm({ ...form, manager: e.target.value })} />
+          </div>
+          <Input label="현장 주소" placeholder="예: 서울시 강남구 도곡로 123" value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select label="건물 종류" value={form.building_type} onChange={(e) => setForm({ ...form, building_type: e.target.value })}>
+              <option value="">선택 안 함</option>
+              {BUILDING_TYPES.map((b) => <option key={b} value={b}>{b}</option>)}
+            </Select>
+            <Input label="입주 예정일" type="date" value={form.move_in_date || ''}
+              onChange={(e) => setForm({ ...form, move_in_date: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input label="착공일" type="date" value={form.start_date || ''}
+              onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+            <Input label="준공(예정)일" type="date" value={form.end_date || ''} error={errors.end_date}
+              onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+          </div>
+          <div className="pt-2 border-t border-slate-100">
+            <Input label="견적 제목" placeholder="견적서" value={form.estimate_title}
+              onChange={(e) => setForm({ ...form, estimate_title: e.target.value })} />
+          </div>
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button type="submit" disabled={submitting}>{submitting ? '생성 중...' : '현장 만들고 견적 작성 →'}</Button>
+          </div>
+        </form>
       );
     }
 
@@ -6124,6 +6231,8 @@
       const [printData, setPrintData] = useState(null);
       const [schedulePrintData, setSchedulePrintData] = useState(null); // v6-3 일정표 PDF
       const [orderPrintData, setOrderPrintData] = useState(null); // v10 발주서 PDF
+      const [estSiteModalOpen, setEstSiteModalOpen] = useState(false); // v15 견적으로 현장 만들기 모달
+      const [pendingEstimateOpen, setPendingEstimateOpen] = useState(null); // v15 생성 후 견적 에디터 자동오픈 대상 id
 
       const formRef = useRef(null);
 
@@ -6271,6 +6380,24 @@
         }
       };
 
+      // ── v15: 견적으로 현장 만들기 (원자적 site+estimate) → 새 현장 전역 선택 + 견적 에디터 자동 오픈(항목 입력) ──
+      const handleCreateEstimateWithSite = async ({ site, estimate }) => {
+        try {
+          const res = await api.createEstimateWithSite({ site, estimate });
+          const newSite = res.site, newEst = res.estimate;
+          setUsingMock(api._useMock);
+          setEstSiteModalOpen(false);
+          setActiveTab('estimate');
+          await loadSites(newSite.id);          // 새 현장 전역 선택(EstimateTab 키 변경 → 새 현장으로 remount)
+          setPendingEstimateOpen(newEst.id);    // 선택 반영 후 견적 에디터 자동 오픈 (key 고정 상태에서 prop 변경)
+          toast('현장과 견적이 생성되었습니다. 항목을 입력하세요.', 'success');
+          return true;
+        } catch (e) {
+          toast(e.status === 409 ? (e.message || '이미 같은 이름의 현장이 있습니다.') : '현장+견적 생성에 실패했습니다.', 'error');
+          return false;
+        }
+      };
+
       // ── 비용 등록/수정 ──
       const handleSubmitCost = async (body) => {
         if (!selectedSite) return false;
@@ -6414,7 +6541,7 @@
                     </select>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {selectedSite && (
                     <>
                       <Button variant="secondary" onClick={() => { setEditingSite(selectedSite); setSiteModalOpen(true); }}>현장 수정</Button>
@@ -6422,6 +6549,7 @@
                     </>
                   )}
                   <Button onClick={() => { setEditingSite(null); setSiteModalOpen(true); }}>+ 현장 등록</Button>
+                  <Button variant="secondary" onClick={() => setEstSiteModalOpen(true)}>+ 견적으로 현장 만들기</Button>
                 </div>
               </div>
 
@@ -6455,6 +6583,7 @@
               <ProjectBoard sites={sites} loading={sitesLoading}
                 onSelect={(id) => { setSelectedId(id); setEditingCost(null); setActiveTab('summary'); }}
                 onNew={() => { setEditingSite(null); setSiteModalOpen(true); }}
+                onNewFromEstimate={() => setEstSiteModalOpen(true)}
                 onChanged={() => loadSites(selectedId)} />
             ) : activeTab === 'manage' ? (
               <ManageTab sites={sites} staffNames={staffNames} onMastersChanged={loadMasters} onSitesChanged={loadSites} />
@@ -6466,7 +6595,10 @@
                   현장을 {sites.length === 0 ? '등록' : '선택'}하면 요약·비용·일정·견적·발주·미팅·AS를 관리할 수 있어요.<br />
                   담당자·거래처·카테고리 마스터는 <span className="font-semibold text-slate-500">⚙️ 관리</span> 탭에서 현장 없이도 설정할 수 있습니다.
                 </p>
-                {sites.length === 0 && <Button size="lg" onClick={() => { setEditingSite(null); setSiteModalOpen(true); }}>+ 첫 현장 등록하기</Button>}
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {sites.length === 0 && <Button size="lg" onClick={() => { setEditingSite(null); setSiteModalOpen(true); }}>+ 첫 현장 등록하기</Button>}
+                  <Button size="lg" variant={sites.length === 0 ? 'secondary' : 'primary'} onClick={() => setEstSiteModalOpen(true)}>+ 견적으로 현장 만들기</Button>
+                </div>
               </Card>
             ) : (
               <>
@@ -6499,7 +6631,8 @@
                 )}
                 {activeTab === 'estimate' && (
                   <EstimateTab key={'est-' + selectedSite.id} site={selectedSite} estimates={estimates} loading={detailLoading}
-                    procNames={procCatNames} onChanged={() => loadSites(selectedSite.id)} onPrint={handlePrint} />
+                    procNames={procCatNames} onChanged={() => loadSites(selectedSite.id)} onPrint={handlePrint}
+                    openEstimateId={pendingEstimateOpen} onOpenConsumed={() => setPendingEstimateOpen(null)} />
                 )}
                 {activeTab === 'orders' && (
                   <OrdersTab key={'ord-' + selectedSite.id} site={selectedSite} vendorNames={vendorNames} onPrintOrders={handlePrintOrders} />
@@ -6524,6 +6657,15 @@
               staffNames={staffNames}
               onSubmit={handleSaveSite}
               onCancel={() => { setSiteModalOpen(false); setEditingSite(null); }}
+            />
+          </Modal>
+
+          {/* v15: 견적으로 현장 만들기 모달 (현장정보 + 견적제목 → 원자적 site+estimate → 견적 에디터 오픈) */}
+          <Modal isOpen={estSiteModalOpen} onClose={() => setEstSiteModalOpen(false)} title="견적으로 현장 만들기" size="lg">
+            <EstimateSiteForm
+              staffNames={staffNames}
+              onSubmit={handleCreateEstimateWithSite}
+              onCancel={() => setEstSiteModalOpen(false)}
             />
           </Modal>
 

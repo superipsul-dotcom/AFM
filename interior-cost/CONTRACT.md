@@ -864,3 +864,27 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - 14-1: 캘린더/타임라인 드래그 이동 시 스크롤/뷰 유지·깜빡임 없음·실제 리로드 없음, 이동값은 정상 반영(회귀: 빈셀 생성·cascade·리사이즈 유지).
 - 14-2: 집행분석 목공 클릭 → 목공 비용 카테고리 분해+항목 리스트 모달, 자재비 클릭 → 공정 분해. 합계 일치.
 - 14-3: 일정에 협력업체(거래처 검색) 저장→GET 반영, /api/vendors/:id/usage 현장별 집계(costs+orders+schedule), 관리 거래처 세부 모달 표시. v1~v13 회귀.
+
+---
+
+# v15 확장 — 견적에서 현장 생성 (#16, 결정: "견적에서 현장 생성 + 상단 버튼 유지")
+
+> 사용자 요청: 견적을 내면 그 세부정보로 현장이 등록되게. **결정=옵션A**: 견적에서 현장 생성 + 기존 상단 현장 수정/삭제/+등록 버튼은 **그대로 유지**(되돌리기 쉬움). **v1~v14 동작/엔드포인트/UI 100% 보존**. 현재 견적은 현장 종속(POST /api/sites/:id/estimates)이라, "견적 먼저 → 현장 자동 생성" 진입점을 추가한다(기존 "현장 먼저 → 견적" 흐름도 유지).
+
+## 백엔드 (server.js) — 원자적 현장+견적 생성
+- **POST /api/estimates/new** (인증·팀 스코핑) body `{ site:{name(필수), client?, address?, building_type?, manager?, start_date?, end_date?, move_in_date?, floor_area?, pm?, construction_manager?, designer? }, estimate:{ title?, client_name?, client_contact?, estimate_date?, valid_until?, vat_mode?, vat_rate?, discount?, memo?, use_cost_buildup?, ...율, items?:[...] } }`:
+  - **트랜잭션**: ① 현장 생성(기존 POST /api/sites 로직 재사용 — team_id=req.teamId, 폴더 생성, name 중복 409) → ② 그 site_id 로 견적 생성(기존 POST estimates 로직 재사용, items amount 서버계산, status 'draft').
+  - 응답 201 `{ site:{...신규현장}, estimate:{...신규견적 상세+totals} }`. 실패 시 롤백(현장만 생기는 일 없게).
+  - estimate.client_name 미전달 시 site.client 로 기본. site.name 필수(없으면 400).
+- 기존 /api/sites·/api/sites/:id/estimates 등은 **불변**. 새 엔드포인트만 추가(catch-all 앞, /api 인증 하).
+
+## 프론트 (index.html)
+- **견적 탭(또는 프로젝트 보드)에 [+ 견적으로 현장 만들기] 버튼**(현장 미선택 시에도 가능) → 모달:
+  - **현장 정보**: 현장명(필수)·고객·주소·건물종류(드롭다운)·담당자·공사기간·입주예정일(노션식 필드 일부) + **견적 제목**(기본 '견적서').
+  - 제출 → `POST /api/estimates/new` → 성공 시 **새 현장을 전역 선택** + **견적 에디터 열어 항목 입력**(3분할/카탈로그/원가계산 기존 그대로). → 이후 확정하면 기존대로 예산 연동.
+- 견적 에디터/목록에서 현장 고객명(client_name)·현장 연결이 자연스럽게 보이게(기존 헤더 활용).
+- 기존 "+ 현장 등록"(상단)·현장 수정/삭제 **유지**(옵션A). 폴백(localStorage): new 도 클라에서 site+estimate 생성(서버 우선).
+
+## 검증
+- POST /api/estimates/new → 현장+견적 동시 생성(트랜잭션), 응답 site/estimate, name 중복 409, site.name 없으면 400, 팀 스코핑. 생성된 현장이 GET /api/sites 에 보임, 견적이 그 현장 종속.
+- 프론트: [+ 견적으로 현장 만들기] → 모달 제출 → 새 현장 선택+견적 에디터, 항목입력·확정→예산연동. 상단 현장 버튼 유지. v1~v14 회귀.
