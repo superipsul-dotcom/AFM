@@ -696,3 +696,69 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 ## 검증
 - auto-generate: 확정 견적 → 공종별 발주 초안 생성(amount=공종 재료비합, need_date=일정−3일), confirmed 없으면 404, replace=1 재생성.
 - summary orderDueSoon/overdue 카운트. PDF 버튼 렌더. v1~v9 회귀.
+
+---
+
+# v11 확장 — 캘린더 드래그 이동/고도화(①) + 타임라인 뷰(②)
+
+> 사용자 요청: 일정을 **드래그해서 다른 날짜로 이동**(구글/애플/노션 캘린더 UX 흡수), 상단 **타임라인 뷰**(노션 타임라인). **둘 다 순수 프론트**(서버/DB 무변경) — 기존 `PUT /api/schedule/:id`(start_date/end_date/cascade)와 `GET /api/sites/:id/schedule`(predecessors/successors 포함) 만 사용. **v1~v10 동작/엔드포인트/UI 100% 보존.**
+
+## 11-1 캘린더 드래그 이동 + 고도화 (ScheduleTab 월간 캘린더)
+- **일정 막대 드래그 이동(move)**: 캘린더에 표시된 일정 막대를 mousedown→드래그→drop 으로 **다른 날짜로 이동**. drop 날짜 기준 `delta = drop날짜 − 원래 start_date`(일수) 계산 → `start_date+delta`, `end_date+delta`(**기간/duration 유지**) 로 `PUT /api/schedule/:id`. 낙관적 UI(즉시 이동 후 PUT, 실패 시 롤백+토스트).
+  - 기본 이동은 **그 일정만**(구글 캘린더식). 단, **Shift 누른 채 드롭(또는 이동 후 "후속도 함께?" 미니 확인)** 이면 `cascade:true` 로 후속까지 연쇄 이동(v6 기존 cascade 재사용). 기본 비-cascade.
+- **드래그 리사이즈(resize)**: 막대 좌/우 끝 핸들을 드래그해 **start_date 또는 end_date 변경**(기간 늘이고 줄이기). start≤end 정규화. PUT.
+- **클릭 동작**: 일정 막대 클릭 → 수정 폼/팝오버 오픈(기존). 빈 날짜 드래그(기존 v6 기간선택→생성)는 **그대로 유지**(막대 드래그와 충돌 안 나게: 막대 위 mousedown=이동/리사이즈, 빈 셀 mousedown=신규 기간선택).
+- **캘린더 고도화(구글/애플/노션 느낌)**: 오늘 셀 강조, 주말 톤, ‹ › 월 이동 + **[오늘]** 버튼, 일정 막대 공종/상태 색, hover 시 살짝 떠오름, 한 셀에 일정 많으면 "+N 더보기". 막대에 제목+기간 말줄임. 드래그 중 고스트/하이라이트.
+- 폴백(localStorage)에서도 이동/리사이즈가 클라 계산으로 동작(서버 우선). 드래그 라이브러리 없이 순수 마우스 이벤트로 구현(단일 파일·CDN 유지).
+
+## 11-2 타임라인 뷰 (노션 타임라인 — ScheduleTab 상단 토글)
+- ScheduleTab 상단에 **[📅 캘린더] / [📊 타임라인]** 뷰 토글. 기본 캘린더(기존). 타임라인 선택 시 같은 일정 데이터를 **가로 간트형 타임라인**으로 표시.
+- **레이아웃(노션 타임라인 참고)**: 좌측 고정 패널 = 일정명(공종 그룹) 목록. 우측 = 가로 시간축(날짜/주 단위), 각 일정이 **start_date~end_date 위치·길이의 가로 막대**. 가로 스크롤. 상단 날짜 눈금(월/주). **오늘 세로선** 표시.
+- **공종(process)별 그룹핑** 옵션(노션의 그룹 like) — 같은 공종 묶어 행 그룹. 막대 색 = 공종/상태.
+- **선후관계 표시**: predecessors/successors 가 있으면 막대 사이 연결선/화살표(가능한 범위; 어려우면 막대에 🔗 표식+툴팁).
+- **타임라인에서도 드래그 이동/리사이즈**(11-1 과 동일 PUT) 지원하면 베스트(가로축 픽셀↔일수 변환). 최소한 막대 클릭→수정은 제공.
+- 공사기간(현장 start~end) 범위를 기본 표시 구간으로, 일정들이 그 안에 배치. 일정 없으면 빈 상태 안내.
+
+## 검증
+- 11-1: 캘린더에서 일정 막대를 다른 날짜로 드래그 → start/end 가 delta만큼 이동(기간 유지)·PUT 반영·새로고침 후 유지. 리사이즈로 기간 변경. 빈 날짜 드래그=신규(기존) 보존. cascade(shift드롭) 후속 이동.
+- 11-2: 타임라인 토글 → 일정이 가로 막대로 표시(start~end 위치/길이 정확), 공종 그룹, 오늘선, 가로 스크롤. 캘린더↔타임라인 전환 무손실.
+- v1~v10 회귀 무손상(8탭·기존 일정 CRUD·기간선택 생성·.ics·선후관계 cascade).
+
+---
+
+# v12 확장 — 비용 계산서(세금계산서) 유무 → 공급가/세금포함 집계 (③)
+
+> 사용자 요청: 비용 등록 시 **계산서(세금계산서) 유무**를 따지고, 프로젝트 전체 비용을 **① 공급가 기준 사용비용**과 **② 세금 포함 사용비용** 두 옵션으로 본다. **v1~v11 동작/엔드포인트/UI 100% 보존**(컬럼 ADD COLUMN IF NOT EXISTS).
+
+## 금액 해석 규칙 (서버·프론트 동일)
+- 비용의 `amount` = **실제 지출(지불)액**. 계산서 발행 거래는 통상 **부가세 포함 합계(합계금액)**를 적는다고 가정.
+- **계산서 있음(has_invoice=true)**: 공급가 = `round(amount / 1.1)`, 부가세 = `amount − 공급가`(매입세액, 환급 대상).
+- **계산서 없음(has_invoice=false)**: 공급가 = `amount`(분리 가능한 부가세 없음), 부가세 = 0.
+- 따라서:
+  - **공급가 기준 사용비용(supplyTotal)** = Σ ( has_invoice ? round(amount/1.1) : amount )  ← 매입세액 제외, "실질 원가"
+  - **세금 포함 사용비용(taxIncludedTotal)** = Σ amount  ← 실제 통장에서 나간 총액 (= 기존 spent 와 동일)
+  - **부가세 합계(vatTotal)** = taxIncludedTotal − supplyTotal
+
+## interior_costs 확장 (ADD COLUMN IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| has_invoice | boolean NOT NULL default false | 세금계산서(계산서) 발행 여부 |
+- 기존 date/amount/category/process/manager/vendor/memo/schedule_id 유지.
+
+## 엔드포인트
+- `GET /api/sites/:id/costs`·`POST`·`PUT /api/costs/:id` → 응답·body 에 `has_invoice`(boolean) 포함(미전달 시 기존값/false 보존). amount 의미·검증(>0 정수) 불변.
+- **`GET /api/sites/:id/summary`** 확장(기존 키 100% 유지 + 추가):
+  - 기존 `spent`(= Σ amount = taxIncludedTotal) **그대로 유지**(회귀).
+  - 신규 `spentSupply`(= supplyTotal, 공급가 기준), `spentTaxIncluded`(= spent, 명시적 별칭), `vatTotal`, `invoicedCount`(has_invoice=true 비용 수), `invoicedAmount`(has_invoice=true amount 합).
+  - byCategory/byProcess 등 기존 집계 불변. (집행률은 프론트가 기존대로 spent/budget; 공급가 보기는 spentSupply/budget 로 계산)
+
+## UI (💸 비용 탭 / 📊 요약)
+- 비용 입력 폼에 **[계산서 있음] 체크/토글**(has_invoice). 비용 목록 행에 계산서 뱃지(있음=초록 "계산서", 없음=회색 "미발행").
+- 요약(또는 비용 탭 상단)에 **[공급가 기준] / [세금 포함] 보기 토글**:
+  - 세금포함(기본·기존): 집행액 = spent. 공급가: 집행액 = spentSupply.
+  - 선택 보기에 따라 집행액·집행률·잔여 표시가 바뀌도록(프론트 계산, 단위혼동 차단). 부가세 합계(vatTotal)·계산서 발행 건수도 작게 표기.
+- 폴백(localStorage): has_invoice 저장 + 클라에서 supplyTotal/taxIncludedTotal/vatTotal 계산.
+
+## 검증
+- has_invoice CRUD(생성/수정/보존). summary: 계산서 있음 1건(amount=110,000)+없음 1건(amount=50,000) → spent=160,000, spentSupply=round(110000/1.1)+50000=100,000+50,000=150,000, vatTotal=10,000, invoicedCount=1. 기존 spent/byCategory 회귀.
+- UI: 계산서 토글·뱃지, 공급가/세금포함 보기 전환 시 집행액 변화. v1~v11 회귀.
