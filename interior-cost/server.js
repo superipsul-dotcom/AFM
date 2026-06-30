@@ -224,6 +224,10 @@ async function initDB() {
     );
   `);
 
+  // 7-b) (v14) 일정 협력업체(이 공정에 투입되는 거래처명) — staff 와 동형 텍스트.
+  //   ADD COLUMN IF NOT EXISTS → 기존 일정 데이터 100% 보존, 멱등. 거래처 마스터명과 매칭(자유입력 허용).
+  await pool.query(`ALTER TABLE interior_schedule ADD COLUMN IF NOT EXISTS vendor TEXT NOT NULL DEFAULT ''`);
+
   // 8) 견적서 헤더 (현장 삭제 시 CASCADE)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS interior_estimates (
@@ -973,6 +977,7 @@ function rowToSchedule(row) {
     planned_cost: Number(row.planned_cost),
     actual_cost: Number(row.actual_cost || 0), // 서버 집계 (연결 비용 합)
     staff: row.staff || '',
+    vendor: row.vendor || '', // (v14) 협력업체(거래처명) — 자유입력/마스터 매칭
     color: row.color || '',
     memo: row.memo || '',
     sort_order: Number(row.sort_order || 0),
@@ -1154,7 +1159,7 @@ const SCHEDULE_SELECT_COLS = `
   s.id, s.site_id, s.title, s.process,
   to_char(s.start_date,'YYYY-MM-DD') AS start_date,
   to_char(s.end_date,'YYYY-MM-DD')   AS end_date,
-  s.status, s.planned_cost, s.staff, s.color, s.memo, s.sort_order, s.created_at,
+  s.status, s.planned_cost, s.staff, s.vendor, s.color, s.memo, s.sort_order, s.created_at,
   (SELECT COALESCE(SUM(c.amount),0)::bigint FROM interior_costs c WHERE c.schedule_id = s.id) AS actual_cost
 `;
 // 일정 INSERT/UPDATE RETURNING — 동일하지만 테이블명(interior_schedule)으로 상관 서브쿼리 참조
@@ -1162,7 +1167,7 @@ const SCHEDULE_RETURNING_COLS = `
   id, site_id, title, process,
   to_char(start_date,'YYYY-MM-DD') AS start_date,
   to_char(end_date,'YYYY-MM-DD')   AS end_date,
-  status, planned_cost, staff, color, memo, sort_order, created_at,
+  status, planned_cost, staff, vendor, color, memo, sort_order, created_at,
   (SELECT COALESCE(SUM(c.amount),0)::bigint FROM interior_costs c WHERE c.schedule_id = interior_schedule.id) AS actual_cost
 `;
 
@@ -1700,6 +1705,10 @@ function validateSchedule(body) {
     }
   }
 
+  // (v14) 협력업체: 본문에 키가 있을 때만 반영 → PUT 미전달 시 기존값 보존, POST 미전달 시 ''.
+  const vendor_provided = Object.prototype.hasOwnProperty.call(b, 'vendor');
+  const vendor = typeof b.vendor === 'string' ? b.vendor.trim() : '';
+
   return {
     valid: true,
     values: {
@@ -1710,6 +1719,8 @@ function validateSchedule(body) {
       status: typeof b.status === 'string' && b.status.trim() ? b.status.trim() : '예정',
       planned_cost,
       staff: typeof b.staff === 'string' ? b.staff.trim() : '',
+      vendor, // (v14) '' when absent (POST default); PUT uses vendor_provided for preserve
+      vendor_provided,
       color: typeof b.color === 'string' ? b.color.trim() : '',
       memo: typeof b.memo === 'string' ? b.memo.trim() : '',
       sort_order,
@@ -2442,6 +2453,120 @@ app.delete('/api/vendors/:id', async (req, res) => {
   }
 });
 
+// (v14) GET /api/vendors/:id/usage — 거래처 사용내역(어느 현장에서 얼마 썼는지). 팀 스코핑.
+//   거래처(이름) 기준으로 interior_costs / interior_orders / interior_schedule 를 현장별로 집계.
+//   - costs/orders = 금액 합계, schedule = 계획비용 합계. 전부 팀 소속 현장(JOIN interior_sites)만.
+//   - bySite = 세 소스 site 합집합(각 0 기본), lastDate = 해당 현장 그 vendor costs 최근일 or null.
+//   라우트 충돌 없음: GET .../:id/usage 는 PUT/DELETE /api/vendors/:id(메서드·세그먼트 상이)와 구분.
+app.get('/api/vendors/:id/usage', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 거래처 id 형식입니다.' });
+
+    // 1) 거래처가 이 팀 소속인지 확인 (아니면 404). 이 거래처의 name 으로 사용내역을 집계.
+    const vq = await pool.query(
+      `SELECT id, name, kind, phone, trade, grade FROM interior_vendors WHERE id=$1 AND team_id=$2`,
+      [id, req.teamId]
+    );
+    if (vq.rows.length === 0) {
+      return res.status(404).json({ success: false, message: '해당 거래처를 찾을 수 없습니다.' });
+    }
+    const vendorRow = vq.rows[0];
+    const name = vendorRow.name;
+
+    // 2) 세 소스 현장별 집계 — 전부 팀 소속 현장(s.team_id)만, vendor 이름 일치. 정수원(BIGINT).
+    const costsQ = await pool.query(
+      `SELECT c.site_id,
+              COALESCE(SUM(c.amount),0)::bigint  AS total,
+              to_char(MAX(c.date),'YYYY-MM-DD')  AS last_date
+         FROM interior_costs c
+         JOIN interior_sites s ON s.id = c.site_id
+        WHERE s.team_id=$1 AND c.vendor=$2
+        GROUP BY c.site_id`,
+      [req.teamId, name]
+    );
+    const ordersQ = await pool.query(
+      `SELECT o.site_id, COALESCE(SUM(o.amount),0)::bigint AS total
+         FROM interior_orders o
+         JOIN interior_sites s ON s.id = o.site_id
+        WHERE s.team_id=$1 AND o.vendor=$2
+        GROUP BY o.site_id`,
+      [req.teamId, name]
+    );
+    const planQ = await pool.query(
+      `SELECT sc.site_id, COALESCE(SUM(sc.planned_cost),0)::bigint AS total
+         FROM interior_schedule sc
+         JOIN interior_sites s ON s.id = sc.site_id
+        WHERE s.team_id=$1 AND sc.vendor=$2
+        GROUP BY sc.site_id`,
+      [req.teamId, name]
+    );
+
+    // 3) 세 소스 site 합집합 → bySite (각 0 기본). lastDate 는 costs 에서만 채움.
+    const map = new Map(); // site_id(string) → 누적 객체
+    const ensure = (sid) => {
+      const key = String(sid);
+      if (!map.has(key)) {
+        map.set(key, { site_id: key, site_name: '', costTotal: 0, orderTotal: 0, plannedTotal: 0, lastDate: null });
+      }
+      return map.get(key);
+    };
+    for (const r of costsQ.rows) {
+      const e = ensure(r.site_id);
+      e.costTotal = Number(r.total);
+      e.lastDate = r.last_date || null;
+    }
+    for (const r of ordersQ.rows) ensure(r.site_id).orderTotal = Number(r.total);
+    for (const r of planQ.rows) ensure(r.site_id).plannedTotal = Number(r.total);
+
+    // 4) 현장명 채우기 (팀 소속만; 합집합 site 들 1회 조회 — N+1 금지).
+    const siteIds = [...map.keys()];
+    if (siteIds.length > 0) {
+      const namesQ = await pool.query(
+        `SELECT id, name FROM interior_sites WHERE id = ANY($1::bigint[]) AND team_id=$2`,
+        [siteIds, req.teamId]
+      );
+      for (const r of namesQ.rows) {
+        const e = map.get(String(r.id));
+        if (e) e.site_name = r.name;
+      }
+    }
+
+    // 사용액 큰 현장 우선(동률 시 site_id). 합계는 bySite 누적.
+    const bySite = [...map.values()].sort((a, b) => {
+      const sb = b.costTotal + b.orderTotal + b.plannedTotal;
+      const sa = a.costTotal + a.orderTotal + a.plannedTotal;
+      if (sb !== sa) return sb - sa;
+      return Number(a.site_id) - Number(b.site_id);
+    });
+    const totals = bySite.reduce(
+      (acc, s) => {
+        acc.costTotal += s.costTotal;
+        acc.orderTotal += s.orderTotal;
+        acc.plannedTotal += s.plannedTotal;
+        return acc;
+      },
+      { costTotal: 0, orderTotal: 0, plannedTotal: 0 }
+    );
+
+    res.json({
+      vendor: {
+        id: vendorRow.id,
+        name: vendorRow.name,
+        kind: vendorRow.kind || '',
+        phone: vendorRow.phone || '',
+        trade: vendorRow.trade || '',
+        grade: vendorRow.grade || '',
+      },
+      totals,
+      bySite,
+    });
+  } catch (err) {
+    console.error('GET /api/vendors/:id/usage 오류:', err.message);
+    res.status(500).json({ success: false, message: '거래처 사용내역을 불러오지 못했습니다.' });
+  }
+});
+
 // ========================================
 // REST API — 카테고리(interior_categories)
 // GET 은 항상 { cost:[...], process:[...] } 객체 (sort_order ASC).
@@ -2610,10 +2735,10 @@ app.post('/api/sites/:id/schedule', async (req, res) => {
     if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
 
     const { rows } = await pool.query(
-      `INSERT INTO interior_schedule (site_id, title, process, start_date, end_date, status, planned_cost, staff, color, memo, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      `INSERT INTO interior_schedule (site_id, title, process, start_date, end_date, status, planned_cost, staff, vendor, color, memo, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING ${SCHEDULE_RETURNING_COLS}`,
-      [id, v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order]
+      [id, v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.vendor, v.color, v.memo, v.sort_order]
     );
     res.status(201).json(rowToSchedule(rows[0]));
   } catch (err) {
@@ -2637,10 +2762,10 @@ app.put('/api/schedule/:id', async (req, res) => {
     if (!cascade) {
       const { rows } = await pool.query(
         `UPDATE interior_schedule
-         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10
-         WHERE id=$11
+         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor)
+         WHERE id=$12
          RETURNING ${SCHEDULE_RETURNING_COLS}`,
-        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, id]
+        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, id]
       );
       if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 일정을 찾을 수 없습니다.' });
       return res.json(rowToSchedule(rows[0]));
@@ -2667,10 +2792,10 @@ app.put('/api/schedule/:id', async (req, res) => {
       // 2) 본 일정 갱신 (cascade=false 와 동일한 풀-리플레이스)
       const upd = await client.query(
         `UPDATE interior_schedule
-         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10
-         WHERE id=$11
+         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor)
+         WHERE id=$12
          RETURNING ${SCHEDULE_RETURNING_COLS}`,
-        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, id]
+        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, id]
       );
       const self = rowToSchedule(upd.rows[0]);
 
