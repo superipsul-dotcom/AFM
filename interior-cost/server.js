@@ -259,6 +259,9 @@ async function initDB() {
     `ALTER TABLE interior_costs ADD COLUMN IF NOT EXISTS schedule_id BIGINT REFERENCES interior_schedule(id) ON DELETE SET NULL`
   );
 
+  // 10-b) (v12) 비용 계산서(세금계산서) 유무: has_invoice. true → amount 는 부가세 포함 합계로 간주(공급가=round(amount/1.1)).
+  await pool.query('ALTER TABLE interior_costs ADD COLUMN IF NOT EXISTS has_invoice BOOLEAN NOT NULL DEFAULT false');
+
   // 11) 카테고리 시드 (부팅 시 안전: ON CONFLICT(kind,name) DO NOTHING)
   await pool.query(
     `INSERT INTO interior_categories (kind, name, sort_order)
@@ -674,6 +677,7 @@ function rowToCost(row) {
     vendor: row.vendor || '',
     memo: row.memo || '',
     schedule_id: row.schedule_id == null ? null : String(row.schedule_id), // BIGINT → 문자열(다른 id들과 동일 타입 유지)
+    has_invoice: row.has_invoice == null ? false : !!row.has_invoice, // (v12) 세금계산서 발행 여부
     created_at: new Date(row.created_at).toISOString(),
   };
 }
@@ -878,7 +882,7 @@ const SITE_COLS =
   "id, name, client, address, manager, budget, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, folder, status, tags, " +
   "building_type, floor_area, to_char(move_in_date,'YYYY-MM-DD') AS move_in_date, pm, construction_manager, designer, progress_status, client_id, archived, created_at";
 const COST_COLS =
-  "id, site_id, to_char(date,'YYYY-MM-DD') AS date, amount, category, process, manager, vendor, memo, schedule_id, created_at";
+  "id, site_id, to_char(date,'YYYY-MM-DD') AS date, amount, category, process, manager, vendor, memo, schedule_id, has_invoice, created_at";
 const STAFF_COLS = 'id, name, role, phone, active, created_at';
 const VENDOR_COLS = 'id, name, kind, phone, memo, trade, grade, active, created_at';
 const CATEGORY_COLS = 'id, kind, name, sort_order, active';
@@ -1208,6 +1212,14 @@ function validateCost(body) {
     schedule_id = String(b.schedule_id);
   }
 
+  // (v12) 계산서(세금계산서) 유무: 본문에 키가 있을 때만 반영 → PUT 미전달 시 기존값 보존, POST 미전달 시 false.
+  let has_invoice; // undefined = 본문 미전달
+  let has_invoice_provided = false;
+  if (Object.prototype.hasOwnProperty.call(b, 'has_invoice')) {
+    has_invoice_provided = true;
+    has_invoice = parseBool(b.has_invoice, false);
+  }
+
   return {
     valid: true,
     values: {
@@ -1219,6 +1231,8 @@ function validateCost(body) {
       vendor: typeof b.vendor === 'string' ? b.vendor.trim() : '',
       memo: typeof b.memo === 'string' ? b.memo.trim() : '',
       schedule_id,
+      has_invoice,
+      has_invoice_provided,
     },
   };
 }
@@ -1924,10 +1938,11 @@ app.post('/api/sites/:id/costs', async (req, res) => {
     }
 
     const { rows } = await pool.query(
-      `INSERT INTO interior_costs (site_id, date, amount, category, process, manager, vendor, memo, schedule_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `INSERT INTO interior_costs (site_id, date, amount, category, process, manager, vendor, memo, schedule_id, has_invoice)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        RETURNING ${COST_COLS}`,
-      [id, v.date, v.amount, v.category, v.process, v.manager, v.vendor, v.memo, v.schedule_id]
+      [id, v.date, v.amount, v.category, v.process, v.manager, v.vendor, v.memo, v.schedule_id,
+       v.has_invoice_provided ? v.has_invoice : false]
     );
     res.status(201).json(rowToCost(rows[0]));
   } catch (err) {
@@ -1959,10 +1974,12 @@ app.put('/api/costs/:id', async (req, res) => {
 
     const { rows } = await pool.query(
       `UPDATE interior_costs
-       SET date=$1, amount=$2, category=$3, process=$4, manager=$5, vendor=$6, memo=$7, schedule_id=$8
-       WHERE id=$9
+       SET date=$1, amount=$2, category=$3, process=$4, manager=$5, vendor=$6, memo=$7, schedule_id=$8,
+           has_invoice=COALESCE($9::boolean, has_invoice)
+       WHERE id=$10
        RETURNING ${COST_COLS}`,
-      [v.date, v.amount, v.category, v.process, v.manager, v.vendor, v.memo, v.schedule_id, id]
+      [v.date, v.amount, v.category, v.process, v.manager, v.vendor, v.memo, v.schedule_id,
+       v.has_invoice_provided ? v.has_invoice : null, id]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 비용 내역을 찾을 수 없습니다.' });
     res.json(rowToCost(rows[0]));
@@ -2990,12 +3007,25 @@ app.get('/api/sites/:id/summary', async (req, res) => {
     const s = siteQ.rows[0];
     const budget = Number(s.budget);
 
-    // 집행 합계
+    // 집행 합계 (+ v12: 공급가 기준 / 계산서 집계)
+    //   spent            = Σ amount                                   (세금 포함 = 실제 지출 총액, 기존 키 그대로)
+    //   spent_supply     = Σ (has_invoice ? round(amount/1.1) : amount) (공급가 기준 = 매입세액 제외 실질 원가)
+    //   invoiced_count   = 계산서 발행(has_invoice=true) 비용 건수
+    //   invoiced_amount  = 계산서 발행 비용 amount 합
     const spentQ = await pool.query(
-      `SELECT COALESCE(SUM(amount),0)::bigint AS spent FROM interior_costs WHERE site_id=$1`,
+      `SELECT
+         COALESCE(SUM(amount),0)::bigint AS spent,
+         COALESCE(SUM(CASE WHEN has_invoice THEN round(amount/1.1) ELSE amount END),0)::bigint AS spent_supply,
+         COUNT(*) FILTER (WHERE has_invoice) AS invoiced_count,
+         COALESCE(SUM(amount) FILTER (WHERE has_invoice),0)::bigint AS invoiced_amount
+       FROM interior_costs WHERE site_id=$1`,
       [id]
     );
     const spent = Number(spentQ.rows[0].spent);
+    const spentSupply = Number(spentQ.rows[0].spent_supply); // 공급가 기준 사용비용
+    const invoicedCount = Number(spentQ.rows[0].invoiced_count);
+    const invoicedAmount = Number(spentQ.rows[0].invoiced_amount);
+    const vatTotal = spent - spentSupply; // 부가세 합계 = 세금포함 − 공급가
 
     // 카테고리별 합계
     const byCatQ = await pool.query(
@@ -3116,6 +3146,12 @@ app.get('/api/sites/:id/summary', async (req, res) => {
       spent,
       remaining: budget - spent,
       rate: budget > 0 ? Math.round((spent / budget) * 100) / 100 : null,
+      // (v12) 계산서 유무 기반 집계 — 공급가 기준 / 세금 포함 두 가지 보기. spent 는 위 그대로(=taxIncluded).
+      spentSupply, // 공급가 기준 사용비용 = Σ(has_invoice ? round(amount/1.1) : amount)
+      spentTaxIncluded: spent, // 세금 포함 사용비용 = spent (명시적 별칭)
+      vatTotal, // 부가세 합계 = spentTaxIncluded − spentSupply
+      invoicedCount, // 계산서 발행 비용 건수
+      invoicedAmount, // 계산서 발행 비용 amount 합
       byCategory: byCatQ.rows.map((r) => ({ category: r.category, total: Number(r.total) })),
       byProcess: byProcQ.rows.map((r) => ({ process: r.process, total: Number(r.total) })),
       schedule,

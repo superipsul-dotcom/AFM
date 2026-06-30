@@ -559,12 +559,20 @@
       const remaining = budget - spent;
       const rate = budget > 0 ? spent / budget : null;
 
+      // ── v12: 계산서(세금계산서) 유무 → 공급가/세금포함 집계 ──
+      // has_invoice ? 공급가=round(amt/1.1)·부가세=amt-공급가 : 공급가=amt·부가세=0
+      let spentSupply = 0, invoicedCount = 0, invoicedAmount = 0;
+
       const catMap = {}, procMap = {};
       costs.forEach((c) => {
         const amt = Number(c.amount) || 0;
         catMap[c.category] = (catMap[c.category] || 0) + amt;
         if (c.process) procMap[c.process] = (procMap[c.process] || 0) + amt;
+        if (c.has_invoice) { spentSupply += Math.round(amt / 1.1); invoicedCount++; invoicedAmount += amt; }
+        else { spentSupply += amt; }
       });
+      const spentTaxIncluded = spent;                   // = Σ amount (실제 지출 총액, 기존 spent 별칭)
+      const vatTotal = spentTaxIncluded - spentSupply;  // 매입세액 합계 (환급 대상)
       const byCategory = Object.entries(catMap).map(([category, total]) => ({ category, total }));
       const byProcess = Object.entries(procMap).map(([process, total]) => ({ process, total }));
 
@@ -611,6 +619,7 @@
 
       return {
         budget, spent, remaining, rate, byCategory, byProcess,
+        spentSupply, spentTaxIncluded, vatTotal, invoicedCount, invoicedAmount, // v12: 공급가/세금포함/부가세/계산서건수
         schedule: { start_date: site.start_date, end_date: site.end_date, totalDays, elapsedDays, remainingDays, progressRate, dday },
         estimateTotal, byProcessPlan, scheduleAgg,
         orderDueSoon, orderOverdue,
@@ -1794,6 +1803,8 @@
     // 🧩 요약 대시보드 (비용 카드 + 날짜/진행률)
     // ========================================
     function SummaryDashboard({ summary, loading }) {
+      // v12: 공급가/세금포함 보기 토글 — 최상단(조기 return 전)에서 hook 호출. 기본 'tax'(세금포함=기존 spent, 회귀 보존)
+      const [costView, setCostView] = useState('tax'); // 'tax' | 'supply'
       if (loading || !summary) {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -1802,14 +1813,23 @@
         );
       }
 
-      // ⚠️ 퍼센트는 프론트에서 직접 계산 (서버 rate 신뢰 X)
-      const rate = summary.budget > 0 ? (summary.spent / summary.budget) * 100 : 0;
-      const over = summary.budget > 0 && summary.spent > summary.budget;
-      const remaining = summary.budget - summary.spent;
+      // v12: 보기 모드별 집행액 기준 (서버 미제공 시 기존 spent 로 안전 폴백 → 회귀 없음)
+      const spentTax = Number(summary.spentTaxIncluded != null ? summary.spentTaxIncluded : summary.spent) || 0;
+      const spentSupply = Number(summary.spentSupply != null ? summary.spentSupply : spentTax) || 0;
+      const vatTotal = Number(summary.vatTotal != null ? summary.vatTotal : (spentTax - spentSupply)) || 0;
+      const invoicedCount = summary.invoicedCount != null ? summary.invoicedCount : null;
+      const hasInvoiceData = summary.spentSupply != null; // v12 필드 제공 시에만 토글/부가세 표기 노출
+      const supplyView = costView === 'supply';
+      const basis = supplyView ? spentSupply : spentTax; // 선택 보기의 집행액
+
+      // ⚠️ 퍼센트·잔여는 프론트에서 직접 계산 (서버 rate 신뢰 X) — 선택 보기값(basis) 기준
+      const rate = summary.budget > 0 ? (basis / summary.budget) * 100 : 0;
+      const over = summary.budget > 0 && basis > summary.budget;
+      const remaining = summary.budget - basis;
 
       const cards = [
         { label: '견적비 (예산)', value: summary.budget, color: 'text-slate-700', bg: 'from-slate-50 to-white', ring: 'border-slate-100', icon: '📋' },
-        { label: '집행액', value: summary.spent, color: 'text-blue-600', bg: 'from-blue-50 to-white', ring: 'border-blue-100', icon: '💸' },
+        { label: supplyView ? '집행액 (공급가)' : '집행액 (세금포함)', value: basis, color: 'text-blue-600', bg: 'from-blue-50 to-white', ring: 'border-blue-100', icon: '💸' },
         { label: '잔여', value: remaining, color: remaining < 0 ? 'text-red-600' : 'text-emerald-600', bg: remaining < 0 ? 'from-red-50 to-white' : 'from-emerald-50 to-white', ring: remaining < 0 ? 'border-red-100' : 'border-emerald-100', icon: '🏦' },
       ];
 
@@ -1820,6 +1840,18 @@
 
       return (
         <div className="space-y-4">
+          {/* v12: 공급가/세금포함 보기 토글 (계산서 데이터 있을 때만) */}
+          {hasInvoiceData && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-medium text-slate-400">집행액 기준 보기</span>
+              <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-0.5 text-xs font-semibold" role="group" aria-label="집행액 보기 기준">
+                <button type="button" onClick={() => setCostView('tax')} aria-pressed={!supplyView}
+                  className={`px-3 py-1.5 rounded-lg transition-colors ${!supplyView ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>세금 포함</button>
+                <button type="button" onClick={() => setCostView('supply')} aria-pressed={supplyView}
+                  className={`px-3 py-1.5 rounded-lg transition-colors ${supplyView ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>공급가 기준</button>
+              </div>
+            </div>
+          )}
           {/* 비용 카드 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {cards.map((c) => (
@@ -1847,6 +1879,15 @@
               {over && <p className="mt-1.5 text-xs font-semibold text-red-600">예산 초과! {fmtWon(Math.abs(remaining))} 초과</p>}
             </Card>
           </div>
+
+          {/* v12: 부가세 합계 / 계산서 발행 건수 (작게 표기) */}
+          {hasInvoiceData && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-xs text-slate-500">
+              <span>부가세 합계(매입세액) <b className="text-slate-700">{fmtWon(vatTotal)}</b></span>
+              {invoicedCount != null && <span>계산서 발행 <b className="text-slate-700">{invoicedCount}건</b></span>}
+              <span className="text-slate-400">{supplyView ? '· 공급가 기준 = 매입세액 제외 실질 원가' : '· 세금 포함 = 실제 지출 총액(통장 출금액)'}</span>
+            </div>
+          )}
 
           {/* 공기 / 일정 */}
           <Card className="p-5">
@@ -1900,7 +1941,7 @@
     // 🧩 비용 등록/수정 폼
     // ========================================
     function CostForm({ onSubmit, editing, onCancelEdit, siteId, catNames = [], procNames = [], staffNames = [], vendorNames = [], scheduleOptions = [] }) {
-      const blank = { date: todayStr(), amount: '', category: '', process: '', manager: '', vendor: '', memo: '', schedule_id: '' };
+      const blank = { date: todayStr(), amount: '', category: '', process: '', manager: '', vendor: '', memo: '', schedule_id: '', has_invoice: false };
       const [form, setForm] = useState(blank);
       const [errors, setErrors] = useState({});
       const [submitting, setSubmitting] = useState(false);
@@ -1919,6 +1960,7 @@
             category: editing.category || '', process: editing.process || '',
             manager: editing.manager || '', vendor: editing.vendor || '', memo: editing.memo || '',
             schedule_id: editing.schedule_id != null ? String(editing.schedule_id) : '',
+            has_invoice: !!editing.has_invoice,
           });
           setErrors({});
         }
@@ -1979,6 +2021,7 @@
           category: form.category.trim(), process: form.process.trim() || null,
           manager: form.manager.trim(), vendor: form.vendor.trim(), memo: form.memo.trim(),
           schedule_id: form.schedule_id ? form.schedule_id : null,
+          has_invoice: !!form.has_invoice,
         });
         setSubmitting(false);
         if (ok && !editing) { setForm({ ...blank, date: form.date }); setReceipt(null); setCatFromAI(false); }
@@ -2055,6 +2098,19 @@
               <Combo label="거래처" placeholder="예: 한솔자재" value={form.vendor} options={vendorNames}
                 onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
             </div>
+            {/* v12: 세금계산서(계산서) 발행 여부 — 공급가/부가세 분리 집계 기준 */}
+            <label className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 cursor-pointer select-none transition-colors ${form.has_invoice ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+              <span className="flex items-center gap-2.5 min-w-0">
+                <span className="text-lg shrink-0">🧾</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-slate-700">세금계산서 발행 (계산서 있음)</span>
+                  <span className="block text-[11px] text-slate-400 leading-snug">체크 시 공급가 = 금액 ÷ 1.1, 부가세를 분리 집계합니다. <span className="text-slate-300">(미발행이면 금액 전액을 공급가로 간주)</span></span>
+                </span>
+              </span>
+              <input type="checkbox" checked={form.has_invoice}
+                onChange={(e) => setForm({ ...form, has_invoice: e.target.checked })}
+                className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0" aria-label="세금계산서 발행 여부" />
+            </label>
             {scheduleOptions.length > 0 && (
               <Select label="연결 일정 (선택)" value={form.schedule_id}
                 onChange={(e) => setForm({ ...form, schedule_id: e.target.value })}>
@@ -2237,6 +2293,7 @@
                       <th className="py-2 pr-3 font-medium text-right">금액</th>
                       <th className="py-2 pr-3 font-medium">담당자</th>
                       <th className="py-2 pr-3 font-medium">거래처</th>
+                      <th className="py-2 pr-3 font-medium">계산서</th>
                       <th className="py-2 font-medium text-right">관리</th>
                     </tr>
                   </thead>
@@ -2256,6 +2313,11 @@
                         <td className="py-2.5 pr-3 text-right font-bold text-slate-800 whitespace-nowrap">{fmtWon(c.amount)}</td>
                         <td className="py-2.5 pr-3 text-slate-600">{c.manager || <span className="text-slate-300">-</span>}</td>
                         <td className="py-2.5 pr-3 text-slate-600">{c.vendor || <span className="text-slate-300">-</span>}</td>
+                        <td className="py-2.5 pr-3">
+                          {c.has_invoice
+                            ? <Badge color="bg-emerald-500">계산서</Badge>
+                            : <Badge color="bg-slate-400">미발행</Badge>}
+                        </td>
                         <td className="py-2.5 text-right whitespace-nowrap">
                           <button onClick={() => onEdit(c)} aria-label="수정" className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
                           <button onClick={() => onAskDelete(c)} aria-label="삭제" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
@@ -2273,6 +2335,9 @@
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                         <Badge color={COST_COLOR[c.category] || 'bg-slate-400'}>{c.category}</Badge>
                         {c.process && <Badge color={PROC_COLOR[c.process] || 'bg-slate-400'}>{c.process}</Badge>}
+                        {c.has_invoice
+                          ? <Badge color="bg-emerald-500">계산서</Badge>
+                          : <Badge color="bg-slate-400">미발행</Badge>}
                       </div>
                       <span className="text-sm font-bold text-slate-800 shrink-0">{fmtWon(c.amount)}</span>
                     </div>
