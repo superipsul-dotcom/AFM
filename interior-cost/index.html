@@ -259,6 +259,32 @@
     // (v3) 행 합계 = round(qty * 유효단가)
     const rowAmount = (it) => calcItemAmount(it.qty, effUnitPrice(it));
 
+    // ── v10: 발주 필요시기(need_date) 알림 / 자동생성 공용 헬퍼 ──
+    const ORDER_DONE_STATES = ['입고', '정산완료']; // 완료로 보아 임박/지남 집계에서 제외
+    // need_date 기준 D-day (양수=남음, 0=오늘, 음수=지남). need_date 없으면 null
+    const orderDday = (need_date) => (need_date ? daysBetween(todayStr(), need_date) : null);
+    // 행 임박 등급(색상용): 미완료만 — overdue(지남)=빨강, soon(0~7)=주황, 그 외 null
+    const orderUrgency = (o) => {
+      if (!o || ORDER_DONE_STATES.includes(o.status)) return null;
+      const d = orderDday(o.need_date);
+      if (d == null) return null;
+      if (d < 0) return 'overdue';
+      if (d <= 7) return 'soon';
+      return null;
+    };
+    // 자동생성: 항목 '재료비' 산출 — 3분할(자재/노무/부자재) 있으면 Σ(material_price×qty), 없으면 Σ rowAmount
+    const orderMaterialAmount = (it) => {
+      const m = Number(it.material_price) || 0, l = Number(it.labor_price) || 0, s = Number(it.sub_price) || 0;
+      return (m || l || s) ? Math.round((Number(it.qty) || 0) * m) : rowAmount(it);
+    };
+    // 일정(process)과 견적 공종(trade) 매칭 — '목공'⊂'목공사' 등 부분일치 허용(서버는 process=공종 기준)
+    const scheduleMatchesTrade = (task, trade) => {
+      const p = String(task && task.process || '').trim();
+      const tr = String(trade || '').trim();
+      if (!p || !tr) return false;
+      return p === tr || tr.indexOf(p) === 0 || p.indexOf(tr) === 0;
+    };
+
     // (v3) 공사원가계산서 산출 — CONTRACT v3 산출식과 1:1 (서버 totals.buildup 과 일치해야 함)
     function computeBuildup(est) {
       const items = est.items || [];
@@ -527,7 +553,7 @@
     // ========================================
     // 클라이언트 계산 (폴백 summary / 분석)
     // ========================================
-    function computeSummary(site, costs, estimates, schedule) {
+    function computeSummary(site, costs, estimates, schedule, orders) {
       const budget = Number(site.budget) || 0;
       const spent = costs.reduce((s, c) => s + (Number(c.amount) || 0), 0);
       const remaining = budget - spent;
@@ -572,10 +598,22 @@
         doneCount: sch.filter((t) => t.status === '완료').length,
       };
 
+      // ── v10: 발주 필요시기 임박/지남 집계 (계약 정의 — 미완료 발주 대상) ──
+      const ords = orders || [];
+      let orderDueSoon = 0, orderOverdue = 0;
+      ords.forEach((o) => {
+        if (ORDER_DONE_STATES.includes(o.status)) return;
+        const d = orderDday(o.need_date);
+        if (d == null) return;
+        if (d <= 7) orderDueSoon++;   // need_date ≤ today+7 (지남 포함)
+        if (d < 0) orderOverdue++;    // need_date < today
+      });
+
       return {
         budget, spent, remaining, rate, byCategory, byProcess,
         schedule: { start_date: site.start_date, end_date: site.end_date, totalDays, elapsedDays, remainingDays, progressRate, dday },
         estimateTotal, byProcessPlan, scheduleAgg,
+        orderDueSoon, orderOverdue,
       };
     }
 
@@ -778,7 +816,8 @@
           const costs = costsStore.read().filter((c) => String(c.site_id) === String(siteId));
           const estimates = estimatesStore.read().filter((x) => String(x.site_id) === String(siteId));
           const schedule = scheduleStore.read().filter((t) => String(t.site_id) === String(siteId));
-          return computeSummary(site, costs, estimates, schedule);
+          const orders = ordersStore.read().filter((o) => String(o.site_id) === String(siteId));
+          return computeSummary(site, costs, estimates, schedule, orders);
         }
       },
 
@@ -1334,8 +1373,9 @@
           const item = {
             id, site_id: siteId, order_no: body.order_no || ('PO-' + id), vendor: body.vendor || '', trade: body.trade || '',
             title: String(body.title).trim(), amount: Math.max(0, Math.round(Number(body.amount) || 0)),
-            order_date: body.order_date || null, due_date: body.due_date || null,
-            status: ORDER_STATES.includes(body.status) ? body.status : '대기', memo: body.memo || '', created_at: new Date().toISOString(),
+            order_date: body.order_date || null, due_date: body.due_date || null, need_date: body.need_date || null,
+            status: ORDER_STATES.includes(body.status) ? body.status : '대기', auto_generated: !!body.auto_generated,
+            memo: body.memo || '', created_at: new Date().toISOString(),
           };
           ordersStore.write([...ordersStore.read(), item]); return item;
         }
@@ -1354,6 +1394,45 @@
       async removeOrder(id) {
         try { await this._tryFetch(`${API_BASE_URL}/orders/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
         catch (e) { if (e.status) throw e; this._useMock = true; ordersStore.write(ordersStore.read().filter((o) => String(o.id) !== String(id))); return { success: true }; }
+      },
+      // ════════ v10: 발주 자동생성 (확정 견적 → 공종별 발주 초안) ════════
+      async autoGenerateOrders(siteId, opts = {}) {
+        const replace = opts.replace ? 1 : 0;
+        try {
+          const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/orders/auto-generate${replace ? '?replace=1' : ''}`, { method: 'POST', body: JSON.stringify({ estimate_id: opts.estimateId || undefined }) });
+          this._useMock = false; return d;
+        } catch (e) {
+          if (e.status) throw e; // 서버 응답(404 '확정된 견적이 없습니다' 등)은 그대로 전달 → UI 토스트
+          this._useMock = true;
+          // ── 폴백: 최신 confirmed 견적 기반 ──
+          const ests = estimatesStore.read().filter((x) => String(x.site_id) === String(siteId));
+          const confirmed = ests.filter((x) => x.status === 'confirmed');
+          if (confirmed.length === 0) { const err = new Error('확정된 견적이 없습니다'); err.status = 404; throw err; }
+          const latest = confirmed.slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+          const sched = scheduleStore.read().filter((t) => String(t.site_id) === String(siteId));
+          // 견적 항목을 공종(trade/process)별로 그룹 → 공종당 재료비 합
+          const groups = {};
+          (latest.items || []).forEach((it) => {
+            const tr = it.trade || it.process || '미분류';
+            groups[tr] = (groups[tr] || 0) + orderMaterialAmount(it);
+          });
+          // replace=1: 기존 자동생성(대기) 발주 삭제 후 재생성
+          let cur = ordersStore.read();
+          if (replace) cur = cur.filter((o) => !(String(o.site_id) === String(siteId) && o.auto_generated && o.status === '대기'));
+          const created = Object.keys(groups).map((trade) => {
+            const dates = sched.filter((t) => scheduleMatchesTrade(t, trade)).map((t) => t.start_date).filter(Boolean).sort();
+            const need_date = dates.length ? addDays(dates[0], -3) : null; // 가장 이른 start_date − 3일(리드타임)
+            const id = uid();
+            return {
+              id, site_id: siteId, order_no: 'PO-' + id, vendor: '', trade,
+              title: trade + ' 자재 발주', amount: Math.max(0, Math.round(groups[trade])),
+              order_date: null, due_date: null, need_date, status: '대기',
+              auto_generated: true, memo: '', created_at: new Date().toISOString(),
+            };
+          });
+          ordersStore.write([...cur, ...created]);
+          return { generated: created.length, orders: created };
+        }
       },
 
       // ════════ v5: 미팅 (meetings) — 프로젝트 종속 ════════
@@ -4263,8 +4342,9 @@
       const [f, setF] = useState(initial ? {
         vendor: initial.vendor || '', trade: initial.trade || '', title: initial.title || '',
         amount: initial.amount != null ? String(initial.amount) : '', order_date: initial.order_date || '',
-        due_date: initial.due_date || '', status: ORDER_STATES.includes(initial.status) ? initial.status : '대기', memo: initial.memo || '',
-      } : { vendor: '', trade: '', title: '', amount: '', order_date: todayStr(), due_date: '', status: '대기', memo: '' });
+        due_date: initial.due_date || '', need_date: initial.need_date || '',
+        status: ORDER_STATES.includes(initial.status) ? initial.status : '대기', memo: initial.memo || '',
+      } : { vendor: '', trade: '', title: '', amount: '', order_date: todayStr(), due_date: '', need_date: '', status: '대기', memo: '' });
       const [saving, setSaving] = useState(false);
       const submit = async (e) => {
         e.preventDefault();
@@ -4273,7 +4353,8 @@
         await onSave({
           vendor: f.vendor.trim(), trade: f.trade.trim(), title: f.title.trim(),
           amount: Math.max(0, Math.round(Number(f.amount) || 0)),
-          order_date: f.order_date || null, due_date: f.due_date || null, status: f.status, memo: f.memo.trim(),
+          order_date: f.order_date || null, due_date: f.due_date || null, need_date: f.need_date || null,
+          status: f.status, memo: f.memo.trim(), auto_generated: !!(initial && initial.auto_generated),
         });
         setSaving(false);
       };
@@ -4292,6 +4373,10 @@
             <Input label="발주일" type="date" value={f.order_date || ''} onChange={(e) => setF({ ...f, order_date: e.target.value })} />
             <Input label="납기일" type="date" value={f.due_date || ''} onChange={(e) => setF({ ...f, due_date: e.target.value })} />
           </div>
+          <div>
+            <Input label="필요시기 (자재가 현장에 있어야 하는 날)" type="date" value={f.need_date || ''} onChange={(e) => setF({ ...f, need_date: e.target.value })} />
+            <p className="mt-1 text-[11px] text-slate-400">🔔 이 날짜 기준 D-7 이내면 <span className="text-orange-600 font-medium">임박(주황)</span>, 지나면 <span className="text-red-600 font-medium">지남(빨강)</span>으로 강조됩니다.</p>
+          </div>
           <Textarea label="메모" rows="2" placeholder="비고" value={f.memo} onChange={(e) => setF({ ...f, memo: e.target.value })} />
           <div className="flex gap-2 justify-end pt-1">
             <Button variant="secondary" onClick={onCancel}>취소</Button>
@@ -4301,7 +4386,65 @@
       );
     }
 
-    function OrdersTab({ site, vendorNames = [] }) {
+    // v10: 발주서 A4 인쇄 (단건/목록) — 견적/일정 인쇄와 영역 분리
+    function OrdersPrint({ site, orders }) {
+      if (!orders || !orders.length) return null;
+      const total = orders.reduce((s, o) => s + (Number(o.amount) || 0), 0);
+      return (
+        <div className="text-slate-900" style={{ fontFamily: 'sans-serif', padding: '4px' }}>
+          <div className="flex items-start justify-between" style={{ borderBottom: '2px solid #1e293b', paddingBottom: '10px', marginBottom: '14px' }}>
+            <div>
+              <h1 style={{ fontSize: '26px', fontWeight: 800, letterSpacing: '8px', margin: 0 }}>발 주 서</h1>
+              <p style={{ fontSize: '11px', color: '#64748b', margin: '4px 0 0' }}>PURCHASE ORDER</p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>공급자(발주)</p>
+              <p style={{ fontSize: '18px', fontWeight: 700, margin: '2px 0 0' }}>{SUPPLIER.name} <span style={{ fontSize: '11px', fontWeight: 400, color: '#64748b' }}>{SUPPLIER.en}</span></p>
+              <p style={{ fontSize: '11px', color: '#475569', margin: '2px 0 0' }}>{SUPPLIER.biz}</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 32px', fontSize: '13px', marginBottom: '14px' }}>
+            <div><span style={{ color: '#64748b' }}>현장: </span><b>{site ? site.name : '-'}</b></div>
+            <div><span style={{ color: '#64748b' }}>현장주소: </span>{(site && site.address) || '-'}</div>
+            <div><span style={{ color: '#64748b' }}>발주처(고객): </span>{(site && site.client) || '-'}</div>
+            <div><span style={{ color: '#64748b' }}>출력일: </span>{todayStr()}</div>
+          </div>
+          <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr>
+                <th style={cellTh}>발주번호</th><th style={cellTh}>거래처</th><th style={cellTh}>공종</th><th style={cellTh}>품목/내역</th>
+                <th style={cellTh}>금액</th><th style={cellTh}>발주일</th><th style={cellTh}>납기일</th><th style={cellTh}>필요시기</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o, i) => (
+                <tr key={o.id || i}>
+                  <td style={cellTdC}>{(o.order_no || '-')}{o.auto_generated ? ' ⚡' : ''}</td>
+                  <td style={cellTd}>{o.vendor || '-'}</td>
+                  <td style={cellTd}>{o.trade || '-'}</td>
+                  <td style={cellTd}>{o.title}{o.memo ? ' / ' + o.memo : ''}</td>
+                  <td style={cellTdR}>{fmtNum(o.amount)}</td>
+                  <td style={cellTdC}>{o.order_date || '-'}</td>
+                  <td style={cellTdC}>{o.due_date || '-'}</td>
+                  <td style={cellTdC}>{o.need_date || '-'}</td>
+                </tr>
+              ))}
+              <tr>
+                <td style={{ ...cellTd, fontWeight: 700, background: '#f1f5f9' }} colSpan="4">합계</td>
+                <td style={{ ...cellTdR, fontWeight: 700, background: '#f1f5f9' }}>{fmtNum(total)}</td>
+                <td style={{ ...cellTd, background: '#f1f5f9' }} colSpan="3"></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style={{ background: '#f1f5f9', textAlign: 'center', padding: '8px', fontSize: '14px', margin: '12px 0' }}>
+            발주 합계금액 : <b>일금 {wonToKorean(total)}원정 (₩{fmtNum(total)})</b>
+          </div>
+          <p style={{ fontSize: '11px', color: '#64748b', marginTop: '18px' }}>※ 본 발주서는 {SUPPLIER.name}에서 발행한 자재 발주 내역입니다. 납기·필요시기를 확인하시어 적기 납품 부탁드립니다.</p>
+        </div>
+      );
+    }
+
+    function OrdersTab({ site, vendorNames = [], onPrintOrders }) {
       const toast = useToast();
       const [list, setList] = useState([]);
       const [loading, setLoading] = useState(true);
@@ -4309,6 +4452,8 @@
       const [editorOpen, setEditorOpen] = useState(false);
       const [editing, setEditing] = useState(null);
       const [delTarget, setDelTarget] = useState(null);
+      const [genLoading, setGenLoading] = useState(false);
+      const [replaceConfirm, setReplaceConfirm] = useState(false);
       const reload = useCallback(async () => {
         setLoading(true);
         try { const d = await api.listOrders(site.id); setList(Array.isArray(d) ? d : []); }
@@ -4318,6 +4463,37 @@
       useEffect(() => { reload(); }, [reload]);
       useEffect(() => { let alive = true; api.listTrades().then((d) => { if (alive && d && d.length) setTrades(d); }).catch(() => {}); return () => { alive = false; }; }, []);
       const total = useMemo(() => list.reduce((s, o) => s + (Number(o.amount) || 0), 0), [list]);
+      // v10: 필요시기 임박/지남 집계 (미완료 발주 대상 — 계약 정의와 동일)
+      const { dueSoon, overdue } = useMemo(() => {
+        let ds = 0, od = 0;
+        list.forEach((o) => {
+          if (ORDER_DONE_STATES.includes(o.status)) return;
+          const d = orderDday(o.need_date);
+          if (d == null) return;
+          if (d <= 7) ds++;
+          if (d < 0) od++;
+        });
+        return { dueSoon: ds, overdue: od };
+      }, [list]);
+      const hasAuto = useMemo(() => list.some((o) => o.auto_generated), [list]);
+      // v10: 발주 자동생성 (확정 견적 기반)
+      const runAutoGen = async (replace) => {
+        setReplaceConfirm(false);
+        setGenLoading(true);
+        try {
+          const r = await api.autoGenerateOrders(site.id, { replace });
+          if (r && r.generated > 0) toast(`⚡ 공종별 발주 초안 ${r.generated}건을 자동생성했습니다.`, 'success');
+          else toast('생성할 공종이 없습니다. 견적 항목을 확인하세요.', 'info');
+          await reload();
+        } catch (e) {
+          if (e.status === 404) toast(e.message || '확정된 견적이 없습니다. 견적 탭에서 견적을 확정해 주세요.', 'error');
+          else toast('자동생성에 실패했습니다.', 'error');
+        } finally { setGenLoading(false); }
+      };
+      const onAutoGenClick = () => { if (hasAuto) setReplaceConfirm(true); else runAutoGen(false); };
+      // v10: 발주서 PDF (목록 전체 / 단건)
+      const printAll = () => { if (!list.length) { toast('인쇄할 발주가 없습니다.', 'info'); return; } onPrintOrders && onPrintOrders(list); };
+      const printOne = (o) => { onPrintOrders && onPrintOrders([o]); };
       const save = async (body) => {
         try {
           if (editing) { await api.updateOrder(editing.id, body); toast('발주서가 수정되었습니다.', 'success'); }
@@ -4330,16 +4506,30 @@
         <div className="space-y-6">
           <Card className="p-5">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-800">🧾 발주서 <span className="text-sm font-normal text-slate-400">· {site.name}</span></h2>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-800">🧾 발주서 <span className="text-sm font-normal text-slate-400">· {site.name}</span></h2>
+                  {(dueSoon > 0 || overdue > 0) && (
+                    <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${overdue > 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}
+                      title="필요시기 기준 임박/지남 발주 (입고·정산완료 제외)">
+                      🔔 필요시기 임박 {dueSoon} · 지남 {overdue}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-400 mt-0.5">발주 {list.length}건 · 합계 <span className="font-bold text-slate-600">{fmtWon(total)}</span></p>
               </div>
-              <Button size="sm" onClick={() => { setEditing(null); setEditorOpen(true); }}>+ 발주 추가</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" onClick={onAutoGenClick} disabled={genLoading}
+                  title="확정 견적을 공종별로 그룹핑해 발주 초안을 자동으로 만듭니다.">{genLoading ? '생성 중…' : '⚡ 발주 자동생성'}</Button>
+                <Button size="sm" variant="secondary" onClick={printAll} disabled={list.length === 0}
+                  title="현재 발주 목록을 A4 발주서로 인쇄/PDF 저장합니다.">🖨 발주서 PDF</Button>
+                <Button size="sm" onClick={() => { setEditing(null); setEditorOpen(true); }}>+ 발주 추가</Button>
+              </div>
             </div>
             {loading ? (
               <div className="h-32 bg-slate-100 rounded-xl animate-pulse"></div>
             ) : list.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-10">등록된 발주서가 없습니다. <span className="text-slate-300">+ 발주 추가로 시작하세요.</span></p>
+              <p className="text-sm text-slate-400 text-center py-10">등록된 발주서가 없습니다. <span className="text-slate-300">+ 발주 추가</span> 또는 <span className="text-slate-300">⚡ 발주 자동생성</span>(확정 견적 기반)으로 시작하세요.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -4347,30 +4537,55 @@
                     <th className="py-2 pr-3 font-medium">발주번호</th><th className="py-2 pr-3 font-medium">거래처</th>
                     <th className="py-2 pr-3 font-medium">공종</th><th className="py-2 pr-3 font-medium">품목/내역</th>
                     <th className="py-2 pr-3 font-medium text-right">금액</th><th className="py-2 pr-3 font-medium">발주일</th>
-                    <th className="py-2 pr-3 font-medium">납기일</th><th className="py-2 pr-3 font-medium">상태</th>
+                    <th className="py-2 pr-3 font-medium">납기일</th><th className="py-2 pr-3 font-medium">필요시기</th>
+                    <th className="py-2 pr-3 font-medium">상태</th>
                     <th className="py-2 font-medium text-right">관리</th></tr></thead>
                   <tbody className="divide-y divide-slate-100">
-                    {list.map((o) => (
-                      <tr key={o.id}>
-                        <td className="py-2 pr-3 font-mono text-xs text-slate-500 whitespace-nowrap">{o.order_no || '-'}</td>
-                        <td className="py-2 pr-3 text-slate-600">{o.vendor || '-'}</td>
+                    {list.map((o) => {
+                      const u = orderUrgency(o);
+                      const rowBg = u === 'overdue' ? 'bg-red-50' : u === 'soon' ? 'bg-orange-50' : '';
+                      const d = orderDday(o.need_date);
+                      const done = ORDER_DONE_STATES.includes(o.status);
+                      return (
+                      <tr key={o.id} className={rowBg}>
+                        <td className="py-2 pr-3 font-mono text-xs text-slate-500 whitespace-nowrap">
+                          {o.order_no || '-'}
+                          {o.auto_generated && <span className="ml-1 align-middle inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700" title="견적에서 자동생성된 발주 초안">⚡자동</span>}
+                        </td>
+                        <td className="py-2 pr-3 text-slate-600">{o.vendor || <span className="text-slate-300">미지정</span>}</td>
                         <td className="py-2 pr-3">{o.trade ? <span className="text-xs px-2 py-0.5 rounded-full text-white whitespace-nowrap" style={{ backgroundColor: tradeHex(o.trade) }}>{o.trade}</span> : <span className="text-slate-300">-</span>}</td>
                         <td className="py-2 pr-3 font-medium text-slate-700 min-w-[150px]">{o.title}{o.memo ? <span className="block text-[11px] font-normal text-slate-400 truncate max-w-[200px]">{o.memo}</span> : null}</td>
                         <td className="py-2 pr-3 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtWon(o.amount)}</td>
                         <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{o.order_date || '-'}</td>
                         <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{o.due_date || '-'}</td>
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          {o.need_date ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span className={u === 'overdue' ? 'text-red-700 font-semibold' : u === 'soon' ? 'text-orange-700 font-semibold' : 'text-slate-600'}>{o.need_date}</span>
+                              {!done && d != null && (
+                                d < 0
+                                  ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">지남 D+{Math.abs(d)}</span>
+                                  : d <= 7
+                                    ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700">{d === 0 ? 'D-DAY' : 'D-' + d}</span>
+                                    : <span className="text-[10px] text-slate-400">D-{d}</span>
+                              )}
+                            </span>
+                          ) : <span className="text-slate-300">-</span>}
+                        </td>
                         <td className="py-2 pr-3"><Badge color={ORDER_STATUS_COLOR[o.status] || 'bg-slate-400'}>{o.status || '대기'}</Badge></td>
                         <td className="py-2 text-right whitespace-nowrap">
+                          <button onClick={() => printOne(o)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="이 발주서만 PDF/인쇄">🖨</button>
                           <button onClick={() => { setEditing(o); setEditorOpen(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
                           <button onClick={() => setDelTarget(o)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                   <tfoot><tr className="border-t-2 border-slate-200">
                     <td colSpan="4" className="py-2.5 pr-3 text-right font-bold text-slate-600">합계</td>
                     <td className="py-2.5 pr-3 text-right font-extrabold text-slate-800 whitespace-nowrap">{fmtWon(total)}</td>
-                    <td colSpan="4"></td>
+                    <td colSpan="5"></td>
                   </tr></tfoot>
                 </table>
               </div>
@@ -4389,6 +4604,20 @@
                 </div>
               </div>
             )}
+          </Modal>
+          <Modal isOpen={replaceConfirm} onClose={() => setReplaceConfirm(false)} title="발주 자동생성 — 재생성" size="sm">
+            <div>
+              <p className="text-sm text-slate-600">이미 <span className="font-semibold text-violet-700">⚡자동</span>으로 생성된 발주가 있습니다.<br />어떻게 진행할까요?</p>
+              <ul className="mt-2 text-xs text-slate-400 list-disc pl-4 space-y-0.5">
+                <li><span className="font-medium text-slate-500">기존 대체</span>: 기존 자동생성(대기) 발주를 지우고 새로 만듭니다.</li>
+                <li><span className="font-medium text-slate-500">추가 생성</span>: 기존은 두고 한 벌 더 만듭니다(중복 가능).</li>
+              </ul>
+              <div className="mt-5 flex flex-wrap gap-2 justify-end">
+                <Button variant="secondary" onClick={() => setReplaceConfirm(false)}>취소</Button>
+                <Button variant="ghost" className="text-slate-600 hover:bg-slate-100" onClick={() => runAutoGen(false)} disabled={genLoading}>추가 생성</Button>
+                <Button variant="danger" onClick={() => runAutoGen(true)} disabled={genLoading}>기존 대체</Button>
+              </div>
+            </div>
           </Modal>
         </div>
       );
@@ -5290,6 +5519,7 @@
       const [estimates, setEstimates] = useState([]);
       const [printData, setPrintData] = useState(null);
       const [schedulePrintData, setSchedulePrintData] = useState(null); // v6-3 일정표 PDF
+      const [orderPrintData, setOrderPrintData] = useState(null); // v10 발주서 PDF
 
       const formRef = useRef(null);
 
@@ -5386,6 +5616,18 @@
         window.addEventListener('afterprint', after);
         return () => { clearTimeout(t); window.removeEventListener('afterprint', after); };
       }, [schedulePrintData]);
+
+      // ── v10: 발주서 인쇄(PDF): orderPrintData 세팅 → 인쇄 → 정리 (견적/일정 인쇄와 영역 분리) ──
+      const handlePrintOrders = useCallback((orders) => {
+        setOrderPrintData({ site: selectedSite, orders });
+      }, [selectedSite]);
+      useEffect(() => {
+        if (!orderPrintData) return;
+        const t = setTimeout(() => window.print(), 80);
+        const after = () => setOrderPrintData(null);
+        window.addEventListener('afterprint', after);
+        return () => { clearTimeout(t); window.removeEventListener('afterprint', after); };
+      }, [orderPrintData]);
 
       // ── 현장 등록/수정 ──
       const handleSaveSite = async (body) => {
@@ -5635,7 +5877,7 @@
                     procNames={procCatNames} onChanged={() => loadSites(selectedSite.id)} onPrint={handlePrint} />
                 )}
                 {activeTab === 'orders' && (
-                  <OrdersTab key={'ord-' + selectedSite.id} site={selectedSite} vendorNames={vendorNames} />
+                  <OrdersTab key={'ord-' + selectedSite.id} site={selectedSite} vendorNames={vendorNames} onPrintOrders={handlePrintOrders} />
                 )}
                 {activeTab === 'meetings_as' && (
                   <MeetingsAsTab key={'mas-' + selectedSite.id} site={selectedSite} staffNames={staffNames} />
@@ -5707,6 +5949,10 @@
         {/* 일정표 인쇄 영역 (견적과 분리 — 데이터가 세팅된 쪽만 내용이 렌더됨) */}
         <div id="schedule-print-area" className="print-only">
           {schedulePrintData && <SchedulePrint site={schedulePrintData.site} tasks={schedulePrintData.tasks} />}
+        </div>
+        {/* v10: 발주서 인쇄 영역 (견적/일정과 분리 — 데이터가 세팅된 쪽만 내용이 렌더됨) */}
+        <div id="orders-print-area" className="print-only">
+          {orderPrintData && <OrdersPrint site={orderPrintData.site} orders={orderPrintData.orders} />}
         </div>
         </>
       );

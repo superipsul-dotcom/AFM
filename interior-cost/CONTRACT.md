@@ -657,3 +657,42 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - 9-1: vendors trade/grade CRUD, `/api/vendors/import` upsert(신규 insert + 동일 name 재import 시 update).
 - 9-2: `/api/catalog/import` 신규/중복 upsert, source/price_date 반영. 기존 catalog GET 회귀.
 - v1~v8 회귀 무손상.
+
+---
+
+# v10 확장 — 발주 자동생성 + 필요시기 알림 + 발주서 PDF (⑦)
+
+> 견적 물량·일정을 읽어 발주서를 미리 만들고(담당자 확인·수정), 필요시기 도래 시 앱 내 알림. **카톡/문자 실발송은 보류**(PDF + 앱 내 알림만). v1~v9 100% 보존.
+
+## interior_orders 확장 (ADD COLUMN IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| need_date | date | **필요시기**(자재가 현장에 있어야 하는 날). 자동생성 시 추론, 담당자 수정 가능 |
+| auto_generated | boolean default false | 자동생성된 초안 표시 |
+- 기존 order_no/vendor/trade/title/amount/order_date/due_date/status/memo 유지.
+
+## 자동생성 (견적+일정 기반)
+- **POST /api/sites/:id/orders/auto-generate** body `{estimate_id?}`(미전달 시 해당 현장 최신 **confirmed** 견적) →
+  - 견적 항목을 **trade(공종)별로 그룹**핑 → 공종당 발주 초안 1건:
+    - `title='{공종} 자재 발주'`, `trade=공종`, `amount=`공종 재료비 합(Σ material_price×qty; 3분할 없으면 Σ amount), `vendor=''`, `status='대기'`, `auto_generated=true`, `order_no='PO-'+id`(생성 후).
+    - `need_date` = 그 공종 일정(interior_schedule.process=공종)의 **가장 이른 start_date − 3일**(리드타임). 해당 공종 일정 없으면 null.
+  - 응답 `{generated:n, orders:[...]}`. confirmed 견적 없으면 **404** `{error:'확정된 견적이 없습니다'}`. (재실행 시 중복 생성 — 담당자가 정리; auto_generated=true 기존분을 먼저 지우는 `?replace=1` 옵션 제공: replace=1이면 그 현장의 auto_generated=true·status='대기' 발주 삭제 후 재생성)
+- 자동생성 후에도 발주는 **기존 PUT/DELETE 로 자유 수정·삭제**(vendor 지정, need_date 조정 등).
+
+## 필요시기 알림 (앱 내)
+- **GET /api/sites/:id/summary** 에 `orderDueSoon`(need_date ≤ today+7 AND status NOT IN ('입고','정산완료') 인 발주 수) + `orderOverdue`(need_date < today AND 동일 미완료) 추가.
+- (선택) **GET /api/orders/alerts?within=7** → 전역(모든 현장) 임박 발주 배열 `{id,site_id,site_name,title,trade,need_date,dday,status}`(need_date ASC). 헤더 알림용.
+- 카톡/문자 실발송 없음(보류). 알림 = 앱 내 배지/리스트 + PDF.
+
+## 발주서 PDF
+- 프론트 `window.print` + @media print A4 발주서: 공급자(안도공간)/현장/발주번호/거래처/공종/품목/금액/발주일/납기/필요시기 + 합계. 단건 또는 목록.
+
+## UI (🧾 발주 탭)
+- **[⚡ 발주 자동생성]** 버튼(확정 견적 기반) → 생성된 공종별 발주 초안 목록 표시(`auto_generated` 뱃지). 재생성은 replace 확인.
+- 발주 행/폼에 **need_date(필요시기)** 추가 + **임박 강조**: D-7 이내 주황, 지남(overdue) 빨강, D-day 표기.
+- **[🖨 발주서 PDF]** 버튼(단건/목록).
+- 발주 탭 상단/프로젝트 헤더에 **임박 발주 배지**(orderDueSoon/overdue). 폴백 localStorage 도 need_date/auto 보존 + 클라 임박계산.
+
+## 검증
+- auto-generate: 확정 견적 → 공종별 발주 초안 생성(amount=공종 재료비합, need_date=일정−3일), confirmed 없으면 404, replace=1 재생성.
+- summary orderDueSoon/overdue 카운트. PDF 버튼 렌더. v1~v9 회귀.

@@ -461,6 +461,14 @@ async function initDB() {
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_takeoff_site ON interior_takeoff (site_id, created_at DESC);');
 
+  // ====================================================================
+  // (v10) 발주 자동생성 + 필요시기 알림 — interior_orders 확장
+  //   ADD COLUMN IF NOT EXISTS → v1~v9 데이터 100% 보존, 멱등.
+  //   need_date = 필요시기(자재가 현장에 있어야 하는 날), auto_generated = 자동생성 초안 표시.
+  // ====================================================================
+  await pool.query('ALTER TABLE interior_orders ADD COLUMN IF NOT EXISTS need_date DATE');
+  await pool.query('ALTER TABLE interior_orders ADD COLUMN IF NOT EXISTS auto_generated BOOLEAN NOT NULL DEFAULT FALSE');
+
   dbInitialized = true;
   console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as/takeoff) 준비 완료 + 카테고리/카탈로그 시드.');
 }
@@ -827,6 +835,8 @@ function rowToOrder(row) {
     due_date: row.due_date, // 'YYYY-MM-DD' | null
     status: row.status || '대기',
     memo: row.memo || '',
+    need_date: row.need_date, // (v10) 필요시기 'YYYY-MM-DD' | null
+    auto_generated: row.auto_generated === true, // (v10) 자동생성 초안 여부
     created_at: new Date(row.created_at).toISOString(),
   };
 }
@@ -884,7 +894,8 @@ const CATALOG_COLS =
 // (v5) 노션 서브-DB 컬럼 (DATE 는 to_char 직렬화, BIGINT 금액은 rowTo* 에서 Number)
 const CLIENT_COLS = 'id, name, phone, email, source, status, address, memo, active, created_at';
 const ORDER_COLS =
-  "id, site_id, order_no, vendor, trade, title, amount, to_char(order_date,'YYYY-MM-DD') AS order_date, to_char(due_date,'YYYY-MM-DD') AS due_date, status, memo, created_at";
+  "id, site_id, order_no, vendor, trade, title, amount, to_char(order_date,'YYYY-MM-DD') AS order_date, to_char(due_date,'YYYY-MM-DD') AS due_date, status, memo, " +
+  "to_char(need_date,'YYYY-MM-DD') AS need_date, auto_generated, created_at"; // (v10) need_date/auto_generated 확장
 const MEETING_COLS =
   "id, site_id, to_char(meeting_date,'YYYY-MM-DD') AS meeting_date, title, attendees, content, next_action, created_at";
 const AS_COLS =
@@ -1305,6 +1316,21 @@ function validateOrder(body) {
     status = ORDER_STATES.includes(s) ? s : '대기';
   }
 
+  // (v10) 필요시기(need_date): 유효 날짜면 그 값, 아니면 null.
+  //   POST=미설정(null), PUT=COALESCE 로 기존값 보존 → "미전달 보존".
+  let need_date = null;
+  if (typeof b.need_date === 'string' && b.need_date.trim()) {
+    const nd = b.need_date.trim();
+    if (!isRealDate(nd)) return { valid: false, message: 'need_date 는 유효한 YYYY-MM-DD 형식이어야 합니다.' };
+    need_date = nd;
+  }
+
+  // (v10) auto_generated: 본문에 명시되면 boolean, 미전달이면 null(PUT=기존 보존 / POST=false 기본).
+  let auto_generated = null;
+  if (b.auto_generated !== undefined && b.auto_generated !== null) {
+    auto_generated = parseBool(b.auto_generated, false);
+  }
+
   return {
     valid: true,
     values: {
@@ -1317,6 +1343,8 @@ function validateOrder(body) {
       due_date,
       status,
       memo: typeof b.memo === 'string' ? b.memo.trim() : '',
+      need_date, // (v10) 'YYYY-MM-DD' | null
+      auto_generated, // (v10) boolean | null(미전달)
     },
   };
 }
@@ -3065,12 +3093,18 @@ app.get('/api/sites/:id/summary', async (req, res) => {
     s.client_name = clientName; // rowToSite(s) 가 집어가도록 주입
 
     // (v5) 서브-DB 카운트(프로젝트 헤더 뱃지용) — 발주/미팅/AS 건수 + 미완료 AS 건수.
+    //   (v10) orderDueSoon = need_date ≤ today+7 & 미완료(입고/정산완료 제외) 발주 수,
+    //         orderOverdue = need_date < today & 동일 미완료 발주 수. (need_date NULL 은 제외)
     const cntQ = await pool.query(
       `SELECT
          (SELECT COUNT(*) FROM interior_orders   WHERE site_id=$1) AS order_count,
          (SELECT COUNT(*) FROM interior_meetings WHERE site_id=$1) AS meeting_count,
          (SELECT COUNT(*) FROM interior_as       WHERE site_id=$1) AS as_count,
-         (SELECT COUNT(*) FROM interior_as       WHERE site_id=$1 AND status <> '완료') AS as_open_count`,
+         (SELECT COUNT(*) FROM interior_as       WHERE site_id=$1 AND status <> '완료') AS as_open_count,
+         (SELECT COUNT(*) FROM interior_orders   WHERE site_id=$1 AND need_date IS NOT NULL
+            AND need_date <= CURRENT_DATE + 7 AND status NOT IN ('입고','정산완료')) AS order_due_soon,
+         (SELECT COUNT(*) FROM interior_orders   WHERE site_id=$1 AND need_date IS NOT NULL
+            AND need_date < CURRENT_DATE AND status NOT IN ('입고','정산완료')) AS order_overdue`,
       [id]
     );
     const cnt = cntQ.rows[0];
@@ -3095,6 +3129,9 @@ app.get('/api/sites/:id/summary', async (req, res) => {
       meetingCount: Number(cnt.meeting_count),
       asCount: Number(cnt.as_count),
       asOpenCount: Number(cnt.as_open_count),
+      // (v10) 발주 필요시기 알림 카운트 (need_date 기준)
+      orderDueSoon: Number(cnt.order_due_soon),
+      orderOverdue: Number(cnt.order_overdue),
     });
   } catch (err) {
     console.error('GET /api/sites/:id/summary 오류:', err.message);
@@ -3468,9 +3505,10 @@ app.post('/api/sites/:id/orders', async (req, res) => {
     if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
 
     const ins = await pool.query(
-      `INSERT INTO interior_orders (site_id, order_no, vendor, trade, title, amount, order_date, due_date, status, memo)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${ORDER_COLS}`,
-      [id, v.order_no, v.vendor, v.trade, v.title, v.amount, v.order_date, v.due_date, v.status, v.memo]
+      `INSERT INTO interior_orders (site_id, order_no, vendor, trade, title, amount, order_date, due_date, status, memo, need_date, auto_generated)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING ${ORDER_COLS}`,
+      [id, v.order_no, v.vendor, v.trade, v.title, v.amount, v.order_date, v.due_date, v.status, v.memo,
+       v.need_date, v.auto_generated === null ? false : v.auto_generated]
     );
     let row = ins.rows[0];
     // order_no 미전달 → 'PO-'+id 자동 세팅 후 재조회
@@ -3488,6 +3526,145 @@ app.post('/api/sites/:id/orders', async (req, res) => {
   }
 });
 
+// ----------------------------------------
+// (v10) POST /api/sites/:id/orders/auto-generate — 확정 견적 + 일정 기반 공종별 발주 초안 자동생성
+//   body {estimate_id?} (미전달 시 해당 현장 최신 status='confirmed' 견적). 확정 견적 없으면 404.
+//   ?replace=1 → 그 현장의 auto_generated=true·status='대기' 발주를 먼저 삭제 후 재생성(중복 누적 방지).
+//   공종(trade)별 그룹 → 공종당 발주 1건:
+//     amount = Σ round(material_price×qty)(해당 공종; 0/없으면 Σ amount 로 폴백),
+//     need_date = interior_schedule(process=공종) min(start_date) − 3일(없으면 null),
+//     title='{공종} 자재 발주', vendor='', status='대기', auto_generated=true, order_no='PO-'+id.
+//   trade 빈 항목은 '기타'로 묶음. 전 과정 트랜잭션.
+// ----------------------------------------
+app.post('/api/sites/:id/orders/auto-generate', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+
+    // 현장 존재 확인
+    const site = await pool.query('SELECT id FROM interior_sites WHERE id=$1', [id]);
+    if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+    // 견적 해석: estimate_id 주어지면 그 현장 소속 견적, 아니면 최신 confirmed.
+    const estIdRaw = (req.body || {}).estimate_id;
+    let estRow;
+    if (estIdRaw !== undefined && estIdRaw !== null && String(estIdRaw).trim() !== '') {
+      const eid = parseId(estIdRaw);
+      if (!eid) return res.status(400).json({ success: false, message: '잘못된 견적 id 형식입니다.' });
+      const q = await pool.query('SELECT id FROM interior_estimates WHERE id=$1 AND site_id=$2', [eid, id]);
+      estRow = q.rows[0];
+    } else {
+      const q = await pool.query(
+        "SELECT id FROM interior_estimates WHERE site_id=$1 AND status='confirmed' ORDER BY created_at DESC, id DESC LIMIT 1",
+        [id]
+      );
+      estRow = q.rows[0];
+    }
+    if (!estRow) return res.status(404).json({ error: '확정된 견적이 없습니다' });
+
+    // 견적 항목 로드 → 공종(trade)별 그룹 (matSum=Σ round(material_price×qty), amtSum=Σ amount)
+    const itemsQ = await pool.query(
+      `SELECT ${ITEM_COLS} FROM interior_estimate_items WHERE estimate_id=$1 ORDER BY sort_order ASC, id ASC`,
+      [estRow.id]
+    );
+    const items = itemsQ.rows.map(rowToItem);
+    const groups = new Map(); // trade → { matSum, amtSum }
+    for (const it of items) {
+      const trade = it.trade && it.trade.trim() ? it.trade.trim() : '기타';
+      const qv = Number(it.qty);
+      const qty = Number.isFinite(qv) ? qv : 0;
+      const g = groups.get(trade) || { matSum: 0, amtSum: 0 };
+      g.matSum += Math.round(qty * (Number(it.material_price) || 0));
+      g.amtSum += itemAmount(it);
+      groups.set(trade, g);
+    }
+
+    // 공종별 need_date: interior_schedule(process) 의 min(start_date) − 3일 (1회 집계, N+1 금지)
+    const ndQ = await pool.query(
+      "SELECT process, to_char(MIN(start_date) - 3, 'YYYY-MM-DD') AS need_date FROM interior_schedule WHERE site_id=$1 GROUP BY process",
+      [id]
+    );
+    const needDateByProcess = new Map();
+    for (const r of ndQ.rows) needDateByProcess.set(r.process || '', r.need_date);
+
+    // 트랜잭션: (replace) 기존 자동초안 삭제 → 공종별 INSERT → order_no='PO-'+id
+    const replace = req.query.replace === '1' || req.query.replace === 'true';
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (replace) {
+        await client.query(
+          "DELETE FROM interior_orders WHERE site_id=$1 AND auto_generated=TRUE AND status='대기'",
+          [id]
+        );
+      }
+      const created = [];
+      for (const [trade, g] of groups) {
+        const amount = g.matSum > 0 ? g.matSum : g.amtSum;
+        const need_date = needDateByProcess.has(trade) ? needDateByProcess.get(trade) : null;
+        const ins = await client.query(
+          `INSERT INTO interior_orders (site_id, order_no, vendor, trade, title, amount, status, memo, need_date, auto_generated)
+           VALUES ($1, '', '', $2, $3, $4, '대기', '', $5, TRUE) RETURNING ${ORDER_COLS}`,
+          [id, trade, `${trade} 자재 발주`, amount, need_date]
+        );
+        const upd = await client.query(
+          `UPDATE interior_orders SET order_no=$1 WHERE id=$2 RETURNING ${ORDER_COLS}`,
+          ['PO-' + ins.rows[0].id, ins.rows[0].id]
+        );
+        created.push(rowToOrder(upd.rows[0]));
+      }
+      await client.query('COMMIT');
+      res.json({ generated: created.length, orders: created });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('POST /api/sites/:id/orders/auto-generate 오류:', err.message);
+    res.status(500).json({ success: false, message: '발주 자동생성에 실패했습니다.' });
+  }
+});
+
+// ----------------------------------------
+// (v10) GET /api/orders/alerts?within=7 — 전역(모든 현장) 임박 발주 배열 (헤더 알림용)
+//   need_date IS NOT NULL AND need_date ≤ today+within AND status NOT IN ('입고','정산완료'). need_date ASC.
+//   GET /api/orders/:id 는 없으므로 경로 충돌 없음.
+// ----------------------------------------
+app.get('/api/orders/alerts', async (req, res) => {
+  try {
+    let within = Number(req.query.within);
+    if (!Number.isFinite(within) || within < 0) within = 7;
+    within = Math.min(Math.round(within), 365); // 과도한 범위 방지
+    const { rows } = await pool.query(
+      `SELECT o.id, o.site_id, s.name AS site_name, o.title, o.trade,
+              to_char(o.need_date,'YYYY-MM-DD') AS need_date,
+              (o.need_date - CURRENT_DATE) AS dday, o.status
+       FROM interior_orders o JOIN interior_sites s ON s.id = o.site_id
+       WHERE o.need_date IS NOT NULL AND o.need_date <= CURRENT_DATE + $1::int
+         AND o.status NOT IN ('입고','정산완료')
+       ORDER BY o.need_date ASC, o.id ASC`,
+      [within]
+    );
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        site_id: r.site_id,
+        site_name: r.site_name,
+        title: r.title,
+        trade: r.trade || '',
+        need_date: r.need_date,
+        dday: Number(r.dday),
+        status: r.status || '대기',
+      }))
+    );
+  } catch (err) {
+    console.error('GET /api/orders/alerts 오류:', err.message);
+    res.status(500).json({ success: false, message: '발주 알림을 불러오지 못했습니다.' });
+  }
+});
+
 app.put('/api/orders/:id', async (req, res) => {
   try {
     const id = parseId(req.params.id);
@@ -3497,11 +3674,14 @@ app.put('/api/orders/:id', async (req, res) => {
     const v = check.values;
     // order_no 가 비면 'PO-'+id 로 유지(공란 방지 — POST 자동생성 규칙과 일관).
     const orderNo = v.order_no ? v.order_no : 'PO-' + id;
+    // (v10) need_date/auto_generated 는 미전달(null)이면 COALESCE 로 기존값 보존 → 기존 프론트 PUT 회귀 안전.
     const { rows } = await pool.query(
       `UPDATE interior_orders
-       SET order_no=$1, vendor=$2, trade=$3, title=$4, amount=$5, order_date=$6, due_date=$7, status=$8, memo=$9
+       SET order_no=$1, vendor=$2, trade=$3, title=$4, amount=$5, order_date=$6, due_date=$7, status=$8, memo=$9,
+           need_date=COALESCE($11::date, need_date), auto_generated=COALESCE($12::boolean, auto_generated)
        WHERE id=$10 RETURNING ${ORDER_COLS}`,
-      [orderNo, v.vendor, v.trade, v.title, v.amount, v.order_date, v.due_date, v.status, v.memo, id]
+      [orderNo, v.vendor, v.trade, v.title, v.amount, v.order_date, v.due_date, v.status, v.memo, id,
+       v.need_date, v.auto_generated]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 발주서를 찾을 수 없습니다.' });
     res.json(rowToOrder(rows[0]));
