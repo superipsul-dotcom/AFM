@@ -136,6 +136,46 @@
     const SUPPLIER = { name: '안도공간', en: 'ANDO SPACE', biz: '인테리어 설계·시공', contact: '' };
 
     // ──────────────────────────────────────────
+    // v17: 공유링크 유틸 (견적/발주 읽기전용 공개 뷰)
+    // ──────────────────────────────────────────
+    // 랜덤 공유 토큰(오프라인 폴백용 — 서버는 crypto 발급). 32-hex.
+    function genShareToken() {
+      try {
+        const a = new Uint8Array(16); (window.crypto || window.msCrypto).getRandomValues(a);
+        return Array.from(a).map((b) => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        return (uid() + uid() + Date.now().toString(36)).replace(/[^a-z0-9]/gi, '').slice(0, 32);
+      }
+    }
+    // 공유 URL(표시/복사용) — 정적 호스트에서도 라우팅되도록 해시 형식으로 구성.
+    // 서버 응답 url('/share/<kind>/<token>')과 동일 경로를 해시로 감싼다.
+    function buildShareUrl(kind, token) {
+      return location.origin + location.pathname + '#/share/' + kind + '/' + encodeURIComponent(token);
+    }
+    // 부팅 시 공유 경로 감지 — 해시(#/share/...) 우선, 쿼리(?share=...) · 실제 경로(/share/...)도 지원.
+    function parseShareRoute() {
+      const rx = /(?:^|\/)share\/(estimate|order)\/([^/?#]+)/;
+      const hash = (location.hash || '').replace(/^#/, '');
+      let m = hash.match(rx);
+      if (m) return { kind: m[1], token: decodeURIComponent(m[2]) };
+      const sv = new URLSearchParams(location.search || '').get('share');
+      if (sv) { m = sv.match(/^(estimate|order)\/([^/?#]+)/); if (m) return { kind: m[1], token: decodeURIComponent(m[2]) }; }
+      m = (location.pathname || '').match(rx);
+      if (m) return { kind: m[1], token: decodeURIComponent(m[2]) };
+      return null;
+    }
+    // 클립보드 복사 (navigator.clipboard → execCommand 폴백)
+    async function copyToClipboard(text) {
+      try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; } } catch (e) {}
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        const ok = document.execCommand('copy'); document.body.removeChild(ta); return ok;
+      } catch (e) { return false; }
+    }
+
+    // ──────────────────────────────────────────
     // v3: 실무 견적 엔진 (공종 · 3분할단가 · 원가계산서 · 단가 카탈로그)
     // ──────────────────────────────────────────
     const CATALOG_KEY = 'interior_catalog_v1';
@@ -663,6 +703,20 @@
           clearToken();
           if (typeof api._onUnauthorized === 'function') api._onUnauthorized();
         }
+        if (!res.ok) {
+          let msg = 'HTTP ' + res.status;
+          try { const j = await res.json(); if (j && j.error) msg = j.error; else if (j && j.message) msg = j.message; } catch {}
+          const err = new Error(msg); err.status = res.status; throw err;
+        }
+        return res.json();
+      },
+
+      // v17: 공개 공유용 fetch — Authorization 미부착, 401(비번틀림) 시 앱 토큰/리다이렉트 건드리지 않음.
+      async _publicFetch(url, opts) {
+        opts = opts || {};
+        const { headers: optHeaders, ...rest } = opts;
+        const headers = { 'Content-Type': 'application/json', ...(optHeaders || {}) };
+        const res = await fetch(url, { ...rest, headers });
         if (!res.ok) {
           let msg = 'HTTP ' + res.status;
           try { const j = await res.json(); if (j && j.error) msg = j.error; else if (j && j.message) msg = j.message; } catch {}
@@ -1254,6 +1308,61 @@
         }
       },
 
+      // ════════ v17: 견적 공유링크 (읽기전용 공개뷰 + 선택적 비밀번호) ════════
+      // password 미전달=기존유지 · ''=비번제거 · 문자열=설정. 응답 {share_token,url,hasPassword}
+      async shareEstimate(id, opts = {}) {
+        const body = {};
+        if (opts.password !== undefined) body.password = opts.password;
+        try { const d = await this._tryFetch(`${API_BASE_URL}/estimates/${id}/share`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = estimatesStore.read();
+          const cur = list.find((x) => String(x.id) === String(id));
+          if (!cur) { const err = new Error('견적을 찾을 수 없습니다.'); err.status = 404; throw err; }
+          const token = cur.share_token || genShareToken();
+          let pwd = cur.share_password || '';
+          if (opts.password !== undefined) pwd = opts.password ? String(opts.password) : '';
+          const upd = { ...cur, share_token: token, share_password: pwd };
+          estimatesStore.write(list.map((x) => (String(x.id) === String(id) ? upd : x)));
+          return { share_token: token, url: '/share/estimate/' + token, hasPassword: !!pwd };
+        }
+      },
+      async unshareEstimate(id) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/estimates/${id}/share`, { method: 'DELETE' }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = estimatesStore.read();
+          const cur = list.find((x) => String(x.id) === String(id));
+          if (cur) { const upd = { ...cur, share_token: null, share_password: '' }; estimatesStore.write(list.map((x) => (String(x.id) === String(id) ? upd : x))); }
+          return { success: true };
+        }
+      },
+      // 공개(무토큰): password 미전달=GET(비번설정 시 {requiresPassword}) · 전달=POST 검증
+      async fetchSharedEstimate(token, password) {
+        const url = `${API_BASE_URL}/share/estimate/${encodeURIComponent(token)}`;
+        try {
+          const d = (password === undefined || password === null)
+            ? await this._publicFetch(url)
+            : await this._publicFetch(url, { method: 'POST', body: JSON.stringify({ password }) });
+          this._useMock = false; return d;
+        } catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const cur = estimatesStore.read().find((x) => x.share_token && String(x.share_token) === String(token));
+          if (!cur) { const err = new Error('공유를 찾을 수 없습니다.'); err.status = 404; throw err; }
+          if (cur.share_password) {
+            if (password === undefined || password === null) return { requiresPassword: true };
+            if (String(password) !== String(cur.share_password)) { const err = new Error('비밀번호가 올바르지 않습니다.'); err.status = 401; throw err; }
+          }
+          const items = (cur.items || []).slice().sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          const site = sitesStore.read().find((s) => String(s.id) === String(cur.site_id)) || null;
+          return {
+            estimate: { ...cur, items, totals: computeTotals(cur) },
+            site: site ? { name: site.name, address: site.address, client: site.client } : null,
+            supplier: SUPPLIER,
+          };
+        }
+      },
+
       // ════════ v3: 단가 카탈로그 (catalog) ════════
       async listTrades() {
         try { const d = await this._tryFetch(`${API_BASE_URL}/catalog/trades`); this._useMock = false; return d; }
@@ -1462,6 +1571,57 @@
       async removeOrder(id) {
         try { await this._tryFetch(`${API_BASE_URL}/orders/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
         catch (e) { if (e.status) throw e; this._useMock = true; ordersStore.write(ordersStore.read().filter((o) => String(o.id) !== String(id))); return { success: true }; }
+      },
+      // ════════ v17: 발주 공유링크 (견적과 동형) ════════
+      async shareOrder(id, opts = {}) {
+        const body = {};
+        if (opts.password !== undefined) body.password = opts.password;
+        try { const d = await this._tryFetch(`${API_BASE_URL}/orders/${id}/share`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = ordersStore.read();
+          const cur = list.find((x) => String(x.id) === String(id));
+          if (!cur) { const err = new Error('발주를 찾을 수 없습니다.'); err.status = 404; throw err; }
+          const token = cur.share_token || genShareToken();
+          let pwd = cur.share_password || '';
+          if (opts.password !== undefined) pwd = opts.password ? String(opts.password) : '';
+          const upd = { ...cur, share_token: token, share_password: pwd };
+          ordersStore.write(list.map((x) => (String(x.id) === String(id) ? upd : x)));
+          return { share_token: token, url: '/share/order/' + token, hasPassword: !!pwd };
+        }
+      },
+      async unshareOrder(id) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/orders/${id}/share`, { method: 'DELETE' }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = ordersStore.read();
+          const cur = list.find((x) => String(x.id) === String(id));
+          if (cur) { const upd = { ...cur, share_token: null, share_password: '' }; ordersStore.write(list.map((x) => (String(x.id) === String(id) ? upd : x))); }
+          return { success: true };
+        }
+      },
+      async fetchSharedOrder(token, password) {
+        const url = `${API_BASE_URL}/share/order/${encodeURIComponent(token)}`;
+        try {
+          const d = (password === undefined || password === null)
+            ? await this._publicFetch(url)
+            : await this._publicFetch(url, { method: 'POST', body: JSON.stringify({ password }) });
+          this._useMock = false; return d;
+        } catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const cur = ordersStore.read().find((x) => x.share_token && String(x.share_token) === String(token));
+          if (!cur) { const err = new Error('공유를 찾을 수 없습니다.'); err.status = 404; throw err; }
+          if (cur.share_password) {
+            if (password === undefined || password === null) return { requiresPassword: true };
+            if (String(password) !== String(cur.share_password)) { const err = new Error('비밀번호가 올바르지 않습니다.'); err.status = 401; throw err; }
+          }
+          const site = sitesStore.read().find((s) => String(s.id) === String(cur.site_id)) || null;
+          return {
+            order: { ...cur },
+            site: site ? { name: site.name, address: site.address, client: site.client } : null,
+            supplier: SUPPLIER,
+          };
+        }
       },
       // ════════ v10: 발주 자동생성 (확정 견적 → 공종별 발주 초안) ════════
       async autoGenerateOrders(siteId, opts = {}) {
@@ -4296,6 +4456,7 @@
       const mk = () => ({ _k: uid(), trade: '', name: '', spec: '', unit: '', qty: '1', material_price: '', labor_price: '', sub_price: '', memo: '', catalog_id: null });
       const isSaved = !!(initial && initial.id);
       const confirmed = !!(initial && initial.status === 'confirmed');
+      const [shareOpen, setShareOpen] = useState(false); // v17: 공유 모달
       const [header, setHeader] = useState(() => {
         const h = {
           title: (initial && initial.title) || '견적서',
@@ -4619,6 +4780,7 @@
                 공종별 페이지 분할
               </label>
               <Button variant="secondary" onClick={() => onPrint({ ...toEstimate(), _splitByTrade: pageBreakByTrade })}>🖨 인쇄(PDF)</Button>
+              {isSaved && <Button variant="secondary" onClick={() => setShareOpen(true)} title="로그인 없이 열람 가능한 읽기전용 공유 링크를 생성합니다.">🔗 공유</Button>}
               {isSaved && (confirmed
                 ? <Button variant="ghost" onClick={onUnconfirm}>초안으로</Button>
                 : <Button variant="ghost" className="text-emerald-700 hover:bg-emerald-50" onClick={onConfirm} title="확정 시 현장 예산이 이 견적 합계로 갱신됩니다.">✅ 확정</Button>)}
@@ -4632,6 +4794,12 @@
             trades={trades} mode={picker.targetIdx == null ? 'append' : 'replace'} onPick={pickCatalog} />
           <TakeoffPickerModal isOpen={takeoffOpen} onClose={() => setTakeoffOpen(false)}
             siteId={site && site.id} onAdd={addTakeoffRows} />
+          {isSaved && (
+            <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} kind="estimate"
+              id={initial.id} title={header.title}
+              initialToken={initial.share_token || null}
+              initialHasPassword={!!(initial.share_password_hash || initial.has_password || initial.share_password)} />
+          )}
         </div>
       );
     }
@@ -5207,6 +5375,7 @@
       const [editorOpen, setEditorOpen] = useState(false);
       const [editing, setEditing] = useState(null);
       const [delTarget, setDelTarget] = useState(null);
+      const [shareTarget, setShareTarget] = useState(null); // v17: 공유 대상 발주
       const [genLoading, setGenLoading] = useState(false);
       const [replaceConfirm, setReplaceConfirm] = useState(false);
       const reload = useCallback(async () => {
@@ -5330,6 +5499,7 @@
                         <td className="py-2 pr-3"><Badge color={ORDER_STATUS_COLOR[o.status] || 'bg-slate-400'}>{o.status || '대기'}</Badge></td>
                         <td className="py-2 text-right whitespace-nowrap">
                           <button onClick={() => printOne(o)} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="이 발주서만 PDF/인쇄">🖨</button>
+                          <button onClick={() => setShareTarget(o)} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50" title="공유 링크 생성(읽기전용)">🔗</button>
                           <button onClick={() => { setEditing(o); setEditorOpen(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
                           <button onClick={() => setDelTarget(o)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
                         </td>
@@ -5374,6 +5544,11 @@
               </div>
             </div>
           </Modal>
+          <ShareModal isOpen={!!shareTarget} onClose={() => setShareTarget(null)} kind="order"
+            id={shareTarget && shareTarget.id} title={shareTarget && shareTarget.title}
+            initialToken={(shareTarget && shareTarget.share_token) || null}
+            initialHasPassword={!!(shareTarget && (shareTarget.share_password_hash || shareTarget.has_password || shareTarget.share_password))}
+            onChanged={reload} />
         </div>
       );
     }
@@ -6846,6 +7021,223 @@
     // ========================================
     // v13: 인증 화면 (로그인 / 회원가입 탭 + 초대코드)
     // ========================================
+    // ========================================
+    // v17: 공유 모달(앱 내) + 공개 공유 뷰(무로그인)
+    // ========================================
+    // 견적/발주 상세·행에서 열리는 공유 설정 모달. kind: 'estimate' | 'order'
+    function ShareModal({ isOpen, onClose, kind, id, title, initialToken = null, initialHasPassword = false, onChanged }) {
+      const toast = useToast();
+      const [usePw, setUsePw] = useState(!!initialHasPassword);
+      const [pw, setPw] = useState('');
+      const [token, setToken] = useState(initialToken);
+      const [hasPassword, setHasPassword] = useState(!!initialHasPassword);
+      const [busy, setBusy] = useState(false);
+      const [copied, setCopied] = useState(false);
+      const label = kind === 'order' ? '발주서' : '견적서';
+
+      // 다른 레코드로 열릴 때 상태 초기화
+      useEffect(() => {
+        if (!isOpen) return;
+        setToken(initialToken); setHasPassword(!!initialHasPassword);
+        setUsePw(!!initialHasPassword); setPw(''); setCopied(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [isOpen, id]);
+
+      const shareUrl = token ? buildShareUrl(kind, token) : '';
+
+      const doShare = async () => {
+        if (busy) return;
+        const opts = {};
+        if (usePw) { if (!pw.trim()) { toast('비밀번호를 입력하거나 ‘비밀번호로 보호’를 해제하세요.', 'error'); return; } opts.password = pw; }
+        else if (hasPassword) { opts.password = ''; } // 기존 비번 제거
+        setBusy(true);
+        try {
+          const fn = kind === 'order' ? api.shareOrder : api.shareEstimate;
+          const d = await fn.call(api, id, opts);
+          setToken(d.share_token); setHasPassword(!!d.hasPassword);
+          if (d.hasPassword) setUsePw(true);
+          toast(token ? '공유 설정이 적용되었습니다.' : '공유 링크가 생성되었습니다.', 'success');
+          if (onChanged) onChanged();
+        } catch (e) { toast(e.status === 404 ? '대상을 찾을 수 없습니다.' : '공유에 실패했습니다.', 'error'); }
+        finally { setBusy(false); }
+      };
+
+      const doUnshare = async () => {
+        if (busy) return;
+        setBusy(true);
+        try {
+          const fn = kind === 'order' ? api.unshareOrder : api.unshareEstimate;
+          await fn.call(api, id);
+          setToken(null); setHasPassword(false); setUsePw(false); setPw('');
+          toast('공유가 해제되었습니다.', 'info');
+          if (onChanged) onChanged();
+        } catch (e) { toast('해제에 실패했습니다.', 'error'); }
+        finally { setBusy(false); }
+      };
+
+      const doCopy = async () => {
+        const ok = await copyToClipboard(shareUrl);
+        if (ok) { setCopied(true); toast('공유 링크를 복사했습니다.', 'success'); setTimeout(() => setCopied(false), 1600); }
+        else { toast('복사에 실패했습니다. 링크를 직접 선택해 복사하세요.', 'error'); }
+      };
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`🔗 ${label} 공유`} size="md">
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              저장된 {label}를 <b className="text-slate-700">로그인 없이 열람 가능한 읽기전용 링크</b>로 외부(고객)에게 공유합니다.
+              {title ? <> · <span className="text-slate-600 font-medium">{title}</span></> : null}
+            </p>
+
+            {token && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                  <span>✅ 공유 중</span>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full ${hasPassword ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                    {hasPassword ? '🔒 비밀번호 보호' : '🔓 비밀번호 없음'}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <input readOnly value={shareUrl} onFocus={(e) => e.target.select()} aria-label="공유 링크"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-emerald-200 bg-white text-xs text-slate-700 font-mono" />
+                  <Button size="sm" onClick={doCopy}>{copied ? '✓ 복사됨' : '복사'}</Button>
+                </div>
+                <p className="text-[11px] text-emerald-700/80">이 링크를 받은 사람은 로그인 없이 열람·인쇄(PDF)할 수 있습니다.</p>
+              </div>
+            )}
+
+            <div className="rounded-xl border border-slate-200 p-3.5 space-y-2.5">
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                <input type="checkbox" checked={usePw} onChange={(e) => { setUsePw(e.target.checked); if (!e.target.checked) setPw(''); }} />
+                비밀번호로 보호
+              </label>
+              {usePw && (
+                <Input type="password" placeholder={hasPassword ? '새 비밀번호(변경 시 입력)' : '공유 비밀번호'} value={pw}
+                  onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />
+              )}
+              {!usePw && hasPassword && token && (
+                <p className="text-[11px] text-amber-600">‘설정 적용’ 시 기존 비밀번호가 <b>제거</b>되어 누구나 열람할 수 있게 됩니다.</p>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-between items-center pt-1">
+              <div>{token && <Button variant="ghost" className="text-red-600 hover:bg-red-50" onClick={doUnshare} disabled={busy}>공유 해제</Button>}</div>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={onClose}>닫기</Button>
+                <Button onClick={doShare} disabled={busy}>{busy ? '처리 중…' : (token ? '설정 적용' : '공유 링크 생성')}</Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    // 공개 공유 뷰 — 앱 부팅 시 URL이 공유 경로면 로그인 게이트 대신 렌더(무로그인/독립)
+    function ShareView({ kind, token }) {
+      const [phase, setPhase] = useState('loading'); // loading | password | ready | error
+      const [data, setData] = useState(null);
+      const [pw, setPw] = useState('');
+      const [err, setErr] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+      const label = kind === 'order' ? '발주서' : '견적서';
+
+      const load = useCallback(async (password) => {
+        setErr('');
+        try {
+          const fn = kind === 'order' ? api.fetchSharedOrder : api.fetchSharedEstimate;
+          const d = await fn.call(api, token, password);
+          if (d && d.requiresPassword) { setPhase('password'); return; }
+          setData(d); setPhase('ready');
+        } catch (e) {
+          if (e && e.status === 401) { setPhase('password'); if (password != null) setErr('비밀번호가 올바르지 않습니다.'); }
+          else if (e && e.status === 404) { setPhase('error'); setErr('존재하지 않거나 해제된 공유 링크입니다.'); }
+          else { setPhase('error'); setErr('공유 내용을 불러오지 못했습니다. 잠시 후 다시 시도하세요.'); }
+        }
+      }, [kind, token]);
+
+      useEffect(() => { load(); }, [load]);
+
+      const submitPw = async (e) => {
+        e.preventDefault();
+        if (!pw) { setErr('비밀번호를 입력하세요.'); return; }
+        setSubmitting(true); await load(pw); setSubmitting(false);
+      };
+
+      if (phase === 'loading') {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-100">
+            <div className="flex flex-col items-center gap-3 text-slate-400">
+              <div className="w-8 h-8 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin"></div>
+              <span className="text-sm">공유 문서를 불러오는 중…</span>
+            </div>
+          </div>
+        );
+      }
+
+      if (phase === 'error') {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
+            <Card className="p-8 max-w-md w-full text-center">
+              <div className="text-4xl mb-3">🔗</div>
+              <h1 className="text-lg font-bold text-slate-800">공유 링크를 열 수 없습니다</h1>
+              <p className="text-sm text-slate-500 mt-2">{err}</p>
+              <p className="text-[11px] text-slate-400 mt-4">문서를 공유한 담당자에게 새 링크를 요청하세요.</p>
+            </Card>
+          </div>
+        );
+      }
+
+      if (phase === 'password') {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-10">
+            <div className="w-full max-w-sm">
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-2">🔒</div>
+                <h1 className="text-lg font-extrabold text-slate-800">{SUPPLIER.name} · {label} 공유</h1>
+                <p className="text-sm text-slate-400 mt-1">비밀번호로 보호된 문서입니다.</p>
+              </div>
+              <Card className="p-6">
+                <form onSubmit={submitPw} className="space-y-4">
+                  <Input label="비밀번호" type="password" autoComplete="off" value={pw}
+                    onChange={(e) => setPw(e.target.value)} placeholder="공유 비밀번호를 입력하세요" autoFocus />
+                  {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{err}</div>}
+                  <Button type="submit" size="lg" disabled={submitting} className="w-full">
+                    {submitting ? '확인 중…' : '열람하기'}
+                  </Button>
+                </form>
+              </Card>
+              <p className="text-center text-[11px] text-slate-400 mt-4">비밀번호는 문서를 공유한 담당자에게 문의하세요.</p>
+            </div>
+          </div>
+        );
+      }
+
+      // ready — 읽기전용·인쇄 가능 레이아웃 (기존 견적/발주 인쇄 컴포넌트 재사용)
+      const orders = data && (data.orders || (data.order ? [data.order] : []));
+      return (
+        <div className="min-h-screen bg-slate-100 py-8 px-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="no-print flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <span className="text-lg">🏗️</span>
+                <span className="font-semibold text-slate-700">{SUPPLIER.name}</span>
+                <span className="text-slate-300">|</span>
+                <span>{label} 공유</span>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">읽기전용</span>
+              </div>
+              <Button size="sm" onClick={() => window.print()}>🖨 인쇄 / PDF 저장</Button>
+            </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-10">
+              {kind === 'order'
+                ? <OrdersPrint site={data.site} orders={orders} />
+                : <EstimatePrint site={data.site} estimate={data.estimate} totals={data.estimate && data.estimate.totals} />}
+            </div>
+            <p className="no-print text-center text-[11px] text-slate-400 mt-4">본 문서는 {SUPPLIER.name}에서 공유한 읽기전용 문서입니다.</p>
+          </div>
+        </div>
+      );
+    }
+
     function AuthScreen({ onAuthed }) {
       const [mode, setMode] = useState('login'); // login | signup
       const [email, setEmail] = useState('');
@@ -6943,6 +7335,8 @@
     // v13: 인증 게이트 (부팅 → 토큰검사: 앱 / 로그인화면 / 오프라인 데모)
     // ========================================
     function AuthGate() {
+      // v17: 공유 경로면 로그인 게이트 대신 공개 ShareView 렌더 (부팅 1회 감지)
+      const [shareRoute] = useState(() => parseShareRoute());
       const [status, setStatus] = useState('checking'); // checking | guest | authed | demo
       const [user, setUser] = useState(null);
       const statusRef = useRef('checking');
@@ -6960,6 +7354,7 @@
       }, []);
 
       const boot = useCallback(async () => {
+        if (parseShareRoute()) return; // 공유 경로면 인증 부팅 스킵(ShareView가 대신 렌더)
         setStatus('checking');
         try {
           const data = await api.authMe(); // 토큰 있으면 Bearer 부착; 없으면 서버가 401
@@ -6991,6 +7386,8 @@
         setStatus('guest');
       }, []);
 
+      // v17: 공유 경로 → 무로그인 공개 뷰 (모든 훅 이후 분기 — 훅 순서 보존)
+      if (shareRoute) return <ShareView kind={shareRoute.kind} token={shareRoute.token} />;
       if (status === 'checking') {
         return (
           <div className="min-h-screen flex items-center justify-center bg-slate-100">

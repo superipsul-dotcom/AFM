@@ -918,3 +918,38 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - 16-1: 월/2주/1주 토글 → dayW/눈금 바뀌고 막대 위치·길이 정확, 오늘선·드래그 정상.
 - 16-2: 막대 우측 점에서 다른 막대로 드래그 → 링크 생성(POST deps), 커넥터 화살표 표시. 앞 태스크를 드래그 이동 → **연결된 후행이 같은 delta로 함께 이동(cascade)** ·화면 리프레시 없음. 사이클 시도 400 토스트. 링크 삭제. 기존 선행 모달·캘린더 동작 회귀.
 - v1~v15 회귀 무손상(8탭·로그인·드릴다운·견적→현장 등).
+
+---
+
+# v17 확장 — 견적/발주 공유링크 + 비밀번호 (#3, 결정: "공유링크 + 비밀번호")
+
+> 사용자 요청: 견적·발주서를 저장해 팀별로 보고, 비밀번호 유무 옵션. 결정=**공유링크 + 비밀번호**: 저장한 견적/발주를 **로그인 없이 열람 가능한 읽기전용 공유 페이지**(외부 고객용)로 내보내고, **선택적 비밀번호**로 보호. 앱은 v13 인증 뒤에 있으므로 **공유 경로(/api/share/*)만 인증 예외**. v1~v16 100% 보존(컬럼 ADD COLUMN IF NOT EXISTS).
+
+## 스키마 (ADD COLUMN IF NOT EXISTS)
+- `interior_estimates` + `interior_orders` 각각:
+  - `share_token TEXT` (nullable; 공유 시 랜덤 발급, null=비공유)
+  - `share_password_hash TEXT` (nullable; 비밀번호 설정 시 bcrypt 해시, null=비번없음)
+- 인덱스: 각 테이블 share_token (부분/일반).
+
+## 엔드포인트
+### 관리(인증·팀 스코핑)
+- `POST /api/estimates/:id/share` body `{password?}` → share_token 없으면 crypto 랜덤 발급(있으면 유지), password 주면 bcrypt 해시 저장/빈문자면 해시 제거 → 200 `{share_token, url:'/share/estimate/'+token, hasPassword:boolean}`. (소유 team 검증, 404)
+- `DELETE /api/estimates/:id/share` → share_token·해시 null(공유 해제) → `{success:true}`.
+- 발주 동형: `POST /api/orders/:id/share`, `DELETE /api/orders/:id/share`.
+### 공개(무인증 — 미들웨어 예외 `/api/share/*`)
+- `GET /api/share/estimate/:token` → 토큰으로 견적 조회. **비번 설정돼 있으면** `{requiresPassword:true}` (데이터 미포함). 없으면 `{estimate:{헤더+items+totals}, site:{name,address,client}, supplier}` (읽기전용, team/인증 불필요). 없는 토큰 404.
+- `POST /api/share/estimate/:token` body `{password}` → bcrypt 검증 실패 401, 성공 시 위 데이터. 
+- 발주 동형: `GET/POST /api/share/order/:token` (발주 헤더/항목·현장명).
+- 공개 응답엔 민감 내부필드(team_id 등) 제외, 견적/발주 표시에 필요한 것만.
+
+## 프론트 (index.html)
+- **견적 상세/에디터 + 발주 행에 [🔗 공유] 버튼** → 공유 모달: **비밀번호 사용 토글**(+ 입력) → `api.shareEstimate(id,{password})`/`shareOrder` → **공유 URL 표시 + 복사 버튼** + [공유 해제]. hasPassword 표시.
+- **공개 공유 뷰(ShareView)**: 앱 부팅 시 URL 이 공유 경로면(`?share=estimate/<token>` 또는 `#/share/estimate/<token>` 등 택1, 문서화) **AuthGate 로그인 게이트 대신 ShareView 렌더**(무로그인). 
+  - `GET /api/share/...` → requiresPassword 면 **비밀번호 입력 화면** → `POST` 검증 → 견적/발주를 **읽기전용·인쇄가능 레이아웃**(공급자 안도공간/현장/항목/금액/합계·VAT)으로 표시. 잘못된 토큰/비번 안내.
+- 앱 내(로그인 상태)에서는 기존처럼 팀 전체 견적/발주 조회(이미 됨). 공유는 외부 열람용.
+- api: shareEstimate/unshareEstimate/shareOrder/unshareOrder + 공개 fetchShared(무토큰). 폴백(localStorage): 공유토큰 생성·검증 클라 처리(서버 우선).
+
+## 검증
+- share: POST estimate/:id/share(비번없이)→token, GET /api/share/estimate/:token(무인증)→데이터. 비번설정 POST→GET requiresPassword→POST 비번검증(틀리면401·맞으면 데이터). unshare→GET 404. 발주 동형. 팀 소유검증(타팀 404).
+- 무인증 공개 접근이 /api/share/* 만 되고 다른 /api/* 는 여전히 401(격리).
+- 프론트: 공유 모달·URL복사·공유뷰(비번 프롬프트→읽기전용 견적). 앱 로그인/기존 견적·발주 회귀. v1~v16 무손상.

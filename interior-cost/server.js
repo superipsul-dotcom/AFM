@@ -36,6 +36,7 @@ const { Pool } = require('pg');
 const archiver = require('archiver'); // (v8) 프로젝트 zip 백업 스트리밍 (유일하게 추가된 패키지)
 const bcrypt = require('bcryptjs'); // (v13) 비밀번호 해시(네이티브 빌드 불필요)
 const jwt = require('jsonwebtoken'); // (v13) JWT 발급/검증
+const crypto = require('crypto'); // (v17) 공유 토큰 랜덤 발급(내장 모듈)
 
 const app = express();
 
@@ -537,6 +538,15 @@ async function initDB() {
     await pool.query(`UPDATE ${t} SET team_id = $1 WHERE team_id IS NULL`, [DEFAULT_TEAM_ID]);
   }
 
+  // (v17) 견적/발주 공유링크 + 비밀번호 — share_token(nullable, 랜덤 발급), share_password_hash(nullable, bcrypt).
+  //   ADD COLUMN / CREATE INDEX IF NOT EXISTS → v1~v16 데이터 100% 보존, 멱등. null=비공유/비번없음.
+  for (const t of ['interior_estimates', 'interior_orders']) {
+    await pool.query(`ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS share_token TEXT`);
+    await pool.query(`ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS share_password_hash TEXT`);
+  }
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_estimates_share_token ON interior_estimates (share_token);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_orders_share_token ON interior_orders (share_token);');
+
   dbInitialized = true;
   console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as/takeoff) 준비 완료 + 카테고리/카탈로그 시드.');
 }
@@ -663,6 +673,10 @@ app.use('/api', (req, res, next) => {
   const pathOnly = (req.originalUrl || '').split('?')[0];
   if (req.method === 'POST' && (pathOnly === '/api/auth/login' || pathOnly === '/api/auth/signup')) {
     return next(); // 비보호 (로그인/회원가입)
+  }
+  // (v17) 공유 열람(외부 고객용)은 무인증 공개 — 정확히 /api/share/* 경로만 예외. 다른 /api/* 는 그대로 401.
+  if (pathOnly === '/api/share' || pathOnly.startsWith('/api/share/')) {
+    return next();
   }
   const header = req.headers.authorization || '';
   const [scheme, token] = header.split(' ');
@@ -3467,6 +3481,55 @@ app.post('/api/estimates/:id/unconfirm', async (req, res) => {
 });
 
 // ========================================
+// (v17) 견적 공유링크 관리 (인증 필수·팀 스코핑)
+//   소유 검증은 requireChildOwned('interior_estimates') 가 /api/estimates/:id/* 를 이미 보호 → 타팀/미존재 404.
+// ========================================
+// POST /api/estimates/:id/share — 공유 활성화 + 선택적 비번.
+//   share_token 없으면 crypto 랜덤 발급(있으면 유지). body.password 키가 있으면 설정(빈문자→해시 제거), 없으면 기존 비번 유지.
+app.post('/api/estimates/:id/share', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 견적 id 형식입니다.' });
+
+    const cur = await pool.query('SELECT share_token, share_password_hash FROM interior_estimates WHERE id=$1', [id]);
+    if (cur.rows.length === 0) return res.status(404).json({ success: false, message: '해당 견적서를 찾을 수 없습니다.' });
+
+    let token = cur.rows[0].share_token;
+    if (!token) token = crypto.randomBytes(16).toString('hex'); // 신규 발급(재호출 시 기존 토큰 유지)
+
+    const body = req.body || {};
+    let hash = cur.rows[0].share_password_hash; // 기본: 기존 유지
+    if (Object.prototype.hasOwnProperty.call(body, 'password')) {
+      const pw = typeof body.password === 'string' ? body.password : '';
+      hash = pw ? await bcrypt.hash(pw, 10) : null; // 빈문자 → 비번 제거
+    }
+
+    await pool.query('UPDATE interior_estimates SET share_token=$1, share_password_hash=$2 WHERE id=$3', [token, hash, id]);
+    res.json({ share_token: token, url: '/share/estimate/' + token, hasPassword: !!hash });
+  } catch (err) {
+    console.error('POST /api/estimates/:id/share 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 링크를 생성하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/estimates/:id/share — 공유 해제 (토큰/해시 null)
+app.delete('/api/estimates/:id/share', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 견적 id 형식입니다.' });
+    const r = await pool.query(
+      'UPDATE interior_estimates SET share_token=NULL, share_password_hash=NULL WHERE id=$1 RETURNING id',
+      [id]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ success: false, message: '해당 견적서를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/estimates/:id/share 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유를 해제하지 못했습니다.' });
+  }
+});
+
+// ========================================
 // 요약/계산 — GET /api/sites/:id/summary
 //   견적비 대비 집행/잔여/집행률, 카테고리별·공정별 합계, 날짜(공기) 계산.
 //   (v2) estimateTotal / byProcessPlan(확정 견적) / scheduleAgg 추가.
@@ -4232,6 +4295,54 @@ app.delete('/api/orders/:id', async (req, res) => {
 });
 
 // ========================================
+// (v17) 발주 공유링크 관리 (인증 필수·팀 스코핑)
+//   소유 검증은 requireChildOwned('interior_orders') 가 /api/orders/:id/* 를 이미 보호(발주→현장→팀) → 타팀/미존재 404.
+// ========================================
+// POST /api/orders/:id/share — 공유 활성화 + 선택적 비번 (견적과 동형)
+app.post('/api/orders/:id/share', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 발주서 id 형식입니다.' });
+
+    const cur = await pool.query('SELECT share_token, share_password_hash FROM interior_orders WHERE id=$1', [id]);
+    if (cur.rows.length === 0) return res.status(404).json({ success: false, message: '해당 발주서를 찾을 수 없습니다.' });
+
+    let token = cur.rows[0].share_token;
+    if (!token) token = crypto.randomBytes(16).toString('hex');
+
+    const body = req.body || {};
+    let hash = cur.rows[0].share_password_hash;
+    if (Object.prototype.hasOwnProperty.call(body, 'password')) {
+      const pw = typeof body.password === 'string' ? body.password : '';
+      hash = pw ? await bcrypt.hash(pw, 10) : null;
+    }
+
+    await pool.query('UPDATE interior_orders SET share_token=$1, share_password_hash=$2 WHERE id=$3', [token, hash, id]);
+    res.json({ share_token: token, url: '/share/order/' + token, hasPassword: !!hash });
+  } catch (err) {
+    console.error('POST /api/orders/:id/share 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 링크를 생성하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/orders/:id/share — 공유 해제
+app.delete('/api/orders/:id/share', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 발주서 id 형식입니다.' });
+    const r = await pool.query(
+      'UPDATE interior_orders SET share_token=NULL, share_password_hash=NULL WHERE id=$1 RETURNING id',
+      [id]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ success: false, message: '해당 발주서를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/orders/:id/share 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유를 해제하지 못했습니다.' });
+  }
+});
+
+// ========================================
 // REST API — 미팅(interior_meetings) — 프로젝트(현장) 종속, CASCADE
 // ========================================
 app.get('/api/sites/:id/meetings', async (req, res) => {
@@ -4960,6 +5071,121 @@ app.get('/api/sites/:id/backup.zip', async (req, res) => {
   }
 
   archive.finalize();
+});
+
+// ========================================
+// (v17) 공개 공유 열람 (무인증 — 위 인증 게이트에서 /api/share/* 예외). 팀 무관, 토큰으로만 조회. 민감필드 제외.
+//   rowToEstimate/rowToOrder 는 화이트리스트 매핑 → team_id/share_token/share_password_hash 절대 노출 안 됨.
+// ========================================
+const SHARE_SUPPLIER = { name: '안도공간', phone: '', address: '', email: '' }; // 읽기전용 공유 뷰 공급자 정보
+
+// 공유용 현장 요약(name/address/client 만). 없으면 null.
+async function sharedSiteSummary(siteId) {
+  if (siteId == null) return null;
+  const sQ = await pool.query('SELECT name, address, client FROM interior_sites WHERE id=$1', [siteId]);
+  if (sQ.rows.length === 0) return null;
+  const s = sQ.rows[0];
+  return { name: s.name, address: s.address || '', client: s.client || '' };
+}
+
+// 견적 공개 데이터: 헤더 + items + totals + 현장요약 + 공급자. (민감필드 미포함)
+async function buildSharedEstimate(estRow) {
+  const est = rowToEstimate(estRow);
+  const itemsQ = await pool.query(
+    `SELECT ${ITEM_COLS} FROM interior_estimate_items WHERE estimate_id=$1 ORDER BY sort_order ASC, id ASC`,
+    [est.id]
+  );
+  const items = itemsQ.rows.map(rowToItem);
+  const totals = computeTotals(est, items);
+  return { estimate: { ...est, items, totals }, site: await sharedSiteSummary(est.site_id), supplier: SHARE_SUPPLIER };
+}
+
+// 발주 공개 데이터: 발주 헤더 + 현장요약 + 공급자. (발주는 라인아이템 없음)
+async function buildSharedOrder(orderRow) {
+  const order = rowToOrder(orderRow);
+  return { order, site: await sharedSiteSummary(order.site_id), supplier: SHARE_SUPPLIER };
+}
+
+// GET /api/share/estimate/:token — 무인증. 비번설정 시 requiresPassword(데이터 없음). 없는 토큰 404.
+app.get('/api/share/estimate/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ success: false, message: '공유 견적을 찾을 수 없습니다.' });
+    const q = await pool.query(
+      `SELECT ${ESTIMATE_COLS}, share_password_hash FROM interior_estimates WHERE share_token=$1`,
+      [token]
+    );
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '공유 견적을 찾을 수 없습니다.' });
+    if (q.rows[0].share_password_hash) return res.json({ requiresPassword: true }); // 데이터 미포함
+    res.json(await buildSharedEstimate(q.rows[0]));
+  } catch (err) {
+    console.error('GET /api/share/estimate/:token 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 견적을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/share/estimate/:token body {password} — 비번 검증 실패 401, 성공 시 데이터.
+app.post('/api/share/estimate/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ success: false, message: '공유 견적을 찾을 수 없습니다.' });
+    const q = await pool.query(
+      `SELECT ${ESTIMATE_COLS}, share_password_hash FROM interior_estimates WHERE share_token=$1`,
+      [token]
+    );
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '공유 견적을 찾을 수 없습니다.' });
+    const hash = q.rows[0].share_password_hash;
+    if (hash) {
+      const pw = typeof (req.body || {}).password === 'string' ? req.body.password : '';
+      const ok = pw ? await bcrypt.compare(pw, hash) : false;
+      if (!ok) return res.status(401).json({ success: false, message: '비밀번호가 올바르지 않습니다.' });
+    }
+    res.json(await buildSharedEstimate(q.rows[0]));
+  } catch (err) {
+    console.error('POST /api/share/estimate/:token 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 견적을 불러오지 못했습니다.' });
+  }
+});
+
+// GET /api/share/order/:token — 무인증. (발주 동형)
+app.get('/api/share/order/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ success: false, message: '공유 발주서를 찾을 수 없습니다.' });
+    const q = await pool.query(
+      `SELECT ${ORDER_COLS}, share_password_hash FROM interior_orders WHERE share_token=$1`,
+      [token]
+    );
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '공유 발주서를 찾을 수 없습니다.' });
+    if (q.rows[0].share_password_hash) return res.json({ requiresPassword: true });
+    res.json(await buildSharedOrder(q.rows[0]));
+  } catch (err) {
+    console.error('GET /api/share/order/:token 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 발주서를 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/share/order/:token body {password} — 비번 검증 실패 401, 성공 시 데이터.
+app.post('/api/share/order/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ success: false, message: '공유 발주서를 찾을 수 없습니다.' });
+    const q = await pool.query(
+      `SELECT ${ORDER_COLS}, share_password_hash FROM interior_orders WHERE share_token=$1`,
+      [token]
+    );
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '공유 발주서를 찾을 수 없습니다.' });
+    const hash = q.rows[0].share_password_hash;
+    if (hash) {
+      const pw = typeof (req.body || {}).password === 'string' ? req.body.password : '';
+      const ok = pw ? await bcrypt.compare(pw, hash) : false;
+      if (!ok) return res.status(401).json({ success: false, message: '비밀번호가 올바르지 않습니다.' });
+    }
+    res.json(await buildSharedOrder(q.rows[0]));
+  } catch (err) {
+    console.error('POST /api/share/order/:token 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 발주서를 불러오지 못했습니다.' });
+  }
 });
 
 // ========================================
