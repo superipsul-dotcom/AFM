@@ -888,3 +888,33 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 ## 검증
 - POST /api/estimates/new → 현장+견적 동시 생성(트랜잭션), 응답 site/estimate, name 중복 409, site.name 없으면 400, 팀 스코핑. 생성된 현장이 GET /api/sites 에 보임, 견적이 그 현장 종속.
 - 프론트: [+ 견적으로 현장 만들기] → 모달 제출 → 새 현장 선택+견적 에디터, 항목입력·확정→예산연동. 상단 현장 버튼 유지. v1~v14 회귀.
+
+---
+
+# v16 확장 — 타임라인 뷰 스케일(#1) + 간트식 의존성 드래그-연결/연쇄(#2)
+
+> 사용자 요청: ① 타임라인을 월/2주/1주 단위로 끊어 보기, ② 막대 앞뒤 점으로 선후공정 연결(드래그)·연결 이동 시 연쇄·설정 간편화. 리서치(Notion 타임라인·monday·TeamGantt·GanttPro): **막대 hover 시 좌(시작)/우(종료) 연결점 → 우측 점에서 다른 막대로 드래그 = Finish-to-Start 의존성 생성**, 선행끝→후행시작 화살표, **한 태스크 이동 시 연결된 후행 자동 shift(dependency shifting)**. **둘 다 순수 프론트**(기존 API 재사용). v1~v15 100% 보존.
+
+## 기존 백엔드 재사용(변경 없음)
+- 의존성 생성: `POST /api/schedule/:id/deps` body `{predecessor_id}` (:id=후행/successor). 예: A→B 링크 = POST /api/schedule/B/deps {predecessor_id:A}. 사이클/자기참조/타현장 400.
+- 의존성 삭제: `DELETE /api/schedule/:id/deps/:predId`.
+- 연쇄 이동: `PUT /api/schedule/:id` body `{...dates, cascade:true}` → 모든 transitive successor 를 delta 만큼 이동, 응답 `shifted:[{id,start_date,end_date}]`.
+- GET schedule 각 항목에 `predecessors:[]`/`successors:[]`.
+
+## 16-1 타임라인 스케일 (월/2주/1주)
+- ScheduleTimeline 상단에 **[월]/[2주]/[주] 스케일 토글**(기본 월). 스케일별 **하루 픽셀폭(dayW)** 과 표시 눈금:
+  - 월: dayW 작게(예 24~30px)·상단 눈금 월/주. 2주: 중간(예 44px)·눈금 주/일. 주: 크게(예 80~100px)·눈금 일(요일). (값은 조정 가능, 가독성 우선)
+- 스케일 바꿔도 막대 위치/길이 = start~end 정확 유지(left=경과일×dayW, width=기간×dayW). 오늘 세로선·가로 스크롤·[오늘로] 유지. 드래그 이동/리사이즈의 px↔일수 변환도 dayW 반영.
+
+## 16-2 간트식 의존성 드래그-연결 + 연쇄 (핵심)
+- **연결점(dot)**: 각 타임라인 막대에 **좌측(시작)·우측(종료) 끝 연결점**. 평소 은은하게(또는 hover 시 표시), hover 시 커서 변경.
+- **드래그-연결**: **한 막대의 우측 점(종료)** 에서 mousedown → 드래그 중 점선 따라오는 커넥터 고스트 → **다른 막대(위/그 근처, 시작점 영역) 에서 mouseup** → 그 두 태스크로 **선행(예정막대)→후행 링크 생성**: `POST /api/schedule/<후행>/deps {predecessor_id:<선행>}`. 성공 토스트/실패(사이클 등 400) 토스트. **이 드래그-연결이 기존 '선행 추가' 모달을 대체하는 간편 설정**(모달/리스트는 보조로 유지).
+- **연결선(화살표)**: predecessors/successors 로 **선행 막대 우측 끝 → 후행 막대 좌측 끝** SVG 커넥터(점+꺾은선+화살표). 점으로 시작/끝 강조. (v11 화살표 개선)
+- **연결 삭제**: 커넥터/점 클릭 또는 후행의 선행칩 ✕ → `DELETE .../deps/...`.
+- **★ 이동 연쇄(핵심 수정)**: **타임라인에서 막대를 드래그 이동하면 기본으로 `cascade:true`** 로 `PUT /api/schedule/:id` → 연결된 후행들이 함께 이동. 응답 `shifted[]` 를 localTasks 에 조용히 머지(v14 무-리프레시 방식 유지 — onChanged 전체 refetch 금지). 즉 **"앞단 하나 옮기면 다 딸려온다"** 를 타임라인에서 보장. (리사이즈는 그 태스크만; 캘린더는 기존 v14 유지 — Shift=cascade.)
+- 드래그-연결 vs 드래그-이동 구분: **막대 끝 점 위 mousedown=연결**, **막대 몸통 mousedown=이동**(stopPropagation 으로 충돌 차단).
+
+## 검증
+- 16-1: 월/2주/1주 토글 → dayW/눈금 바뀌고 막대 위치·길이 정확, 오늘선·드래그 정상.
+- 16-2: 막대 우측 점에서 다른 막대로 드래그 → 링크 생성(POST deps), 커넥터 화살표 표시. 앞 태스크를 드래그 이동 → **연결된 후행이 같은 delta로 함께 이동(cascade)** ·화면 리프레시 없음. 사이클 시도 400 토스트. 링크 삭제. 기존 선행 모달·캘린더 동작 회귀.
+- v1~v15 회귀 무손상(8탭·로그인·드릴다운·견적→현장 등).

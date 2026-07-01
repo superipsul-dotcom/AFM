@@ -45,7 +45,7 @@
     // ========================================
     // React Hooks
     // ========================================
-    const { useState, useEffect, useMemo, useCallback, useRef, createContext, useContext } = React;
+    const { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef, createContext, useContext } = React;
 
     // ========================================
     // 상수 / 설정
@@ -3158,13 +3158,19 @@
     // 🧩 일정 — 노션식 타임라인(간트) 뷰 (v11-2)
     //  · 좌측 고정 패널 = 공종(process) 그룹 + 일정명, 우측 = 가로 날짜축 + start~end 막대(가로 스크롤)
     //  · 오늘 세로선 · 선후관계 연결선(점선+화살표) · 막대 드래그 이동(Shift=후속도)·리사이즈·클릭=수정
-    function ScheduleTimeline({ tasks, site, onEditTask, onMoveTask }) {
-      const DAY_W = 30, ROW_H = 34, GROUP_H = 30, LEFT_W = 176, HEAD_H = 46, BAR_H = 22;
+    function ScheduleTimeline({ tasks, site, onEditTask, onMoveTask, onLink, onUnlink }) {
+      const ROW_H = 34, GROUP_H = 30, LEFT_W = 176, HEAD_H = 46, BAR_H = 22;
       // ── 훅은 early-return 보다 먼저 (Rules of Hooks) ──
+      // v16-1: 타임라인 스케일(월/2주/주) → 하루 픽셀폭(dayW)
+      const [scale, setScale] = useState('month'); // 'month' | 'twoweek' | 'week'
+      const DAY_W = scale === 'week' ? 90 : scale === 'twoweek' ? 46 : 26;
       const scrollRef = useRef(null);
+      const bodyRef = useRef(null);        // v16-2 연결 드래그 좌표 기준(본문 div)
       const initScrolled = useRef(false);
       const desiredScroll = useRef(0);
+      const anchorDaysRef = useRef(null);  // v16-1 스케일 전환 시 좌측 기준일(일수) 보존
       const [tlDrag, setTlDrag] = useState(null); // { id, mode:'move'|'l'|'r', startX, origStart, origEnd, dd, moved }
+      const [connect, setConnect] = useState(null); // v16-2 { fromId, x1, y1, curX, curY, overId }
       const byId = useMemo(() => { const m = {}; (tasks || []).forEach((t) => { m[String(t.id)] = t; }); return m; }, [tasks]);
       const tlPrev = (d) => {
         if (!d) return null;
@@ -3185,14 +3191,41 @@
           const task = byId[String(d.id)]; if (!task) return;
           if (!d.moved) { if (onEditTask) onEditTask(task); return; } // 클릭 = 수정
           const pv = tlPrev(d); if (!pv || (pv.s === task.start_date && pv.e === task.end_date)) return;
-          if (onMoveTask) onMoveTask(task, pv.s, pv.e, d.mode === 'move' && ev.shiftKey);
+          // v16-2: 타임라인 이동은 기본 cascade(연결 후행 함께 이동), 리사이즈(l/r)는 해당 태스크만
+          if (onMoveTask) onMoveTask(task, pv.s, pv.e, d.mode === 'move');
         };
         window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
         return () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
-      }, [tlDrag, byId, onEditTask, onMoveTask]);
+      }, [tlDrag, byId, onEditTask, onMoveTask, DAY_W]);
+      useEffect(() => { // v16-2 의존성 연결 드래그(우측 종료점 → 다른 막대)
+        if (!connect) return;
+        const hitId = (ev) => {
+          const el = document.elementFromPoint(ev.clientX, ev.clientY);
+          const barEl = el && el.closest ? el.closest('[data-taskid]') : null;
+          return barEl ? barEl.getAttribute('data-taskid') : null;
+        };
+        const mv = (ev) => {
+          const rect = bodyRef.current && bodyRef.current.getBoundingClientRect();
+          if (!rect) return;
+          const overId = hitId(ev);
+          setConnect((c) => (c ? { ...c, curX: ev.clientX - rect.left, curY: ev.clientY - rect.top, overId } : c));
+        };
+        const up = (ev) => {
+          const c = connect; setConnect(null);
+          const toId = hitId(ev);
+          if (toId && String(toId) !== String(c.fromId) && onLink) onLink(c.fromId, toId); // fromId=선행, toId=후행
+        };
+        window.addEventListener('mousemove', mv); window.addEventListener('mouseup', up);
+        return () => { window.removeEventListener('mousemove', mv); window.removeEventListener('mouseup', up); };
+      }, [connect, onLink]);
       useEffect(() => { // 최초 마운트 시 오늘 근처로 스크롤
-        if (!initScrolled.current && scrollRef.current) { scrollRef.current.scrollLeft = desiredScroll.current; initScrolled.current = true; }
+        if (!initScrolled.current && scrollRef.current) { scrollRef.current.scrollLeft = desiredScroll.current; anchorDaysRef.current = desiredScroll.current / DAY_W; initScrolled.current = true; }
       }, []);
+      useLayoutEffect(() => { // v16-1 스케일 전환 시 좌측 기준일 유지(스크롤 재계산)
+        if (initScrolled.current && scrollRef.current && anchorDaysRef.current != null) {
+          scrollRef.current.scrollLeft = Math.max(0, anchorDaysRef.current * DAY_W);
+        }
+      }, [scale]);
 
       const placed = (tasks || []).filter((t) => t.start_date && t.end_date);
       const today = todayStr();
@@ -3241,6 +3274,14 @@
         const ym = d.slice(0, 7); const last = months[months.length - 1];
         if (last && last.ym === ym) last.span += 1; else months.push({ ym, span: 1 });
       });
+      // ── v16-1: 날짜 셀 + 주(week) 밴드(일요일 wd 0 에서 새 주 시작) ──
+      const WD = '일월화수목금토';
+      const dayCells = days.map((ds, i) => {
+        const wd = new Date(ds + 'T00:00:00').getDay();
+        return { ds, i, wd, isToday: ds === today, dayNum: Number(ds.slice(8, 10)), mLabel: Number(ds.slice(5, 7)) + '/' + Number(ds.slice(8, 10)), wdName: WD[wd] };
+      });
+      const weeks = [];
+      dayCells.forEach((c) => { const last = weeks[weeks.length - 1]; if (!last || c.wd === 0) weeks.push({ startIdx: c.i, span: 1, label: c.mLabel }); else last.span += 1; });
 
       // ── 선후관계 연결선(predecessor 끝 → successor 시작) ──
       const links = [];
@@ -3248,21 +3289,37 @@
         const pr = rowOf[String(t.id)], sr = rowOf[String(sid)], su = byId[String(sid)];
         if (pr && sr && su && su.start_date) {
           const x1 = xOf(t.end_date) + DAY_W, y1 = pr.y + ROW_H / 2, x2 = xOf(su.start_date), y2 = sr.y + ROW_H / 2, mx = (x1 + x2) / 2;
-          links.push({ key: t.id + '-' + sid, d: `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}` });
+          links.push({ key: t.id + '-' + sid, predId: t.id, succId: sid, x1, y1, x2, y2, d: `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}` });
         }
       }));
 
       const startTl = (t, mode, e) => { e.preventDefault(); e.stopPropagation(); setTlDrag({ id: t.id, mode, startX: e.clientX, origStart: t.start_date, origEnd: t.end_date, dd: 0, moved: false }); };
-      const scrollToToday = () => { if (scrollRef.current) scrollRef.current.scrollLeft = Math.max(0, (todayX != null ? todayX : 0) - 120); };
+      // v16-2: 우측 종료점 mousedown → 연결 드래그 시작(이 태스크=선행)
+      const startConnect = (t, e) => {
+        e.preventDefault(); e.stopPropagation();
+        const rr = rowOf[String(t.id)]; const x1 = xOf(t.end_date) + DAY_W, y1 = (rr ? rr.y : 0) + ROW_H / 2;
+        setConnect({ fromId: t.id, x1, y1, curX: x1, curY: y1, overId: null });
+      };
+      const scrollToToday = () => { if (scrollRef.current) { const s = Math.max(0, (todayX != null ? todayX : 0) - 120); scrollRef.current.scrollLeft = s; anchorDaysRef.current = s / DAY_W; } };
+      const onTlScroll = (e) => { anchorDaysRef.current = e.currentTarget.scrollLeft / DAY_W; };
+      const scaleBtn = (on) => `px-2.5 py-1 text-xs font-semibold rounded-md transition ${on ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`;
 
       return (
         <Card className="p-0 overflow-hidden">
-          <div className="flex items-center justify-between p-4 pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 p-4 pb-2">
             <div>
               <h2 className="text-base font-bold text-slate-800">공정 타임라인</h2>
-              <p className="text-[11px] text-slate-400">📊 공종별 그룹 · 막대=공사기간. 막대를 끌어 이동(Shift=후속도 함께), 양 끝으로 기간 조절, 클릭=수정. 🔗=선행 있음.</p>
+              <p className="text-[11px] text-slate-400">📊 막대 몸통 드래그=이동(연결된 후속 함께 이동), 양 끝=기간 조절, 클릭=수정. 막대 끝 <b className="text-indigo-500">연결점</b>을 다른 막대로 끌면 선후 연결(🔗), 커넥터 클릭=해제.</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={scrollToToday}>오늘로</Button>
+            <div className="flex items-center gap-2">
+              {/* v16-1: 스케일 토글(월/2주/주) */}
+              <div className="inline-flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-lg">
+                {[['month', '월'], ['twoweek', '2주'], ['week', '주']].map(([v, l]) => (
+                  <button key={v} type="button" onClick={() => setScale(v)} className={scaleBtn(scale === v)}>{l}</button>
+                ))}
+              </div>
+              <Button variant="secondary" size="sm" onClick={scrollToToday}>오늘로</Button>
+            </div>
           </div>
           <div className="flex border-t border-slate-100">
             {/* 좌측 고정 패널: 공종 그룹 + 일정명 */}
@@ -3282,32 +3339,39 @@
               ))}
             </div>
             {/* 우측 가로 스크롤 타임라인 */}
-            <div className="overflow-x-auto flex-1" ref={scrollRef}>
+            <div className="overflow-x-auto flex-1" ref={scrollRef} onScroll={onTlScroll}>
               <div style={{ width: totalDays * DAY_W, position: 'relative' }}>
-                {/* 헤더: 월 / 일 눈금 */}
+                {/* v16-1 헤더: 스케일별 2단 눈금(월→월/주, 2주→주/일, 주→일/요일) */}
                 <div style={{ height: HEAD_H }} className="border-b border-slate-100">
+                  {/* 상단 눈금 */}
                   <div className="flex" style={{ height: 22 }}>
-                    {months.map((mo, i) => (
-                      <div key={i} style={{ width: mo.span * DAY_W }} className="text-[11px] font-semibold text-slate-500 px-1.5 flex items-center border-r border-slate-100 bg-slate-50/60 whitespace-nowrap overflow-hidden">
-                        {Number(mo.ym.slice(5, 7))}월 <span className="text-slate-300 ml-1">'{mo.ym.slice(2, 4)}</span>
-                      </div>
-                    ))}
+                    {scale === 'week'
+                      ? dayCells.map((c) => (
+                        <div key={'h1' + c.i} style={{ width: DAY_W }} className={`text-[10px] text-center pt-0.5 border-r border-slate-100 whitespace-nowrap overflow-hidden ${c.isToday ? 'bg-red-50 text-red-600 font-bold' : c.wd === 0 ? 'text-red-400 bg-slate-50/60' : c.wd === 6 ? 'text-blue-400 bg-slate-50/60' : 'text-slate-500'}`}>{c.mLabel}</div>
+                      ))
+                      : scale === 'twoweek'
+                        ? weeks.map((w, i) => (
+                          <div key={'h1' + i} style={{ width: w.span * DAY_W }} className="text-[11px] font-semibold text-slate-500 px-1.5 flex items-center border-r border-slate-100 bg-slate-50/60 whitespace-nowrap overflow-hidden">{w.label} 주</div>
+                        ))
+                        : months.map((mo, i) => (
+                          <div key={'h1' + i} style={{ width: mo.span * DAY_W }} className="text-[11px] font-semibold text-slate-500 px-1.5 flex items-center border-r border-slate-100 bg-slate-50/60 whitespace-nowrap overflow-hidden">
+                            {Number(mo.ym.slice(5, 7))}월 <span className="text-slate-300 ml-1">'{mo.ym.slice(2, 4)}</span>
+                          </div>
+                        ))}
                   </div>
+                  {/* 하단 눈금 */}
                   <div className="flex" style={{ height: 24 }}>
-                    {days.map((d, i) => {
-                      const wd = new Date(d + 'T00:00:00').getDay();
-                      const isT = d === today;
-                      return (
-                        <div key={i} style={{ width: DAY_W }}
-                          className={`text-[10px] text-center pt-0.5 border-r border-slate-50 ${isT ? 'bg-red-50 text-red-600 font-bold' : wd === 0 ? 'text-red-400 bg-slate-50/60' : wd === 6 ? 'text-blue-400 bg-slate-50/60' : 'text-slate-400'}`}>
-                          {Number(d.slice(8, 10))}
-                        </div>
-                      );
-                    })}
+                    {scale === 'month'
+                      ? weeks.map((w, i) => (
+                        <div key={'h2' + i} style={{ width: w.span * DAY_W }} className="text-[10px] text-slate-400 px-1 flex items-center border-r border-slate-50 whitespace-nowrap overflow-hidden">{w.label}</div>
+                      ))
+                      : dayCells.map((c) => (
+                        <div key={'h2' + c.i} style={{ width: DAY_W }} className={`text-[10px] text-center pt-0.5 border-r border-slate-50 ${c.isToday ? 'bg-red-50 text-red-600 font-bold' : c.wd === 0 ? 'text-red-400 bg-slate-50/60' : c.wd === 6 ? 'text-blue-400 bg-slate-50/60' : 'text-slate-400'}`}>{scale === 'week' ? c.wdName : c.dayNum}</div>
+                      ))}
                   </div>
                 </div>
                 {/* 본문: 막대 영역 */}
-                <div style={{ height: bodyH, position: 'relative' }}>
+                <div ref={bodyRef} style={{ height: bodyH, position: 'relative' }}>
                   {/* 주말 세로 톤 */}
                   {days.map((d, i) => {
                     const wd = new Date(d + 'T00:00:00').getDay();
@@ -3320,7 +3384,7 @@
                   ))}
                   {/* 오늘 세로선 */}
                   {todayX != null && <div style={{ left: todayX }} className="absolute top-0 bottom-0 w-0.5 bg-red-400 z-20"></div>}
-                  {/* 선후관계 연결선 */}
+                  {/* 선후관계 연결선(점 + 곡선 + 화살표, 커넥터 클릭=해제) */}
                   {links.length > 0 && (
                     <svg width={totalDays * DAY_W} height={bodyH} className="absolute top-0 left-0 z-10" style={{ pointerEvents: 'none' }}>
                       <defs>
@@ -3328,7 +3392,16 @@
                           <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8" />
                         </marker>
                       </defs>
-                      {links.map((l) => <path key={l.key} d={l.d} fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 2" markerEnd="url(#tl-arrow)" />)}
+                      {links.map((l) => (
+                        <g key={l.key}>
+                          <path d={l.d} fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3 2" markerEnd="url(#tl-arrow)" />
+                          <circle cx={l.x1} cy={l.y1} r="2.5" fill="#94a3b8" />
+                          <circle cx={l.x2} cy={l.y2} r="2.5" fill="#94a3b8" />
+                          <path d={l.d} fill="none" stroke="transparent" strokeWidth="12" style={{ pointerEvents: 'stroke', cursor: 'pointer' }} onClick={() => onUnlink && onUnlink(l.predId, l.succId)}>
+                            <title>클릭하여 선후 연결 해제</title>
+                          </path>
+                        </g>
+                      ))}
                     </svg>
                   )}
                   {/* 일정 막대 */}
@@ -3339,18 +3412,40 @@
                     const left = xOf(bs), width = Math.max(DAY_W - 2, (daysBetween(bs, be) + 1) * DAY_W - 2);
                     const bg = t.color || procHex(t.process);
                     const hasPred = (t.predecessors || []).length > 0;
+                    const isOver = connect && String(connect.overId) === String(t.id) && String(connect.fromId) !== String(t.id);
+                    const isSource = connect && String(connect.fromId) === String(t.id);
                     return (
-                      <div key={t.id} style={{ left, top: r.y + (ROW_H - BAR_H) / 2, width, height: BAR_H, backgroundColor: bg }}
+                      <div key={t.id} data-taskid={t.id} style={{ left, top: r.y + (ROW_H - BAR_H) / 2, width, height: BAR_H, backgroundColor: bg }}
                         title={`${t.title} (${bs}~${be})${t.status ? ' · ' + t.status : ''}`}
-                        className={`absolute rounded-md text-white text-[10px] leading-none flex items-center px-1.5 shadow-sm cursor-grab active:cursor-grabbing transition hover:brightness-110 group z-10 ${drag ? 'ring-2 ring-blue-400 shadow-lg z-30' : ''}`}
+                        className={`absolute rounded-md text-white text-[10px] leading-none flex items-center px-1.5 shadow-sm cursor-grab active:cursor-grabbing transition hover:brightness-110 group z-10 ${drag ? 'ring-2 ring-blue-400 shadow-lg z-30' : ''} ${isOver ? 'ring-2 ring-indigo-500 z-30' : ''} ${isSource ? 'ring-2 ring-indigo-300' : ''}`}
                         onMouseDown={(e) => startTl(t, 'move', e)}>
                         <div onMouseDown={(e) => startTl(t, 'l', e)} className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize rounded-l-md bg-black/25 opacity-0 group-hover:opacity-100"></div>
                         {hasPred && <span className="mr-0.5 shrink-0" title="선행 일정 있음">🔗</span>}
                         <span className="truncate">{t.title}</span>
                         <div onMouseDown={(e) => startTl(t, 'r', e)} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize rounded-r-md bg-black/25 opacity-0 group-hover:opacity-100"></div>
+                        {/* v16-2 좌측 연결점(시작=연결 대상) */}
+                        <div style={{ right: '100%', marginRight: 4, top: '50%', transform: 'translateY(-50%)', borderColor: bg }}
+                          className={`absolute w-3 h-3 rounded-full bg-white border-2 z-40 transition-opacity ${isOver ? 'opacity-100 ring-2 ring-indigo-400' : 'opacity-0 group-hover:opacity-100'}`}
+                          title="연결 대상(시작점)"></div>
+                        {/* v16-2 우측 연결점(종료) — 드래그하여 후행 연결 */}
+                        <div onMouseDown={(e) => startConnect(t, e)} title="드래그하여 후행 일정으로 연결"
+                          style={{ left: '100%', marginLeft: 4, top: '50%', transform: 'translateY(-50%)', borderColor: bg }}
+                          className="absolute w-3 h-3 rounded-full bg-white border-2 z-40 cursor-crosshair opacity-0 group-hover:opacity-100 hover:ring-2 hover:ring-indigo-300 transition-opacity"></div>
                       </div>
                     );
                   })}
+                  {/* v16-2 연결 드래그 고스트(점선 + 화살표) */}
+                  {connect && (
+                    <svg width={totalDays * DAY_W} height={bodyH} className="absolute top-0 left-0 z-40" style={{ pointerEvents: 'none' }}>
+                      <defs>
+                        <marker id="tl-arrow-live" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
+                          <path d="M0,0 L6,3 L0,6 Z" fill="#6366f1" />
+                        </marker>
+                      </defs>
+                      <circle cx={connect.x1} cy={connect.y1} r="3" fill="#6366f1" />
+                      <path d={`M ${connect.x1} ${connect.y1} L ${connect.curX} ${connect.curY}`} fill="none" stroke="#6366f1" strokeWidth="2" strokeDasharray="5 3" markerEnd="url(#tl-arrow-live)" />
+                    </svg>
+                  )}
                 </div>
               </div>
             </div>
@@ -3628,6 +3723,29 @@
         try { await api.removeDep(succId, predId); toast('선후관계를 해제했습니다.', 'info'); await onChanged(); }
         catch (e) { toast('해제에 실패했습니다.', 'error'); }
       };
+      // v16-2: 타임라인 드래그-연결/해제 — 무-리프레시(localTasks 관계만 조용히 머지, onChanged 미호출)
+      const linkTasks = async (fromId, toId) => { // fromId=선행(우측 종료점) → toId=후행
+        try {
+          await api.addDep(toId, fromId); // POST /schedule/<후행>/deps {predecessor_id:<선행>}
+          setLocalTasks((cur) => cur.map((t) => {
+            if (String(t.id) === String(toId) && !(t.predecessors || []).map(String).includes(String(fromId))) return { ...t, predecessors: [...(t.predecessors || []), fromId] };
+            if (String(t.id) === String(fromId) && !(t.successors || []).map(String).includes(String(toId))) return { ...t, successors: [...(t.successors || []), toId] };
+            return t;
+          }));
+          toast('선행 → 후행으로 연결했습니다.', 'success');
+        } catch (e) { toast(e.message || '연결에 실패했습니다. (사이클/타현장 등)', 'error'); }
+      };
+      const unlinkTasks = async (predId, succId) => {
+        try {
+          await api.removeDep(succId, predId);
+          setLocalTasks((cur) => cur.map((t) => {
+            if (String(t.id) === String(succId)) return { ...t, predecessors: (t.predecessors || []).filter((p) => String(p) !== String(predId)) };
+            if (String(t.id) === String(predId)) return { ...t, successors: (t.successors || []).filter((s) => String(s) !== String(succId)) };
+            return t;
+          }));
+          toast('선후관계를 해제했습니다.', 'info');
+        } catch (e) { toast('해제에 실패했습니다.', 'error'); }
+      };
       const exportICS = async () => {
         if (!tasks || tasks.length === 0) { toast('내보낼 일정이 없습니다.', 'error'); return; }
         if (!api._useMock) {
@@ -3674,7 +3792,7 @@
               </div>
               {viewMode === 'calendar'
                 ? <ScheduleCalendar tasks={localTasks} onEditTask={openEdit} onRangeSelect={onRangeSelect} onMoveTask={moveTask} />
-                : <ScheduleTimeline tasks={localTasks} site={site} onEditTask={openEdit} onMoveTask={moveTask} />}
+                : <ScheduleTimeline tasks={localTasks} site={site} onEditTask={openEdit} onMoveTask={moveTask} onLink={linkTasks} onUnlink={unlinkTasks} />}
               <ScheduleList tasks={localTasks} onEdit={openEdit} onAskDelete={setDelTarget}
                 taskMap={taskMap} onAddDep={setDepTarget} onRemoveDep={removeDep} />
               {/* v6-4 선후관계 리스트 뷰 */}
