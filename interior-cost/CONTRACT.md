@@ -1030,3 +1030,64 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - **미팅 연동**: kind='미팅' 일정 생성 → interior_meetings 에 schedule_id 링크행 생성(미팅탭에 표시) → 그 일정 수정(title/date) → 연동 미팅 갱신 → 일정 삭제 → 연동 미팅 삭제. kind '미팅'→'공사' 변경 시 연동 미팅 삭제.
 - 필터 [공정|지원|전체] 표시 제한. 
 - v1~v18 회귀(캘린더 드래그·cascade·타임라인·선후관계·일정표PDF·.ics).
+
+---
+
+# v20 확장 — 자료(파일 #6) + 현장사진(#7), Supabase Storage 직접 업로드 (Phase C)
+
+> 사용자 결정: 파일 저장 = **Supabase Storage**. 노션 리서치: 자료=자료유형/담당자/URL/파일, 현장사진=날짜/공정(다중)/촬영자(자동)/특이사항/현장. **Vercel 함수 본문 4.5MB 제한 회피 위해 클라이언트가 Storage로 직접 업로드(서명 URL)**. v1~v19 100% 보존. 새 패키지 없음(내장 fetch로 Storage REST).
+
+## 환경변수
+- `SUPABASE_URL`(=.env, https://<ref>.supabase.co), `SUPABASE_SERVICE_KEY`(service_role, 서버 전용·비밀). 둘 다 없으면 업로드 엔드포인트는 **503 {error:'스토리지 미설정'}**(앱 나머지는 정상). 로컬 .env + Vercel env 에 설정.
+
+## Storage 인프라 (server.js)
+- 버킷 상수 `STORAGE_BUCKET='interior-files'`(private). 부팅 시(키 있으면) 버킷 없으면 생성: `POST {SUPABASE_URL}/storage/v1/bucket` `{id,name,public:false}` (이미 있으면 409 무시). 실패해도 앱 부팅은 계속.
+- 경로 규약: `sites/{site_id}/documents/{timestamp}_{safeName}` , `sites/{site_id}/photos/{timestamp}_{safeName}`.
+- **서명 업로드 URL**: `POST {SUPABASE_URL}/storage/v1/object/upload/sign/{bucket}/{path}` (Authorization: Bearer SERVICE_KEY) → 응답 `{url}`. 클라 업로드 최종 URL = `{SUPABASE_URL}/storage/v1{url}` (PUT, body=파일, header `x-upsert:true`).
+- **서명 다운로드 URL**: `POST {SUPABASE_URL}/storage/v1/object/sign/{bucket}/{path}` `{expiresIn:3600}` → `{signedURL}`. 전체 = `{SUPABASE_URL}/storage/v1{signedURL}`.
+- **삭제**: `DELETE {SUPABASE_URL}/storage/v1/object/{bucket}/{path}`.
+
+## 20-2 자료 (interior_documents)
+### 테이블 (CREATE IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id / site_id(FK CASCADE) | | 팀 스코핑=site 소유검증 |
+| name | text NOT NULL | 자료명 |
+| doc_type | text default '기타' | CAD/도면/제안서/스펙/견적/계약/기타 |
+| storage_path | text default '' | Storage 경로(직접업로드 결과) |
+| file_name | text default '' | 원본 파일명 |
+| file_size | bigint default 0 | 바이트 |
+| uploader | text default '' | 업로드 담당자(로그인 사용자명) |
+| memo | text default '' | |
+| created_at | timestamptz default now() | |
+### 엔드포인트 (인증·팀 스코핑, site 소유검증)
+- `POST /api/sites/:id/documents/sign-upload` `{file_name, content_type}` → 서명 업로드 URL + storage_path 반환(스토리지 미설정 503).
+- `GET /api/sites/:id/documents` (created_at DESC). 
+- `POST /api/sites/:id/documents` `{name, doc_type?, storage_path, file_name?, file_size?, memo?}` → 메타 기록 201(uploader=req 사용자명; 서버가 users 조회 or 프론트 전달값).
+- `PUT /api/documents/:id`(name/doc_type/memo), `DELETE /api/documents/:id` → Storage 파일도 삭제 시도(베스트에포트) + 행 삭제.
+- `GET /api/documents/:id/download` → 서명 다운로드 URL(JSON `{url}` 또는 302 redirect). 미설정/없음 처리.
+
+## 20-3 현장사진 (interior_photos)
+### 테이블 (CREATE IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id / site_id(FK CASCADE) | | |
+| photo_date | date | 촬영일(사용자 지정, 기본 오늘) |
+| processes | text default '' | 공정(다중, 콤마문자열; 노션 25종 참고) |
+| storage_path | text default '' | |
+| file_name | text default '' | |
+| uploader | text default '' | 업로더(자동=로그인 사용자) |
+| memo | text default '' | 특이사항 |
+| created_at | timestamptz default now() | 업로드 시각(자동) |
+### 엔드포인트 (인증·팀 스코핑)
+- `POST /api/sites/:id/photos/sign-upload`(동형), `GET /api/sites/:id/photos`(photo_date DESC, created_at DESC), `POST /api/sites/:id/photos` `{photo_date?, processes?, storage_path, file_name?, memo?}`(uploader 자동, photo_date 기본 오늘), `DELETE /api/photos/:id`(Storage 삭제+행), `GET /api/photos/:id/download`(서명 URL).
+
+## UI (프론트) — 새 탭 2개
+- **📁 자료 탭**(현장 종속): 파일 선택 → sign-upload → 클라가 Storage 직접 PUT → 메타 POST. 목록(자료명/유형뱃지/파일명/크기/업로더/일시) + 다운로드(서명URL) + 수정/삭제. 자료유형 드롭다운.
+- **📷 현장사진 탭**(현장 종속, 모바일 카메라): `<input accept="image/*" capture="environment">` → 업로드. **날짜/공정(다중선택 칩)** 지정, **업로더·시각 자동**. 갤러리(썸네일=서명URL) + 날짜/공정 필터 + 삭제. 
+- 탭 순서에 자료·현장사진 추가(적절한 위치). 스토리지 미설정(503) 시 "관리자 설정 필요" 안내.
+- 폴백(localStorage): 서버 미연결 시 메타만 로컬(파일 업로드는 서버 전용 안내).
+
+## 검증
+- (키 있을 때) sign-upload→직접 PUT→메타 POST→목록/다운로드(서명URL 열림)→삭제(Storage+행). 사진 날짜/공정/업로더자동. 팀 스코핑(타팀 site 404). 키 없으면 업로드 503, 앱 나머지 정상.
+- v1~v19 회귀.

@@ -58,6 +58,11 @@
     // 비용 카테고리 / 공정 카테고리 (CONTRACT.md 와 1:1)
     const COST_CATEGORIES = ['자재비', '인건비', '장비/공구', '운반/물류', '폐기물처리', '가설/안전', '외주(하도급)', '경비(식대/유류)', '임대료', '기타'];
     const PROCESS_CATEGORIES = ['철거', '설비', '전기', '목공', '미장/방수', '타일', '도장/도배', '바닥', '주방/가구', '욕실', '창호/도어', '조명', '준공/청소', '기타'];
+    // v20: 자료 유형(파일 분류) + 유형별 뱃지색
+    const DOC_TYPES = ['CAD', '도면', '제안서', '스펙', '견적', '계약', '기타'];
+    const DOC_TYPE_COLOR = { 'CAD': 'bg-indigo-500', '도면': 'bg-blue-500', '제안서': 'bg-violet-500', '스펙': 'bg-cyan-600', '견적': 'bg-emerald-500', '계약': 'bg-rose-500', '기타': 'bg-slate-400' };
+    // v20: 현장사진 공정(다중선택 칩) — 시공 순서 흐름 기준
+    const PHOTO_PROCESSES = ['철거', '설비', '전기', '목공', '미장/방수', '타일', '도배', '도장', '창호', '바닥', '주방/가구', '욕실', '조명', '마감', '준공/청소'];
 
     // 비용 카테고리 색상
     const COST_COLOR = {
@@ -129,6 +134,9 @@
     const ORDERS_KEY = 'interior_orders_v1';
     const MEETINGS_KEY = 'interior_meetings_v1';
     const AS_KEY = 'interior_as_v1';
+    // ── v20: 자료(파일) · 현장사진 (Supabase Storage 직접 업로드; 폴백은 메타만 로컬) ──
+    const DOCUMENTS_KEY = 'interior_documents_v1';
+    const PHOTOS_KEY = 'interior_photos_v1';
     // 고객/리드 상태 (노션 색감: 리드 회색 → 계약 파랑 → 완료 초록)
     const CLIENT_STATES = ['리드', '상담', '견적', '계약', '시공중', '완료', '보류'];
     const CLIENT_STATUS_COLOR = {
@@ -265,6 +273,14 @@
     // ========================================
     const fmtWon = (n) => (Number(n) || 0).toLocaleString('ko-KR') + '원';
     const fmtNum = (n) => (Number(n) || 0).toLocaleString('ko-KR');
+    // v20: 바이트 → 사람이 읽는 파일 크기
+    const fmtBytes = (n) => {
+      n = Number(n) || 0;
+      if (n <= 0) return '-';
+      if (n < 1024) return n + ' B';
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+      return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    };
     const todayStr = () => {
       const d = new Date();
       const tz = d.getTimezoneOffset() * 60000;
@@ -524,6 +540,9 @@
     const ordersStore = makeStore(ORDERS_KEY);
     const meetingsStore = makeStore(MEETINGS_KEY);
     const asStore = makeStore(AS_KEY);
+    // v20: 자료/현장사진 메타 폴백 스토어 (파일 바이너리는 서버 전용 — 폴백은 메타만)
+    const documentsStore = makeStore(DOCUMENTS_KEY);
+    const photosStore = makeStore(PHOTOS_KEY);
 
     // 단가 카탈로그 폴백 시드 (비어 있을 때만 대표 항목 주입)
     function ensureCatalog() {
@@ -1897,6 +1916,116 @@
         try { await this._tryFetch(`${API_BASE_URL}/as/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
         catch (e) { if (e.status) throw e; this._useMock = true; asStore.write(asStore.read().filter((a) => String(a.id) !== String(id))); return { success: true }; }
       },
+
+      // ════════ v20: 자료(파일) — Supabase Storage 직접 업로드 ════════
+      // 흐름: signUploadDoc → (클라가 uploadUrl 로 파일 직접 PUT) → createDocument(메타)
+      // 스토리지 미설정(키 없음)이면 sign-upload 가 503 → UI가 "관리자 설정 필요" 안내. 서버 다운(네트워크)이면 offline 안내.
+      async signUploadDoc(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/documents/sign-upload`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const err = new Error('파일 업로드는 서버 연결이 필요합니다. (데모/오프라인 모드 불가)'); err.offline = true; throw err;
+        }
+      },
+      async listDocuments(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/documents`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          return documentsStore.read().filter((x) => String(x.site_id) === String(siteId)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+        }
+      },
+      async createDocument(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/documents`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const item = {
+            id: uid(), site_id: siteId, name: String(body.name || body.file_name || '자료').trim(),
+            doc_type: DOC_TYPES.includes(body.doc_type) ? body.doc_type : '기타',
+            storage_path: body.storage_path || '', file_name: body.file_name || '',
+            file_size: Math.max(0, Number(body.file_size) || 0), uploader: body.uploader || '',
+            memo: body.memo || '', created_at: new Date().toISOString(),
+          };
+          documentsStore.write([...documentsStore.read(), item]); return item;
+        }
+      },
+      async updateDocument(id, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/documents/${id}`, { method: 'PUT', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const patch = {};
+          if (body.name != null) patch.name = String(body.name).trim();
+          if (body.doc_type != null) patch.doc_type = DOC_TYPES.includes(body.doc_type) ? body.doc_type : '기타';
+          if (body.memo != null) patch.memo = body.memo;
+          const next = documentsStore.read().map((x) => (String(x.id) === String(id) ? { ...x, ...patch } : x));
+          documentsStore.write(next); return next.find((x) => String(x.id) === String(id));
+        }
+      },
+      async removeDocument(id) {
+        try { await this._tryFetch(`${API_BASE_URL}/documents/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; documentsStore.write(documentsStore.read().filter((x) => String(x.id) !== String(id))); return { success: true }; }
+      },
+      // 서명 다운로드 URL (JSON {url}) → 새 창으로 열기용
+      async docDownloadUrl(id) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/documents/${id}/download`); this._useMock = false; return d && d.url; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const err = new Error('데모/오프라인 모드에서는 파일을 다운로드할 수 없습니다.'); err.offline = true; throw err;
+        }
+      },
+
+      // ════════ v20: 현장사진 — Storage 직접 업로드 (업로더·시각 자동=서버) ════════
+      async signUploadPhoto(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/photos/sign-upload`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const err = new Error('사진 업로드는 서버 연결이 필요합니다. (데모/오프라인 모드 불가)'); err.offline = true; throw err;
+        }
+      },
+      async listPhotos(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/photos`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          return photosStore.read().filter((x) => String(x.site_id) === String(siteId)).sort((a, b) => {
+            const ad = a.photo_date || '', bd = b.photo_date || '';
+            if (ad !== bd) return ad < bd ? 1 : -1;
+            return (a.created_at < b.created_at) ? 1 : -1;
+          });
+        }
+      },
+      async createPhoto(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/photos`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const item = {
+            id: uid(), site_id: siteId, photo_date: body.photo_date || todayStr(),
+            processes: body.processes || '', storage_path: body.storage_path || '',
+            file_name: body.file_name || '', uploader: body.uploader || '',
+            memo: body.memo || '', created_at: new Date().toISOString(),
+          };
+          photosStore.write([...photosStore.read(), item]); return item;
+        }
+      },
+      async removePhoto(id) {
+        try { await this._tryFetch(`${API_BASE_URL}/photos/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; photosStore.write(photosStore.read().filter((x) => String(x.id) !== String(id))); return { success: true }; }
+      },
+      async photoDownloadUrl(id) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/photos/${id}/download`); this._useMock = false; return d && d.url; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const err = new Error('데모/오프라인 모드에서는 사진을 볼 수 없습니다.'); err.offline = true; throw err;
+        }
+      },
+      // 서명 업로드 URL 로 파일 직접 PUT (Supabase Storage — 앱 토큰 미부착, 원시 fetch)
+      async putToSignedUrl(uploadUrl, file) {
+        const res = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'x-upsert': 'true', 'Content-Type': file.type || 'application/octet-stream' },
+          body: file,
+        });
+        if (!res.ok) { const err = new Error('스토리지 업로드 실패 (HTTP ' + res.status + ')'); err.status = res.status; throw err; }
+        return true;
+      },
     };
 
     // ========================================
@@ -3240,6 +3369,8 @@
       { id: 'estimate', label: '견적', icon: '📋' },
       { id: 'orders', label: '발주', icon: '🧾' },
       { id: 'meetings_as', label: '미팅·AS', icon: '📒' },
+      { id: 'documents', label: '자료', icon: '📁' },
+      { id: 'photos', label: '현장사진', icon: '📷' },
       { id: 'manage', label: '관리', icon: '⚙️' },
     ];
     function TabNav({ active, onChange }) {
@@ -6129,6 +6260,401 @@
     }
 
     // ========================================
+    // 📁 v20: 자료(파일) 탭 — Supabase Storage 직접 업로드
+    // ========================================
+    function DocEditForm({ initial, onSave, onCancel }) {
+      const [name, setName] = useState(initial ? initial.name : '');
+      const [docType, setDocType] = useState(initial ? initial.doc_type : '기타');
+      const [memo, setMemo] = useState(initial ? (initial.memo || '') : '');
+      const [err, setErr] = useState('');
+      const submit = (e) => {
+        e.preventDefault();
+        if (!name.trim()) { setErr('자료명을 입력하세요.'); return; }
+        onSave({ name: name.trim(), doc_type: docType, memo: memo.trim() });
+      };
+      return (
+        <form onSubmit={submit} className="space-y-4">
+          <Input label="자료명" value={name} onChange={(e) => { setName(e.target.value); if (err) setErr(''); }} error={err} placeholder="예: 3층 평면도 최종본" />
+          <Select label="자료 유형" value={docType} onChange={(e) => setDocType(e.target.value)}>
+            {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </Select>
+          <Textarea label="메모 (선택)" rows={3} value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="버전/비고 등" />
+          <div className="flex gap-2 justify-end pt-1">
+            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button type="submit">저장</Button>
+          </div>
+        </form>
+      );
+    }
+
+    function DocumentsTab({ site, demoMode = false, uploaderName = '' }) {
+      const toast = useToast();
+      const [list, setList] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [uploading, setUploading] = useState(false);
+      const [form, setForm] = useState({ name: '', doc_type: '기타', memo: '' });
+      const [file, setFile] = useState(null);
+      const [editing, setEditing] = useState(null);
+      const [delTarget, setDelTarget] = useState(null);
+      const [dlId, setDlId] = useState(null);
+      const fileRef = useRef(null);
+
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try { const d = await api.listDocuments(site.id); setList(Array.isArray(d) ? d : []); }
+        catch (e) { setList([]); }
+        finally { setLoading(false); }
+      }, [site.id]);
+      useEffect(() => { reload(); }, [reload]);
+
+      const onPick = (ev) => {
+        const f = ev.target.files && ev.target.files[0];
+        ev.target.value = '';
+        if (!f) return;
+        setFile(f);
+        setForm((p) => ({ ...p, name: p.name.trim() ? p.name : f.name.replace(/\.[^.]+$/, '') })); // 자료명 비어있으면 파일명으로 프리필
+      };
+
+      const handleUpload = async () => {
+        if (demoMode) { toast('데모(오프라인) 모드에서는 파일 업로드를 사용할 수 없습니다. 서버 연결이 필요합니다.', 'error'); return; }
+        if (!file) { toast('업로드할 파일을 먼저 선택하세요.', 'error'); return; }
+        setUploading(true);
+        try {
+          const sign = await api.signUploadDoc(site.id, { file_name: file.name, content_type: file.type || 'application/octet-stream' });
+          await api.putToSignedUrl(sign.upload_url, file);
+          await api.createDocument(site.id, {
+            name: form.name.trim() || file.name, doc_type: form.doc_type,
+            storage_path: sign.storage_path, file_name: file.name, file_size: file.size,
+            memo: form.memo.trim(), uploader: uploaderName,
+          });
+          toast('자료가 업로드되었습니다.', 'success');
+          setForm({ name: '', doc_type: '기타', memo: '' }); setFile(null);
+          await reload();
+        } catch (e) {
+          if (e.status === 503) toast('스토리지가 설정되지 않았습니다. 관리자 설정이 필요합니다. (Supabase 키)', 'error');
+          else if (e.offline) toast(e.message, 'error');
+          else toast((e && e.message ? e.message + ' · ' : '') + '업로드에 실패했습니다.', 'error');
+        } finally { setUploading(false); }
+      };
+
+      const handleDownload = async (doc) => {
+        setDlId(doc.id);
+        try {
+          const url = await api.docDownloadUrl(doc.id);
+          if (url) window.open(url, '_blank', 'noopener'); else toast('다운로드 URL을 가져오지 못했습니다.', 'error');
+        } catch (e) {
+          if (e.status === 503) toast('스토리지가 설정되지 않았습니다. 관리자 설정이 필요합니다.', 'error');
+          else toast(e && e.message ? e.message : '다운로드에 실패했습니다.', 'error');
+        } finally { setDlId(null); }
+      };
+
+      const saveEdit = async (body) => {
+        try { await api.updateDocument(editing.id, body); toast('자료 정보가 수정되었습니다.', 'success'); setEditing(null); await reload(); }
+        catch (e) { toast('수정에 실패했습니다.', 'error'); }
+      };
+      const confirmDel = async () => { const d = delTarget; setDelTarget(null); try { await api.removeDocument(d.id); toast('자료가 삭제되었습니다.', 'info'); await reload(); } catch (e) { toast('삭제에 실패했습니다.', 'error'); } };
+
+      return (
+        <div className="space-y-6">
+          {/* 업로드 */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-slate-800">📁 자료 업로드 <span className="text-sm font-normal text-slate-400">· {site.name}</span></h2>
+            </div>
+            {demoMode && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                데모(오프라인) 모드에서는 파일 업로드를 사용할 수 없습니다. 서버에 연결하면 Supabase Storage로 직접 업로드됩니다.
+              </div>
+            )}
+            <input ref={fileRef} type="file" className="hidden" onChange={onPick} aria-hidden="true" tabIndex={-1} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
+                <Button type="button" variant="secondary" disabled={demoMode || uploading}
+                  onClick={() => fileRef.current && fileRef.current.click()} aria-label="파일 선택">📎 파일 선택</Button>
+                {file ? (
+                  <span className="text-sm text-slate-600 min-w-0 truncate">
+                    <b className="text-slate-800">{file.name}</b> <span className="text-slate-400">· {fmtBytes(file.size)}</span>
+                  </span>
+                ) : <span className="text-sm text-slate-400">CAD·도면·제안서·스펙·견적·계약 등 (선택 후 업로드)</span>}
+              </div>
+              <Input label="자료명" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="예: 3층 평면도 최종본" disabled={demoMode} />
+              <Select label="자료 유형" value={form.doc_type} onChange={(e) => setForm((p) => ({ ...p, doc_type: e.target.value }))} disabled={demoMode}>
+                {DOC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </Select>
+              <div className="sm:col-span-2">
+                <Textarea label="메모 (선택)" rows={2} value={form.memo} onChange={(e) => setForm((p) => ({ ...p, memo: e.target.value }))} placeholder="버전/비고 등" disabled={demoMode} />
+              </div>
+              <div className="sm:col-span-2 flex justify-end">
+                <Button onClick={handleUpload} disabled={demoMode || uploading || !file}>
+                  {uploading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" aria-hidden="true"></span>업로드 중…
+                    </span>
+                  ) : '⬆ 업로드'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* 목록 */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-slate-800">자료 목록</h2>
+              <span className="text-xs text-slate-400">{list.length}건</span>
+            </div>
+            {loading ? (
+              <div className="h-32 bg-slate-100 rounded-xl animate-pulse"></div>
+            ) : list.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-10">등록된 자료가 없습니다. 위에서 파일을 업로드하세요.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                    <th className="py-2 pr-3 font-medium">자료명</th><th className="py-2 pr-3 font-medium">유형</th>
+                    <th className="py-2 pr-3 font-medium">파일명</th><th className="py-2 pr-3 font-medium text-right">크기</th>
+                    <th className="py-2 pr-3 font-medium">업로더</th><th className="py-2 pr-3 font-medium">일시</th>
+                    <th className="py-2 font-medium text-right">관리</th></tr></thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {list.map((d) => (
+                      <tr key={d.id}>
+                        <td className="py-2 pr-3 font-medium text-slate-700 min-w-[140px]">{d.name}{d.memo ? <span className="block text-[11px] font-normal text-slate-400 truncate max-w-[220px]">{d.memo}</span> : null}</td>
+                        <td className="py-2 pr-3"><Badge color={DOC_TYPE_COLOR[d.doc_type] || 'bg-slate-400'}>{d.doc_type || '기타'}</Badge></td>
+                        <td className="py-2 pr-3 text-slate-500 truncate max-w-[180px]" title={d.file_name}>{d.file_name || <span className="text-slate-300">-</span>}</td>
+                        <td className="py-2 pr-3 text-right text-slate-500 whitespace-nowrap">{fmtBytes(d.file_size)}</td>
+                        <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{d.uploader || <span className="text-slate-300">-</span>}</td>
+                        <td className="py-2 pr-3 text-slate-400 whitespace-nowrap text-xs">{d.created_at ? String(d.created_at).slice(0, 10) : '-'}</td>
+                        <td className="py-2 text-right whitespace-nowrap">
+                          <button onClick={() => handleDownload(d)} disabled={dlId === d.id} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-40" title="다운로드(서명 URL)">{dlId === d.id ? '…' : '⬇'}</button>
+                          <button onClick={() => setEditing(d)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50" title="정보 수정">✏️</button>
+                          <button onClick={() => setDelTarget(d)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" title="삭제">🗑️</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="자료 정보 수정" size="md">
+            {editing && <DocEditForm key={editing.id} initial={editing} onSave={saveEdit} onCancel={() => setEditing(null)} />}
+          </Modal>
+          <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="자료 삭제 확인" size="sm">
+            {delTarget && (
+              <div>
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{delTarget.name}</span>' 자료를 삭제하시겠습니까? <span className="text-slate-400">스토리지 파일도 함께 삭제됩니다.</span></p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setDelTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDel}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📷 v20: 현장사진 탭 — 모바일 카메라 업로드 + 갤러리
+    // ========================================
+    function PhotoThumb({ photo, onOpen }) {
+      const [url, setUrl] = useState(null);
+      const [err, setErr] = useState(false);
+      useEffect(() => {
+        let alive = true;
+        api.photoDownloadUrl(photo.id)
+          .then((u) => { if (!alive) return; if (u) setUrl(u); else setErr(true); })
+          .catch(() => { if (alive) setErr(true); });
+        return () => { alive = false; };
+      }, [photo.id]);
+      return (
+        <button type="button" onClick={() => url && onOpen(url)} disabled={!url}
+          className="group relative block w-full aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200 disabled:cursor-default"
+          title={url ? '원본 보기' : ''}>
+          {url ? (
+            <img src={url} alt={photo.file_name || '현장사진'} className="w-full h-full object-cover transition group-hover:scale-105" loading="lazy" />
+          ) : err ? (
+            <span className="absolute inset-0 flex flex-col items-center justify-center text-slate-300 text-xs gap-1"><span className="text-2xl">🖼️</span>미리보기 없음</span>
+          ) : (
+            <span className="absolute inset-0 flex items-center justify-center"><span className="w-6 h-6 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin"></span></span>
+          )}
+        </button>
+      );
+    }
+
+    function PhotosTab({ site, demoMode = false, uploaderName = '' }) {
+      const toast = useToast();
+      const [list, setList] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [uploading, setUploading] = useState(false);
+      const [prog, setProg] = useState({ done: 0, total: 0 });
+      const [pDate, setPDate] = useState(todayStr());
+      const [pProcs, setPProcs] = useState([]);
+      const [pMemo, setPMemo] = useState('');
+      const [fDate, setFDate] = useState('');
+      const [fProc, setFProc] = useState('');
+      const [delTarget, setDelTarget] = useState(null);
+      const cameraRef = useRef(null);
+      const galleryRef = useRef(null);
+
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try { const d = await api.listPhotos(site.id); setList(Array.isArray(d) ? d : []); }
+        catch (e) { setList([]); }
+        finally { setLoading(false); }
+      }, [site.id]);
+      useEffect(() => { reload(); }, [reload]);
+
+      const toggleProc = (p) => setPProcs((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
+
+      const onPick = async (ev) => {
+        const files = Array.from(ev.target.files || []);
+        ev.target.value = '';
+        if (!files.length) return;
+        if (demoMode) { toast('데모(오프라인) 모드에서는 사진 업로드를 사용할 수 없습니다. 서버 연결이 필요합니다.', 'error'); return; }
+        const processes = pProcs.join(',');
+        setUploading(true); setProg({ done: 0, total: files.length });
+        let ok = 0, fail = 0, cfgErr = false;
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          try {
+            const sign = await api.signUploadPhoto(site.id, { file_name: f.name || ('photo_' + Date.now() + '.jpg'), content_type: f.type || 'image/jpeg' });
+            await api.putToSignedUrl(sign.upload_url, f);
+            await api.createPhoto(site.id, { photo_date: pDate, processes, storage_path: sign.storage_path, file_name: f.name || '', memo: pMemo.trim(), uploader: uploaderName });
+            ok++;
+          } catch (e) { fail++; if (e.status === 503) cfgErr = true; }
+          setProg({ done: i + 1, total: files.length });
+        }
+        setUploading(false); setProg({ done: 0, total: 0 });
+        if (cfgErr && ok === 0) toast('스토리지가 설정되지 않았습니다. 관리자 설정이 필요합니다. (Supabase 키)', 'error');
+        else if (ok) toast(`사진 ${ok}장을 업로드했습니다.` + (fail ? ` (${fail}장 실패)` : ''), fail ? 'info' : 'success');
+        else toast('사진 업로드에 실패했습니다.', 'error');
+        if (ok) { setPMemo(''); await reload(); }
+      };
+
+      const confirmDel = async () => { const p = delTarget; setDelTarget(null); try { await api.removePhoto(p.id); toast('사진이 삭제되었습니다.', 'info'); await reload(); } catch (e) { toast('삭제에 실패했습니다.', 'error'); } };
+      const openOriginal = (url) => window.open(url, '_blank', 'noopener');
+
+      const dates = useMemo(() => Array.from(new Set(list.map((p) => p.photo_date).filter(Boolean))).sort().reverse(), [list]);
+      const filtered = useMemo(() => list.filter((p) => {
+        if (fDate && p.photo_date !== fDate) return false;
+        if (fProc && !(p.processes || '').split(',').map((s) => s.trim()).filter(Boolean).includes(fProc)) return false;
+        return true;
+      }), [list, fDate, fProc]);
+
+      return (
+        <div className="space-y-6">
+          {/* 업로드 */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-slate-800">📷 현장사진 업로드 <span className="text-sm font-normal text-slate-400">· {site.name}</span></h2>
+            </div>
+            {demoMode && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                데모(오프라인) 모드에서는 사진 업로드를 사용할 수 없습니다. 서버에 연결하면 촬영/선택 즉시 Storage로 업로드됩니다.
+              </div>
+            )}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input type="date" label="촬영일" value={pDate} onChange={(e) => setPDate(e.target.value)} disabled={demoMode} />
+                <div>
+                  <span className="block mb-1.5 text-sm font-medium text-slate-700">공정 (다중 선택)</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PHOTO_PROCESSES.map((p) => {
+                      const on = pProcs.includes(p);
+                      return (
+                        <button key={p} type="button" disabled={demoMode} onClick={() => toggleProc(p)}
+                          className={`text-xs px-2.5 py-1 rounded-full border transition disabled:opacity-40 ${on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>
+                          {p}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              <Textarea label="특이사항 (선택)" rows={2} value={pMemo} onChange={(e) => setPMemo(e.target.value)} placeholder="예: 타일 균열 발견 · 하자 재시공 필요" disabled={demoMode} />
+              <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPick} aria-hidden="true" tabIndex={-1} />
+              <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden" onChange={onPick} aria-hidden="true" tabIndex={-1} />
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" disabled={demoMode || uploading} onClick={() => cameraRef.current && cameraRef.current.click()}>📷 촬영</Button>
+                <Button type="button" variant="secondary" disabled={demoMode || uploading} onClick={() => galleryRef.current && galleryRef.current.click()}>🖼 갤러리에서 선택</Button>
+                {uploading && (
+                  <span className="inline-flex items-center gap-2 text-sm text-slate-500">
+                    <span className="inline-block w-4 h-4 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" aria-hidden="true"></span>
+                    업로드 중… {prog.done}/{prog.total}
+                  </span>
+                )}
+                <span className="text-xs text-slate-400">업로더·촬영시각은 자동 기록됩니다.</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* 갤러리 */}
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h2 className="text-base font-bold text-slate-800">현장사진 <span className="text-sm font-normal text-slate-400">· {filtered.length}/{list.length}장</span></h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <select value={fDate} onChange={(e) => setFDate(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="">전체 날짜</option>
+                  {dates.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <select value={fProc} onChange={(e) => setFProc(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="">전체 공정</option>
+                  {PHOTO_PROCESSES.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+                {(fDate || fProc) && <button onClick={() => { setFDate(''); setFProc(''); }} className="text-xs text-slate-400 hover:text-slate-600 underline">필터 해제</button>}
+              </div>
+            </div>
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {[0, 1, 2, 3].map((i) => <div key={i} className="aspect-square bg-slate-100 rounded-xl animate-pulse"></div>)}
+              </div>
+            ) : filtered.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-10">{list.length === 0 ? '등록된 현장사진이 없습니다. 위에서 촬영/업로드하세요.' : '필터에 해당하는 사진이 없습니다.'}</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {filtered.map((p) => {
+                  const procs = (p.processes || '').split(',').map((s) => s.trim()).filter(Boolean);
+                  return (
+                    <div key={p.id} className="group relative">
+                      <PhotoThumb photo={p} onOpen={openOriginal} />
+                      <button onClick={() => setDelTarget(p)} className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/50 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-red-600" title="삭제">🗑️</button>
+                      <div className="mt-1.5 px-0.5">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[11px] font-medium text-slate-500">{p.photo_date || '-'}</span>
+                          {p.uploader && <span className="text-[10px] text-slate-400 truncate max-w-[80px]">{p.uploader}</span>}
+                        </div>
+                        {procs.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {procs.slice(0, 3).map((pr) => <span key={pr} className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{pr}</span>)}
+                            {procs.length > 3 && <span className="text-[10px] text-slate-400">+{procs.length - 3}</span>}
+                          </div>
+                        )}
+                        {p.memo && <p className="text-[10px] text-slate-400 mt-0.5 truncate" title={p.memo}>{p.memo}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="사진 삭제 확인" size="sm">
+            {delTarget && (
+              <div>
+                <p className="text-sm text-slate-600">이 사진을 삭제하시겠습니까? <span className="text-slate-400">스토리지 파일도 함께 삭제됩니다.</span></p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setDelTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDel}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
     // 🧩 관리 (마스터, 전역)
     // ========================================
     function StaffManager({ staff, onChanged }) {
@@ -7460,7 +7986,7 @@
                 <div className="text-5xl mb-3">🏗️</div>
                 <h2 className="text-lg font-bold text-slate-700 mb-1">{sites.length === 0 ? '현장을 먼저 등록하세요' : '현장을 선택하세요'}</h2>
                 <p className="text-sm text-slate-400 mb-5">
-                  현장을 {sites.length === 0 ? '등록' : '선택'}하면 요약·비용·일정·견적·발주·미팅·AS를 관리할 수 있어요.<br />
+                  현장을 {sites.length === 0 ? '등록' : '선택'}하면 요약·비용·일정·견적·발주·미팅·AS·자료·현장사진을 관리할 수 있어요.<br />
                   담당자·거래처·카테고리 마스터는 <span className="font-semibold text-slate-500">⚙️ 관리</span> 탭에서 현장 없이도 설정할 수 있습니다.
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center">
@@ -7507,6 +8033,12 @@
                 )}
                 {activeTab === 'meetings_as' && (
                   <MeetingsAsTab key={'mas-' + selectedSite.id} site={selectedSite} staffNames={staffNames} />
+                )}
+                {activeTab === 'documents' && (
+                  <DocumentsTab key={'doc-' + selectedSite.id} site={selectedSite} demoMode={demoMode} uploaderName={authUser ? (authUser.name || authUser.email) : ''} />
+                )}
+                {activeTab === 'photos' && (
+                  <PhotosTab key={'pho-' + selectedSite.id} site={selectedSite} demoMode={demoMode} uploaderName={authUser ? (authUser.name || authUser.email) : ''} />
                 )}
               </>
             )}

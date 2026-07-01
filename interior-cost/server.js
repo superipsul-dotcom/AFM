@@ -119,6 +119,103 @@ const BUILDUP_DEFAULTS = {
 };
 const BUILDUP_RATE_KEYS = Object.keys(BUILDUP_DEFAULTS);
 
+// ========================================
+// (v20) Supabase Storage 인프라 — 자료(파일)/현장사진을 클라이언트가 직접 업로드(서명 URL).
+//   목적: Vercel 함수 본문 4.5MB 한도 회피(파일은 서버를 거치지 않고 Storage 로 직접 PUT).
+//   서버 역할: 버킷 ensure · 서명 업로드/다운로드 URL 발급 · 메타(DB) 기록 · 삭제.
+//   내장 fetch 사용(새 패키지 없음). ⚠️ SUPABASE_SERVICE_KEY 는 서버 전용 비밀 — 로그/응답에 절대 노출 금지.
+// ========================================
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, ''); // 끝 슬래시 제거
+const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim(); // service_role (비밀)
+const STORAGE_BUCKET = 'interior-files'; // private 버킷
+
+// 둘 다 있어야 Storage 사용 가능. 없으면 업로드/다운로드 엔드포인트는 503.
+function storageConfigured() {
+  return SUPABASE_URL.length > 0 && SUPABASE_SERVICE_KEY.length > 0;
+}
+
+// Storage REST 공통 헤더(SERVICE_KEY 인증). 이 값을 로그로 남기지 말 것.
+function storageHeaders() {
+  return {
+    Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+    apikey: SUPABASE_SERVICE_KEY,
+    'Content-Type': 'application/json',
+  };
+}
+
+// 파일명 새니타이즈: 경로탈출(../)·OS 금지문자·제어문자 제거(sanitizeSiteName 과 동일 정책).
+function sanitizeFileName(name) {
+  let s = String(name == null ? '' : name).trim();
+  s = s.replace(/\.\./g, '_'); // 상위경로 탈출 차단
+  s = s.replace(/[\/\\:*?"<>|]/g, '_'); // OS 예약/경로 구분 문자
+  // eslint-disable-next-line no-control-regex
+  s = s.replace(new RegExp('[\\x00-\\x1f\\x7f]', 'g'), '_'); // control chars
+  s = s.replace(/^\.+/, '_'); // 선두 점(숨김/상대경로) 차단
+  s = s.replace(/\s+/g, '_'); // 공백 → _
+  if (!s) s = 'file';
+  return s.slice(0, 180); // 과도한 길이 컷
+}
+
+// Storage 저장 경로: sites/{siteId}/{kind}/{timestamp}_{safeName}
+function buildStoragePath(siteId, kind, fileName) {
+  return `sites/${siteId}/${kind}/${Date.now()}_${sanitizeFileName(fileName)}`;
+}
+
+// 버킷 ensure(없으면 private 로 생성). 이미 존재(400/409)면 무시. 실패해도 부팅/요청 계속(best-effort).
+let bucketEnsured = false;
+async function ensureStorageBucket() {
+  if (bucketEnsured || !storageConfigured()) return;
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
+      method: 'POST',
+      headers: storageHeaders(),
+      body: JSON.stringify({ id: STORAGE_BUCKET, name: STORAGE_BUCKET, public: false }),
+    });
+    if (resp.ok || resp.status === 409 || resp.status === 400) {
+      bucketEnsured = true; // 생성 성공 또는 이미 존재(Duplicate)
+    } else {
+      console.warn(`⚠️  Storage 버킷 ensure 응답 HTTP ${resp.status} — 계속 진행.`);
+    }
+  } catch (err) {
+    console.warn('⚠️  Storage 버킷 ensure 예외(무시):', err.message);
+  }
+}
+
+// 서명 업로드 URL 발급 → { uploadUrl(클라 PUT 대상 절대 URL), path }.
+async function signUploadUrl(storagePath) {
+  const resp = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/upload/sign/${STORAGE_BUCKET}/${storagePath}`,
+    { method: 'POST', headers: storageHeaders() }
+  );
+  if (!resp.ok) throw new Error(`sign-upload HTTP ${resp.status}`);
+  const data = await resp.json(); // { url: '/object/upload/sign/...?token=...' }
+  return { uploadUrl: `${SUPABASE_URL}/storage/v1${data.url}`, path: storagePath };
+}
+
+// 서명 다운로드 URL 발급(기본 1시간) → 절대 URL 문자열.
+async function signDownloadUrl(storagePath, expiresIn = 3600) {
+  const resp = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/sign/${STORAGE_BUCKET}/${storagePath}`,
+    { method: 'POST', headers: storageHeaders(), body: JSON.stringify({ expiresIn }) }
+  );
+  if (!resp.ok) throw new Error(`sign-download HTTP ${resp.status}`);
+  const data = await resp.json(); // { signedURL: '/object/sign/...?token=...' }
+  return `${SUPABASE_URL}/storage/v1${data.signedURL}`;
+}
+
+// Storage 객체 삭제(베스트에포트) — 실패해도 throw 하지 않음(행 삭제는 진행).
+async function deleteStorageObject(storagePath) {
+  if (!storageConfigured() || !storagePath) return;
+  try {
+    await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`, {
+      method: 'DELETE',
+      headers: storageHeaders(),
+    });
+  } catch (err) {
+    console.warn('⚠️  Storage 객체 삭제 예외(무시):', err.message);
+  }
+}
+
 async function initDB() {
   if (dbInitialized) return;
 
@@ -579,8 +676,45 @@ async function initDB() {
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_estimate_templates_team ON interior_estimate_templates (team_id);');
 
+  // (v20) 자료(파일) — Supabase Storage 직접 업로드. DB 는 메타만 보관. site CASCADE.
+  //   팀 스코핑 = site 소유검증(미들웨어/requireChildOwned). 신규 테이블 → backfill 불필요.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_documents (
+      id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      site_id      BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      name         TEXT NOT NULL,
+      doc_type     TEXT NOT NULL DEFAULT '기타',
+      storage_path TEXT NOT NULL DEFAULT '',
+      file_name    TEXT NOT NULL DEFAULT '',
+      file_size    BIGINT NOT NULL DEFAULT 0,
+      uploader     TEXT NOT NULL DEFAULT '',
+      memo         TEXT NOT NULL DEFAULT '',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_documents_site ON interior_documents (site_id);');
+
+  // (v20) 현장사진 — photo_date/공정(다중 콤마문자열)/업로더(자동)/특이사항. site CASCADE.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_photos (
+      id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      site_id      BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      photo_date   DATE,
+      processes    TEXT NOT NULL DEFAULT '',
+      storage_path TEXT NOT NULL DEFAULT '',
+      file_name    TEXT NOT NULL DEFAULT '',
+      uploader     TEXT NOT NULL DEFAULT '',
+      memo         TEXT NOT NULL DEFAULT '',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_photos_site ON interior_photos (site_id);');
+
+  // (v20) Storage 버킷 ensure (키 있을 때만, best-effort — 실패해도 부팅 계속)
+  await ensureStorageBucket();
+
   dbInitialized = true;
-  console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as/takeoff) 준비 완료 + 카테고리/카탈로그 시드.');
+  console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as/takeoff/documents/photos) 준비 완료 + 카테고리/카탈로그 시드.');
 }
 
 // (v3) 카탈로그가 비어 있을 때만 seed/catalog.json 을 읽어 일괄 적재 (트랜잭션). 실패해도 부팅은 계속.
@@ -766,6 +900,8 @@ app.use('/api/orders/:id', requireChildOwned('interior_orders', '발주서'));
 app.use('/api/meetings/:id', requireChildOwned('interior_meetings', '미팅'));
 app.use('/api/as/:id', requireChildOwned('interior_as', 'A/S'));
 app.use('/api/takeoff/:id', requireChildOwned('interior_takeoff', '물량'));
+app.use('/api/documents/:id', requireChildOwned('interior_documents', '자료')); // (v20)
+app.use('/api/photos/:id', requireChildOwned('interior_photos', '현장사진')); // (v20)
 
 // ----------------------------------------
 // 인증 라우트 (signup/login 은 비보호, me 는 보호)
@@ -1187,6 +1323,53 @@ function rowToAS(row) {
   };
 }
 
+// (v20) 자료 row → 클라이언트 모델 (file_size BIGINT → Number, id/site_id 는 앱 규약대로 원본 유지)
+function rowToDocument(row) {
+  return {
+    id: row.id,
+    site_id: row.site_id,
+    name: row.name,
+    doc_type: row.doc_type || '기타',
+    storage_path: row.storage_path || '',
+    file_name: row.file_name || '',
+    file_size: Number(row.file_size || 0),
+    uploader: row.uploader || '',
+    memo: row.memo || '',
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
+// (v20) 현장사진 row → 클라이언트 모델
+function rowToPhoto(row) {
+  return {
+    id: row.id,
+    site_id: row.site_id,
+    photo_date: row.photo_date, // 'YYYY-MM-DD' | null (to_char 직렬화)
+    processes: row.processes || '', // 콤마문자열(다중 공정)
+    storage_path: row.storage_path || '',
+    file_name: row.file_name || '',
+    uploader: row.uploader || '',
+    memo: row.memo || '',
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
+// (v20) 오늘 날짜(KST 기준 YYYY-MM-DD) — 현장사진 photo_date 기본값.
+function todayKST() {
+  return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+// (v20) 현재 로그인 사용자 표시명(uploader 기본값). name 우선, 없으면 email, 실패 시 ''.
+async function currentUserName(req) {
+  try {
+    const { rows } = await pool.query('SELECT name, email FROM interior_users WHERE id=$1', [req.userId]);
+    if (rows.length === 0) return '';
+    return (rows[0].name && rows[0].name.trim()) || rows[0].email || '';
+  } catch (_) {
+    return '';
+  }
+}
+
 // ----------------------------------------
 // SELECT 컬럼 목록 (DATE 는 to_char 직렬화)
 // ----------------------------------------
@@ -1219,6 +1402,11 @@ const AS_COLS =
   "id, site_id, to_char(received_date,'YYYY-MM-DD') AS received_date, title, detail, status, to_char(handled_date,'YYYY-MM-DD') AS handled_date, staff, cost, created_at";
 // (v18) 견적 템플릿 컬럼. config/items 는 JSONB → node-pg 가 JS 객체/배열로 반환.
 const TEMPLATE_COLS = 'id, team_id, name, description, config, items, created_at';
+// (v20) 자료/현장사진 컬럼 (DATE 는 to_char, file_size BIGINT 는 rowTo* 에서 Number)
+const DOCUMENT_COLS =
+  'id, site_id, name, doc_type, storage_path, file_name, file_size, uploader, memo, created_at';
+const PHOTO_COLS =
+  "id, site_id, to_char(photo_date,'YYYY-MM-DD') AS photo_date, processes, storage_path, file_name, uploader, memo, created_at";
 
 // 일정 SELECT (alias s) — actual_cost = 연결 비용 합계 서브쿼리
 const SCHEDULE_SELECT_COLS = `
@@ -5539,6 +5727,218 @@ app.post('/api/share/order/:token', async (req, res) => {
     res.status(500).json({ success: false, message: '공유 발주서를 불러오지 못했습니다.' });
   }
 });
+
+// ========================================
+// (v20) 자료(interior_documents) + 현장사진(interior_photos) — Supabase Storage 직접 업로드.
+//   · site 종속(GET/POST/sign-upload)은 app.use('/api/sites/:id') 소유검증이 자동 선행 → 타팀/미존재 404.
+//   · by-id(PUT/DELETE/download)는 requireChildOwned('interior_documents'|'interior_photos') 가 보호.
+//   · 데이터 응답은 앱 규약대로 raw(배열/객체), 에러는 {success:false,message}, 미설정은 503 {error}.
+// ========================================
+
+// 서명 업로드 URL 발급 핸들러 팩토리(documents/photos 공용). 스토리지 미설정 → 503.
+function makeSignUploadHandler(kind, siteLabel) {
+  return async (req, res) => {
+    try {
+      if (!storageConfigured()) return res.status(503).json({ error: '스토리지 미설정' });
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+      const b = req.body || {};
+      const fileName = typeof b.file_name === 'string' ? b.file_name.trim() : '';
+      if (!fileName) return res.status(400).json({ success: false, message: '파일명(file_name)이 필요합니다.' });
+      const storagePath = buildStoragePath(id, kind, fileName);
+      const signed = await signUploadUrl(storagePath); // content_type 은 클라 PUT 시 지정(서명엔 불필요)
+      // 클라: 이 upload_url 로 PUT(body=파일, header x-upsert:true) 후 storage_path 로 메타 POST.
+      res.json({ upload_url: signed.uploadUrl, storage_path: signed.path });
+    } catch (err) {
+      console.error(`POST sign-upload(${kind}) 오류:`, err.message);
+      res.status(502).json({ success: false, message: `${siteLabel} 업로드 URL 발급에 실패했습니다.` });
+    }
+  };
+}
+
+// 서명 다운로드 URL 발급 핸들러 팩토리. 반환 { url }. 미설정 503, 미존재/파일없음 404.
+function makeDownloadHandler(table, label) {
+  return async (req, res) => {
+    try {
+      if (!storageConfigured()) return res.status(503).json({ error: '스토리지 미설정' });
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ success: false, message: `잘못된 ${label} id 형식입니다.` });
+      const { rows } = await pool.query(`SELECT storage_path FROM ${table} WHERE id=$1`, [id]);
+      if (rows.length === 0) return res.status(404).json({ success: false, message: `해당 ${label}을(를) 찾을 수 없습니다.` });
+      const sp = rows[0].storage_path || '';
+      if (!sp) return res.status(404).json({ success: false, message: '연결된 파일이 없습니다.' });
+      const url = await signDownloadUrl(sp);
+      res.json({ url });
+    } catch (err) {
+      console.error(`GET download(${table}) 오류:`, err.message);
+      res.status(502).json({ success: false, message: '다운로드 URL 발급에 실패했습니다.' });
+    }
+  };
+}
+
+// ---------- 자료(documents) ----------
+app.post('/api/sites/:id/documents/sign-upload', makeSignUploadHandler('documents', '자료'));
+
+// GET /api/sites/:id/documents — created_at DESC
+app.get('/api/sites/:id/documents', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${DOCUMENT_COLS} FROM interior_documents WHERE site_id=$1 ORDER BY created_at DESC, id DESC`,
+      [id]
+    );
+    res.json(rows.map(rowToDocument));
+  } catch (err) {
+    console.error('GET /api/sites/:id/documents 오류:', err.message);
+    res.status(500).json({ success: false, message: '자료 목록을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/documents {name, doc_type?, storage_path, file_name?, file_size?, memo?, uploader?} → 201
+app.post('/api/sites/:id/documents', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const b = req.body || {};
+    const name = typeof b.name === 'string' ? b.name.trim() : '';
+    if (!name) return res.status(400).json({ success: false, message: '자료명(name)이 필요합니다.' });
+    const docType = typeof b.doc_type === 'string' && b.doc_type.trim() ? b.doc_type.trim() : '기타';
+    const storagePath = typeof b.storage_path === 'string' ? b.storage_path.trim() : '';
+    const fileName = typeof b.file_name === 'string' ? b.file_name.trim() : '';
+    const fsNum = Number(b.file_size);
+    const fileSize = Number.isFinite(fsNum) && fsNum >= 0 ? Math.floor(fsNum) : 0;
+    const memo = typeof b.memo === 'string' ? b.memo : '';
+    // uploader: 프론트 전달값 우선, 없으면 로그인 사용자명 자동
+    let uploader = typeof b.uploader === 'string' && b.uploader.trim() ? b.uploader.trim() : '';
+    if (!uploader) uploader = await currentUserName(req);
+    const { rows } = await pool.query(
+      `INSERT INTO interior_documents (site_id, name, doc_type, storage_path, file_name, file_size, uploader, memo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${DOCUMENT_COLS}`,
+      [id, name, docType, storagePath, fileName, fileSize, uploader, memo]
+    );
+    res.status(201).json(rowToDocument(rows[0]));
+  } catch (err) {
+    console.error('POST /api/sites/:id/documents 오류:', err.message);
+    res.status(500).json({ success: false, message: '자료를 저장하지 못했습니다.' });
+  }
+});
+
+// PUT /api/documents/:id — 부분 수정 {name?, doc_type?, memo?}
+app.put('/api/documents/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 자료 id 형식입니다.' });
+    const b = req.body || {};
+    const hasName = typeof b.name !== 'undefined';
+    const name = hasName ? String(b.name).trim() : null;
+    if (hasName && !name) return res.status(400).json({ success: false, message: '자료명은 비울 수 없습니다.' });
+    const docType = typeof b.doc_type !== 'undefined' ? (String(b.doc_type).trim() || '기타') : null;
+    const memo = typeof b.memo !== 'undefined' ? String(b.memo) : null;
+    if (name === null && docType === null && memo === null)
+      return res.status(400).json({ success: false, message: '수정할 내용이 없습니다.' });
+    const { rows } = await pool.query(
+      `UPDATE interior_documents
+       SET name=COALESCE($1,name), doc_type=COALESCE($2,doc_type), memo=COALESCE($3,memo)
+       WHERE id=$4 RETURNING ${DOCUMENT_COLS}`,
+      [name, docType, memo, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 자료을(를) 찾을 수 없습니다.' });
+    res.json(rowToDocument(rows[0]));
+  } catch (err) {
+    console.error('PUT /api/documents/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '자료를 수정하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/documents/:id — Storage 파일 삭제 시도(베스트에포트) + 행 삭제
+app.delete('/api/documents/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 자료 id 형식입니다.' });
+    const { rows } = await pool.query('DELETE FROM interior_documents WHERE id=$1 RETURNING storage_path', [id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 자료을(를) 찾을 수 없습니다.' });
+    await deleteStorageObject(rows[0].storage_path);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/documents/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '자료를 삭제하지 못했습니다.' });
+  }
+});
+
+// GET /api/documents/:id/download — 서명 다운로드 URL {url}
+app.get('/api/documents/:id/download', makeDownloadHandler('interior_documents', '자료'));
+
+// ---------- 현장사진(photos) ----------
+app.post('/api/sites/:id/photos/sign-upload', makeSignUploadHandler('photos', '현장사진'));
+
+// GET /api/sites/:id/photos — photo_date DESC, created_at DESC
+app.get('/api/sites/:id/photos', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${PHOTO_COLS} FROM interior_photos WHERE site_id=$1 ORDER BY photo_date DESC NULLS LAST, created_at DESC, id DESC`,
+      [id]
+    );
+    res.json(rows.map(rowToPhoto));
+  } catch (err) {
+    console.error('GET /api/sites/:id/photos 오류:', err.message);
+    res.status(500).json({ success: false, message: '현장사진 목록을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/photos {photo_date?, processes?, storage_path, file_name?, memo?, uploader?} → 201
+//   photo_date 기본=오늘(KST), uploader 자동=로그인 사용자, processes 는 배열/문자열 모두 수용.
+app.post('/api/sites/:id/photos', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const b = req.body || {};
+    let photoDate = typeof b.photo_date === 'string' ? b.photo_date.trim() : '';
+    if (photoDate && !isRealDate(photoDate))
+      return res.status(400).json({ success: false, message: '촬영일 형식이 올바르지 않습니다 (YYYY-MM-DD).' });
+    if (!photoDate) photoDate = todayKST();
+    let processes = '';
+    if (Array.isArray(b.processes)) {
+      processes = b.processes.filter((p) => typeof p === 'string' && p.trim()).map((p) => p.trim()).join(',');
+    } else if (typeof b.processes === 'string') {
+      processes = b.processes.trim();
+    }
+    const storagePath = typeof b.storage_path === 'string' ? b.storage_path.trim() : '';
+    const fileName = typeof b.file_name === 'string' ? b.file_name.trim() : '';
+    const memo = typeof b.memo === 'string' ? b.memo : '';
+    let uploader = typeof b.uploader === 'string' && b.uploader.trim() ? b.uploader.trim() : '';
+    if (!uploader) uploader = await currentUserName(req);
+    const { rows } = await pool.query(
+      `INSERT INTO interior_photos (site_id, photo_date, processes, storage_path, file_name, uploader, memo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${PHOTO_COLS}`,
+      [id, photoDate, processes, storagePath, fileName, uploader, memo]
+    );
+    res.status(201).json(rowToPhoto(rows[0]));
+  } catch (err) {
+    console.error('POST /api/sites/:id/photos 오류:', err.message);
+    res.status(500).json({ success: false, message: '현장사진을 저장하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/photos/:id — Storage 파일 삭제 시도 + 행 삭제
+app.delete('/api/photos/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장사진 id 형식입니다.' });
+    const { rows } = await pool.query('DELETE FROM interior_photos WHERE id=$1 RETURNING storage_path', [id]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장사진을(를) 찾을 수 없습니다.' });
+    await deleteStorageObject(rows[0].storage_path);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/photos/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '현장사진을 삭제하지 못했습니다.' });
+  }
+});
+
+// GET /api/photos/:id/download — 서명 다운로드 URL {url}
+app.get('/api/photos/:id/download', makeDownloadHandler('interior_photos', '현장사진'));
 
 // ========================================
 // /api/* JSON 404 (SPA 폴백이 삼키지 않도록 API 라우트들 뒤, '*' 폴백 앞)
