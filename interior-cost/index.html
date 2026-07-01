@@ -81,6 +81,16 @@
     };
     const procHex = (p) => PROC_HEX[p] || '#94a3b8';
 
+    // ── v19: 일정 유형(kind) — 공사/지원/미팅 ──
+    const SCHEDULE_KINDS = ['공사', '지원', '미팅'];
+    const schedKind = (t) => (t && SCHEDULE_KINDS.includes(t.kind) ? t.kind : '공사'); // 목록 외/미지정 → '공사' 보정
+    const KIND_ICON = { '공사': '', '지원': '🤝', '미팅': '📅' };
+    const KIND_HEX = { '지원': '#0d9488', '미팅': '#8b5cf6' }; // 공사는 공정색/커스텀색 유지, 지원=teal, 미팅=violet
+    const KIND_LABEL_COLOR = { '공사': 'bg-slate-400', '지원': 'bg-teal-600', '미팅': 'bg-violet-500' };
+    // 막대/도트 색: 공사=기존(커스텀색 또는 공정색) 그대로(회귀 보존), 지원/미팅=유형색 우선
+    const schedBarColor = (t) => KIND_HEX[schedKind(t)] || t.color || procHex(t.process);
+    const kindPrefix = (t) => (KIND_ICON[schedKind(t)] ? KIND_ICON[schedKind(t)] + ' ' : '');
+
     // ── v2 localStorage 키 ──
     const STAFF_KEY = 'interior_staff_v1';
     const VENDORS_KEY = 'interior_vendors_v1';
@@ -1117,6 +1127,19 @@
       },
 
       // ════════ v2: 일정 (schedule) ════════
+      // v19: 폴백 전용 — kind='미팅' 일정 ↔ 연동 미팅(schedule_id) upsert/삭제 (서버 온라인 시엔 서버가 처리)
+      _syncMeetingLink(schedule) {
+        if (!schedule || schedule.id == null) return;
+        const list = meetingsStore.read();
+        const idx = list.findIndex((m) => String(m.schedule_id) === String(schedule.id));
+        if (schedKind(schedule) === '미팅') {
+          const base = { meeting_date: schedule.start_date || null, title: schedule.title || '(미팅)', attendees: schedule.staff || '', content: schedule.memo || '' };
+          if (idx >= 0) { list[idx] = { ...list[idx], ...base }; meetingsStore.write(list); } // next_action 등 기존 값 보존
+          else meetingsStore.write([...list, { id: uid(), site_id: schedule.site_id, schedule_id: schedule.id, ...base, next_action: '', created_at: new Date().toISOString() }]);
+        } else if (idx >= 0) {
+          meetingsStore.write(list.filter((m) => String(m.schedule_id) !== String(schedule.id))); // 미팅→다른 유형: 연동 미팅 삭제
+        }
+      },
       async listSchedule(siteId) {
         try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/schedule`); this._useMock = false; return d; }
         catch (e) {
@@ -1150,10 +1173,12 @@
             id: uid(), site_id: siteId, title: body.title, process: body.process || '',
             start_date: body.start_date, end_date: body.end_date, status: body.status || '예정',
             planned_cost: Math.round(Number(body.planned_cost) || 0), staff: body.staff || '', vendor: body.vendor || '',
-            color: body.color || '', memo: body.memo || '', sort_order: Number(body.sort_order) || 0,
+            color: body.color || '', memo: body.memo || '', kind: schedKind(body), sort_order: Number(body.sort_order) || 0,
             actual_cost: 0, created_at: new Date().toISOString(),
           };
-          scheduleStore.write([...scheduleStore.read(), item]); return item;
+          scheduleStore.write([...scheduleStore.read(), item]);
+          this._syncMeetingLink(item); // v19 미팅 연동
+          return item;
         }
       },
       async updateSchedule(id, body) {
@@ -1188,6 +1213,7 @@
           });
           scheduleStore.write(next);
           const updated = next.find((t) => String(t.id) === String(id));
+          this._syncMeetingLink(updated); // v19 미팅 연동(kind 변경/제목·날짜 갱신 반영)
           return cascade ? { ...updated, shifted } : updated;
         }
       },
@@ -1200,6 +1226,8 @@
           scheduleDepsStore.write(scheduleDepsStore.read().filter((d) => String(d.predecessor_id) !== String(id) && String(d.successor_id) !== String(id)));
           // 연결 비용의 schedule_id 는 null 처리 (비용 자체는 보존)
           costsStore.write(costsStore.read().map((c) => (String(c.schedule_id) === String(id) ? { ...c, schedule_id: null } : c)));
+          // v19: 연동된 미팅(schedule_id 매칭) 삭제
+          meetingsStore.write(meetingsStore.read().filter((m) => String(m.schedule_id) !== String(id)));
           return { success: true };
         }
       },
@@ -3409,7 +3437,7 @@
                     {dayTasks.slice(0, limit).map((t) => {
                       const isStart = t.start_date === ds, isEnd = t.end_date === ds;
                       const showLabel = isStart || wd === 0;
-                      const bg = t.color || procHex(t.process);
+                      const bg = schedBarColor(t); // v19 유형색(지원/미팅) 또는 기존 공정/커스텀색
                       const isDragId = barDrag && String(barDrag.id) === String(t.id);
                       return (
                         <div key={t.id} className="relative group" onMouseDown={(e) => e.stopPropagation()}>
@@ -3420,7 +3448,7 @@
                           <button type="button" onMouseDown={(e) => startBarDrag(t, ds, 'move', e)} title={`${t.title} (${t.start_date}~${t.end_date})${t.vendor ? ' · 🏢 ' + t.vendor : ''} · 드래그 이동/클릭 수정`} style={{ backgroundColor: bg }}
                             className={`block w-full text-left text-[10px] leading-tight text-white px-1 py-0.5 truncate cursor-grab active:cursor-grabbing transition hover:brightness-110 hover:-translate-y-px
                               ${isStart ? 'rounded-l-md' : ''} ${isEnd ? 'rounded-r-md' : ''} ${isDragId ? 'ring-2 ring-blue-400 shadow-lg relative z-20' : ''}`}>
-                          {showLabel ? t.title : ' '}
+                          {showLabel ? kindPrefix(t) + t.title : ' '}
                           </button>
                           {isEnd && (
                             <div onMouseDown={(e) => startBarDrag(t, ds, 'r', e)} title="종료일 조절"
@@ -3622,8 +3650,8 @@
                 </div>
               ) : (
                 <div key={'t' + i} style={{ height: r.h }} className="flex items-center gap-1.5 px-3 border-b border-slate-50">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: r.task.color || procHex(r.task.process) }}></span>
-                  <button onClick={() => onEditTask && onEditTask(r.task)} className="text-xs text-slate-700 truncate text-left hover:text-blue-600" title={r.task.title}>{r.task.title}</button>
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: schedBarColor(r.task) }}></span>
+                  <button onClick={() => onEditTask && onEditTask(r.task)} className="text-xs text-slate-700 truncate text-left hover:text-blue-600" title={r.task.title}>{kindPrefix(r.task)}{r.task.title}</button>
                 </div>
               ))}
             </div>
@@ -3699,7 +3727,7 @@
                     const drag = tlDrag && String(tlDrag.id) === String(t.id) ? tlPrev(tlDrag) : null;
                     const bs = drag ? drag.s : t.start_date, be = drag ? drag.e : t.end_date;
                     const left = xOf(bs), width = Math.max(DAY_W - 2, (daysBetween(bs, be) + 1) * DAY_W - 2);
-                    const bg = t.color || procHex(t.process);
+                    const bg = schedBarColor(t); // v19 유형색(지원/미팅) 또는 기존 공정/커스텀색
                     const hasPred = (t.predecessors || []).length > 0;
                     const isOver = connect && String(connect.overId) === String(t.id) && String(connect.fromId) !== String(t.id);
                     const isSource = connect && String(connect.fromId) === String(t.id);
@@ -3710,6 +3738,7 @@
                         onMouseDown={(e) => startTl(t, 'move', e)}>
                         <div onMouseDown={(e) => startTl(t, 'l', e)} className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize rounded-l-md bg-black/25 opacity-0 group-hover:opacity-100"></div>
                         {hasPred && <span className="mr-0.5 shrink-0" title="선행 일정 있음">🔗</span>}
+                        {KIND_ICON[schedKind(t)] && <span className="mr-0.5 shrink-0" title={schedKind(t)}>{KIND_ICON[schedKind(t)]}</span>}
                         <span className="truncate">{t.title}</span>
                         <div onMouseDown={(e) => startTl(t, 'r', e)} className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize rounded-r-md bg-black/25 opacity-0 group-hover:opacity-100"></div>
                         {/* v16-2 좌측 연결점(시작=연결 대상) */}
@@ -3767,8 +3796,9 @@
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color || procHex(t.process) }}></span>
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: schedBarColor(t) }}></span>
                           <span className="font-semibold text-slate-800 truncate">{t.title}</span>
+                          {schedKind(t) !== '공사' && <Badge color={KIND_LABEL_COLOR[schedKind(t)]}>{KIND_ICON[schedKind(t)]} {schedKind(t)}</Badge>}
                           {t.process && <Badge color={PROC_COLOR[t.process] || 'bg-slate-400'}>{t.process}</Badge>}
                           <Badge color={TASK_STATUS_COLOR[t.status] || 'bg-slate-400'}>{t.status}</Badge>
                         </div>
@@ -3824,9 +3854,9 @@
     // 🧩 일정 등록/수정 폼 (모달)
     function ScheduleForm({ editing, prefill, hasSuccessors, onSubmit, onCancel, procNames, staffNames, vendorNames = [] }) {
       // v6-3: 캘린더 드래그로 받은 prefill(start/end)을 신규 폼 기본값으로
-      const blank = { title: '', process: '', start_date: (prefill && prefill.start) || todayStr(), end_date: (prefill && prefill.end) || todayStr(), status: '예정', planned_cost: '', staff: '', vendor: '', color: '', memo: '' };
+      const blank = { title: '', process: '', kind: '공사', start_date: (prefill && prefill.start) || todayStr(), end_date: (prefill && prefill.end) || todayStr(), status: '예정', planned_cost: '', staff: '', vendor: '', color: '', memo: '' };
       const [form, setForm] = useState(editing ? {
-        title: editing.title || '', process: editing.process || '',
+        title: editing.title || '', process: editing.process || '', kind: schedKind(editing),
         start_date: editing.start_date || todayStr(), end_date: editing.end_date || todayStr(),
         status: editing.status || '예정', planned_cost: editing.planned_cost != null ? String(editing.planned_cost) : '',
         staff: editing.staff || '', vendor: editing.vendor || '', color: editing.color || '', memo: editing.memo || '',
@@ -3850,7 +3880,7 @@
         await onSubmit({
           title: form.title.trim(), process: form.process.trim(), start_date: form.start_date, end_date: form.end_date,
           status: form.status, planned_cost: Math.round(Number(form.planned_cost) || 0), staff: form.staff.trim(),
-          vendor: form.vendor.trim(), color: form.color, memo: form.memo.trim(),
+          vendor: form.vendor.trim(), color: form.color, memo: form.memo.trim(), kind: form.kind,
           ...(editing && hasSuccessors && cascade && dateChanged ? { cascade: true } : {}),
         });
         setSubmitting(false);
@@ -3859,6 +3889,20 @@
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input label="작업명 *" placeholder="예: 주방 목공" value={form.title} error={errors.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          {/* v19: 일정 유형(공사/지원/미팅) */}
+          <div>
+            <span className="block mb-1.5 text-sm font-medium text-slate-700">유형</span>
+            <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              {SCHEDULE_KINDS.map((k) => (
+                <button type="button" key={k} onClick={() => setForm({ ...form, kind: k })}
+                  className={`px-3 py-1.5 text-sm font-semibold rounded-lg transition ${form.kind === k ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                  {KIND_ICON[k] ? KIND_ICON[k] + ' ' : ''}{k}
+                </button>
+              ))}
+            </div>
+            {form.kind === '미팅' && <p className="mt-1.5 text-[11px] text-violet-600">📅 ‘미팅’ 유형은 미팅·AS 탭에도 자동 표시됩니다. (미팅 내용은 이 일정에서 수정)</p>}
+            {form.kind === '지원' && <p className="mt-1.5 text-[11px] text-teal-600">🤝 ‘지원’ 유형은 공정 외 지원 업무입니다. [지원] 필터로 모아볼 수 있습니다.</p>}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Combo label="공정" placeholder="선택 또는 직접 입력" value={form.process} options={procNames.length ? procNames : PROCESS_CATEGORIES}
               onChange={(e) => setForm({ ...form, process: e.target.value })} />
@@ -3917,10 +3961,22 @@
       const [depPredId, setDepPredId] = useState('');
       const [showDepList, setShowDepList] = useState(false);
       const [viewMode, setViewMode] = useState('calendar'); // v11-2 캘린더 / 타임라인 토글
+      const [kindFilter, setKindFilter] = useState('전체'); // v19 유형 필터 [공정|지원|전체] (기본 전체=기존 동작 보존)
 
       // v11-1: 드래그 이동/리사이즈 낙관적 UI — tasks(prop) 미러 + 즉시 패치, 실패 시 롤백
       const [localTasks, setLocalTasks] = useState(tasks || []);
       useEffect(() => { setLocalTasks(tasks || []); }, [tasks]);
+      // v19: 유형 필터 적용된 표시용 목록(캘린더/타임라인/목록 공통). 공정=kind '공사', 지원=kind '지원', 전체=미팅 포함 전부.
+      const filteredTasks = useMemo(() => {
+        if (kindFilter === '전체') return localTasks;
+        const want = kindFilter === '공정' ? '공사' : '지원';
+        return (localTasks || []).filter((t) => schedKind(t) === want);
+      }, [localTasks, kindFilter]);
+      const kindCounts = useMemo(() => {
+        const c = { 공사: 0, 지원: 0, 미팅: 0 };
+        (localTasks || []).forEach((t) => { c[schedKind(t)]++; });
+        return c;
+      }, [localTasks]);
       const segCls = (on) => `px-3 py-1.5 text-sm font-semibold rounded-lg transition ${on ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`;
 
       const taskMap = useMemo(() => { const m = {}; (localTasks || []).forEach((t) => { m[String(t.id)] = t; }); return m; }, [localTasks]);
@@ -3974,7 +4030,7 @@
             title: task.title, process: task.process || '', start_date: s, end_date: e,
             status: task.status || '예정', planned_cost: task.planned_cost != null ? task.planned_cost : 0,
             staff: task.staff || '', vendor: task.vendor || '', color: task.color || '', memo: task.memo || '',
-            sort_order: task.sort_order != null ? task.sort_order : 0,
+            kind: schedKind(task), sort_order: task.sort_order != null ? task.sort_order : 0,
             ...(cascade ? { cascade: true } : {}),
           };
           const res = await api.updateSchedule(task.id, body);
@@ -4074,15 +4130,29 @@
             <Card className="p-5"><div className="h-72 bg-slate-100 rounded-xl animate-pulse"></div></Card>
           ) : (
             <>
-              {/* v11-2: 캘린더 / 타임라인 뷰 토글 */}
-              <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-max">
-                <button onClick={() => setViewMode('calendar')} className={segCls(viewMode === 'calendar')}>📅 캘린더</button>
-                <button onClick={() => setViewMode('timeline')} className={segCls(viewMode === 'timeline')}>📊 타임라인</button>
+              {/* v11-2 뷰 토글 + v19 유형 필터 [공정|지원|전체] + 색 범례 */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-max">
+                  <button onClick={() => setViewMode('calendar')} className={segCls(viewMode === 'calendar')}>📅 캘린더</button>
+                  <button onClick={() => setViewMode('timeline')} className={segCls(viewMode === 'timeline')}>📊 타임라인</button>
+                </div>
+                <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-max" role="group" aria-label="일정 유형 필터">
+                  {[['공정', kindCounts['공사']], ['지원', kindCounts['지원']], ['전체', null]].map(([v, n]) => (
+                    <button key={v} onClick={() => setKindFilter(v)} className={segCls(kindFilter === v)} aria-pressed={kindFilter === v}>
+                      {v}{n != null && <span className="ml-1 text-[10px] opacity-60">{n}</span>}
+                    </button>
+                  ))}
+                </div>
+                <div className="hidden sm:flex items-center gap-2.5 text-[11px] text-slate-400 ml-auto">
+                  <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-slate-400"></span>공사=공정색</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: KIND_HEX['지원'] }}></span>🤝 지원</span>
+                  <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: KIND_HEX['미팅'] }}></span>📅 미팅</span>
+                </div>
               </div>
               {viewMode === 'calendar'
-                ? <ScheduleCalendar tasks={localTasks} onEditTask={openEdit} onRangeSelect={onRangeSelect} onMoveTask={moveTask} />
-                : <ScheduleTimeline tasks={localTasks} site={site} onEditTask={openEdit} onMoveTask={moveTask} onLink={linkTasks} onUnlink={unlinkTasks} />}
-              <ScheduleList tasks={localTasks} onEdit={openEdit} onAskDelete={setDelTarget}
+                ? <ScheduleCalendar tasks={filteredTasks} onEditTask={openEdit} onRangeSelect={onRangeSelect} onMoveTask={moveTask} />
+                : <ScheduleTimeline tasks={filteredTasks} site={site} onEditTask={openEdit} onMoveTask={moveTask} onLink={linkTasks} onUnlink={unlinkTasks} />}
+              <ScheduleList tasks={filteredTasks} onEdit={openEdit} onAskDelete={setDelTarget}
                 taskMap={taskMap} onAddDep={setDepTarget} onRemoveDep={removeDep} />
               {/* v6-4 선후관계 리스트 뷰 */}
               <Card className="p-5">
@@ -5948,28 +6018,38 @@
                 <p className="text-sm text-slate-400 text-center py-10">기록된 미팅이 없습니다.</p>
               ) : (
                 <ol className="relative border-l-2 border-slate-100 ml-2 space-y-5">
-                  {meetings.map((m) => (
+                  {meetings.map((m) => {
+                    const linked = m.schedule_id != null; // v19 일정(kind='미팅')에서 연동 생성된 미팅 → 읽기전용
+                    return (
                     <li key={m.id} className="ml-5">
-                      <span className="absolute -left-[7px] mt-1.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-white"></span>
-                      <div className="p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                      <span className={`absolute -left-[7px] mt-1.5 w-3 h-3 rounded-full border-2 border-white ${linked ? 'bg-violet-500' : 'bg-blue-500'}`}></span>
+                      <div className={`p-3 rounded-xl border ${linked ? 'border-violet-100 bg-violet-50/40' : 'border-slate-100 bg-slate-50/50'}`}>
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs font-mono text-slate-400">{m.meeting_date || '날짜 미정'}</span>
                               <span className="font-bold text-slate-800">{m.title}</span>
+                              {linked && <Badge color="bg-violet-500">📅 일정 연동</Badge>}
                             </div>
                             {m.attendees && <p className="text-xs text-slate-500 mt-1">👥 {m.attendees}</p>}
                             {m.content && <p className="text-sm text-slate-600 mt-1 whitespace-pre-wrap">{m.content}</p>}
                             {m.next_action && <p className="text-sm text-blue-600 mt-1.5">➡️ <span className="font-medium">다음 액션:</span> {m.next_action}</p>}
                           </div>
-                          <div className="shrink-0 flex gap-1">
-                            <button onClick={() => { setMEditing(m); setMEditorOpen(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
-                            <button onClick={() => setMDel(m)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                          <div className="shrink-0 flex gap-1 items-center">
+                            {linked ? (
+                              <span className="text-[11px] text-violet-500 whitespace-nowrap px-1" title="이 미팅은 일정 탭의 ‘미팅’ 유형 일정에서 자동 생성되었습니다. 일정에서 수정하세요.">🔒 일정 탭에서 수정</span>
+                            ) : (
+                              <>
+                                <button onClick={() => { setMEditing(m); setMEditorOpen(true); }} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                                <button onClick={() => setMDel(m)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ol>
               )}
             </Card>

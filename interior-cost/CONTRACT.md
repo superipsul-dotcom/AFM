@@ -998,3 +998,35 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - 18-2: version 컬럼·duplicate 엔드포인트(복제본 version+1·items 복사·원본 불변), 자동명명 title, 목록 버전뱃지.
 - 18-3: template CRUD(팀 스코핑), 템플릿으로 견적 프리필(items+요율). 타팀 template 404.
 - v1~v17 회귀 무손상(8탭·로그인·공유·타임라인·견적 확정→예산 등).
+
+---
+
+# v19 확장 — 일정 공사/지원 구분 + [공정|지원|전체] 필터 + 미팅 연동 (Phase B, #4)
+
+> 사용자 요청 + 노션 리서치: 안도공간 노션 공정표는 `유형`(공정/지원/AS) 단일 select로 구분, 캘린더는 공정+지원 표시·AS 분리, 미팅은 별도 DB. → 앱은 interior_schedule 에 `kind`(공사/지원/미팅) 추가, 일정표에 [공정|지원|전체] 필터, **미팅 kind 일정은 미팅·AS 탭에 자동 연동**. **v1~v18 동작/엔드포인트/UI 100% 보존**(컬럼 ADD COLUMN IF NOT EXISTS).
+
+## 스키마 (ADD COLUMN IF NOT EXISTS)
+- `interior_schedule` + `kind TEXT NOT NULL DEFAULT '공사'` (공사/지원/미팅). 서버상수 `SCHEDULE_KINDS=['공사','지원','미팅']`(목록 외 '공사' 보정).
+- `interior_meetings` + `schedule_id BIGINT` (nullable; kind='미팅' 일정에서 연동 생성된 미팅의 원본 일정 링크. 수동 미팅은 null).
+
+## 미팅 연동 규칙 (일정 → 미팅, 단방향)
+- 일정 POST/PUT 시 `kind==='미팅'` 이면 → **interior_meetings 에 연동행 upsert**(schedule_id=그 일정): meeting_date=start_date, title=schedule.title, attendees=staff, content=memo, next_action='' (기존 값 있으면 보존적으로 갱신). 
+- 일정 kind 가 '미팅'→다른값으로 바뀌거나 일정 DELETE 시 → 연동된 meeting 행 삭제(schedule_id 매칭).
+- 미팅·AS 탭의 미팅 목록 = interior_meetings 전체(연동행 포함). 연동행은 **"📅 일정 연동" 뱃지 + 미팅탭에서 읽기전용**(수정은 일정에서). 수동 미팅은 기존대로 CRUD.
+
+## 엔드포인트
+- 일정 GET/POST/PUT(`/api/sites/:id/schedule`, `/api/schedule/:id`) 응답·body 에 `kind` 포함(미전달 시 기본 '공사'/기존값). 미팅 연동 upsert/삭제는 위 규칙대로 서버가 처리(트랜잭션 권장). 팀 스코핑(v13) 유지.
+- 미팅 GET(`/api/sites/:id/meetings`) 응답에 `schedule_id`(null 또는 링크) 포함. 연동 미팅의 직접 PUT/DELETE 는 허용하되(또는 400 안내), 기본은 프론트가 읽기전용 처리.
+
+## UI (일정 탭)
+- 일정 생성/수정 폼에 **유형(kind) 선택**: 공사(기본)/지원/미팅. (미팅 선택 시 "미팅·AS 탭에도 표시됩니다" 안내)
+- 캘린더·타임라인·목록 상단에 **[공정] [지원] [전체] 필터 버튼**(기본 전체 또는 공정+지원). 공정=kind '공사'. 필터에 따라 표시 일정 제한. 미팅 kind 는 별도 색/아이콘(📅)으로 구분 표시(전체에서 보임).
+- kind 별 시각 구분(공사=기존 공정색, 지원=톤 다르게, 미팅=📅). 
+- 미팅·AS 탭: 미팅 목록에 연동행 "📅 일정 연동" 뱃지 표시(읽기전용). 
+- 폴백(localStorage): schedule.kind 보존 + 미팅 연동(kind='미팅'→ meetings 스토어에 schedule_id 링크 upsert, 삭제 동기화) 클라 처리.
+
+## 검증
+- schedule +kind CRUD(공사/지원/미팅, 보정). 
+- **미팅 연동**: kind='미팅' 일정 생성 → interior_meetings 에 schedule_id 링크행 생성(미팅탭에 표시) → 그 일정 수정(title/date) → 연동 미팅 갱신 → 일정 삭제 → 연동 미팅 삭제. kind '미팅'→'공사' 변경 시 연동 미팅 삭제.
+- 필터 [공정|지원|전체] 표시 제한. 
+- v1~v18 회귀(캘린더 드래그·cascade·타임라인·선후관계·일정표PDF·.ics).

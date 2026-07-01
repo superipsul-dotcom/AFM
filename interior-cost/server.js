@@ -100,6 +100,10 @@ const CLIENT_STATES = ['리드', '상담', '견적', '계약', '시공중', '완
 const ORDER_STATES = ['대기', '발주', '입고', '정산완료']; // interior_orders.status (기본 '대기')
 const AS_STATES = ['접수', '처리중', '완료', '보류']; // interior_as.status (기본 '접수')
 
+// (v19) 일정 유형(kind). 노션 공정표 '유형'(공정/지원/AS) 대응 — 공사/지원/미팅.
+//   목록 외 값은 '공사'로 보정(400 대신). kind='미팅' 일정은 interior_meetings 에 연동행 생성.
+const SCHEDULE_KINDS = ['공사', '지원', '미팅'];
+
 // (v3) 원가계산서 기본 가정율 (CONTRACT "interior_estimates 확장" / "원가계산서 산출식").
 //   견적 헤더에 값이 안 오면 이 기본값 사용. 실제 견적서(.xlsm)로 원 단위 검증된 율.
 const BUILDUP_DEFAULTS = {
@@ -228,6 +232,10 @@ async function initDB() {
   // 7-b) (v14) 일정 협력업체(이 공정에 투입되는 거래처명) — staff 와 동형 텍스트.
   //   ADD COLUMN IF NOT EXISTS → 기존 일정 데이터 100% 보존, 멱등. 거래처 마스터명과 매칭(자유입력 허용).
   await pool.query(`ALTER TABLE interior_schedule ADD COLUMN IF NOT EXISTS vendor TEXT NOT NULL DEFAULT ''`);
+
+  // 7-c) (v19) 일정 유형(kind): 공사(기본)/지원/미팅. ADD COLUMN IF NOT EXISTS → 기존 일정 전부 '공사' 로 backfill, 멱등.
+  //   kind='미팅' 일정은 interior_meetings 에 연동행이 생성된다(아래 syncScheduleMeeting).
+  await pool.query(`ALTER TABLE interior_schedule ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT '공사'`);
 
   // 8) 견적서 헤더 (현장 삭제 시 CASCADE)
   await pool.query(`
@@ -407,6 +415,11 @@ async function initDB() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  // 20-b) (v19) 미팅 → 원본 일정 링크. kind='미팅' 일정에서 연동 생성된 미팅의 schedule_id.
+  //   수동 미팅은 null. ADD COLUMN IF NOT EXISTS → 기존 미팅 100% 보존, 멱등.
+  await pool.query('ALTER TABLE interior_meetings ADD COLUMN IF NOT EXISTS schedule_id BIGINT');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_meetings_schedule ON interior_meetings (schedule_id);');
 
   // 21) AS (현장 종속, CASCADE)
   await pool.query(`
@@ -1014,6 +1027,7 @@ function rowToSchedule(row) {
     color: row.color || '',
     memo: row.memo || '',
     sort_order: Number(row.sort_order || 0),
+    kind: SCHEDULE_KINDS.includes(row.kind) ? row.kind : '공사', // (v19) 공사/지원/미팅
     created_at: new Date(row.created_at).toISOString(),
   };
 }
@@ -1147,6 +1161,7 @@ function rowToMeeting(row) {
   return {
     id: row.id,
     site_id: row.site_id,
+    schedule_id: row.schedule_id == null ? null : Number(row.schedule_id), // (v19) 연동 일정 링크(수동=null)
     meeting_date: row.meeting_date, // 'YYYY-MM-DD' | null
     title: row.title,
     attendees: row.attendees || '',
@@ -1199,7 +1214,7 @@ const ORDER_COLS =
   "id, site_id, order_no, vendor, trade, title, amount, to_char(order_date,'YYYY-MM-DD') AS order_date, to_char(due_date,'YYYY-MM-DD') AS due_date, status, memo, " +
   "to_char(need_date,'YYYY-MM-DD') AS need_date, auto_generated, created_at"; // (v10) need_date/auto_generated 확장
 const MEETING_COLS =
-  "id, site_id, to_char(meeting_date,'YYYY-MM-DD') AS meeting_date, title, attendees, content, next_action, created_at";
+  "id, site_id, schedule_id, to_char(meeting_date,'YYYY-MM-DD') AS meeting_date, title, attendees, content, next_action, created_at";
 const AS_COLS =
   "id, site_id, to_char(received_date,'YYYY-MM-DD') AS received_date, title, detail, status, to_char(handled_date,'YYYY-MM-DD') AS handled_date, staff, cost, created_at";
 // (v18) 견적 템플릿 컬럼. config/items 는 JSONB → node-pg 가 JS 객체/배열로 반환.
@@ -1210,7 +1225,7 @@ const SCHEDULE_SELECT_COLS = `
   s.id, s.site_id, s.title, s.process,
   to_char(s.start_date,'YYYY-MM-DD') AS start_date,
   to_char(s.end_date,'YYYY-MM-DD')   AS end_date,
-  s.status, s.planned_cost, s.staff, s.vendor, s.color, s.memo, s.sort_order, s.created_at,
+  s.status, s.planned_cost, s.staff, s.vendor, s.color, s.memo, s.sort_order, s.kind, s.created_at,
   (SELECT COALESCE(SUM(c.amount),0)::bigint FROM interior_costs c WHERE c.schedule_id = s.id) AS actual_cost
 `;
 // 일정 INSERT/UPDATE RETURNING — 동일하지만 테이블명(interior_schedule)으로 상관 서브쿼리 참조
@@ -1218,7 +1233,7 @@ const SCHEDULE_RETURNING_COLS = `
   id, site_id, title, process,
   to_char(start_date,'YYYY-MM-DD') AS start_date,
   to_char(end_date,'YYYY-MM-DD')   AS end_date,
-  status, planned_cost, staff, vendor, color, memo, sort_order, created_at,
+  status, planned_cost, staff, vendor, color, memo, sort_order, kind, created_at,
   (SELECT COALESCE(SUM(c.amount),0)::bigint FROM interior_costs c WHERE c.schedule_id = interior_schedule.id) AS actual_cost
 `;
 
@@ -1769,6 +1784,15 @@ function validateSchedule(body) {
   const vendor_provided = Object.prototype.hasOwnProperty.call(b, 'vendor');
   const vendor = typeof b.vendor === 'string' ? b.vendor.trim() : '';
 
+  // (v19) 유형(kind): 공사/지원/미팅. 본문에 키가 있을 때만 반영(PUT 미전달 시 기존값 보존).
+  //   목록 외 값은 '공사'로 보정(400 대신). POST 미전달 시 '공사'.
+  const kind_provided = Object.prototype.hasOwnProperty.call(b, 'kind');
+  let kind = '공사';
+  if (kind_provided) {
+    const k = typeof b.kind === 'string' ? b.kind.trim() : '';
+    kind = SCHEDULE_KINDS.includes(k) ? k : '공사';
+  }
+
   return {
     valid: true,
     values: {
@@ -1781,11 +1805,38 @@ function validateSchedule(body) {
       staff: typeof b.staff === 'string' ? b.staff.trim() : '',
       vendor, // (v14) '' when absent (POST default); PUT uses vendor_provided for preserve
       vendor_provided,
+      kind, // (v19) '공사' when absent (POST default); PUT uses kind_provided for preserve
+      kind_provided,
       color: typeof b.color === 'string' ? b.color.trim() : '',
       memo: typeof b.memo === 'string' ? b.memo.trim() : '',
       sort_order,
     },
   };
+}
+
+// (v19) 일정 kind='미팅' ↔ interior_meetings 연동행 동기화(단방향, 일정→미팅).
+//   client = 트랜잭션 내부 pg client. sched = rowToSchedule 결과({id,site_id,kind,title,start_date,staff,memo}).
+//   - kind='미팅': 연동행 있으면 UPDATE(meeting_date/title/attendees/content 갱신, next_action 보존), 없으면 INSERT.
+//   - kind≠'미팅': 이 일정에 연동된 미팅(schedule_id 매칭)이 있으면 DELETE(연동 해제).
+//   팀 스코핑: 라우트에서 이미 sched(그 site)가 req.teamId 소유임을 검증 → site_id 그대로 사용해 안전.
+async function syncScheduleMeeting(client, sched) {
+  if (sched.kind === '미팅') {
+    const upd = await client.query(
+      `UPDATE interior_meetings
+       SET meeting_date=$2, title=$3, attendees=$4, content=$5
+       WHERE schedule_id=$1`,
+      [sched.id, sched.start_date, sched.title, sched.staff || '', sched.memo || '']
+    );
+    if (upd.rowCount === 0) {
+      await client.query(
+        `INSERT INTO interior_meetings (site_id, schedule_id, meeting_date, title, attendees, content, next_action)
+         VALUES ($1,$2,$3,$4,$5,$6,'')`,
+        [sched.site_id, sched.id, sched.start_date, sched.title, sched.staff || '', sched.memo || '']
+      );
+    }
+  } else {
+    await client.query('DELETE FROM interior_meetings WHERE schedule_id=$1', [sched.id]);
+  }
 }
 
 const VAT_MODES = ['exclusive', 'inclusive', 'none'];
@@ -2829,13 +2880,32 @@ app.post('/api/sites/:id/schedule', async (req, res) => {
     const site = await pool.query('SELECT id FROM interior_sites WHERE id=$1', [id]);
     if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
 
-    const { rows } = await pool.query(
-      `INSERT INTO interior_schedule (site_id, title, process, start_date, end_date, status, planned_cost, staff, vendor, color, memo, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-       RETURNING ${SCHEDULE_RETURNING_COLS}`,
-      [id, v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.vendor, v.color, v.memo, v.sort_order]
-    );
-    res.status(201).json(rowToSchedule(rows[0]));
+    // (v19) kind 컬럼 포함. kind≠'미팅' 이면 v1~v18 그대로 단일 INSERT(트랜잭션 불필요).
+    const insertSQL = `INSERT INTO interior_schedule (site_id, title, process, start_date, end_date, status, planned_cost, staff, vendor, color, memo, sort_order, kind)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       RETURNING ${SCHEDULE_RETURNING_COLS}`;
+    const insertParams = [id, v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.vendor, v.color, v.memo, v.sort_order, v.kind];
+
+    if (v.kind !== '미팅') {
+      const { rows } = await pool.query(insertSQL, insertParams);
+      return res.status(201).json(rowToSchedule(rows[0]));
+    }
+
+    // (v19) kind='미팅': 일정 INSERT + interior_meetings 연동행 INSERT 를 한 트랜잭션으로.
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(insertSQL, insertParams);
+      const sched = rowToSchedule(rows[0]);
+      await syncScheduleMeeting(client, sched); // 연동 미팅 생성
+      await client.query('COMMIT');
+      return res.status(201).json(sched);
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) { /* noop */ }
+      throw e; // 바깥 catch 가 로깅 + 500 처리
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('POST /api/sites/:id/schedule 오류:', err.message);
     res.status(500).json({ success: false, message: '일정을 저장하지 못했습니다.' });
@@ -2853,17 +2923,32 @@ app.put('/api/schedule/:id', async (req, res) => {
 
     const cascade = parseBool(req.body && req.body.cascade, false);
 
-    // ===== cascade 미전달/false: v1~v5 동작 100% 보존 (단일 UPDATE, shifted 키 없음) =====
+    // ===== cascade 미전달/false: v1~v18 단일 일정 갱신 동작 보존. (v19) kind 갱신 + 미팅 연동 동기화(트랜잭션) =====
     if (!cascade) {
-      const { rows } = await pool.query(
-        `UPDATE interior_schedule
-         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor)
-         WHERE id=$12
-         RETURNING ${SCHEDULE_RETURNING_COLS}`,
-        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, id]
-      );
-      if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 일정을 찾을 수 없습니다.' });
-      return res.json(rowToSchedule(rows[0]));
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const { rows } = await client.query(
+          `UPDATE interior_schedule
+           SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor), kind=COALESCE($12::text, kind)
+           WHERE id=$13
+           RETURNING ${SCHEDULE_RETURNING_COLS}`,
+          [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, v.kind_provided ? v.kind : null, id]
+        );
+        if (rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ success: false, message: '해당 일정을 찾을 수 없습니다.' });
+        }
+        const sched = rowToSchedule(rows[0]);
+        await syncScheduleMeeting(client, sched); // (v19) 새 kind 기준 연동 미팅 upsert(미팅)/삭제(비미팅)
+        await client.query('COMMIT');
+        return res.json(sched);
+      } catch (e) {
+        try { await client.query('ROLLBACK'); } catch (_) { /* noop */ }
+        throw e; // 바깥 catch 가 로깅 + 500 처리
+      } finally {
+        client.release();
+      }
     }
 
     // ===== (6-4) cascade=true: 트랜잭션으로 본 일정 갱신 + 모든 후속(transitive)을 +delta 연쇄이동 =====
@@ -2884,15 +2969,18 @@ app.put('/api/schedule/:id', async (req, res) => {
       const oldStart = cur.rows[0].start_date;
       const siteId = cur.rows[0].site_id;
 
-      // 2) 본 일정 갱신 (cascade=false 와 동일한 풀-리플레이스)
+      // 2) 본 일정 갱신 (cascade=false 와 동일한 풀-리플레이스). (v19) kind 포함.
       const upd = await client.query(
         `UPDATE interior_schedule
-         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor)
-         WHERE id=$12
+         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor), kind=COALESCE($12::text, kind)
+         WHERE id=$13
          RETURNING ${SCHEDULE_RETURNING_COLS}`,
-        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, id]
+        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, v.kind_provided ? v.kind : null, id]
       );
       const self = rowToSchedule(upd.rows[0]);
+
+      // (v19) 본 일정의 미팅 연동 동기화(새 kind 기준). self.start_date=새 시작일 → 연동 미팅 meeting_date 도 새 시작일로 갱신.
+      await syncScheduleMeeting(client, self);
 
       // 3) delta = 새 start − 기존 start (일수). 0 이면 후속 이동 없음.
       const delta = dayDiff(v.start_date, oldStart);
@@ -2938,6 +3026,14 @@ app.put('/api/schedule/:id', async (req, res) => {
             start_date: r.start_date,
             end_date: r.end_date,
           }));
+
+          // (v19) 이동한 후속 중 미팅 연동행(schedule_id 매칭)이 있으면 meeting_date 도 동일 delta 만큼 이동.
+          await client.query(
+            `UPDATE interior_meetings
+             SET meeting_date = meeting_date + ($2::int)
+             WHERE schedule_id = ANY($1::bigint[]) AND meeting_date IS NOT NULL`,
+            [toShift, delta]
+          );
         }
       }
 
@@ -2964,12 +3060,27 @@ app.delete('/api/schedule/:id', async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 일정 id 형식입니다.' });
 
-    // 연결된 비용의 schedule_id 를 SET NULL (FK 가 없을 수도 있어 수동 처리 — 비용 자체는 보존)
-    await pool.query('UPDATE interior_costs SET schedule_id=NULL WHERE schedule_id=$1', [id]);
-
-    const { rowCount } = await pool.query('DELETE FROM interior_schedule WHERE id=$1', [id]);
-    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 일정을 찾을 수 없습니다.' });
-    res.json({ success: true });
+    // (v19) 비용 schedule_id SET NULL + 연동 미팅 삭제 + 일정 삭제를 한 트랜잭션으로.
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // 연결된 비용의 schedule_id 를 SET NULL (FK 가 없을 수도 있어 수동 처리 — 비용 자체는 보존)
+      await client.query('UPDATE interior_costs SET schedule_id=NULL WHERE schedule_id=$1', [id]);
+      // (v19) kind='미팅' 일정에서 연동 생성된 미팅도 함께 삭제(schedule_id 매칭). 수동 미팅(null)은 영향 없음.
+      await client.query('DELETE FROM interior_meetings WHERE schedule_id=$1', [id]);
+      const { rowCount } = await client.query('DELETE FROM interior_schedule WHERE id=$1', [id]);
+      if (rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ success: false, message: '해당 일정을 찾을 수 없습니다.' });
+      }
+      await client.query('COMMIT');
+      return res.json({ success: true });
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) { /* noop */ }
+      throw e; // 바깥 catch 가 로깅 + 500 처리
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('DELETE /api/schedule/:id 오류:', err.message);
     res.status(500).json({ success: false, message: '일정을 삭제하지 못했습니다.' });
