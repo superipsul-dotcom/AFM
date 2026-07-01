@@ -88,6 +88,7 @@
     const SCHEDULE_KEY = 'interior_schedule_v1';
     const SCHEDULE_DEPS_KEY = 'interior_schedule_deps_v1'; // v6-4 일정 선후관계(의존성) 폴백
     const ESTIMATES_KEY = 'interior_estimates_v1';
+    const TEMPLATES_KEY = 'interior_estimate_templates_v1'; // v18 견적 템플릿
     const TAB_KEY = 'interior_active_tab_v1';
 
     // ── 상태/구분 옵션 ──
@@ -260,6 +261,60 @@
       return new Date(d - tz).toISOString().slice(0, 10);
     };
     const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+    // ── v18: 견적 유효기간 프리셋 · 자동명명 · 템플릿 config 변환 헬퍼 ──
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const ymdLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    // 기준일(YYYY-MM-DD, 없으면 오늘) + 기간 → YYYY-MM-DD. 주=일수 add, 월=월단위 add(말일 롤오버는 JS 표준)
+    const addValidPeriod = (baseYmd, kind) => {
+      const base = (baseYmd && /^\d{4}-\d{2}-\d{2}/.test(baseYmd)) ? new Date(baseYmd.slice(0, 10) + 'T00:00:00') : new Date();
+      const d = new Date(base.getTime());
+      if (kind === '1w') d.setDate(d.getDate() + 7);
+      else if (kind === '2w') d.setDate(d.getDate() + 14);
+      else if (kind === '1m') d.setMonth(d.getMonth() + 1);
+      else if (kind === '3m') d.setMonth(d.getMonth() + 3);
+      return ymdLocal(d);
+    };
+    const VALID_PRESETS = [{ k: '1w', label: '1주' }, { k: '2w', label: '2주' }, { k: '1m', label: '1개월' }, { k: '3m', label: '3개월' }];
+    // 현장 대표 담당자(자동명명용): PM → 현장담당자 → 시공책임 → 디자이너
+    const siteManagerName = (site) => (site && (site.pm || site.manager || site.construction_manager || site.designer)) || '';
+    // 제목 끝의 -vN 접미사 제거 (계열 base 추출용)
+    const stripVersionSuffix = (title) => String(title || '').replace(/[-_\s]*[vV]\d+\s*$/, '').trim();
+    // v18 자동명명: {현장명}-{YYYYMMDD}-{HHMM}-{담당자|고객명}-v{버전}. 담당자·고객 모두 없으면 그 구간 생략.
+    function buildEstimateAutoName({ siteName, estimateDate, manager, clientName, version }) {
+      const now = new Date();
+      const ymd = (estimateDate && /^\d{4}-\d{2}-\d{2}/.test(estimateDate))
+        ? estimateDate.slice(0, 10).replace(/-/g, '')
+        : `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}`;
+      const hm = `${pad2(now.getHours())}${pad2(now.getMinutes())}`;
+      const who = (manager && String(manager).trim()) || (clientName && String(clientName).trim()) || '';
+      const parts = [String(siteName || '견적').trim() || '견적', ymd, hm];
+      if (who) parts.push(who);
+      parts.push('v' + (version || 1));
+      return parts.join('-');
+    }
+    // 템플릿 config(원가요율 가정) ↔ 에디터 header 형태 변환 (BUILDUP_DEFAULTS 정의 이후 실행되는 함수 본문에서만 사용)
+    function templateConfigToHeader(cfg) {
+      cfg = cfg || {};
+      const h = {
+        vat_mode: cfg.vat_mode || 'exclusive',
+        vat_rate: cfg.vat_rate != null ? Number(cfg.vat_rate) : 0.10,
+        discount: cfg.discount != null ? String(cfg.discount) : '0',
+        use_cost_buildup: !!cfg.use_cost_buildup,
+      };
+      Object.keys(BUILDUP_DEFAULTS).forEach((k) => { h[k] = cfg[k] != null ? Number(cfg[k]) : BUILDUP_DEFAULTS[k]; });
+      return h;
+    }
+    function headerToTemplateConfig(h) {
+      const cfg = {
+        vat_mode: h.vat_mode || 'exclusive',
+        vat_rate: Number(h.vat_rate != null ? h.vat_rate : 0.10),
+        discount: Math.round(Number(h.discount) || 0),
+        use_cost_buildup: !!h.use_cost_buildup,
+      };
+      Object.keys(BUILDUP_DEFAULTS).forEach((k) => { cfg[k] = Number(h[k] != null ? h[k] : BUILDUP_DEFAULTS[k]); });
+      return cfg;
+    }
 
     // 두 날짜(YYYY-MM-DD) 사이 일수 차이 (b - a), 정수
     const daysBetween = (a, b) => {
@@ -451,6 +506,7 @@
     const scheduleStore = makeStore(SCHEDULE_KEY);
     const scheduleDepsStore = makeStore(SCHEDULE_DEPS_KEY); // v6-4 [{id, predecessor_id, successor_id, created_at}]
     const estimatesStore = makeStore(ESTIMATES_KEY);
+    const templatesStore = makeStore(TEMPLATES_KEY); // v18 견적 템플릿
     const catalogStore = makeStore(CATALOG_KEY); // v3 단가 카탈로그
     const takeoffStore = makeStore(TAKEOFF_KEY); // v8 스케치업/실측 물량(takeoff)
     // v5: 노션 관계형 서브-DB 스토어 (고객/리드 · 발주 · 미팅 · AS)
@@ -1232,6 +1288,7 @@
             valid_until: body.valid_until || '', vat_mode: body.vat_mode || 'exclusive',
             vat_rate: body.vat_rate != null ? Number(body.vat_rate) : 0.10, discount: Math.round(Number(body.discount) || 0),
             ...this._buildupHeader(body),
+            version: body.version != null ? Number(body.version) : 1, // v18 견적 버전(기본 1)
             status: 'draft', memo: body.memo || '', items: this._normItems(body.items), created_at: new Date().toISOString(),
           };
           estimatesStore.write([...estimatesStore.read(), item]);
@@ -1361,6 +1418,78 @@
             supplier: SUPPLIER,
           };
         }
+      },
+
+      // ════════ v18: 견적 복제(새 버전) + 견적 템플릿 (estimate-templates) ════════
+      // POST /api/estimates/:id/duplicate → 헤더+items 복제, version=(같은 현장 최대 version)+1, status='draft'. 원본 불변.
+      async duplicateEstimate(id) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/estimates/${id}/duplicate`, { method: 'POST' }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = estimatesStore.read();
+          const cur = list.find((x) => String(x.id) === String(id));
+          if (!cur) { const err = new Error('견적을 찾을 수 없습니다.'); err.status = 404; throw err; }
+          const sameSite = list.filter((x) => String(x.site_id) === String(cur.site_id));
+          const maxV = sameSite.reduce((mx, x) => Math.max(mx, Number(x.version) || 1), 1);
+          const newVersion = Math.max(maxV + 1, (Number(cur.version) || 1) + 1);
+          const site = sitesStore.read().find((s) => String(s.id) === String(cur.site_id)) || null;
+          let base = stripVersionSuffix(cur.title);
+          if (!base) base = stripVersionSuffix(buildEstimateAutoName({ siteName: site && site.name, estimateDate: cur.estimate_date, manager: siteManagerName(site), clientName: cur.client_name, version: newVersion }));
+          const title = base + '-v' + newVersion;
+          const clonedItems = (cur.items || []).map((it, i) => ({ ...it, id: uid(), sort_order: it.sort_order != null ? it.sort_order : i }));
+          const dup = { ...cur, id: uid(), version: newVersion, status: 'draft', title, share_token: null, share_password: '', created_at: new Date().toISOString(), items: clonedItems };
+          estimatesStore.write([...list, dup]);
+          return { ...dup, totals: computeTotals(dup) };
+        }
+      },
+      _normTemplateItems(items) {
+        return (items || []).filter((it) => (it.name || '').trim()).map((it, i) => ({
+          trade: it.trade || '', name: String(it.name).trim(), spec: it.spec || '', unit: it.unit || '',
+          qty: Number(it.qty) || 0,
+          material_price: Math.round(Number(it.material_price) || 0),
+          labor_price: Math.round(Number(it.labor_price) || 0),
+          sub_price: Math.round(Number(it.sub_price) || 0),
+          memo: it.memo || '', sort_order: i,
+        }));
+      },
+      async listTemplates() {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/estimate-templates`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          return templatesStore.read().slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+        }
+      },
+      async createTemplate(body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/estimate-templates`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          if (!(body.name || '').trim()) { const err = new Error('템플릿명을 입력하세요.'); err.status = 400; throw err; }
+          const item = { id: uid(), name: body.name.trim(), description: body.description || '', config: body.config || {}, items: this._normTemplateItems(body.items), created_at: new Date().toISOString() };
+          templatesStore.write([item, ...templatesStore.read()]);
+          return item;
+        }
+      },
+      async updateTemplate(id, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/estimate-templates/${id}`, { method: 'PUT', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = templatesStore.read();
+          const cur = list.find((x) => String(x.id) === String(id));
+          if (!cur) { const err = new Error('템플릿을 찾을 수 없습니다.'); err.status = 404; throw err; }
+          const upd = {
+            ...cur,
+            name: (body.name != null ? String(body.name).trim() : cur.name) || cur.name,
+            description: body.description != null ? body.description : cur.description,
+            config: body.config != null ? body.config : cur.config,
+            items: body.items != null ? this._normTemplateItems(body.items) : cur.items,
+          };
+          templatesStore.write(list.map((x) => (String(x.id) === String(id) ? upd : x)));
+          return upd;
+        }
+      },
+      async removeTemplate(id) {
+        try { await this._tryFetch(`${API_BASE_URL}/estimate-templates/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; templatesStore.write(templatesStore.read().filter((x) => String(x.id) !== String(id))); return { success: true }; }
       },
 
       // ════════ v3: 단가 카탈로그 (catalog) ════════
@@ -4110,12 +4239,59 @@
     // ========================================
     // 🧩 견적 — 목록 / 에디터 / 인쇄
     // ========================================
-    function EstimateList({ estimates, onOpen, onNew, onAskDelete }) {
+    function EstimateList({ estimates, onOpen, onNew, onAskDelete, onNewFromTemplate, templates = [] }) {
+      // v18: 버전 계열 묶음 — 제목에서 -vN 제거한 base 로 그룹핑, 그룹 내 version 내림차순, 그룹은 최신 생성순.
+      const groups = useMemo(() => {
+        const map = new Map();
+        (estimates || []).forEach((e) => {
+          const key = stripVersionSuffix(e.title) || ('__solo_' + e.id);
+          if (!map.has(key)) map.set(key, []);
+          map.get(key).push(e);
+        });
+        const arr = Array.from(map.entries()).map(([key, list]) => {
+          const sorted = list.slice().sort((a, b) => ((Number(b.version) || 1) - (Number(a.version) || 1)) || (a.created_at < b.created_at ? 1 : -1));
+          const recent = list.reduce((mx, x) => ((x.created_at || '') > mx ? (x.created_at || '') : mx), '');
+          return { key, base: stripVersionSuffix(list[0].title) || (list[0].title || '견적서'), list: sorted, recent };
+        });
+        arr.sort((a, b) => (a.recent < b.recent ? 1 : -1));
+        return arr;
+      }, [estimates]);
+      const renderRow = (e) => {
+        const total = e.totals ? e.totals.total : 0;
+        return (
+          <li key={e.id} className="py-3 flex items-center justify-between gap-3">
+            <button className="text-left min-w-0 flex-1" onClick={() => onOpen(e)}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge color="bg-indigo-500">v{Number(e.version) || 1}</Badge>
+                <span className="font-semibold text-slate-800 truncate">{e.title || '견적서'}</span>
+                <Badge color={ESTIMATE_STATUS_COLOR[e.status] || 'bg-slate-400'}>{ESTIMATE_STATUS_LABEL[e.status] || e.status}</Badge>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-400">
+                {e.client_name || '고객 미지정'} · {e.estimate_date || '-'}{e.itemCount != null ? ` · ${e.itemCount}개 항목` : ''}
+              </p>
+            </button>
+            <div className="text-right shrink-0">
+              <p className="font-bold text-slate-800">{fmtWon(total)}</p>
+              <button onClick={() => onAskDelete(e)} className="text-xs text-slate-400 hover:text-red-600">삭제</button>
+            </div>
+          </li>
+        );
+      };
       return (
         <Card className="p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-base font-bold text-slate-800">견적서 목록</h2>
-            <Button size="sm" onClick={onNew}>+ 새 견적</Button>
+            <div className="flex items-center gap-2">
+              {templates && templates.length > 0 && onNewFromTemplate && (
+                <select value="" onChange={(e) => { const t = templates.find((x) => String(x.id) === e.target.value); if (t) onNewFromTemplate(t); }}
+                  className="text-sm rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  title="저장한 견적 템플릿의 항목·원가요율을 새 견적에 프리필합니다.">
+                  <option value="">🧩 템플릿으로 시작…</option>
+                  {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.items ? ` (${t.items.length}개 항목)` : ''}</option>)}
+                </select>
+              )}
+              <Button size="sm" onClick={onNew}>+ 새 견적</Button>
+            </div>
           </div>
           {(!estimates || estimates.length === 0) ? (
             <div className="text-center py-10">
@@ -4123,28 +4299,21 @@
               <p className="text-sm text-slate-400">작성된 견적서가 없습니다.<br />‘새 견적’으로 엑셀 없이 견적서를 만들어보세요.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-slate-100">
-              {estimates.map((e) => {
-                const total = e.totals ? e.totals.total : 0;
-                return (
-                  <li key={e.id} className="py-3 flex items-center justify-between gap-3">
-                    <button className="text-left min-w-0 flex-1" onClick={() => onOpen(e)}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-800 truncate">{e.title || '견적서'}</span>
-                        <Badge color={ESTIMATE_STATUS_COLOR[e.status] || 'bg-slate-400'}>{ESTIMATE_STATUS_LABEL[e.status] || e.status}</Badge>
-                      </div>
-                      <p className="mt-0.5 text-xs text-slate-400">
-                        {e.client_name || '고객 미지정'} · {e.estimate_date || '-'}{e.itemCount != null ? ` · ${e.itemCount}개 항목` : ''}
-                      </p>
-                    </button>
-                    <div className="text-right shrink-0">
-                      <p className="font-bold text-slate-800">{fmtWon(total)}</p>
-                      <button onClick={() => onAskDelete(e)} className="text-xs text-slate-400 hover:text-red-600">삭제</button>
+            <div className="space-y-2.5">
+              {groups.map((g) => (
+                g.list.length > 1 ? (
+                  <div key={g.key} className="rounded-xl border border-indigo-100 bg-indigo-50/30 overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 bg-indigo-50 border-b border-indigo-100">
+                      <span className="text-xs font-semibold text-indigo-700 truncate">🔁 {g.base} <span className="font-normal text-indigo-400">· {g.list.length}개 버전</span></span>
+                      <span className="text-[11px] text-indigo-500 shrink-0">최신 v{Number(g.list[0].version) || 1}</span>
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
+                    <ul className="divide-y divide-slate-100 px-3">{g.list.map((e) => renderRow(e))}</ul>
+                  </div>
+                ) : (
+                  <ul key={g.key} className="divide-y divide-slate-100 px-0">{renderRow(g.list[0])}</ul>
+                )
+              ))}
+            </div>
           )}
         </Card>
       );
@@ -4450,16 +4619,17 @@
       );
     }
 
-    function EstimateEditor({ site, initial, trades, procNames, onSave, onConfirm, onUnconfirm, onDelete, onPrint, onClose }) {
+    function EstimateEditor({ site, initial, trades, procNames, onSave, onConfirm, onUnconfirm, onDelete, onPrint, onClose, onDuplicate }) {
       const toast = useToast();
       const ps = (n) => (Number(n) ? String(Number(n)) : '');
       const mk = () => ({ _k: uid(), trade: '', name: '', spec: '', unit: '', qty: '1', material_price: '', labor_price: '', sub_price: '', memo: '', catalog_id: null });
       const isSaved = !!(initial && initial.id);
       const confirmed = !!(initial && initial.status === 'confirmed');
+      const version = (initial && Number(initial.version)) || 1; // v18 견적 버전
       const [shareOpen, setShareOpen] = useState(false); // v17: 공유 모달
       const [header, setHeader] = useState(() => {
         const h = {
-          title: (initial && initial.title) || '견적서',
+          title: (initial && initial.title) || '', // v18: 비우면 저장 시 자동명명
           client_name: (initial && initial.client_name) || (site && site.client) || '',
           client_contact: (initial && initial.client_contact) || '',
           estimate_date: (initial && initial.estimate_date) || todayStr(),
@@ -4552,10 +4722,12 @@
       };
       const est = useMemo(() => toEstimate(), [items, header]);
       const totals = useMemo(() => computeTotals(est), [est]);
+      // v18: 자동명명 미리보기(현장·견적일·현시각·담당자·버전). 저장 시 title 비었으면 이 값으로 채움(수정 가능).
+      const autoName = () => buildEstimateAutoName({ siteName: site && site.name, estimateDate: header.estimate_date, manager: siteManagerName(site), clientName: header.client_name, version });
       const buildBody = () => {
         const e = toEstimate();
         const body = {
-          title: header.title || '견적서', client_name: header.client_name, client_contact: header.client_contact,
+          title: (header.title && header.title.trim()) ? header.title.trim() : autoName(), client_name: header.client_name, client_contact: header.client_contact,
           estimate_date: header.estimate_date, valid_until: header.valid_until, vat_mode: header.vat_mode,
           vat_rate: Number(header.vat_rate), discount: Math.round(Number(header.discount) || 0), memo: header.memo,
           use_cost_buildup: header.use_cost_buildup,
@@ -4589,6 +4761,17 @@
       const handleSave = async () => {
         setSaving(true); const ok = await onSave(buildBody()); setSaving(false);
         if (ok) { try { localStorage.removeItem(draftKey); } catch (err) {} setShowDraftBanner(false); } // 서버 저장 성공 시 draft 삭제
+      };
+      // v18: [새 버전으로 저장] — 현재 편집 내용을 먼저 저장(현재 버전 갱신) → 복제해 v(n+1) 새 견적 에디터로 오픈.
+      const handleNewVersion = async () => {
+        if (!isSaved || !onDuplicate) return;
+        setSaving(true);
+        const okSaved = await onSave(buildBody()); // 현재 내용을 현재 견적에 반영
+        if (!okSaved) { setSaving(false); return; }
+        try { localStorage.removeItem(draftKey); } catch (err) {}
+        setShowDraftBanner(false);
+        await onDuplicate(initial.id); // 복제본(version+1) 생성 → 부모가 setDetail 로 새 견적 에디터 오픈
+        setSaving(false);
       };
 
       // ── v6-2: 공종 그룹 / 접기(accordion) / 점프 / 페이지 분할 ──
@@ -4642,6 +4825,7 @@
           </tr>
         );
       };
+      const autoNamePreview = autoName();
       return (
         <div className="space-y-5">
           {confirmed && (
@@ -4658,12 +4842,38 @@
               </span>
             </div>
           )}
+          {/* v18: 견적 제목(비우면 저장 시 자동명명) + 버전 뱃지 + 자동명명 버튼 */}
+          <div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1 min-w-0">
+                <Input label="견적 제목" value={header.title} placeholder={autoNamePreview}
+                  onChange={(e) => setHeader({ ...header, title: e.target.value })} />
+              </div>
+              {isSaved && <span className="mb-2.5 shrink-0"><Badge color="bg-indigo-500">v{version}</Badge></span>}
+              <Button type="button" size="sm" variant="ghost" className="mb-1 shrink-0 whitespace-nowrap border border-slate-200"
+                onClick={() => setHeader((h) => ({ ...h, title: autoName() }))}
+                title="현장명·견적일·현재시각·담당자·버전으로 제목을 자동 생성합니다.">🅰 자동명명</Button>
+            </div>
+            <p className="mt-1 text-[11px] text-slate-400">비워두면 저장 시 <span className="font-mono text-slate-500">{autoNamePreview}</span> 로 자동 명명됩니다. (수정 가능)</p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input label="견적 제목" value={header.title} onChange={(e) => setHeader({ ...header, title: e.target.value })} />
             <Input label="고객명" value={header.client_name} onChange={(e) => setHeader({ ...header, client_name: e.target.value })} />
             <Input label="고객 연락처" value={header.client_contact} onChange={(e) => setHeader({ ...header, client_contact: e.target.value })} />
             <Input label="견적일" type="date" value={header.estimate_date} onChange={(e) => setHeader({ ...header, estimate_date: e.target.value })} />
-            <Input label="유효기간" type="date" value={header.valid_until} onChange={(e) => setHeader({ ...header, valid_until: e.target.value })} />
+            {/* v18: 유효기간 + 프리셋 [1주][2주][1개월][3개월] (견적일 기준) */}
+            <div>
+              <Input label="유효기간" type="date" value={header.valid_until} onChange={(e) => setHeader({ ...header, valid_until: e.target.value })} />
+              <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                <span className="text-[11px] text-slate-400 mr-0.5">견적일 +</span>
+                {VALID_PRESETS.map((p) => (
+                  <button type="button" key={p.k}
+                    onClick={() => setHeader((h) => ({ ...h, valid_until: addValidPeriod(h.estimate_date || todayStr(), p.k) }))}
+                    className="px-2 py-0.5 rounded-md text-[11px] font-medium border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-slate-600 transition">
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <Select label="부가세" value={header.vat_mode} onChange={(e) => setHeader({ ...header, vat_mode: e.target.value })}>
               {VAT_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </Select>
@@ -4784,6 +4994,12 @@
               {isSaved && (confirmed
                 ? <Button variant="ghost" onClick={onUnconfirm}>초안으로</Button>
                 : <Button variant="ghost" className="text-emerald-700 hover:bg-emerald-50" onClick={onConfirm} title="확정 시 현장 예산이 이 견적 합계로 갱신됩니다.">✅ 확정</Button>)}
+              {isSaved && onDuplicate && (
+                <Button variant="ghost" className="text-indigo-700 hover:bg-indigo-50" onClick={handleNewVersion} disabled={saving}
+                  title={`현재 내용을 저장한 뒤 복제해 새 버전(v${version + 1})을 만듭니다. 덮어쓰기 대신 v${version}과 나란히 비교·보관됩니다.`}>
+                  🔁 새 버전으로 저장(v{version + 1})
+                </Button>
+              )}
               <Button onClick={handleSave} disabled={saving}>{saving ? '저장 중...' : (isSaved ? '저장' : '견적 생성')}</Button>
               <Button variant="secondary" onClick={onClose}>닫기</Button>
             </div>
@@ -5094,15 +5310,42 @@
       );
     }
 
-    function EstimateTab({ site, estimates, procNames, loading, onChanged, onPrint, openEstimateId = null, onOpenConsumed }) {
+    function EstimateTab({ site, estimates, procNames, loading, onChanged, onPrint, openEstimateId = null, onOpenConsumed, templates = [] }) {
       const toast = useToast();
       const [editorOpen, setEditorOpen] = useState(false);
       const [detail, setDetail] = useState(null);
       const [loadingDetail, setLoadingDetail] = useState(false);
       const [delTarget, setDelTarget] = useState(null);
       const [trades, setTrades] = useState(TRADE_MASTER);
+      const [editorNonce, setEditorNonce] = useState(0); // v18: 새 견적/템플릿 오픈 시 에디터 강제 remount 용
       useEffect(() => { let alive = true; api.listTrades().then((d) => { if (alive && d && d.length) setTrades(d); }).catch(() => {}); return () => { alive = false; }; }, []);
-      const openNew = () => { setDetail(null); setEditorOpen(true); };
+      const openNew = () => { setDetail(null); setEditorNonce((n) => n + 1); setEditorOpen(true); };
+      // v18: 템플릿으로 새 견적 시작 — 템플릿 items+config 를 id 없는 initial 로 합성 → 새 견적 에디터 프리필
+      const openNewFromTemplate = (tpl) => {
+        const cfg = templateConfigToHeader(tpl && tpl.config);
+        const initial = {
+          title: '', client_name: (site && site.client) || '', client_contact: '',
+          estimate_date: todayStr(), valid_until: '',
+          vat_mode: cfg.vat_mode, vat_rate: cfg.vat_rate,
+          discount: Number(tpl && tpl.config && tpl.config.discount) || 0,
+          use_cost_buildup: cfg.use_cost_buildup, memo: '', version: 1,
+          items: ((tpl && tpl.items) || []).map((it, i) => ({ ...it, sort_order: it.sort_order != null ? it.sort_order : i })),
+        };
+        Object.keys(BUILDUP_DEFAULTS).forEach((k) => { initial[k] = cfg[k]; });
+        setDetail(initial); setEditorNonce((n) => n + 1); setEditorOpen(true);
+        toast(`'${(tpl && tpl.name) || '템플릿'}'(으)로 새 견적을 시작합니다. 자유롭게 편집·저장하세요.`, 'success');
+      };
+      // v18: [새 버전으로 저장] — 복제본을 만들고 그 새 버전을 같은 에디터 모달에 오픈(키가 새 id 로 바뀌며 remount)
+      const doDuplicate = async (id) => {
+        try {
+          const nv = await api.duplicateEstimate(id);
+          const newId = nv && (nv.id || (nv.estimate && nv.estimate.id));
+          const fresh = newId ? await api.getEstimate(newId) : (nv.estimate || nv);
+          setDetail(fresh); setEditorOpen(true);
+          await onChanged();
+          toast(`새 버전(v${(fresh && fresh.version) || '?'})으로 저장했습니다. 이제 이 버전을 편집합니다.`, 'success');
+        } catch (e) { toast('새 버전 생성에 실패했습니다.', 'error'); }
+      };
       const openEditById = async (id) => {
         setEditorOpen(true); setDetail(null); setLoadingDetail(true);
         try { const d = await api.getEstimate(id); setDetail(d); }
@@ -5147,15 +5390,16 @@
           {loading ? (
             <Card className="p-5"><div className="h-40 bg-slate-100 rounded-xl animate-pulse"></div></Card>
           ) : (
-            <EstimateList estimates={estimates} onOpen={openEdit} onNew={openNew} onAskDelete={setDelTarget} />
+            <EstimateList estimates={estimates} onOpen={openEdit} onNew={openNew} onAskDelete={setDelTarget}
+              templates={templates} onNewFromTemplate={openNewFromTemplate} />
           )}
           <Modal isOpen={editorOpen} onClose={close} title={detail && detail.id ? '견적서 편집' : '새 견적서'} size="xl">
             {loadingDetail ? (
               <div className="h-40 bg-slate-100 rounded-xl animate-pulse"></div>
             ) : (
-              <EstimateEditor key={detail && detail.id ? detail.id : 'new'} site={site} initial={detail} trades={trades} procNames={procNames}
+              <EstimateEditor key={detail && detail.id ? detail.id : ('new-' + editorNonce)} site={site} initial={detail} trades={trades} procNames={procNames}
                 onSave={save} onConfirm={doConfirm} onUnconfirm={doUnconfirm} onDelete={() => { if (detail && detail.id) setDelTarget(detail); }}
-                onPrint={onPrint} onClose={close} />
+                onPrint={onPrint} onClose={close} onDuplicate={doDuplicate} />
             )}
           </Modal>
           <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="견적 삭제 확인" size="sm">
@@ -5176,11 +5420,11 @@
     // ========================================
     // 🆕 v15: 견적으로 현장 만들기 (현장정보 + 견적제목 → 원자적 site+estimate 생성)
     // ========================================
-    function EstimateSiteForm({ onSubmit, onCancel, staffNames = [] }) {
+    function EstimateSiteForm({ onSubmit, onCancel, staffNames = [], templates = [] }) {
       const [form, setForm] = useState({
         name: '', client: '', address: '', manager: '',
         building_type: '', start_date: todayStr(), end_date: '', move_in_date: '',
-        estimate_title: '견적서',
+        estimate_title: '견적서', template_id: '',
       });
       const [errors, setErrors] = useState({});
       const [submitting, setSubmitting] = useState(false);
@@ -5205,11 +5449,20 @@
           // 견적단계 신규 현장 기본값(예산은 0 → 견적 확정 시 자동 반영)
           budget: 0, status: '견적', progress_status: '준비',
         };
+        const tpl = templates.find((t) => String(t.id) === String(form.template_id));
         const estimate = {
           title: (form.estimate_title || '').trim() || '견적서',
           client_name: form.client.trim(), // 미입력 시 서버/폴백이 site.client 로 보정
-          estimate_date: todayStr(), items: [],
+          estimate_date: todayStr(), items: tpl ? (tpl.items || []) : [], // v18: 템플릿 항목 프리필
         };
+        if (tpl && tpl.config) { // v18: 템플릿 원가요율 프리필
+          const cfg = tpl.config;
+          if (cfg.vat_mode) estimate.vat_mode = cfg.vat_mode;
+          if (cfg.vat_rate != null) estimate.vat_rate = cfg.vat_rate;
+          if (cfg.discount != null) estimate.discount = cfg.discount;
+          estimate.use_cost_buildup = !!cfg.use_cost_buildup;
+          Object.keys(BUILDUP_DEFAULTS).forEach((k) => { if (cfg[k] != null) estimate[k] = cfg[k]; });
+        }
         const ok = await onSubmit({ site, estimate });
         setSubmitting(false);
         // ok=true 면 부모가 모달 닫고 에디터 오픈
@@ -5245,7 +5498,13 @@
             <Input label="준공(예정)일" type="date" value={form.end_date || ''} error={errors.end_date}
               onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
           </div>
-          <div className="pt-2 border-t border-slate-100">
+          <div className="pt-2 border-t border-slate-100 space-y-4">
+            {templates && templates.length > 0 && (
+              <Select label="🧩 견적 템플릿으로 시작 (선택)" value={form.template_id} onChange={(e) => setForm({ ...form, template_id: e.target.value })}>
+                <option value="">템플릿 없이 빈 견적으로 시작</option>
+                {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.items ? ` (${t.items.length}개 항목)` : ''}</option>)}
+              </Select>
+            )}
             <Input label="견적 제목" placeholder="견적서" value={form.estimate_title}
               onChange={(e) => setForm({ ...form, estimate_title: e.target.value })} />
           </div>
@@ -6444,7 +6703,234 @@
       );
     }
 
-    function ManageTab({ sites, onMastersChanged, onSitesChanged }) {
+    // ========================================
+    // 🧩 v18: 견적 템플릿 (편집기 = 견적 축소판: 항목 그리드 + 원가계산 요율) + 관리
+    // ========================================
+    function TemplateEditor({ initial, trades, onSave, onCancel }) {
+      const toast = useToast();
+      const ps = (n) => (Number(n) ? String(Number(n)) : '');
+      const mkRow = () => ({ _k: uid(), trade: '', name: '', spec: '', unit: '', qty: '1', material_price: '', labor_price: '', sub_price: '', memo: '' });
+      const [name, setName] = useState((initial && initial.name) || '');
+      const [description, setDescription] = useState((initial && initial.description) || '');
+      const [header, setHeader] = useState(() => templateConfigToHeader(initial && initial.config));
+      const [items, setItems] = useState(
+        (initial && initial.items && initial.items.length)
+          ? initial.items.map((it) => ({ _k: uid(), trade: it.trade || '', name: it.name || '', spec: it.spec || '', unit: it.unit || '', qty: ps(it.qty), material_price: ps(it.material_price), labor_price: ps(it.labor_price), sub_price: ps(it.sub_price), memo: it.memo || '' }))
+          : [mkRow()]
+      );
+      const [saving, setSaving] = useState(false);
+      const [picker, setPicker] = useState({ open: false, targetIdx: null });
+      const setItem = (idx, patch) => setItems((arr) => arr.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+      const addRow = () => setItems((arr) => [...arr, mkRow()]);
+      const delRow = (idx) => setItems((arr) => (arr.length <= 1 ? [mkRow()] : arr.filter((_, i) => i !== idx)));
+      const pickCatalog = (c) => {
+        const patch = { trade: c.trade || '', name: c.name || '', unit: c.unit || '', spec: c.product_name || c.grp || '', material_price: ps(c.material_price), labor_price: ps(c.labor_price), sub_price: ps(c.sub_price) };
+        if (picker.targetIdx == null) { setItems((arr) => [...arr, { _k: uid(), qty: '1', memo: '', ...patch }]); toast(`'${c.name}' 추가됨`, 'success'); }
+        else { setItem(picker.targetIdx, patch); setPicker({ open: false, targetIdx: null }); }
+      };
+      const inputCls = 'w-full px-2 py-1.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300';
+      const tradeBase = (trades && trades.length ? trades : TRADE_MASTER);
+      // 원가계산서 실시간 표시용 synthetic 견적 (EstimateEditor.toEstimate 축소판)
+      const est = useMemo(() => {
+        const its = items.filter((it) => (it.name || '').trim()).map((it, i) => {
+          const m = Math.round(Number(it.material_price) || 0), l = Math.round(Number(it.labor_price) || 0), s = Math.round(Number(it.sub_price) || 0);
+          const up = effUnitPrice({ material_price: m, labor_price: l, sub_price: s });
+          return { trade: it.trade, process: it.trade, name: it.name, spec: it.spec, unit: it.unit, qty: Number(it.qty) || 0, material_price: m, labor_price: l, sub_price: s, unit_price: up, amount: calcItemAmount(it.qty, up), sort_order: i };
+        });
+        const e = { vat_mode: header.vat_mode, vat_rate: Number(header.vat_rate), discount: Math.round(Number(header.discount) || 0), use_cost_buildup: header.use_cost_buildup, items: its };
+        Object.keys(BUILDUP_DEFAULTS).forEach((k) => { e[k] = Number(header[k]); });
+        return e;
+      }, [items, header]);
+      const totals = useMemo(() => computeTotals(est), [est]);
+      const doSave = async () => {
+        if (!name.trim()) { toast('템플릿명을 입력하세요.', 'error'); return; }
+        setSaving(true);
+        const body = {
+          name: name.trim(), description: description.trim(),
+          config: headerToTemplateConfig(header),
+          items: items.filter((it) => (it.name || '').trim()).map((it, i) => ({
+            trade: it.trade || '', name: it.name.trim(), spec: it.spec || '', unit: it.unit || '', qty: Number(it.qty) || 0,
+            material_price: Math.round(Number(it.material_price) || 0), labor_price: Math.round(Number(it.labor_price) || 0), sub_price: Math.round(Number(it.sub_price) || 0),
+            memo: it.memo || '', sort_order: i,
+          })),
+        };
+        await onSave(body);
+        setSaving(false);
+      };
+      return (
+        <div className="space-y-5">
+          <div className="rounded-xl bg-indigo-50 border border-indigo-100 px-3.5 py-2.5 text-xs text-indigo-700">
+            🧩 템플릿은 <span className="font-semibold">공종·항목·수량·3분할단가</span>와 <span className="font-semibold">원가계산 요율</span>을 저장합니다. 견적 작성 시 ‘템플릿으로 시작’으로 프리필돼요.
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.4fr] gap-3">
+            <Input label="템플릿명 *" placeholder="예: 사무실 저가공사형" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input label="설명" placeholder="예: 30평 이하 사무실 기본 구성" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Select label="부가세" value={header.vat_mode} onChange={(e) => setHeader({ ...header, vat_mode: e.target.value })}>
+              {VAT_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </Select>
+            <Input label="기본 할인액 (원)" type="number" min="0" value={header.discount} onChange={(e) => setHeader({ ...header, discount: e.target.value })} />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h3 className="text-sm font-bold text-slate-700">기본 공종 항목 <span className="text-[11px] font-normal text-slate-400">공종/품목/수량/재료·노무·부자재 단가</span></h3>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" onClick={() => setPicker({ open: true, targetIdx: null })}>📚 단가 카탈로그</Button>
+                <Button size="sm" variant="secondary" onClick={addRow}>+ 행 추가</Button>
+              </div>
+            </div>
+            <div className="overflow-x-auto -mx-1 px-1">
+              <table className="w-full text-sm" style={{ minWidth: '1080px' }}>
+                <thead>
+                  <tr className="text-left text-xs text-slate-400">
+                    <th className="py-1 pr-2 font-medium w-6">#</th>
+                    <th className="py-1 pr-2 font-medium w-36">공종</th>
+                    <th className="py-1 pr-2 font-medium">품목명 *</th>
+                    <th className="py-1 pr-2 font-medium w-28">규격</th>
+                    <th className="py-1 pr-2 font-medium w-12">단위</th>
+                    <th className="py-1 pr-2 font-medium w-16 text-right">수량</th>
+                    <th className="py-1 pr-2 font-medium w-24 text-right">재료비</th>
+                    <th className="py-1 pr-2 font-medium w-24 text-right">노무비</th>
+                    <th className="py-1 pr-2 font-medium w-24 text-right">부자재</th>
+                    <th className="py-1 pr-2 font-medium w-28 text-right">행합계</th>
+                    <th className="py-1 font-medium w-16 text-center">관리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it, idx) => {
+                    const inList = !it.trade || tradeBase.includes(it.trade);
+                    return (
+                      <tr key={it._k} className="align-top">
+                        <td className="py-1 pr-2 text-slate-400">{idx + 1}</td>
+                        <td className="py-1 pr-2">
+                          <select className={inputCls} value={it.trade} onChange={(e) => setItem(idx, { trade: e.target.value })}>
+                            <option value="">공종</option>
+                            {!inList && <option value={it.trade}>{it.trade}</option>}
+                            {tradeBase.map((t) => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </td>
+                        <td className="py-1 pr-2"><input className={inputCls} value={it.name} onChange={(e) => setItem(idx, { name: e.target.value })} placeholder="예: 강마루 시공" /></td>
+                        <td className="py-1 pr-2"><input className={inputCls} value={it.spec} onChange={(e) => setItem(idx, { spec: e.target.value })} placeholder="규격" /></td>
+                        <td className="py-1 pr-2"><input className={inputCls} value={it.unit} onChange={(e) => setItem(idx, { unit: e.target.value })} placeholder="개" /></td>
+                        <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.qty} onChange={(e) => setItem(idx, { qty: e.target.value })} /></td>
+                        <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.material_price} onChange={(e) => setItem(idx, { material_price: e.target.value })} /></td>
+                        <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.labor_price} onChange={(e) => setItem(idx, { labor_price: e.target.value })} /></td>
+                        <td className="py-1 pr-2"><input type="number" min="0" className={inputCls + ' text-right'} value={it.sub_price} onChange={(e) => setItem(idx, { sub_price: e.target.value })} /></td>
+                        <td className="py-1 pr-2 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtNum(rowAmount({ qty: it.qty, material_price: it.material_price, labor_price: it.labor_price, sub_price: it.sub_price }))}</td>
+                        <td className="py-1">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <button type="button" onClick={() => setPicker({ open: true, targetIdx: idx })} className="p-1 rounded text-slate-400 hover:text-blue-600" title="단가 카탈로그에서 이 행 채우기">📖</button>
+                            <button type="button" onClick={() => delRow(idx)} className="p-1 rounded text-slate-400 hover:text-red-600" aria-label="삭제">✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">품목명이 있는 행만 템플릿에 저장됩니다. 단가는 프리필 후 견적에서 자유롭게 조정할 수 있습니다.</p>
+          </div>
+
+          <CostBuildupPanel header={header} setHeader={setHeader} totals={totals} />
+
+          <div className="flex flex-wrap gap-2 justify-end pt-3 border-t border-slate-100">
+            <Button variant="secondary" onClick={onCancel}>취소</Button>
+            <Button onClick={doSave} disabled={saving}>{saving ? '저장 중...' : (initial && initial.id ? '템플릿 저장' : '템플릿 추가')}</Button>
+          </div>
+
+          <CatalogPickerModal isOpen={picker.open} onClose={() => setPicker({ open: false, targetIdx: null })}
+            trades={trades} mode={picker.targetIdx == null ? 'append' : 'replace'} onPick={pickCatalog} />
+        </div>
+      );
+    }
+
+    function TemplateManager({ onChanged }) {
+      const toast = useToast();
+      const [list, setList] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [trades, setTrades] = useState(TRADE_MASTER);
+      const [editing, setEditing] = useState(undefined); // undefined=닫힘, null=새로, obj=수정
+      const [delTarget, setDelTarget] = useState(null);
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try { setList(await api.listTemplates()); } catch (e) { toast('템플릿을 불러오지 못했습니다.', 'error'); }
+        finally { setLoading(false); }
+      }, [toast]);
+      useEffect(() => { reload(); }, [reload]);
+      useEffect(() => { let alive = true; api.listTrades().then((d) => { if (alive && d && d.length) setTrades(d); }).catch(() => {}); return () => { alive = false; }; }, []);
+      const save = async (body) => {
+        try {
+          if (editing && editing.id) { await api.updateTemplate(editing.id, body); toast('템플릿이 수정되었습니다.', 'success'); }
+          else { await api.createTemplate(body); toast('템플릿이 추가되었습니다.', 'success'); }
+          setEditing(undefined); await reload(); if (onChanged) onChanged();
+          return true;
+        } catch (e) { toast(e.status === 400 ? (e.message || '입력을 확인하세요.') : '저장에 실패했습니다.', 'error'); return false; }
+      };
+      const confirmDel = async () => {
+        const t = delTarget; setDelTarget(null);
+        try { await api.removeTemplate(t.id); toast('삭제되었습니다.', 'info'); await reload(); if (onChanged) onChanged(); }
+        catch (e) { toast('삭제에 실패했습니다.', 'error'); }
+      };
+      const summarize = (t) => {
+        const cfg = t.config || {};
+        const bits = [`${(t.items || []).length}개 항목`];
+        if (cfg.use_cost_buildup) bits.push(`원가계산 · 이윤 ${Math.round((cfg.profit_rate != null ? cfg.profit_rate : BUILDUP_DEFAULTS.profit_rate) * 100)}%`);
+        bits.push(VAT_MODE_LABEL[cfg.vat_mode || 'exclusive']);
+        return bits.join(' · ');
+      };
+      return (
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base font-bold text-slate-800">견적 템플릿</h2>
+            <Button size="sm" onClick={() => setEditing(null)}>+ 템플릿 추가</Button>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">자주 쓰는 공종·항목·원가요율을 템플릿으로 저장하면, 견적 작성 시 <span className="font-semibold text-slate-500">🧩 템플릿으로 시작</span>으로 프리필할 수 있습니다.</p>
+          {loading ? (
+            <div className="h-32 bg-slate-100 rounded-xl animate-pulse"></div>
+          ) : list.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="text-4xl mb-2">🧩</div>
+              <p className="text-sm text-slate-400">저장된 템플릿이 없습니다.<br />‘템플릿 추가’로 사무실 저가공사형·아파트 리모델링 중급형 등 자주 쓰는 구성을 만들어보세요.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {list.map((t) => (
+                <li key={t.id} className="py-3 flex items-center justify-between gap-3">
+                  <button className="text-left min-w-0 flex-1" onClick={() => setEditing(t)}>
+                    <div className="flex items-center gap-2"><span className="font-semibold text-slate-800 truncate">{t.name}</span></div>
+                    <p className="mt-0.5 text-xs text-slate-400 truncate">{t.description ? t.description + ' · ' : ''}{summarize(t)}</p>
+                  </button>
+                  <div className="shrink-0 whitespace-nowrap">
+                    <button onClick={() => setEditing(t)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50" title="수정">✏️</button>
+                    <button onClick={() => setDelTarget(t)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" title="삭제">🗑️</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Modal isOpen={editing !== undefined} onClose={() => setEditing(undefined)} title={editing && editing.id ? '견적 템플릿 수정' : '새 견적 템플릿'} size="xl">
+            {editing !== undefined && (
+              <TemplateEditor key={editing && editing.id ? editing.id : 'new'} initial={editing} trades={trades} onSave={save} onCancel={() => setEditing(undefined)} />
+            )}
+          </Modal>
+          <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="템플릿 삭제 확인" size="sm">
+            {delTarget && (
+              <div>
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{delTarget.name}</span>' 템플릿을 삭제하시겠습니까?</p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setDelTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDel}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </Card>
+      );
+    }
+
+    function ManageTab({ sites, onMastersChanged, onSitesChanged, onTemplatesChanged }) {
       const [sub, setSub] = useState('staff');
       const [staffAll, setStaffAll] = useState([]);
       const [vendorsAll, setVendorsAll] = useState([]);
@@ -6465,6 +6951,7 @@
         { id: 'clients', label: '고객/리드', icon: '👤' },
         { id: 'categories', label: '카테고리', icon: '🏷️' },
         { id: 'catalog', label: '단가 카탈로그', icon: '📚' },
+        { id: 'templates', label: '견적 템플릿', icon: '🧩' },
         { id: 'sites', label: '현장 마스터', icon: '🏗️' },
       ];
       return (
@@ -6487,6 +6974,7 @@
           {sub === 'clients' && <ClientManager clients={clientsAll} onChanged={reloadMasters} />}
           {sub === 'categories' && <CategoryManager cats={catsAll} onChanged={reloadMasters} />}
           {sub === 'catalog' && <CatalogManager />}
+          {sub === 'templates' && <TemplateManager onChanged={onTemplatesChanged} />}
           {sub === 'sites' && <SiteMaster sites={sites} onChanged={onSitesChanged} staffNames={staffNames} />}
         </div>
       );
@@ -6521,6 +7009,7 @@
       const [cats, setCats] = useState({ cost: [], process: [] });
       const [schedule, setSchedule] = useState([]);
       const [estimates, setEstimates] = useState([]);
+      const [templates, setTemplates] = useState([]); // v18 견적 템플릿 (견적 프리필용)
       const [printData, setPrintData] = useState(null);
       const [schedulePrintData, setSchedulePrintData] = useState(null); // v6-3 일정표 PDF
       const [orderPrintData, setOrderPrintData] = useState(null); // v10 발주서 PDF
@@ -6570,6 +7059,12 @@
         } catch (e) { /* 실패 시 상수 폴백 유지 */ }
       }, []);
       useEffect(() => { loadMasters(); }, [loadMasters]);
+
+      // v18: 견적 템플릿 1회 로드 — 견적 목록 ‘템플릿으로 시작’ · 견적으로 현장 만들기 프리필 공용
+      const loadTemplates = useCallback(async () => {
+        try { setTemplates(await api.listTemplates()); } catch (e) { /* 실패 시 빈 목록 유지 */ }
+      }, []);
+      useEffect(() => { loadTemplates(); }, [loadTemplates]);
 
       // ── 선택 현장 상세(비용+요약+일정+견적) 로드 ──
       const loadDetail = useCallback(async (site) => {
@@ -6879,7 +7374,7 @@
                 onNewFromEstimate={() => setEstSiteModalOpen(true)}
                 onChanged={() => loadSites(selectedId)} />
             ) : activeTab === 'manage' ? (
-              <ManageTab sites={sites} staffNames={staffNames} onMastersChanged={loadMasters} onSitesChanged={loadSites} />
+              <ManageTab sites={sites} staffNames={staffNames} onMastersChanged={loadMasters} onSitesChanged={loadSites} onTemplatesChanged={loadTemplates} />
             ) : !selectedSite ? (
               <Card className="p-12 text-center">
                 <div className="text-5xl mb-3">🏗️</div>
@@ -6925,7 +7420,7 @@
                 {activeTab === 'estimate' && (
                   <EstimateTab key={'est-' + selectedSite.id} site={selectedSite} estimates={estimates} loading={detailLoading}
                     procNames={procCatNames} onChanged={() => loadSites(selectedSite.id)} onPrint={handlePrint}
-                    openEstimateId={pendingEstimateOpen} onOpenConsumed={() => setPendingEstimateOpen(null)} />
+                    openEstimateId={pendingEstimateOpen} onOpenConsumed={() => setPendingEstimateOpen(null)} templates={templates} />
                 )}
                 {activeTab === 'orders' && (
                   <OrdersTab key={'ord-' + selectedSite.id} site={selectedSite} vendorNames={vendorNames} onPrintOrders={handlePrintOrders} />
@@ -6957,6 +7452,7 @@
           <Modal isOpen={estSiteModalOpen} onClose={() => setEstSiteModalOpen(false)} title="견적으로 현장 만들기" size="lg">
             <EstimateSiteForm
               staffNames={staffNames}
+              templates={templates}
               onSubmit={handleCreateEstimateWithSite}
               onCancel={() => setEstSiteModalOpen(false)}
             />

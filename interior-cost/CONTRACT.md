@@ -953,3 +953,48 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - share: POST estimate/:id/share(비번없이)→token, GET /api/share/estimate/:token(무인증)→데이터. 비번설정 POST→GET requiresPassword→POST 비번검증(틀리면401·맞으면 데이터). unshare→GET 404. 발주 동형. 팀 소유검증(타팀 404).
 - 무인증 공개 접근이 /api/share/* 만 되고 다른 /api/* 는 여전히 401(격리).
 - 프론트: 공유 모달·URL복사·공유뷰(비번 프롬프트→읽기전용 견적). 앱 로그인/기존 견적·발주 회귀. v1~v16 무손상.
+
+---
+
+# v18 확장 — 견적 강화 A (유효기간 프리셋 #1 · 자동명명/버전 #2 · 템플릿 #3)
+
+> 사용자 5차 요청 중 견적 관련 3개(리서치 불필요). **v1~v17 동작/엔드포인트/UI 100% 보존**(컬럼 ADD COLUMN IF NOT EXISTS, 새 테이블 CREATE IF NOT EXISTS). 팀 스코핑(v13) 준수.
+
+## 18-1 유효기간 프리셋 (#1 — 순수 프론트)
+- 견적 에디터 유효기간(valid_until) 입력 옆에 **프리셋 버튼 [1주][2주][1개월][3개월]**. 클릭 시 `valid_until = (estimate_date || 오늘) + 기간`(1주=+7d, 2주=+14d, 1개월=+1달, 3개월=+3달, 달 계산은 월 단위 add). 수동 날짜 입력도 유지. estimate_date 변경 시 프리셋 재적용은 사용자 클릭 기준.
+
+## 18-2 견적 자동명명 + 버전 (#2 — 백엔드 소폭 + 프론트)
+### interior_estimates 확장 (ADD COLUMN IF NOT EXISTS)
+- `version INT NOT NULL DEFAULT 1` (견적 버전)
+### 엔드포인트
+- **POST /api/estimates/:id/duplicate** (인증·팀 스코핑, requireChildOwned) → 그 견적을 **복제**(헤더+items 전부 복사)해 새 견적 생성: `version = (해당 현장 같은 계열 최대 version)+1` 또는 원본 version+1, title 은 아래 자동명명 규칙에 vN 반영, status='draft'. 응답 201 `{estimate 상세+totals}`. (원본 불변)
+- 기존 POST/PUT estimates 는 title 자유. 
+### 자동명명 규칙 (프론트에서 생성, 서버는 받은 title 저장)
+- 저장/새버전 시 title 기본 제안: **`{현장명}-{YYYYMMDD}-{HHMM}-{담당자|client_name}-v{version}`** (사용자 편집 가능). 담당자 없으면 생략. 
+### UI (견적 에디터/목록)
+- 저장 시 title 비었으면 위 규칙으로 자동 채움(수정 가능). **[새 버전으로 저장(v2)]** 버튼 → duplicate 호출 → 새 견적 에디터로. 견적 목록에 **버전 뱃지(v1/v2)** + 같은 계열 묶어 보기(정렬 version). 
+- **권장안 안내(사용자에게 보고용, UI 툴팁/설명):** "임시저장은 자동명명으로 1건씩 쌓이고, 큰 변경은 [새 버전으로 저장]으로 v2 를 만들어 v1 과 나란히 비교·보관" — 덮어쓰기 대신 버전 누적.
+
+## 18-3 견적 템플릿 (#3 — 백엔드 테이블 + 프론트)
+### 새 테이블 interior_estimate_templates (CREATE TABLE IF NOT EXISTS, 팀 스코핑)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| team_id | bigint | 팀 스코핑(v13, GET 필터/POST 세팅) |
+| name | text NOT NULL | 템플릿명(예: '사무실 저가공사형','아파트 리모델링 중급형') |
+| description | text default '' | 설명 |
+| config | jsonb default '{}' | 원가계산 가정: {vat_mode, vat_rate, discount, use_cost_buildup, indirect_material_rate, indirect_labor_rate, safety_insurance_rate, employment_insurance_rate, safety_mgmt_rate, other_expense_rate, admin_rate, design_rate, profit_rate, round_unit} |
+| items | jsonb default '[]' | 기본 공종 항목 배열 [{trade,name,spec,unit,qty,material_price,labor_price,sub_price,memo}] (예: 가설공사/청소공사/설계비 등) |
+| created_at | timestamptz default now() | |
+### 엔드포인트 (인증·팀 스코핑)
+- `GET /api/estimate-templates` (team_id 필터), `POST` (name 필수, team_id=req.teamId), `PUT /api/estimate-templates/:id`, `DELETE /api/estimate-templates/:id` (소유검증 404). config/items JSON 검증(items 각 name 필수).
+### UI
+- **관리 탭(또는 견적 탭)에 템플릿 관리 섹션**: 목록/추가/수정/삭제. 템플릿 편집기 = 견적 에디터 축소판(공종 항목 그리드 + 원가계산 요율). 예시 시드는 강요 안 함(사용자가 자기 템플릿 구성).
+- **견적 생성 시 [템플릿으로 시작] 드롭다운**: 선택 시 그 템플릿의 items+config 를 새 견적 에디터에 프리필(이후 자유 편집·확정→예산연동 기존대로). (v15 '견적으로 현장 만들기'와도 병행 가능하면 좋음: 템플릿 선택 → 항목 프리필)
+- 폴백(localStorage): templates CRUD + 견적 프리필 클라 처리(서버 우선).
+
+## 검증
+- 18-1: 프리셋 클릭 → valid_until = 작성일+기간 정확.
+- 18-2: version 컬럼·duplicate 엔드포인트(복제본 version+1·items 복사·원본 불변), 자동명명 title, 목록 버전뱃지.
+- 18-3: template CRUD(팀 스코핑), 템플릿으로 견적 프리필(items+요율). 타팀 template 404.
+- v1~v17 회귀 무손상(8탭·로그인·공유·타임라인·견적 확정→예산 등).

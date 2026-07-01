@@ -547,6 +547,25 @@ async function initDB() {
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_estimates_share_token ON interior_estimates (share_token);');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_orders_share_token ON interior_orders (share_token);');
 
+  // (v18 / 18-2) 견적 버전 — 복제([새 버전으로 저장]) 시 새 버전 부여. 기존 견적은 전부 DEFAULT 1.
+  //   ADD COLUMN IF NOT EXISTS → v1~v17 데이터 100% 보존, 멱등.
+  await pool.query('ALTER TABLE interior_estimates ADD COLUMN IF NOT EXISTS version INT NOT NULL DEFAULT 1');
+
+  // (v18 / 18-3) 견적 템플릿 — 팀 스코핑. 신규 테이블(생성 시 team_id 세팅 → backfill 불필요).
+  //   config = 원가계산 가정율 객체(JSONB), items = 기본 공종 항목 배열(JSONB).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_estimate_templates (
+      id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id     BIGINT,
+      name        TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      config      JSONB NOT NULL DEFAULT '{}'::jsonb,
+      items       JSONB NOT NULL DEFAULT '[]'::jsonb,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_estimate_templates_team ON interior_estimate_templates (team_id);');
+
   dbInitialized = true;
   console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as/takeoff) 준비 완료 + 카테고리/카탈로그 시드.');
 }
@@ -1026,6 +1045,8 @@ function rowToEstimate(row) {
     design_rate: Number(row.design_rate),
     profit_rate: Number(row.profit_rate),
     round_unit: Number(row.round_unit || 0),
+    // (v18) 견적 버전 (컬럼 미선택 시에도 안전하게 1 폴백)
+    version: row.version == null ? 1 : Number(row.version),
   };
 }
 
@@ -1048,6 +1069,19 @@ function rowToItem(row) {
     catalog_id: row.catalog_id == null ? null : String(row.catalog_id), // (v3) 출처 카탈로그 id (다른 id 와 동일 타입=문자열)
     memo: row.memo || '',
     sort_order: Number(row.sort_order || 0),
+  };
+}
+
+// (v18) 견적 템플릿 row → 클라이언트 모델. config=객체, items=배열(node-pg 가 jsonb 를 파싱해 반환).
+function rowToTemplate(row) {
+  return {
+    id: row.id,
+    team_id: row.team_id == null ? null : Number(row.team_id),
+    name: row.name,
+    description: row.description || '',
+    config: row.config && typeof row.config === 'object' && !Array.isArray(row.config) ? row.config : {},
+    items: Array.isArray(row.items) ? row.items : [],
+    created_at: new Date(row.created_at).toISOString(),
   };
 }
 
@@ -1152,7 +1186,8 @@ const CATEGORY_COLS = 'id, kind, name, sort_order, active';
 const ESTIMATE_COLS =
   "id, site_id, title, client_name, client_contact, to_char(estimate_date,'YYYY-MM-DD') AS estimate_date, to_char(valid_until,'YYYY-MM-DD') AS valid_until, vat_mode, vat_rate, discount, status, memo, created_at, " +
   'use_cost_buildup, indirect_material_rate, indirect_labor_rate, safety_insurance_rate, employment_insurance_rate, ' +
-  'safety_mgmt_rate, other_expense_rate, admin_rate, design_rate, profit_rate, round_unit';
+  'safety_mgmt_rate, other_expense_rate, admin_rate, design_rate, profit_rate, round_unit, ' +
+  'version'; // (v18) 견적 버전
 const ITEM_COLS =
   'id, estimate_id, trade, process, name, spec, qty, unit, material_price, labor_price, sub_price, unit_price, amount, catalog_id, memo, sort_order';
 // (v3) 카탈로그 컬럼 (가격은 rowToCatalog 에서 Number 변환). (v9) source/price_date 확장.
@@ -1167,6 +1202,8 @@ const MEETING_COLS =
   "id, site_id, to_char(meeting_date,'YYYY-MM-DD') AS meeting_date, title, attendees, content, next_action, created_at";
 const AS_COLS =
   "id, site_id, to_char(received_date,'YYYY-MM-DD') AS received_date, title, detail, status, to_char(handled_date,'YYYY-MM-DD') AS handled_date, staff, cost, created_at";
+// (v18) 견적 템플릿 컬럼. config/items 는 JSONB → node-pg 가 JS 객체/배열로 반환.
+const TEMPLATE_COLS = 'id, team_id, name, description, config, items, created_at';
 
 // 일정 SELECT (alias s) — actual_cost = 연결 비용 합계 서브쿼리
 const SCHEDULE_SELECT_COLS = `
@@ -1307,6 +1344,15 @@ function computeTotals(estimate, items) {
     subMaterial += Math.round(q * (Number(it && it.sub_price) || 0));
   }
   return totalsFromParts({ subtotal, directMaterial, directLabor, subMaterial }, estimate);
+}
+
+// (v18) 복제 시 title 자동 버전 표기: 끝의 '(-| )vN' 을 새 버전으로 치환, 없으면 ' vN' 부가.
+//   구분자(대시/공백)는 원본을 보존. body.title 이 있으면 이 함수는 호출되지 않는다.
+function nextVersionTitle(origTitle, newVersion) {
+  const base = String(origTitle == null || origTitle === '' ? '견적서' : origTitle);
+  const m = base.match(/^(.*?)([-\s])v(\d+)$/i);
+  if (m) return `${m[1]}${m[2]}v${newVersion}`;
+  return `${base} v${newVersion}`;
 }
 
 // ----------------------------------------
@@ -1907,6 +1953,41 @@ function validateEstimateItems(rawItems) {
     });
   }
   return { valid: true, values };
+}
+
+// (v18) 견적 템플릿 입력 검증. name 필수. config=객체(JSON), items=배열(각 원소 name 필수·빈 배열 허용).
+function validateTemplate(body) {
+  const b = body || {};
+  const name = typeof b.name === 'string' ? b.name.trim() : '';
+  if (!name) return { valid: false, message: '템플릿명(name) 은 필수입니다.' };
+  if (name.length > 200) return { valid: false, message: '템플릿명은 200자 이하여야 합니다.' };
+  const description = typeof b.description === 'string' ? b.description.trim() : '';
+
+  // config: 객체만 허용(배열/원시 아님). 미전달·null → {}.
+  let config = {};
+  if (b.config !== undefined && b.config !== null) {
+    if (typeof b.config !== 'object' || Array.isArray(b.config)) {
+      return { valid: false, message: 'config 는 객체(JSON) 여야 합니다.' };
+    }
+    config = b.config;
+  }
+
+  // items: 배열. 각 원소는 객체 + name 필수(가벼운 검증). 미전달·null → [].
+  let items = [];
+  if (b.items !== undefined && b.items !== null) {
+    if (!Array.isArray(b.items)) return { valid: false, message: 'items 는 배열이어야 합니다.' };
+    for (let i = 0; i < b.items.length; i++) {
+      const it = b.items[i];
+      if (!it || typeof it !== 'object' || Array.isArray(it)) {
+        return { valid: false, message: `items[${i}] 는 객체여야 합니다.` };
+      }
+      const nm = typeof it.name === 'string' ? it.name.trim() : '';
+      if (!nm) return { valid: false, message: `items[${i}].name(품목) 은 필수입니다.` };
+    }
+    items = b.items;
+  }
+
+  return { valid: true, values: { name, description, config, items } };
 }
 
 // (v3) 카탈로그 입력 검증 (trade·name 필수, 가격은 0 이상 정수)
@@ -3477,6 +3558,166 @@ app.post('/api/estimates/:id/unconfirm', async (req, res) => {
   } catch (err) {
     console.error('POST /api/estimates/:id/unconfirm 오류:', err.message);
     res.status(500).json({ success: false, message: '견적 확정을 해제하지 못했습니다.' });
+  }
+});
+
+// POST /api/estimates/:id/duplicate — (v18/18-2) 견적 복제(헤더+items 전부 복사)해 새 버전 생성.
+//   소유/팀 검증은 requireChildOwned('interior_estimates') 가 /api/estimates/:id/* 를 이미 보호(타팀/미존재 404).
+//   새 version = 같은 현장 견적 중 max(version)+1 (현장 없으면 원본 version+1). status='draft'. 원본은 불변.
+//   title = body.title 있으면 그것, 없으면 원본 title 에 vN 반영. share_token/비번은 복사하지 않음(새 견적은 비공유).
+app.post('/api/estimates/:id/duplicate', async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ success: false, message: '잘못된 견적 id 형식입니다.' });
+  const bodyTitle =
+    req.body && typeof req.body.title === 'string' && req.body.title.trim() ? req.body.title.trim() : null;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 원본 헤더
+    const origQ = await client.query(`SELECT ${ESTIMATE_COLS} FROM interior_estimates WHERE id=$1`, [id]);
+    if (origQ.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ success: false, message: '해당 견적서를 찾을 수 없습니다.' });
+    }
+    const orig = rowToEstimate(origQ.rows[0]);
+
+    // 원본 items (정렬 보존)
+    const itemsQ = await client.query(
+      `SELECT ${ITEM_COLS} FROM interior_estimate_items WHERE estimate_id=$1 ORDER BY sort_order ASC, id ASC`,
+      [id]
+    );
+
+    // 새 버전: 같은 현장 계열의 max(version)+1 (없으면 원본+1). 항상 원본보다 크게 보장.
+    let baseVersion = orig.version;
+    if (orig.site_id != null) {
+      const mx = await client.query(
+        'SELECT COALESCE(MAX(version),0) AS mx FROM interior_estimates WHERE site_id=$1',
+        [orig.site_id]
+      );
+      baseVersion = Math.max(baseVersion, Number(mx.rows[0].mx));
+    }
+    const newVersion = baseVersion + 1;
+    const newTitle = bodyTitle || nextVersionTitle(orig.title, newVersion);
+
+    // 헤더 복제 (status='draft', version=newVersion 명시)
+    const ins = await client.query(
+      `INSERT INTO interior_estimates
+         (site_id, title, client_name, client_contact, estimate_date, valid_until, vat_mode, vat_rate, discount, status, memo,
+          use_cost_buildup, indirect_material_rate, indirect_labor_rate, safety_insurance_rate, employment_insurance_rate,
+          safety_mgmt_rate, other_expense_rate, admin_rate, design_rate, profit_rate, round_unit, version)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'draft',$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+       RETURNING ${ESTIMATE_COLS}`,
+      [
+        orig.site_id, newTitle, orig.client_name, orig.client_contact, orig.estimate_date, orig.valid_until,
+        orig.vat_mode, orig.vat_rate, orig.discount, orig.memo,
+        orig.use_cost_buildup, orig.indirect_material_rate, orig.indirect_labor_rate, orig.safety_insurance_rate,
+        orig.employment_insurance_rate, orig.safety_mgmt_rate, orig.other_expense_rate, orig.admin_rate,
+        orig.design_rate, orig.profit_rate, orig.round_unit, newVersion,
+      ]
+    );
+    const est = rowToEstimate(ins.rows[0]);
+
+    // items 복제 (amount 포함 그대로 — 서버 계산값 보존)
+    const insertedItems = [];
+    for (const row of itemsQ.rows) {
+      const it = rowToItem(row);
+      const r = await client.query(
+        `INSERT INTO interior_estimate_items
+           (estimate_id, trade, process, name, spec, qty, unit, material_price, labor_price, sub_price, unit_price, amount, catalog_id, memo, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         RETURNING ${ITEM_COLS}`,
+        [est.id, it.trade, it.process, it.name, it.spec, it.qty, it.unit, it.material_price, it.labor_price, it.sub_price, it.unit_price, it.amount, it.catalog_id, it.memo, it.sort_order]
+      );
+      insertedItems.push(rowToItem(r.rows[0]));
+    }
+    await client.query('COMMIT');
+
+    const totals = computeTotals(est, insertedItems);
+    res.status(201).json({ ...est, items: insertedItems, totals });
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (_) {
+      /* noop */
+    }
+    console.error('POST /api/estimates/:id/duplicate 오류:', err.message);
+    res.status(500).json({ success: false, message: '견적서를 복제하지 못했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// ========================================
+// REST API — (v18/18-3) 견적 템플릿(interior_estimate_templates) · 인증·팀 스코핑
+//   staff/vendors(v13) 와 동형: GET=team_id 필터, POST=team_id 세팅, PUT/DELETE=team_id 일치 404.
+//   config/items 는 JSONB — JSON.stringify 후 ::jsonb 캐스팅으로 저장(배열을 pg 배열로 오해하지 않도록).
+// ========================================
+app.get('/api/estimate-templates', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT ${TEMPLATE_COLS} FROM interior_estimate_templates WHERE team_id=$1 ORDER BY name ASC, id ASC`,
+      [req.teamId]
+    );
+    res.json(rows.map(rowToTemplate));
+  } catch (err) {
+    console.error('GET /api/estimate-templates 오류:', err.message);
+    res.status(500).json({ success: false, message: '견적 템플릿 목록을 불러오지 못했습니다.' });
+  }
+});
+
+app.post('/api/estimate-templates', async (req, res) => {
+  try {
+    const check = validateTemplate(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+    const { rows } = await pool.query(
+      `INSERT INTO interior_estimate_templates (team_id, name, description, config, items)
+       VALUES ($1,$2,$3,$4::jsonb,$5::jsonb) RETURNING ${TEMPLATE_COLS}`,
+      [req.teamId, v.name, v.description, JSON.stringify(v.config), JSON.stringify(v.items)]
+    );
+    res.status(201).json(rowToTemplate(rows[0]));
+  } catch (err) {
+    console.error('POST /api/estimate-templates 오류:', err.message);
+    res.status(500).json({ success: false, message: '견적 템플릿을 생성하지 못했습니다.' });
+  }
+});
+
+app.put('/api/estimate-templates/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 템플릿 id 형식입니다.' });
+    const check = validateTemplate(req.body);
+    if (!check.valid) return res.status(400).json({ success: false, message: check.message });
+    const v = check.values;
+    const { rows } = await pool.query(
+      `UPDATE interior_estimate_templates
+         SET name=$1, description=$2, config=$3::jsonb, items=$4::jsonb
+       WHERE id=$5 AND team_id=$6 RETURNING ${TEMPLATE_COLS}`,
+      [v.name, v.description, JSON.stringify(v.config), JSON.stringify(v.items), id, req.teamId]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 견적 템플릿을 찾을 수 없습니다.' });
+    res.json(rowToTemplate(rows[0]));
+  } catch (err) {
+    console.error('PUT /api/estimate-templates/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '견적 템플릿을 수정하지 못했습니다.' });
+  }
+});
+
+app.delete('/api/estimate-templates/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 템플릿 id 형식입니다.' });
+    const { rowCount } = await pool.query(
+      'DELETE FROM interior_estimate_templates WHERE id=$1 AND team_id=$2',
+      [id, req.teamId]
+    );
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 견적 템플릿을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/estimate-templates/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '견적 템플릿을 삭제하지 못했습니다.' });
   }
 });
 
