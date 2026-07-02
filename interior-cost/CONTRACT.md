@@ -1217,3 +1217,12 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - v1~v22 회귀.
 
 > ✅ **구현·검증 완료 (2026-07-02)**. 백엔드 e2e 12/12(격리 임시팀·잔존0): replace_sketchup 대체(수기 보존·이전 스케치업분 삭제)/불량배치 400+트랜잭션 불변/플래그없음 v8 누적 회귀. 브라우저(Playwright): v1 CSV 10행+스킵1(수량없음 사유)·RFC4180 콤마/이중따옴표 이름 안전·공종 자동매핑(도배/단열/목공/전기, insul 영문키워드 포함)·가져오기→11개 물량(대체 확인)·물량→견적행 추가 관통·레거시 6열 7/7 폴백(이름/스펙 분리·구분괄호→spec·보조수량 memo). 플러그인: collect_rows 리팩터+export_for_app(v1 CSV, RFC4180 인용·m²→m2)+"앱으로 내보내기" 툴바 버튼, ruby -c OK, 사람용 "견적 산출" 6열 출력 유지(BOM ﻿). 스케치업 실기동 스모크는 사용자 수행(리로드 명령 안내).
+
+---
+
+# v23.1/23.2 — Storage 실동작 수정 (2026-07-02, 키 등록과 함께 발견된 잠재버그 3건)
+
+- **환경변수**: SUPABASE_SERVICE_KEY(신형 `sb_secret_…`)를 로컬 .env + Vercel production 에 최초 등록(SUPABASE_URL 도 Vercel 에 등록). storageHeaders 는 Bearer+apikey 병행이라 신형 키 호환.
+- **v23.1 `9b7fcda`**: ① signUploadUrl/deleteStorageObject — `Content-Type: application/json` + 빈 body → Supabase(Fastify) 400 "Body cannot be empty" → `body:'{}'` 추가(삭제는 조용히 실패하고 있었음 → warn 로그 추가). ② sanitizeFileName — Storage 키는 S3 문자셋만 허용, 한글 파일명 → InvalidKey → 비허용문자 `_` 치환(원본명은 DB file_name 보존).
+- **v23.2 `490a75e`**: createSiteFolder 의 mkdirSync 가 Vercel read-only FS 에서 throw → **라이브에서 현장 신규생성이 400 으로 죽던 버그** → best-effort(경로탈출 검증 유지).
+- 검증: storage e2e **로컬 15/15 + 라이브 15/15** (sign→PUT→메타→목록→서명URL 내용일치→삭제→Storage list 잔존0, 자료+사진, 임시팀 정리).
