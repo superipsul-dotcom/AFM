@@ -98,6 +98,7 @@
 
     // ── v2 localStorage 키 ──
     const STAFF_KEY = 'interior_staff_v1';
+    const SITE_STAFF_KEY = 'interior_site_staff_v1'; // (v21) 프로젝트 인력배정 폴백
     const VENDORS_KEY = 'interior_vendors_v1';
     const CATS_KEY = 'interior_categories_v1';
     const SCHEDULE_KEY = 'interior_schedule_v1';
@@ -118,6 +119,9 @@
     ];
     const VAT_MODE_LABEL = { exclusive: '부가세 별도', inclusive: '부가세 포함', none: '부가세 없음' };
     const STAFF_ROLES = ['현장소장', '기사', '디자이너', '사무', '반장', '기타'];
+    const STAFF_GRADES = ['대표', '이사', '부장', '차장', '과장', '대리', '사원', '주임']; // (v21) 직급
+    const EMPLOYMENT_TYPES = ['정규직', '계약직', '파트타임', '일용직', '외주']; // (v21) 고용형태
+    const PROJECT_ROLES = ['PM', '시공책임', '디자이너', '지원', '현장소장', '기타']; // (v21) 프로젝트 내 역할
     const VENDOR_KINDS = ['자재상', '하도급', '장비임대', '기타'];
     const COLOR_SWATCHES = ['', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
     const ESTIMATE_STATUS_COLOR = { draft: 'bg-slate-400', confirmed: 'bg-emerald-600' };
@@ -535,6 +539,7 @@
     const templatesStore = makeStore(TEMPLATES_KEY); // v18 견적 템플릿
     const catalogStore = makeStore(CATALOG_KEY); // v3 단가 카탈로그
     const takeoffStore = makeStore(TAKEOFF_KEY); // v8 스케치업/실측 물량(takeoff)
+    const siteStaffStore = makeStore(SITE_STAFF_KEY); // (v21) 프로젝트 인력배정 폴백 [{id, site_id, staff_id, role_in_project, staff_*}]
     // v5: 노션 관계형 서브-DB 스토어 (고객/리드 · 발주 · 미팅 · AS)
     const clientsStore = makeStore(CLIENTS_KEY);
     const ordersStore = makeStore(ORDERS_KEY);
@@ -1014,7 +1019,7 @@
           if (e.status) throw e; this._useMock = true;
           const list = staffStore.read();
           if (list.some((s) => s.name === body.name)) { const err = new Error('이미 등록된 담당자입니다.'); err.status = 409; throw err; }
-          const item = { id: uid(), name: body.name, role: body.role || '', phone: body.phone || '', active: true, created_at: new Date().toISOString() };
+          const item = { id: uid(), name: body.name, role: body.role || '', phone: body.phone || '', active: true, grade: body.grade || '', employment_type: body.employment_type || '', email: body.email || '', hire_date: body.hire_date || null, created_at: new Date().toISOString() };
           staffStore.write([...list, item]); return item;
         }
       },
@@ -1030,7 +1035,39 @@
       },
       async removeStaff(id) {
         try { await this._tryFetch(`${API_BASE_URL}/staff/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
-        catch (e) { if (e.status) throw e; this._useMock = true; staffStore.write(staffStore.read().filter((s) => String(s.id) !== String(id))); return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true;
+          staffStore.write(staffStore.read().filter((s) => String(s.id) !== String(id)));
+          siteStaffStore.write(siteStaffStore.read().filter((a) => String(a.staff_id) !== String(id))); // (v21) CASCADE 폴백
+          return { success: true }; }
+      },
+
+      // ════════ v21: 프로젝트 인력배정 (site-staff) ════════
+      async listSiteStaff(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/staff`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          return siteStaffStore.read().filter((a) => String(a.site_id) === String(siteId))
+            .sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+        }
+      },
+      async assignSiteStaff(siteId, body) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/staff`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = siteStaffStore.read();
+          const role = (body.role_in_project || '').trim();
+          if (list.some((a) => String(a.site_id) === String(siteId) && String(a.staff_id) === String(body.staff_id) && (a.role_in_project || '') === role)) {
+            const err = new Error('이미 배정된 직원입니다.'); err.status = 409; throw err;
+          }
+          const st = staffStore.read().find((s) => String(s.id) === String(body.staff_id)) || {};
+          const item = { id: uid(), site_id: siteId, staff_id: body.staff_id, role_in_project: role, created_at: new Date().toISOString(),
+            staff_name: st.name || '', staff_role: st.role || '', staff_grade: st.grade || '', staff_employment_type: st.employment_type || '', staff_phone: st.phone || '', staff_active: st.active !== false };
+          siteStaffStore.write([...list, item]); return item;
+        }
+      },
+      async unassignSiteStaff(assignId) {
+        try { await this._tryFetch(`${API_BASE_URL}/site-staff/${assignId}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
+        catch (e) { if (e.status) throw e; this._useMock = true; siteStaffStore.write(siteStaffStore.read().filter((a) => String(a.id) !== String(assignId))); return { success: true }; }
       },
 
       // ════════ v2: 거래처 (vendors) ════════
@@ -3296,12 +3333,34 @@
     }
 
     // 🧑‍🔧 인력관리 — PM/시공책임/디자이너 + 공종별 협력업체(비용 vendor 기반)
-    function PersonnelSection({ site, costs, staff }) {
+    function PersonnelSection({ site, costs, staff, isAdmin = false }) {
+      const toast = useToast();
       const staffMap = useMemo(() => {
         const m = {};
         (staff || []).forEach((s) => { m[s.name] = s; });
         return m;
       }, [staff]);
+      // (v21) 프로젝트 인력배정 — 현장별 interior_site_staff. admin 만 배정/해제, 그 외 읽기전용.
+      const [assigned, setAssigned] = useState([]);
+      const [assignForm, setAssignForm] = useState({ staff_id: '', role_in_project: '' });
+      const loadAssigned = useCallback(async () => {
+        try { const d = await api.listSiteStaff(site.id); setAssigned(Array.isArray(d) ? d : []); }
+        catch (e) { setAssigned([]); }
+      }, [site.id]);
+      useEffect(() => { loadAssigned(); }, [loadAssigned]);
+      const doAssign = async () => {
+        if (!assignForm.staff_id) { toast('직원을 선택하세요.', 'error'); return; }
+        try {
+          await api.assignSiteStaff(site.id, { staff_id: assignForm.staff_id, role_in_project: assignForm.role_in_project });
+          setAssignForm({ staff_id: '', role_in_project: '' }); toast('배정됨', 'success'); await loadAssigned();
+        } catch (e) {
+          toast(e.status === 409 ? '이미 배정된 직원입니다.' : (e.status === 403 ? '관리자 권한이 필요합니다.' : (e.status === 404 ? '해당 직원을 찾을 수 없습니다.' : '배정 실패')), 'error');
+        }
+      };
+      const doUnassign = async (a) => {
+        try { await api.unassignSiteStaff(a.id); toast('해제됨', 'info'); await loadAssigned(); }
+        catch (e) { toast(e.status === 403 ? '관리자 권한이 필요합니다.' : '해제 실패', 'error'); }
+      };
       const leads = [
         { label: 'PM (프로젝트 매니저)', name: site.pm },
         { label: '시공책임', name: site.construction_manager },
@@ -3334,6 +3393,35 @@
                 </div>
               );
             })}
+          </div>
+          <div className="mb-5">
+            <h3 className="text-sm font-bold text-slate-700 mb-2">프로젝트 배정 인력 <span className="text-[11px] font-normal text-slate-400">(직원 마스터 기반)</span></h3>
+            {isAdmin && (
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <select value={assignForm.staff_id} onChange={(e) => setAssignForm({ ...assignForm, staff_id: e.target.value })}
+                  className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 min-w-[150px]">
+                  <option value="">직원 선택</option>
+                  {(staff || []).map((s) => <option key={s.id} value={s.id}>{s.name}{s.grade ? ` (${s.grade})` : ''}</option>)}
+                </select>
+                <div className="min-w-[130px]"><Combo placeholder="역할(PM 등)" value={assignForm.role_in_project} options={PROJECT_ROLES} onChange={(e) => setAssignForm({ ...assignForm, role_in_project: e.target.value })} /></div>
+                <Button size="sm" onClick={doAssign}>배정</Button>
+              </div>
+            )}
+            {assigned.length === 0 ? (
+              <p className="text-sm text-slate-400 py-1">배정된 직원이 없습니다.{isAdmin ? '' : ' (관리자가 배정합니다)'}</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {assigned.map((a) => (
+                  <span key={a.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-sm">
+                    {a.role_in_project && <Badge color="bg-indigo-500">{a.role_in_project}</Badge>}
+                    <span className="font-semibold text-slate-700">{a.staff_name || '(삭제된 직원)'}</span>
+                    {a.staff_grade && <span className="text-[11px] text-slate-400">{a.staff_grade}</span>}
+                    {a.staff_active === false && <span className="text-[11px] text-amber-500">비활성</span>}
+                    {isAdmin && <button onClick={() => doUnassign(a)} className="ml-0.5 text-slate-300 hover:text-red-500" title="배정 해제">✕</button>}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <h3 className="text-sm font-bold text-slate-700 mb-2">공종별 협력업체 <span className="text-[11px] font-normal text-slate-400">(비용 내역 기준)</span></h3>
           {byProcess.length === 0 ? (
@@ -6657,66 +6745,96 @@
     // ========================================
     // 🧩 관리 (마스터, 전역)
     // ========================================
-    function StaffManager({ staff, onChanged }) {
+    function StaffManager({ staff, onChanged, isAdmin = false }) {
       const toast = useToast();
-      const [form, setForm] = useState({ name: '', role: '', phone: '' });
+      const EMPTY = { name: '', role: '', grade: '', employment_type: '', phone: '', email: '', hire_date: '' };
+      const [form, setForm] = useState(EMPTY);
       const [editing, setEditing] = useState(null);
-      const [eForm, setEForm] = useState({ name: '', role: '', phone: '', active: true });
+      const [eForm, setEForm] = useState({ ...EMPTY, active: true });
+      const payload = (f) => ({ name: (f.name || '').trim(), role: (f.role || '').trim(), grade: (f.grade || '').trim(), employment_type: (f.employment_type || '').trim(), phone: (f.phone || '').trim(), email: (f.email || '').trim(), hire_date: (f.hire_date || '').trim() });
+      const errMsg = (err, dflt) => (err.status === 409 ? err.message : (err.status === 403 ? '관리자 권한이 필요합니다.' : dflt));
       const add = async (e) => {
         e.preventDefault();
         if (!form.name.trim()) { toast('이름을 입력하세요.', 'error'); return; }
-        try { await api.createStaff({ name: form.name.trim(), role: form.role.trim(), phone: form.phone.trim() }); setForm({ name: '', role: '', phone: '' }); toast('담당자 추가됨', 'success'); await onChanged(); }
-        catch (err) { toast(err.status === 409 ? err.message : '추가 실패', 'error'); }
+        try { await api.createStaff(payload(form)); setForm(EMPTY); toast('직원 추가됨', 'success'); await onChanged(); }
+        catch (err) { toast(errMsg(err, '추가 실패'), 'error'); }
       };
-      const startEdit = (s) => { setEditing(s); setEForm({ name: s.name, role: s.role || '', phone: s.phone || '', active: s.active !== false }); };
+      const startEdit = (s) => { setEditing(s); setEForm({ name: s.name, role: s.role || '', grade: s.grade || '', employment_type: s.employment_type || '', phone: s.phone || '', email: s.email || '', hire_date: s.hire_date || '', active: s.active !== false }); };
       const saveEdit = async () => {
         if (!eForm.name.trim()) { toast('이름을 입력하세요.', 'error'); return; }
-        try { await api.updateStaff(editing.id, { name: eForm.name.trim(), role: eForm.role.trim(), phone: eForm.phone.trim(), active: eForm.active }); setEditing(null); toast('수정됨', 'success'); await onChanged(); }
-        catch (err) { toast(err.status === 409 ? err.message : '수정 실패', 'error'); }
+        try { await api.updateStaff(editing.id, { ...payload(eForm), active: eForm.active }); setEditing(null); toast('수정됨', 'success'); await onChanged(); }
+        catch (err) { toast(errMsg(err, '수정 실패'), 'error'); }
       };
-      const toggle = async (s) => { try { await api.updateStaff(s.id, { name: s.name, role: s.role || '', phone: s.phone || '', active: !(s.active !== false) }); await onChanged(); } catch (e) { toast('변경 실패', 'error'); } };
-      const remove = async (s) => { try { await api.removeStaff(s.id); toast('삭제됨', 'info'); await onChanged(); } catch (e) { toast('삭제 실패', 'error'); } };
+      const toggle = async (s) => { try { await api.updateStaff(s.id, { ...payload(s), active: !(s.active !== false) }); await onChanged(); } catch (e) { toast(errMsg(e, '변경 실패'), 'error'); } };
+      const remove = async (s) => { try { await api.removeStaff(s.id); toast('삭제됨', 'info'); await onChanged(); } catch (e) { toast(errMsg(e, '삭제 실패'), 'error'); } };
       return (
         <Card className="p-5">
-          <h2 className="text-base font-bold text-slate-800 mb-4">담당자 마스터</h2>
-          <form onSubmit={add} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-4">
-            <Input placeholder="이름 *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            <Combo placeholder="직책" value={form.role} options={STAFF_ROLES} onChange={(e) => setForm({ ...form, role: e.target.value })} />
-            <Input placeholder="연락처" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Button type="submit">추가</Button>
-          </form>
-          {staff.length === 0 ? <p className="text-sm text-slate-400 text-center py-6">등록된 담당자가 없습니다.</p> : (
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-base font-bold text-slate-800">조직 · 직원 마스터</h2>
+            {!isAdmin && <span className="text-[11px] font-medium px-2 py-1 rounded-full bg-slate-100 text-slate-500">읽기 전용 · 관리자만 편집</span>}
+          </div>
+          {isAdmin && (
+            <form onSubmit={add} className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              <Input placeholder="이름 *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Combo placeholder="직급" value={form.grade} options={STAFF_GRADES} onChange={(e) => setForm({ ...form, grade: e.target.value })} />
+              <Combo placeholder="고용형태" value={form.employment_type} options={EMPLOYMENT_TYPES} onChange={(e) => setForm({ ...form, employment_type: e.target.value })} />
+              <Combo placeholder="직책/직무" value={form.role} options={STAFF_ROLES} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+              <Input placeholder="연락처" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input placeholder="이메일" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              <Input type="date" title="입사일" value={form.hire_date} onChange={(e) => setForm({ ...form, hire_date: e.target.value })} />
+              <Button type="submit">추가</Button>
+            </form>
+          )}
+          {staff.length === 0 ? <p className="text-sm text-slate-400 text-center py-6">등록된 직원이 없습니다.</p> : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm whitespace-nowrap">
                 <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
-                  <th className="py-2 pr-3 font-medium">이름</th><th className="py-2 pr-3 font-medium">직책</th>
-                  <th className="py-2 pr-3 font-medium">연락처</th><th className="py-2 pr-3 font-medium">상태</th>
-                  <th className="py-2 font-medium text-right">관리</th></tr></thead>
+                  <th className="py-2 pr-3 font-medium">이름</th><th className="py-2 pr-3 font-medium">직급</th>
+                  <th className="py-2 pr-3 font-medium">고용형태</th><th className="py-2 pr-3 font-medium">직책</th>
+                  <th className="py-2 pr-3 font-medium">연락처</th><th className="py-2 pr-3 font-medium">이메일</th>
+                  <th className="py-2 pr-3 font-medium">입사일</th><th className="py-2 pr-3 font-medium">상태</th>
+                  {isAdmin && <th className="py-2 font-medium text-right">관리</th>}</tr></thead>
                 <tbody className="divide-y divide-slate-100">
                   {staff.map((s) => (
                     <tr key={s.id} className={s.active === false ? 'opacity-50' : ''}>
                       <td className="py-2 pr-3 font-medium text-slate-700">{s.name}</td>
+                      <td className="py-2 pr-3 text-slate-500">{s.grade || '-'}</td>
+                      <td className="py-2 pr-3 text-slate-500">{s.employment_type || '-'}</td>
                       <td className="py-2 pr-3 text-slate-500">{s.role || '-'}</td>
                       <td className="py-2 pr-3 text-slate-500">{s.phone || '-'}</td>
-                      <td className="py-2 pr-3"><button onClick={() => toggle(s)}><Badge color={s.active === false ? 'bg-slate-400' : 'bg-emerald-500'}>{s.active === false ? '비활성' : '활성'}</Badge></button></td>
-                      <td className="py-2 text-right whitespace-nowrap">
-                        <button onClick={() => startEdit(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
-                        <button onClick={() => remove(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
-                      </td>
+                      <td className="py-2 pr-3 text-slate-500">{s.email || '-'}</td>
+                      <td className="py-2 pr-3 text-slate-500">{s.hire_date || '-'}</td>
+                      <td className="py-2 pr-3">{isAdmin
+                        ? <button onClick={() => toggle(s)}><Badge color={s.active === false ? 'bg-slate-400' : 'bg-emerald-500'}>{s.active === false ? '비활성' : '활성'}</Badge></button>
+                        : <Badge color={s.active === false ? 'bg-slate-400' : 'bg-emerald-500'}>{s.active === false ? '비활성' : '활성'}</Badge>}</td>
+                      {isAdmin && (
+                        <td className="py-2 text-right whitespace-nowrap">
+                          <button onClick={() => startEdit(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
+                          <button onClick={() => remove(s)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-          <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="담당자 수정" size="md">
+          <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="직원 수정" size="md">
             {editing && (
               <div className="space-y-3">
                 <Input label="이름 *" value={eForm.name} onChange={(e) => setEForm({ ...eForm, name: e.target.value })} />
-                <Combo label="직책" value={eForm.role} options={STAFF_ROLES} onChange={(e) => setEForm({ ...eForm, role: e.target.value })} />
-                <Input label="연락처" value={eForm.phone} onChange={(e) => setEForm({ ...eForm, phone: e.target.value })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Combo label="직급" value={eForm.grade} options={STAFF_GRADES} onChange={(e) => setEForm({ ...eForm, grade: e.target.value })} />
+                  <Combo label="고용형태" value={eForm.employment_type} options={EMPLOYMENT_TYPES} onChange={(e) => setEForm({ ...eForm, employment_type: e.target.value })} />
+                </div>
+                <Combo label="직책/직무" value={eForm.role} options={STAFF_ROLES} onChange={(e) => setEForm({ ...eForm, role: e.target.value })} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="연락처" value={eForm.phone} onChange={(e) => setEForm({ ...eForm, phone: e.target.value })} />
+                  <Input label="입사일" type="date" value={eForm.hire_date || ''} onChange={(e) => setEForm({ ...eForm, hire_date: e.target.value })} />
+                </div>
+                <Input label="이메일" value={eForm.email} onChange={(e) => setEForm({ ...eForm, email: e.target.value })} />
                 <label className="flex items-center gap-2 text-sm text-slate-700">
-                  <input type="checkbox" checked={eForm.active} onChange={(e) => setEForm({ ...eForm, active: e.target.checked })} /> 활성
+                  <input type="checkbox" checked={eForm.active} onChange={(e) => setEForm({ ...eForm, active: e.target.checked })} /> 재직중
                 </label>
                 <div className="flex gap-2 justify-end pt-1">
                   <Button variant="secondary" onClick={() => setEditing(null)}>취소</Button>
@@ -7536,7 +7654,7 @@
       );
     }
 
-    function ManageTab({ sites, onMastersChanged, onSitesChanged, onTemplatesChanged }) {
+    function ManageTab({ sites, onMastersChanged, onSitesChanged, onTemplatesChanged, isAdmin = false }) {
       const [sub, setSub] = useState('staff');
       const [staffAll, setStaffAll] = useState([]);
       const [vendorsAll, setVendorsAll] = useState([]);
@@ -7575,7 +7693,7 @@
               })}
             </div>
           </Card>
-          {sub === 'staff' && <StaffManager staff={staffAll} onChanged={reloadMasters} />}
+          {sub === 'staff' && <StaffManager staff={staffAll} onChanged={reloadMasters} isAdmin={isAdmin} />}
           {sub === 'vendors' && <VendorManager vendors={vendorsAll} onChanged={reloadMasters} />}
           {sub === 'clients' && <ClientManager clients={clientsAll} onChanged={reloadMasters} />}
           {sub === 'categories' && <CategoryManager cats={catsAll} onChanged={reloadMasters} />}
@@ -7591,6 +7709,7 @@
     // ========================================
     function App({ authUser = null, demoMode = false, onLogout = () => {} }) {
       const toast = useToast();
+      const isAdmin = demoMode || !!(authUser && authUser.role === 'admin'); // (v21) 조직/인력배정 권한. 데모는 admin 가정.
       const [sites, setSites] = useState([]);
       const [selectedId, setSelectedId] = useState(null);
       const [sitesLoading, setSitesLoading] = useState(true);
@@ -7894,6 +8013,7 @@
                           <p className="text-sm font-semibold text-slate-700 truncate max-w-[160px]">{authUser.name || authUser.email}</p>
                           <p className="text-[11px] text-slate-400 truncate max-w-[160px]">{authUser.team_name || '팀'}</p>
                         </div>
+                        {isAdmin && <span className="text-[11px] font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700" title="관리자 — 조직·직원·인력배정 관리 권한">관리자</span>}
                         <Button variant="secondary" size="sm" onClick={onLogout}>로그아웃</Button>
                       </>
                     )}
@@ -7980,7 +8100,7 @@
                 onNewFromEstimate={() => setEstSiteModalOpen(true)}
                 onChanged={() => loadSites(selectedId)} />
             ) : activeTab === 'manage' ? (
-              <ManageTab sites={sites} staffNames={staffNames} onMastersChanged={loadMasters} onSitesChanged={loadSites} onTemplatesChanged={loadTemplates} />
+              <ManageTab sites={sites} staffNames={staffNames} onMastersChanged={loadMasters} onSitesChanged={loadSites} onTemplatesChanged={loadTemplates} isAdmin={isAdmin} />
             ) : !selectedSite ? (
               <Card className="p-12 text-center">
                 <div className="text-5xl mb-3">🏗️</div>
@@ -8002,7 +8122,7 @@
                     <SummaryDashboard summary={summary} loading={detailLoading} />
                     <PlanVsActual summary={summary} />
                     <Analysis summary={summary} loading={detailLoading} costs={costs} />
-                    <PersonnelSection site={selectedSite} costs={costs} staff={staff} />
+                    <PersonnelSection site={selectedSite} costs={costs} staff={staff} isAdmin={isAdmin} />
                     <MonthlyTrend costs={costs} loading={detailLoading} />
                   </div>
                 )}

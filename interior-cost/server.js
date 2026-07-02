@@ -710,6 +710,37 @@ async function initDB() {
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_photos_site ON interior_photos (site_id);');
 
+  // (v21 / #5) admin 조직·권한 + 프로젝트 인력배정.
+  //   ① 직원마스터 확장(직급/고용형태/이메일/입사일) — ADD COLUMN IF NOT EXISTS, v1~v20 데이터 100% 보존, 멱등.
+  await pool.query(`ALTER TABLE interior_staff ADD COLUMN IF NOT EXISTS grade TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_staff ADD COLUMN IF NOT EXISTS employment_type TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_staff ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_staff ADD COLUMN IF NOT EXISTS hire_date DATE`);
+
+  //   ② 프로젝트 인력배정(다대다) — 신규 테이블. site/staff 둘 다 CASCADE. 팀 스코핑 = site 소유검증.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_site_staff (
+      id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      site_id         BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      staff_id        BIGINT NOT NULL REFERENCES interior_staff(id) ON DELETE CASCADE,
+      role_in_project TEXT NOT NULL DEFAULT '',
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (site_id, staff_id, role_in_project)
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_site_staff_site ON interior_site_staff (site_id);');
+
+  //   ③ 최초 관리자 backfill: admin 이 없는 팀은 가장 먼저 가입한 유저를 admin 으로 승격(멱등).
+  //      기존 유저(v13 이후 전부 member)로도 조직/배정 기능이 즉시 사용 가능. admin 이 이미 있으면 no-op.
+  await pool.query(`
+    UPDATE interior_users SET role='admin'
+    WHERE id IN (
+      SELECT DISTINCT ON (team_id) id FROM interior_users
+      WHERE team_id NOT IN (SELECT team_id FROM interior_users WHERE role='admin')
+      ORDER BY team_id, id ASC
+    )
+  `);
+
   // (v20) Storage 버킷 ensure (키 있을 때만, best-effort — 실패해도 부팅 계속)
   await ensureStorageBucket();
 
@@ -902,6 +933,21 @@ app.use('/api/as/:id', requireChildOwned('interior_as', 'A/S'));
 app.use('/api/takeoff/:id', requireChildOwned('interior_takeoff', '물량'));
 app.use('/api/documents/:id', requireChildOwned('interior_documents', '자료')); // (v20)
 app.use('/api/photos/:id', requireChildOwned('interior_photos', '현장사진')); // (v20)
+app.use('/api/site-staff/:id', requireChildOwned('interior_site_staff', '인력배정')); // (v21) 배정 by-id → site 조인 팀검증
+
+// (v21) 관리자 가드: users.role='admin' 만 통과, 그 외 403. req.role 세팅.
+//   JWT 에는 role 이 없으므로(재로그인 없이 승격 반영 위해) 매 요청 DB 조회. 인증(req.userId) 이후에만 사용.
+async function requireAdmin(req, res, next) {
+  try {
+    const { rows } = await pool.query('SELECT role FROM interior_users WHERE id=$1', [req.userId]);
+    const role = rows.length ? (rows[0].role || 'member') : 'member';
+    req.role = role;
+    if (role !== 'admin') return res.status(403).json({ error: '관리자 권한이 필요합니다' });
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
 
 // ----------------------------------------
 // 인증 라우트 (signup/login 은 비보호, me 는 보호)
@@ -935,11 +981,14 @@ app.post('/api/auth/signup', async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
+    // (v21) 첫 가입자 = 관리자: 그 팀 유저 수가 0이면 admin, 아니면 member.
+    const cnt = await pool.query('SELECT COUNT(*)::int AS n FROM interior_users WHERE team_id=$1', [team.id]);
+    const role = cnt.rows[0].n === 0 ? 'admin' : 'member';
     const { rows } = await pool.query(
       `INSERT INTO interior_users (email, password_hash, name, team_id, role)
-       VALUES ($1,$2,$3,$4,'member')
+       VALUES ($1,$2,$3,$4,$5)
        RETURNING id, email, name, team_id, role`,
-      [email, hash, name, team.id]
+      [email, hash, name, team.id, role]
     );
     const userRow = { ...rows[0], team_name: team.name };
     const token = signToken(userRow);
@@ -1119,7 +1168,30 @@ function rowToStaff(row) {
     role: row.role || '',
     phone: row.phone || '',
     active: row.active,
+    // (v21) 직원마스터 확장: 직급/고용형태/이메일/입사일.
+    grade: row.grade || '',
+    employment_type: row.employment_type || '',
+    email: row.email || '',
+    hire_date: row.hire_date, // 'YYYY-MM-DD' | null (to_char 직렬화)
     created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
+// (v21) 프로젝트 인력배정 행(interior_site_staff JOIN interior_staff) → 클라이언트 모델.
+function rowToSiteStaff(row) {
+  return {
+    id: Number(row.id),
+    site_id: Number(row.site_id),
+    staff_id: Number(row.staff_id),
+    role_in_project: row.role_in_project || '',
+    created_at: new Date(row.created_at).toISOString(),
+    // JOIN 된 직원 정보(있을 때만)
+    staff_name: row.staff_name || '',
+    staff_role: row.staff_role || '',
+    staff_grade: row.staff_grade || '',
+    staff_employment_type: row.staff_employment_type || '',
+    staff_phone: row.staff_phone || '',
+    staff_active: row.staff_active,
   };
 }
 
@@ -1378,7 +1450,7 @@ const SITE_COLS =
   "building_type, floor_area, to_char(move_in_date,'YYYY-MM-DD') AS move_in_date, pm, construction_manager, designer, progress_status, client_id, archived, created_at";
 const COST_COLS =
   "id, site_id, to_char(date,'YYYY-MM-DD') AS date, amount, category, process, manager, vendor, memo, schedule_id, has_invoice, created_at";
-const STAFF_COLS = 'id, name, role, phone, active, created_at';
+const STAFF_COLS = "id, name, role, phone, active, grade, employment_type, email, to_char(hire_date,'YYYY-MM-DD') AS hire_date, created_at"; // (v21) 직원마스터 확장
 const VENDOR_COLS = 'id, name, kind, phone, memo, trade, grade, active, created_at';
 const CATEGORY_COLS = 'id, kind, name, sort_order, active';
 const ESTIMATE_COLS =
@@ -1753,6 +1825,13 @@ function validateStaff(body) {
   const b = body || {};
   const name = typeof b.name === 'string' ? b.name.trim() : '';
   if (!name) return { valid: false, message: 'name(담당자명) 은 필수입니다.' };
+  // (v21) 입사일(hire_date): '' 또는 미전달 → null, 그 외엔 유효한 YYYY-MM-DD 만 허용(그 외 400).
+  let hire_date = null;
+  if (b.hire_date !== undefined && b.hire_date !== null && String(b.hire_date).trim() !== '') {
+    const hd = String(b.hire_date).trim();
+    if (!isRealDate(hd)) return { valid: false, message: 'hire_date(입사일) 는 유효한 YYYY-MM-DD 형식이어야 합니다.' };
+    hire_date = hd;
+  }
   return {
     valid: true,
     values: {
@@ -1760,6 +1839,11 @@ function validateStaff(body) {
       role: typeof b.role === 'string' ? b.role.trim() : '',
       phone: typeof b.phone === 'string' ? b.phone.trim() : '',
       active: parseBool(b.active, true),
+      // (v21) 직원마스터 확장 필드
+      grade: typeof b.grade === 'string' ? b.grade.trim() : '',
+      employment_type: typeof b.employment_type === 'string' ? b.employment_type.trim() : '',
+      email: typeof b.email === 'string' ? b.email.trim() : '',
+      hire_date,
     },
   };
 }
@@ -2610,14 +2694,15 @@ app.get('/api/staff', async (req, res) => {
   }
 });
 
-app.post('/api/staff', async (req, res) => {
+app.post('/api/staff', requireAdmin, async (req, res) => {
   try {
     const check = validateStaff(req.body);
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `INSERT INTO interior_staff (name, role, phone, active, team_id) VALUES ($1,$2,$3,$4,$5) RETURNING ${STAFF_COLS}`,
-      [v.name, v.role, v.phone, v.active, req.teamId]
+      `INSERT INTO interior_staff (name, role, phone, active, grade, employment_type, email, hire_date, team_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${STAFF_COLS}`,
+      [v.name, v.role, v.phone, v.active, v.grade, v.employment_type, v.email, v.hire_date, req.teamId]
     );
     res.status(201).json(rowToStaff(rows[0]));
   } catch (err) {
@@ -2627,7 +2712,7 @@ app.post('/api/staff', async (req, res) => {
   }
 });
 
-app.put('/api/staff/:id', async (req, res) => {
+app.put('/api/staff/:id', requireAdmin, async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 담당자 id 형식입니다.' });
@@ -2635,8 +2720,10 @@ app.put('/api/staff/:id', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `UPDATE interior_staff SET name=$1, role=$2, phone=$3, active=$4 WHERE id=$5 AND team_id=$6 RETURNING ${STAFF_COLS}`,
-      [v.name, v.role, v.phone, v.active, id, req.teamId]
+      `UPDATE interior_staff SET name=$1, role=$2, phone=$3, active=$4,
+              grade=$5, employment_type=$6, email=$7, hire_date=$8
+        WHERE id=$9 AND team_id=$10 RETURNING ${STAFF_COLS}`,
+      [v.name, v.role, v.phone, v.active, v.grade, v.employment_type, v.email, v.hire_date, id, req.teamId]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 담당자를 찾을 수 없습니다.' });
     res.json(rowToStaff(rows[0]));
@@ -2647,7 +2734,7 @@ app.put('/api/staff/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/staff/:id', async (req, res) => {
+app.delete('/api/staff/:id', requireAdmin, async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 담당자 id 형식입니다.' });
@@ -2657,6 +2744,81 @@ app.delete('/api/staff/:id', async (req, res) => {
   } catch (err) {
     console.error('DELETE /api/staff/:id 오류:', err.message);
     res.status(500).json({ success: false, message: '담당자를 삭제하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// REST API — 프로젝트 인력배정(interior_site_staff, v21/#5)
+//   · GET    /api/sites/:id/staff   배정 목록(JOIN staff). 인증 사용자 누구나(팀 소유검증=/api/sites/:id 미들웨어).
+//   · POST   /api/sites/:id/staff   배정(admin 전용). staff 같은 팀 검증, UNIQUE 중복 409/멱등.
+//   · DELETE /api/site-staff/:id    해제(admin 전용). 소유검증=requireChildOwned('interior_site_staff').
+// ========================================
+const SITE_STAFF_COLS =
+  'ss.id, ss.site_id, ss.staff_id, ss.role_in_project, ss.created_at, ' +
+  'st.name AS staff_name, st.role AS staff_role, st.grade AS staff_grade, ' +
+  'st.employment_type AS staff_employment_type, st.phone AS staff_phone, st.active AS staff_active';
+
+app.get('/api/sites/:id/staff', async (req, res) => {
+  try {
+    const siteId = parseId(req.params.id);
+    if (!siteId) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${SITE_STAFF_COLS}
+         FROM interior_site_staff ss JOIN interior_staff st ON st.id = ss.staff_id
+        WHERE ss.site_id=$1
+        ORDER BY ss.created_at ASC, ss.id ASC`,
+      [siteId]
+    );
+    res.json(rows.map(rowToSiteStaff));
+  } catch (err) {
+    console.error('GET /api/sites/:id/staff 오류:', err.message);
+    res.status(500).json({ success: false, message: '배정 인력을 불러오지 못했습니다.' });
+  }
+});
+
+app.post('/api/sites/:id/staff', requireAdmin, async (req, res) => {
+  try {
+    const siteId = parseId(req.params.id);
+    if (!siteId) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const b = req.body || {};
+    const staffId = parseId(b.staff_id);
+    if (!staffId) return res.status(400).json({ success: false, message: 'staff_id(직원) 은 필수입니다.' });
+    const roleInProject = typeof b.role_in_project === 'string' ? b.role_in_project.trim() : '';
+    // staff 가 같은 팀 소속인지 검증(타팀 직원 배정 차단).
+    const st = await pool.query('SELECT 1 FROM interior_staff WHERE id=$1 AND team_id=$2', [staffId, req.teamId]);
+    if (st.rows.length === 0) return res.status(404).json({ success: false, message: '해당 직원을 찾을 수 없습니다.' });
+    // UNIQUE(site_id, staff_id, role_in_project) 중복 → 멱등 409(중복 배정 방지).
+    const ins = await pool.query(
+      `INSERT INTO interior_site_staff (site_id, staff_id, role_in_project) VALUES ($1,$2,$3)
+       ON CONFLICT (site_id, staff_id, role_in_project) DO NOTHING RETURNING id`,
+      [siteId, staffId, roleInProject]
+    );
+    if (ins.rows.length === 0) return res.status(409).json({ success: false, message: '이미 배정된 직원입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${SITE_STAFF_COLS}
+         FROM interior_site_staff ss JOIN interior_staff st ON st.id = ss.staff_id
+        WHERE ss.id=$1`,
+      [ins.rows[0].id]
+    );
+    res.status(201).json(rowToSiteStaff(rows[0]));
+  } catch (err) {
+    if (err.code === '23503') return res.status(404).json({ success: false, message: '현장 또는 직원을 찾을 수 없습니다.' });
+    console.error('POST /api/sites/:id/staff 오류:', err.message);
+    res.status(500).json({ success: false, message: '인력을 배정하지 못했습니다.' });
+  }
+});
+
+app.delete('/api/site-staff/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 배정 id 형식입니다.' });
+    // 소유검증은 requireChildOwned('interior_site_staff') 미들웨어가 이미 수행(타팀/미존재 → 404).
+    const { rowCount } = await pool.query('DELETE FROM interior_site_staff WHERE id=$1', [id]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 배정을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/site-staff/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '배정을 해제하지 못했습니다.' });
   }
 });
 

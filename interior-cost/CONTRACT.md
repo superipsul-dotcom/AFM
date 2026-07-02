@@ -1091,3 +1091,52 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 ## 검증
 - (키 있을 때) sign-upload→직접 PUT→메타 POST→목록/다운로드(서명URL 열림)→삭제(Storage+행). 사진 날짜/공정/업로더자동. 팀 스코핑(타팀 site 404). 키 없으면 업로드 503, 앱 나머지 정상.
 - v1~v19 회귀.
+
+---
+
+# v21 확장 — admin 조직/권한 + 프로젝트 인력배정 (Phase D, #5)
+
+> 사용자 요청 + HR 리서치(네이버웍스/flex): RBAC 3역할(관리자/직원/뷰어), 직원마스터(직급·고용형태·연락처·입사일)+현장 다대다 배정. 관리자가 조직·인력 관리. v1~v20 100% 보존.
+
+## 역할(RBAC)
+- users.role ∈ {admin, member}(기존 컬럼, 기본 'member'). **첫 가입자=admin**: signup 시 그 팀 users 수 0이면 role='admin', 아니면 'member'. (안도공간 팀 유저 0 → 실사용자 첫 가입 시 관리자.)
+- GET /api/auth/me 응답에 role 포함(이미). 프론트는 role='admin'만 조직/배정 UI 노출.
+- **admin 가드**: admin 전용 엔드포인트는 req.role!=='admin'이면 403 {error:'관리자 권한이 필요합니다'}. 헬퍼 requireAdmin(users에서 role 조회 or JWT에 role 포함).
+
+## 직원 마스터 확장 (interior_staff, ADD COLUMN IF NOT EXISTS — team_id 이미 있음)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| grade | text default '' | 직급(대표/이사/부장/차장/과장/대리/사원/주임) |
+| employment_type | text default '' | 고용형태(정규직/계약직/파트타임/일용직/외주) |
+| email | text default '' | |
+| hire_date | date | 입사일 |
+- 기존 name/role(직책·직무)/phone/active 유지. GET /api/staff 응답에 신규필드 포함.
+- **staff 쓰기 권한**: POST/PUT/DELETE /api/staff → **admin 전용(403)**. GET /api/staff → 인증 사용자 누구나(드롭다운용).
+
+## 프로젝트 인력배정 (interior_site_staff, 다대다)
+### 새 테이블 (CREATE IF NOT EXISTS)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| id | bigint identity PK | |
+| site_id | bigint NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE | |
+| staff_id | bigint NOT NULL REFERENCES interior_staff(id) ON DELETE CASCADE | |
+| role_in_project | text default '' | PM/시공책임/디자이너/지원/현장소장/기타 |
+| created_at | timestamptz default now() | |
+- UNIQUE(site_id, staff_id, role_in_project). 인덱스 site_id.
+### 엔드포인트
+- `GET /api/sites/:id/staff` → 배정 직원 목록(interior_site_staff JOIN interior_staff: staff 정보+role_in_project). 인증(팀 소유검증).
+- `POST /api/sites/:id/staff` `{staff_id, role_in_project?}` → **admin 전용** 배정(중복 UNIQUE 409/멱등, staff 같은 팀 검증).
+- `DELETE /api/site-staff/:id` → **admin 전용** 해제(site 소유검증).
+
+## UI (관리 탭 + 요약)
+- **관리 탭 → 조직/직원 섹션(admin 전용)**: 직원 목록(이름·직급·고용형태·직책·연락처·이메일·입사일·재직상태)+추가/수정/삭제(admin). 비-admin은 숨김/읽기전용.
+- **프로젝트 인력배정**(요약 헤더 또는 관리): 현장별 배정 직원(role_in_project 뱃지)+[직원 배정](admin: staff 드롭다운+역할)/해제. 기존 site.pm/construction_manager/designer(v4)와 공존.
+- 헤더에 사용자 role 표시(관리자 뱃지). 비-admin 쓰기 시도→403 "관리자 권한 필요" 토스트. 폴백: staff 신규필드+배정 보존, 데모는 admin 가정.
+
+## 검증
+- 첫 가입=admin, 2번째=member. me.role.
+- staff 신규필드 CRUD(admin), member의 staff 쓰기 403, GET member 200.
+- site_staff: admin 배정/GET(JOIN)/DELETE, member 배정 403, 중복 409/멱등, 타팀 staff 거부, CASCADE.
+- v1~v20 회귀.
+
+> ✅ **구현·검증 완료 (2026-07-02)**. 백엔드 e2e 27/27 통과(위 검증 전 항목 + 잘못된 입사일 400 + 없는 현장 404). admin 백필로 기존 유저(홍평화)가 관리자 승격. 프론트: 헤더 관리자 뱃지 · 관리>조직·직원 마스터(직급/고용형태/이메일/입사일, 비-admin 읽기전용) · 요약>PersonnelSection "프로젝트 배정 인력"(배정/해제, 실서버 플로우 브라우저 확인). 입사일 to_char 직렬화(타임존 안전). 데모/폴백=admin 가정 + siteStaffStore.
