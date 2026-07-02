@@ -1097,7 +1097,14 @@ function createSiteFolder(name) {
     throw new Error('잘못된 현장 폴더 경로입니다.');
   }
 
-  fs.mkdirSync(path.join(siteAbs, 'receipts'), { recursive: true });
+  // (v23.1) mkdir 은 best-effort — Vercel 등 서버리스는 read-only FS 라 항상 실패했고,
+  // 그 throw 가 현장 생성 자체를 400 으로 죽이던 프로덕션 버그. 폴더는 로컬 실행 전용 편의 기능
+  // (파일 실체는 v20부터 Supabase Storage). 경로탈출 검증(위)은 유지.
+  try {
+    fs.mkdirSync(path.join(siteAbs, 'receipts'), { recursive: true });
+  } catch (e) {
+    console.warn('⚠️  현장 폴더 생성 실패(무시 — 서버리스/권한):', e.message);
+  }
   return path.join('sites', safeName); // 상대경로 (OS 구분자 그대로)
 }
 
