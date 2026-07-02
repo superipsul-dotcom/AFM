@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>자재 리서치 현황 · 국내 인테리어 자재 종합 DB</title>
+
+<!-- Tailwind (Play CDN — JIT는 런타임 DOM 변화를 감지해 클래스 생성) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- React 18 UMD -->
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<!-- Chart.js (UMD 번들은 컨트롤러 자동 등록) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Babel standalone -->
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>
+  /* CRITICAL GOTCHA: 최신 @babel/standalone은 JSX를 automatic runtime으로 컴파일해
+     react/jsx-runtime import를 주입 → UMD React 환경에서 화면이 통째로 하얗게 죽는다.
+     반드시 classic runtime 프리셋을 등록해서 쓴다. */
+  Babel.registerPreset('app-react', {
+    presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+  });
+</script>
+
+<style>
+  :root{ color-scheme: dark; }
+  *{ box-sizing:border-box }
+  html,body{ margin:0; padding:0 }
+  body{
+    background:#0f1115; color:#e8ecf3;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",Roboto,sans-serif;
+    font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .spin{ display:inline-block; width:18px; height:18px; border:2px solid #2b313d; border-top-color:#4f8cff; border-radius:50%; animation:sp .7s linear infinite; vertical-align:middle; margin-right:8px }
+  @keyframes sp{ to{ transform:rotate(360deg) } }
+  ::-webkit-scrollbar{ width:10px; height:10px }
+  ::-webkit-scrollbar-thumb{ background:#2b313d; border-radius:10px }
+  ::-webkit-scrollbar-track{ background:transparent }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#9aa4b2">
+    <span class="spin"></span> 대시보드 로딩 중…
+  </div>
+</div>
+
+<script type="text/babel" data-presets="app-react">
+"use strict";
+
+// ========================================
+// React Hooks
+// ========================================
+const { useState, useEffect, useMemo, useRef } = React;
+
+// 페이지가 /research/ 에 있으므로 루트 절대경로가 맞다. (localhost 하드코딩 금지)
+const API_BASE_URL = '/api';
+
+// ========================================
+// 🔧 유틸 / 포매터
+// ========================================
+async function apiGet(path) {
+  const res = await fetch(API_BASE_URL + path);
+  let json;
+  try { json = await res.json(); }
+  catch (e) { throw new Error('HTTP ' + res.status + ' (JSON 파싱 실패)'); }
+  if (!res.ok || json.success === false) throw new Error(json.message || ('HTTP ' + res.status));
+  return json.data;
+}
+
+function comma(n) {
+  if (n == null || n === '–') return '–';
+  const num = Number(n);
+  return isNaN(num) ? String(n) : num.toLocaleString('ko-KR');
+}
+
+function fmtPct(p) {
+  if (p == null || isNaN(p)) return '–';
+  return (Math.round(p * 10) / 10) + '%';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '–';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(0, 10);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  } catch (e) { return String(iso).slice(0, 10); }
+}
+
+function priceText(p) {
+  if (!p || (p.min == null && p.max == null)) return '시세 미정';
+  if (p.min != null && p.max != null && p.min !== p.max) return comma(p.min) + '~' + comma(p.max) + '원';
+  const one = p.min != null ? p.min : p.max;
+  return comma(one) + '원';
+}
+function priceUnit(p) { return (p && p.unit) ? ('/' + p.unit) : ''; }
+
+const TYPE_META = {
+  new:        { label: '신규',  cls: 'text-[#cfc6ff] bg-[#9b8cff]/20', bar: '#9b8cff' },
+  price_up:   { label: '가격↑', cls: 'text-[#ffc0c0] bg-[#ff6b6b]/20', bar: '#ff6b6b' },
+  price_down: { label: '가격↓', cls: 'text-[#bce8f7] bg-[#36b5e0]/20', bar: '#36b5e0' },
+  update:     { label: '수정',  cls: 'text-[#d6deea] bg-[#8aa0bd]/20', bar: '#8aa0bd' },
+};
+
+const GRADE_CLS = {
+  '보급': 'text-[#9fe6c0] border-[#34c77b]/40 bg-[#34c77b]/10',
+  '중급': 'text-[#bcd2ff] border-[#4f8cff]/40 bg-[#4f8cff]/10',
+  '고급': 'text-[#ddc8ff] border-[#9b8cff]/40 bg-[#9b8cff]/10',
+};
+
+// ========================================
+// 🎨 Design System 컴포넌트 (프레젠테이션 전용)
+// ========================================
+function Card({ className = '', children }) {
+  return <div className={'bg-[#171a21] border border-[#2b313d] rounded-[14px] ' + className}>{children}</div>;
+}
+
+function SectionTitle({ icon, title, desc, right }) {
+  return (
+    <div className="flex items-end justify-between gap-3 mb-3 mt-9 flex-wrap">
+      <div>
+        <h2 className="text-[16px] font-bold text-white flex items-center gap-2 tracking-tight">
+          {icon && <span aria-hidden="true">{icon}</span>}{title}
+        </h2>
+        {desc && <p className="text-[12.5px] text-[#9aa4b2] mt-1">{desc}</p>}
+      </div>
+      {right && <div className="shrink-0">{right}</div>}
+    </div>
+  );
+}
+
+function Kpi({ value, label, sub, accent = 'text-white' }) {
+  return (
+    <Card className="p-4">
+      <div className={'text-[26px] font-extrabold leading-none ' + accent}>{value}</div>
+      <div className="text-[12px] text-[#9aa4b2] mt-2">{label}</div>
+      {sub && <div className="text-[11px] text-[#6b7480] mt-1.5 leading-snug">{sub}</div>}
+    </Card>
+  );
+}
+
+function GradeBadge({ grade }) {
+  if (!grade) return null;
+  return (
+    <span className={'text-[10.5px] px-2 py-0.5 rounded-full border ' + (GRADE_CLS[grade] || 'text-[#9aa4b2] border-[#2b313d]')}>
+      {grade}
+    </span>
+  );
+}
+
+function TypeBadge({ type }) {
+  const m = TYPE_META[type] || { label: type, cls: 'text-[#9aa4b2] bg-[#242a35]' };
+  return <span className={'text-[10.5px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ' + m.cls}>{m.label}</span>;
+}
+
+function EmptyState({ icon, title, desc }) {
+  return (
+    <div className="py-10 px-5 text-center">
+      {icon && <div className="text-3xl mb-2 opacity-70" aria-hidden="true">{icon}</div>}
+      <div className="text-[13.5px] text-[#e8ecf3] font-semibold">{title}</div>
+      {desc && <div className="text-[12px] text-[#9aa4b2] mt-1.5 max-w-[560px] mx-auto leading-relaxed">{desc}</div>}
+    </div>
+  );
+}
+
+// ========================================
+// 📊 Chart.js 래퍼 (useEffect 생성 / cleanup destroy · try-catch로 렌더 보호)
+// ========================================
+function CoverageDonut({ research, seed, manual }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    if (!canvasRef.current || !window.Chart) return;
+    const other = (seed || 0) + (manual || 0);
+    const allZero = (research || 0) === 0 && other === 0;
+    let chart;
+    try {
+      chart = new window.Chart(canvasRef.current.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['검증(research)', '기준선(seed/manual)'],
+          datasets: [{
+            data: allZero ? [0, 1] : [research || 0, other],
+            backgroundColor: ['#34c77b', '#3a4457'],
+            borderColor: '#171a21',
+            borderWidth: 3,
+            hoverOffset: 4,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '74%',
+          animation: { duration: 500 },
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: !allZero, callbacks: { label: (c) => c.label + ': ' + comma(c.parsed) + '건' } },
+          },
+        },
+      });
+    } catch (err) { console.error('CoverageDonut', err); return; }
+    return () => { try { chart && chart.destroy(); } catch (e) {} };
+  }, [research, seed, manual]);
+  return <canvas ref={canvasRef} role="img" aria-label="검증 커버리지 도넛 차트" />;
+}
+
+function WeeklyBar({ weeks }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    if (!canvasRef.current || !window.Chart || !weeks.length) return;
+    const labels = weeks.map((w) => w.week);
+    const datasets = [
+      { label: '신규',  data: weeks.map((w) => w.new),        backgroundColor: '#9b8cff' },
+      { label: '가격↑', data: weeks.map((w) => w.price_up),   backgroundColor: '#ff6b6b' },
+      { label: '가격↓', data: weeks.map((w) => w.price_down), backgroundColor: '#36b5e0' },
+      { label: '수정',  data: weeks.map((w) => w.update),     backgroundColor: '#8aa0bd' },
+    ];
+    let chart;
+    try {
+      chart = new window.Chart(canvasRef.current.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#9aa4b2', boxWidth: 12, font: { size: 11 } } } },
+          scales: {
+            x: { stacked: true, grid: { color: '#2b313d' }, ticks: { color: '#9aa4b2' } },
+            y: { stacked: true, beginAtZero: true, grid: { color: '#2b313d' }, ticks: { color: '#9aa4b2', precision: 0 } },
+          },
+        },
+      });
+    } catch (err) { console.error('WeeklyBar', err); return; }
+    return () => { try { chart && chart.destroy(); } catch (e) {} };
+  }, [weeks]);
+  return <canvas ref={canvasRef} role="img" aria-label="주간 리서치 변경 스택 막대 차트" />;
+}
+
+// ========================================
+// 🧩 헤더
+// ========================================
+function TopHeader({ d, lastUpdated }) {
+  const stats = [
+    { n: comma(d ? d.total : '–'), l: '전체 자재' },
+    { n: comma(d ? d.researchCount : '–'), l: '검증(research)' },
+    { n: d ? fmtPct(d.coveragePct) : '–', l: '커버리지' },
+    { n: fmtDate(lastUpdated), l: '최근 업데이트', small: true },
+  ];
+  return (
+    <header className="sticky top-0 z-30 border-b border-[#2b313d]"
+            style={{ background: 'linear-gradient(180deg,#141821,#10131a)', backdropFilter: 'blur(6px)' }}>
+      <div className="max-w-[1320px] mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
+        <a href="/" className="text-[12px] text-[#7aa7ff] hover:underline shrink-0">← 자재 DB</a>
+        <div className="flex items-center gap-3">
+          <div className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center text-[18px]"
+               style={{ background: 'linear-gradient(135deg,#4f8cff,#9b8cff)' }} aria-hidden="true">📊</div>
+          <div>
+            <h1 className="text-[17px] font-bold leading-tight text-white tracking-tight">자재 리서치 현황</h1>
+            <div className="text-[11.5px] text-[#9aa4b2]">기준선 시드 + 매주 월요일 출처 검증 단가 누적</div>
+          </div>
+        </div>
+        <div className="flex gap-4 sm:gap-6 ml-auto flex-wrap">
+          {stats.map((s, i) => (
+            <div key={i} className="text-right">
+              <div className={'font-extrabold text-white ' + (s.small ? 'text-[13px] font-semibold' : 'text-[18px]')}>{s.n}</div>
+              <div className="text-[10px] text-[#9aa4b2] uppercase tracking-wide">{s.l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ========================================
+// 🧩 커버리지 히어로 (도넛 + KPI)
+// ========================================
+function CoverageHero({ d, cat }) {
+  return (
+    <section>
+      <SectionTitle icon="📊" title="커버리지 현황"
+        desc="출처 검증 단가(research)가 기준선(seed) 대비 어디까지 채워졌는지" />
+
+      {d.researchCount === 0 && (
+        <div className="mb-4 rounded-[12px] border border-[#4f8cff]/30 bg-[#4f8cff]/10 px-4 py-3 flex items-start gap-3">
+          <span className="text-[18px] shrink-0" aria-hidden="true">🚧</span>
+          <div className="text-[12.5px] text-[#cdddff] leading-relaxed">
+            <b className="text-white">기준선 {comma(d.total)}건 · {d.totalTrades}공종 구축 완료.</b>{' '}
+            아직 출처 검증 단가(research)는 0건입니다 — 매주 월요일 research 에이전트가{' '}
+            <code className="text-[#7aa7ff] bg-[#0f1115] px-1 py-0.5 rounded">POST /api/materials/import</code>{' '}
+            로 정밀 단가를 수집하면 이 페이지가 자동으로 채워집니다.
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col lg:flex-row gap-4">
+        <Card className="p-5 flex flex-col items-center justify-center lg:w-[320px] shrink-0">
+          <div className="text-[13px] font-semibold text-white">검증 커버리지</div>
+          <div className="text-[11.5px] text-[#9aa4b2] mb-3">검증 단가 vs 기준선 시드</div>
+          <div className="relative w-[210px] h-[210px]">
+            <CoverageDonut research={d.researchCount} seed={d.seedCount} manual={d.manualCount} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="text-[34px] font-extrabold text-white leading-none">{fmtPct(d.coveragePct)}</div>
+              <div className="text-[11px] text-[#9aa4b2] mt-1">검증 {comma(d.researchCount)} / {comma(d.total)}</div>
+            </div>
+          </div>
+          <div className="flex gap-4 mt-4 text-[11.5px]">
+            <span className="flex items-center gap-1.5 text-[#9aa4b2]"><span className="w-2.5 h-2.5 rounded-sm bg-[#34c77b] inline-block" />검증 {comma(d.researchCount)}</span>
+            <span className="flex items-center gap-1.5 text-[#9aa4b2]"><span className="w-2.5 h-2.5 rounded-sm bg-[#3a4457] inline-block" />기준선 {comma(d.seedCount)}</span>
+          </div>
+        </Card>
+
+        <div className="flex-1 grid grid-cols-2 xl:grid-cols-3 gap-3 content-start">
+          <Kpi value={comma(d.total)} label="전체 자재"
+               sub={d.totalTrades + '공종 · ' + cat.categories + '대분류 · ' + cat.subcategories + '중분류'} />
+          <Kpi value={comma(d.researchCount)} label="검증 자재 (research)" accent="text-[#34c77b]"
+               sub={'커버리지 ' + fmtPct(d.coveragePct)} />
+          <Kpi value={d.researchedTrades + ' / ' + d.totalTrades} label="리서치된 공종"
+               sub="research 단가 ≥ 1건인 공종" />
+          <Kpi value={comma(d.thisWeek.total)} label="이번 주 변경"
+               sub={'신규 ' + comma(d.thisWeek.added) + ' · 변경 ' + comma(d.thisWeek.changed) + (d.thisWeek.week ? ' (' + d.thisWeek.week + ')' : '')} />
+          <Kpi value={comma(d.changelogTotal)} label="누적 changelog" sub="전체 변경 이력" />
+          <Kpi value={fmtDate(d.seededAt)} label="기준선 구축일" accent="text-[#bcd2ff] text-[20px]" sub="베이스라인 시드 생성 시점" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ========================================
+// 🧩 공종별 커버리지 맵 (드릴다운)
+// ========================================
+function TradeDrill({ trade, cov }) {
+  return (
+    <div className="pl-6 pr-2 sm:pr-3 pb-3 pt-1 space-y-2.5">
+      {trade.categories.map((c) => {
+        const cm = (cov.cats && cov.cats[c.category]) || { items: [], research: 0 };
+        const items = (cm.items || []).slice(0, 3);
+        return (
+          <div key={c.category} className="bg-[#141821] border border-[#2b313d] rounded-[10px] p-3">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span className="font-semibold text-[13px] text-[#e8ecf3]">{c.category}</span>
+              <span className="text-[11px] text-[#9aa4b2] bg-[#242a35] rounded-full px-2 py-0.5">{c.count}건</span>
+              {cm.research > 0 && (
+                <span className="text-[10.5px] text-[#9fe6c0] bg-[#34c77b]/15 rounded-full px-2 py-0.5">검증 {cm.research}</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-2.5">
+              {c.subcategories.map((s) => (
+                <span key={s.subcategory} className="text-[11px] text-[#9aa4b2] bg-[#1f242e] border border-[#2b313d] rounded-md px-2 py-0.5">
+                  {s.subcategory} <b className="text-[#e8ecf3]">{s.count}</b>
+                </span>
+              ))}
+            </div>
+            <div>
+              {items.map((m, i) => (
+                <div key={m.id || i} className={'flex items-center gap-2 text-[12px] py-1.5 ' + (i > 0 ? 'border-t border-[#2b313d]/60' : '')}>
+                  <span className="text-[#e8ecf3] font-medium truncate max-w-[42%]">{m.name}</span>
+                  <span className="text-[#6b7480] truncate flex-1">{m.spec || '—'}</span>
+                  <span className="text-[#ffd479] font-semibold whitespace-nowrap">
+                    {priceText(m.price)}<span className="text-[#6b7480] font-normal text-[10.5px]"> {priceUnit(m.price)}</span>
+                  </span>
+                </div>
+              ))}
+              {c.count > items.length && (
+                <div className="text-[11px] text-[#6b7480] pt-1.5">외 {c.count - items.length}건</div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TradeCoverageMap({ tree, tradeMap }) {
+  const [open, setOpen] = useState({});
+  if (!tree.length) {
+    return <Card><EmptyState icon="🗂️" title="공종 데이터가 없습니다" desc="서버가 카테고리 트리를 반환하지 않았습니다." /></Card>;
+  }
+  return (
+    <Card className="p-2 sm:p-3">
+      <div className="flex flex-col divide-y divide-[#2b313d]">
+        {tree.map((t) => {
+          const cov = tradeMap[t.trade] || { total: t.count, research: 0, seed: t.count, cats: {}, newest: null };
+          const total = cov.total || t.count || 0;
+          const pct = total ? Math.round((cov.research / total) * 100) : 0;
+          const isOpen = !!open[t.trade];
+          return (
+            <div key={t.trade}>
+              <button
+                onClick={() => setOpen((s) => ({ ...s, [t.trade]: !s[t.trade] }))}
+                aria-expanded={isOpen}
+                className="w-full flex items-center gap-3 px-2 sm:px-3 py-3 text-left hover:bg-[#1f242e] rounded-lg transition-colors">
+                <span className={'text-[#6b7480] text-[10px] transition-transform inline-block ' + (isOpen ? 'rotate-90' : '')} aria-hidden="true">▶</span>
+                <div className="w-[112px] sm:w-[150px] shrink-0 font-semibold text-[13.5px] text-white truncate">{t.trade}</div>
+                <div className="hidden sm:block text-[11px] text-[#9aa4b2] w-[46px] shrink-0">{total}건</div>
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <div className="flex-1 h-[9px] bg-[#2b313d] rounded-full overflow-hidden">
+                    {pct > 0 && <div className="h-full rounded-full bg-gradient-to-r from-[#34c77b] to-[#4f8cff]" style={{ width: pct + '%' }} />}
+                  </div>
+                  {cov.research > 0
+                    ? <span className="text-[11px] text-[#9fe6c0] w-[86px] shrink-0 text-right">{cov.research}/{total} ({pct}%)</span>
+                    : <span className="text-[10px] text-[#6b7480] w-[86px] shrink-0 text-right border border-[#2b313d] rounded-md px-1.5 py-0.5">기준선만</span>}
+                </div>
+                <div className="hidden md:block text-[11px] text-[#6b7480] w-[78px] shrink-0 text-right">{fmtDate(cov.newest)}</div>
+              </button>
+              {isOpen && <TradeDrill trade={t} cov={cov} />}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+// ========================================
+// 🧩 주간 리서치 타임라인 + 피드
+// ========================================
+function FeedRow({ e }) {
+  return (
+    <div className="flex items-center gap-3 px-2 py-2.5">
+      <TypeBadge type={e.type} />
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold text-white truncate">{e.name}</div>
+        <div className="text-[11.5px] text-[#9aa4b2] truncate">
+          {e.trade} › {e.category}{e.detail ? ' · ' + e.detail : ''}
+        </div>
+      </div>
+      <div className="text-[11px] text-[#6b7480] whitespace-nowrap">{e.week || fmtDate(e.ts)}</div>
+    </div>
+  );
+}
+
+function WeeklyTimeline({ d }) {
+  const empty = d.recentEntries.length === 0;
+  return (
+    <section>
+      <SectionTitle icon="📈" title="주간 리서치 타임라인"
+        desc="changelog를 주차별로 그룹핑 — 신규 · 가격변동 · 수정 추이" />
+      {empty ? (
+        <Card>
+          <EmptyState icon="🗓️" title="아직 주간 리서치 수집 전"
+            desc="매주 월요일 research 에이전트가 출처 단가를 수집하면 여기에 주차별 스택 막대와 최근 변경 피드가 누적됩니다." />
+        </Card>
+      ) : (
+        <>
+          <Card className="p-4">
+            <div className="h-[260px]"><WeeklyBar weeks={d.weeks} /></div>
+          </Card>
+          <div className="mt-3">
+            <div className="text-[12px] text-[#9aa4b2] mb-2">최근 변경 {d.recentEntries.length}건</div>
+            <Card className="p-2">
+              <div className="divide-y divide-[#2b313d]">
+                {d.recentEntries.map((e, i) => <FeedRow key={e.id || i} e={e} />)}
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+// ========================================
+// 🧩 가격 변동 하이라이트
+// ========================================
+function PriceChangeCard({ e }) {
+  return (
+    <Card className="p-3.5 flex items-center gap-3">
+      <TypeBadge type={e.type} />
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold text-white truncate">{e.name}</div>
+        <div className="text-[11.5px] text-[#9aa4b2] truncate">{(e.spec || e.category || '')}{e.week ? ' · ' + e.week : ''}</div>
+      </div>
+      <div className="text-right whitespace-nowrap shrink-0">
+        {e.before && <div className="text-[11px] text-[#6b7480] line-through">{priceText(e.before)}</div>}
+        <div className={'text-[13px] font-bold ' + (e.type === 'price_up' ? 'text-[#ff6b6b]' : 'text-[#36b5e0]')}>
+          {priceText(e.price)}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function PriceHighlights({ d }) {
+  return (
+    <section>
+      <SectionTitle icon="💹" title="가격 변동 하이라이트" desc="최근 가격 인상 · 인하 항목 (before → after)" />
+      {d.priceChanges.length ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {d.priceChanges.map((e, i) => <PriceChangeCard key={e.id || i} e={e} />)}
+        </div>
+      ) : (
+        <Card>
+          <EmptyState icon="💸" title="가격 변동 내역 없음"
+            desc="research 수집이 누적되면 전주 대비 단가가 오르거나 내린 항목이 여기에 강조됩니다." />
+        </Card>
+      )}
+    </section>
+  );
+}
+
+// ========================================
+// 🧩 데이터 신선도
+// ========================================
+function DataFreshness({ d, todayStr }) {
+  const items = [
+    { key: 'fresh', label: '7일 이내', value: d.buckets.fresh, accent: 'text-[#9fe6c0]', bar: 'bg-[#34c77b]' },
+    { key: 'mid',   label: '8~30일',  value: d.buckets.mid,   accent: 'text-[#bcd2ff]', bar: 'bg-[#4f8cff]' },
+    { key: 'old',   label: '30일 초과', value: d.buckets.old,  accent: 'text-[#ffc0c0]', bar: 'bg-[#ff6b6b]' },
+  ];
+  return (
+    <section>
+      <SectionTitle icon="🕒" title="데이터 신선도" desc={'오늘(' + todayStr + ') 기준 수집일(collected_date) 분포'} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {items.map((it) => {
+          const pct = d.total ? Math.round((it.value / d.total) * 100) : 0;
+          return (
+            <Card key={it.key} className="p-4">
+              <div className="flex items-baseline justify-between">
+                <div className={'text-[24px] font-extrabold ' + it.accent}>{comma(it.value)}</div>
+                <div className="text-[11px] text-[#6b7480]">{pct}%</div>
+              </div>
+              <div className="text-[12px] text-[#9aa4b2] mt-1">{it.label} 수집</div>
+              <div className="mt-2.5 h-[6px] bg-[#2b313d] rounded-full overflow-hidden">
+                <div className={'h-full rounded-full ' + it.bar} style={{ width: pct + '%' }} />
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+      {d.oldestTrade && (
+        <p className="text-[12px] text-[#9aa4b2] mt-3 leading-relaxed">
+          가장 오래 갱신되지 않은 공종: <b className="text-[#e8ecf3]">{d.oldestTrade.trade}</b> · 최신 수집일 {fmtDate(d.oldestTrade.date)}
+          {d.allBaseline && ' — 현재 전 공종이 기준선 구축일 기준이라 모두 최신(7일 이내)입니다.'}
+        </p>
+      )}
+    </section>
+  );
+}
+
+// ========================================
+// 🧩 리서치 큐 — 전체 조사 계획 (GET /api/research/queue)
+// ========================================
+function QueueItemRow({ item, index }) {
+  const done = item.source === 'research' || item.source === 'manual';
+  return (
+    <div className="flex items-center gap-2 sm:gap-3 px-2 py-2 border-t border-[#2b313d]/60 first:border-t-0">
+      <span className="text-[11px] text-[#6b7480] w-8 shrink-0 text-right tabular-nums">{index}</span>
+      <span className="text-[10.5px] text-[#bcd2ff] bg-[#4f8cff]/10 border border-[#4f8cff]/25 rounded-md px-1.5 py-0.5 shrink-0 w-[72px] sm:w-[92px] text-center truncate">{item.trade}</span>
+      <div className="hidden md:block text-[11px] text-[#9aa4b2] w-[158px] shrink-0 truncate">
+        {item.category}{item.subcategory ? ' · ' + item.subcategory : ''}
+      </div>
+      <div className="flex-1 min-w-0 truncate">
+        <span className="text-[12.5px] text-[#e8ecf3] font-medium">{item.name}</span>
+        {item.spec && <span className="text-[11px] text-[#6b7480] ml-1.5">{item.spec}</span>}
+      </div>
+      <div className="text-[12px] text-[#ffd479] font-semibold whitespace-nowrap shrink-0 hidden sm:block">
+        {priceText(item.price)}<span className="text-[#6b7480] font-normal text-[10.5px]">{item.unit ? ' /' + item.unit : ''}</span>
+      </div>
+      {done
+        ? <span className="text-[10px] text-[#9fe6c0] bg-[#34c77b]/15 border border-[#34c77b]/30 rounded-full px-2 py-0.5 shrink-0 w-[64px] text-center">검증됨</span>
+        : <span className="text-[10px] text-[#9aa4b2] bg-[#242a35] border border-[#2b313d] rounded-full px-2 py-0.5 shrink-0 w-[64px] text-center">조사 대기</span>}
+    </div>
+  );
+}
+
+function BatchRows({ items, startIndex }) {
+  return (
+    <div>
+      {items.map((it, i) => <QueueItemRow key={it.id || i} item={it} index={startIndex + i + 1} />)}
+    </div>
+  );
+}
+
+function BatchAccordion({ batch, startIndex, thisWeek }) {
+  const [open, setOpen] = useState(false);
+  const items = batch.items || [];
+  const firstT = items.length ? items[0].trade : '';
+  const lastT = items.length ? items[items.length - 1].trade : '';
+  const range = firstT === lastT ? firstT : (firstT + ' ~ ' + lastT);
+  return (
+    <div className="border-t border-[#2b313d] first:border-t-0">
+      <button onClick={() => setOpen((o) => !o)} aria-expanded={open}
+        className="w-full flex items-center gap-3 px-2 sm:px-3 py-3 text-left hover:bg-[#1f242e] rounded-lg transition-colors">
+        <span className={'text-[#6b7480] text-[10px] transition-transform inline-block ' + (open ? 'rotate-90' : '')} aria-hidden="true">▶</span>
+        <span className="font-semibold text-[13px] text-white w-[84px] shrink-0">{batch.week}</span>
+        <span className="text-[11px] text-[#9aa4b2] bg-[#242a35] rounded-full px-2 py-0.5 shrink-0">{items.length}건</span>
+        <span className="text-[11.5px] text-[#9aa4b2] truncate flex-1">{range}</span>
+        {batch.week === thisWeek && <span className="text-[10px] text-[#cfc6ff] bg-[#9b8cff]/20 rounded-full px-2 py-0.5 shrink-0">이번 주</span>}
+      </button>
+      {/* 모든 행을 DOM에 렌더(가상화 없음) — 접힘은 CSS 표시만 토글 */}
+      <div className={open ? 'pb-2' : 'hidden'}><BatchRows items={items} startIndex={startIndex} /></div>
+    </div>
+  );
+}
+
+function ResearchQueue({ queue }) {
+  if (!queue) {
+    return (
+      <section>
+        <SectionTitle icon="🧭" title="리서치 큐 — 전체 조사 계획"
+          desc="미조사 자재 전량이 조사 계획에 올라가 있고, 매주 월요일 에이전트가 한 배치씩 검증합니다." />
+        <Card><EmptyState icon="🧭" title="리서치 큐를 불러오지 못했습니다"
+          desc="GET /api/research/queue 응답이 없습니다. 서버가 최신인지 확인 후 새로고침하세요." /></Card>
+      </section>
+    );
+  }
+  const batches = queue.batches || [];
+  const totals = queue.totals || { total: 0, pending: 0, researched: 0, manual: 0 };
+  const batchSize = queue.batchSize || 0;
+  const done = (totals.researched || 0) + (totals.manual || 0);
+  const total = totals.total || 0;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const first = batches[0];
+  const rest = batches.slice(1);
+  // 전체 조사 계획 통합 순번용 누적 오프셋
+  let acc = 0;
+  const offsets = batches.map((b) => { const o = acc; acc += (b.items || []).length; return o; });
+  const recentDone = queue.recentDone || [];
+
+  return (
+    <section>
+      <SectionTitle icon="🧭" title="리서치 큐 — 전체 조사 계획"
+        desc="미조사 자재 전량이 조사 계획에 올라가 있고, 매주 월요일 에이전트가 한 배치씩 검증합니다." />
+
+      {/* 1. 진행률 헤더 */}
+      <Card className="p-4 sm:p-5">
+        <div className="flex items-end justify-between gap-3 flex-wrap mb-3">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[28px] font-extrabold text-white leading-none">{pct}%</span>
+            <span className="text-[12.5px] text-[#9aa4b2]">조사 완료 {comma(done)} / {comma(total)}</span>
+          </div>
+          <div className="text-[12px] text-[#9aa4b2] text-right">
+            대기 <b className="text-[#e8ecf3]">{comma(totals.pending)}</b>건 · 주 {comma(batchSize)}건
+            {queue.etaWeek
+              ? <span> → 약 <b className="text-[#e8ecf3]">{comma(queue.etaWeeks)}</b>주 <span className="text-[#6b7480]">(완주 예상 {queue.etaWeek})</span></span>
+              : <span> → <b className="text-[#9fe6c0]">전량 검증 완료</b></span>}
+          </div>
+        </div>
+        <div className="h-[12px] bg-[#2b313d] rounded-full overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-full rounded-full bg-gradient-to-r from-[#34c77b] to-[#4f8cff]" style={{ width: Math.max(pct, done > 0 ? 2 : 0) + '%' }} />
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-[11.5px] text-[#9aa4b2]">
+          <span><span className="w-2.5 h-2.5 rounded-sm bg-[#34c77b] inline-block mr-1.5 align-middle" />검증됨 {comma(done)}</span>
+          <span><span className="w-2.5 h-2.5 rounded-sm bg-[#2b313d] inline-block mr-1.5 align-middle" />조사 대기 {comma(totals.pending)}</span>
+          <span>총 {batches.length}개 배치 · 배치당 {comma(batchSize)}건</span>
+        </div>
+      </Card>
+
+      {/* 2. 이번 주 배치 하이라이트 (기본 펼침) */}
+      {first && (
+        <div className="mt-4">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <h3 className="text-[14px] font-bold text-white">이번 주 배치</h3>
+            {first.week === queue.thisWeek && <span className="text-[10px] text-[#cfc6ff] bg-[#9b8cff]/20 rounded-full px-2 py-0.5">이번 주 {first.week}</span>}
+            <span className="text-[11.5px] text-[#9aa4b2]">{first.week} · {(first.items || []).length}건 · 다음 월요일 검증 예정</span>
+          </div>
+          <Card className="p-2 border-[#4f8cff]/30">
+            <BatchRows items={first.items || []} startIndex={offsets[0]} />
+          </Card>
+        </div>
+      )}
+
+      {/* 3. 이후 주차 배치들 (접힘 아코디언) */}
+      {rest.length > 0 && (
+        <div className="mt-4">
+          <div className="text-[12px] text-[#9aa4b2] mb-2">이후 주차 계획 — {rest.length}개 배치 · 헤더를 클릭하면 항목이 펼쳐집니다</div>
+          <Card className="p-2 sm:p-3">
+            <div className="flex flex-col">
+              {rest.map((b, i) => (
+                <BatchAccordion key={b.index != null ? b.index : b.week} batch={b} startIndex={offsets[i + 1]} thisWeek={queue.thisWeek} />
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* 4. 최근 검증 완료 */}
+      <div className="mt-4">
+        <div className="text-[12px] text-[#9aa4b2] mb-2">최근 검증 완료</div>
+        {recentDone.length ? (
+          <Card className="p-2">
+            <div className="divide-y divide-[#2b313d]">
+              {recentDone.map((it, i) => (
+                <div key={it.id || i} className="flex items-center gap-3 px-2 py-2.5">
+                  <span className="text-[10px] text-[#9fe6c0] bg-[#34c77b]/15 border border-[#34c77b]/30 rounded-full px-2 py-0.5 shrink-0">검증됨</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-white truncate">{it.name}</div>
+                    <div className="text-[11.5px] text-[#9aa4b2] truncate">{it.trade} › {it.category}</div>
+                  </div>
+                  <div className="text-[12px] text-[#ffd479] font-semibold whitespace-nowrap hidden sm:block">
+                    {priceText(it.price)}<span className="text-[#6b7480] font-normal text-[10.5px]">{it.unit ? ' /' + it.unit : ''}</span>
+                  </div>
+                  <div className="text-[11px] text-[#6b7480] whitespace-nowrap">{fmtDate(it.collected_date)}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : (
+          <Card><EmptyState icon="📥" title="아직 검증 완료 자재가 없습니다"
+            desc="첫 배치가 수입되면 여기에 쌓입니다." /></Card>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ========================================
+// 🧩 에러 / 로딩
+// ========================================
+function ServerErrorCard({ error, onRetry }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <Card className="p-8 max-w-[470px] text-center">
+        <div className="text-4xl mb-3" aria-hidden="true">🔌</div>
+        <h2 className="text-white font-bold text-[16px]">서버(3011)에 연결할 수 없습니다</h2>
+        <p className="text-[12.5px] text-[#9aa4b2] mt-2 leading-relaxed">
+          자재 DB 서버가 꺼져 있습니다. 프로젝트 폴더에서{' '}
+          <code className="bg-[#0f1115] px-1.5 py-0.5 rounded text-[#7aa7ff]">node server.js</code>{' '}
+          실행 후 새로고침하세요.
+        </p>
+        <p className="text-[11px] text-[#6b7480] mt-2 break-all">에러: {error}</p>
+        <button onClick={onRetry}
+          className="mt-4 bg-[#4f8cff] hover:bg-[#7aa7ff] text-white font-semibold text-[13px] px-4 py-2 rounded-[10px] transition-colors">
+          다시 시도
+        </button>
+      </Card>
+    </div>
+  );
+}
+
+function FullLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center text-[#9aa4b2]">
+      <span className="spin" /> 리서치 현황을 불러오는 중…
+    </div>
+  );
+}
+
+// ========================================
+// 🚀 App
+// ========================================
+function computeDerived(data) {
+  const { materials, stats, changelog, categories } = data;
+  const total = materials.length;
+  const researchCount = materials.filter((m) => m.source === 'research').length;
+  const seedCount = materials.filter((m) => m.source === 'seed').length;
+  const manualCount = materials.filter((m) => m.source === 'manual').length;
+  const coveragePct = total ? (researchCount / total) * 100 : 0;
+
+  // 공종별 그룹핑 (+ 대분류/중분류/대표 자재)
+  const tradeMap = {};
+  materials.forEach((m) => {
+    const t = m.trade || '기타';
+    const tr = tradeMap[t] || (tradeMap[t] = { total: 0, research: 0, seed: 0, cats: {}, newest: null });
+    tr.total++;
+    if (m.source === 'research') tr.research++; else if (m.source === 'seed') tr.seed++;
+    const cName = m.category || '기타';
+    const cm = tr.cats[cName] || (tr.cats[cName] = { total: 0, research: 0, items: [] });
+    cm.total++;
+    if (m.source === 'research') cm.research++;
+    cm.items.push(m);
+    if (m.collected_date && (!tr.newest || m.collected_date > tr.newest)) tr.newest = m.collected_date;
+  });
+
+  const tree = (categories && categories.tree) || [];
+  const totals = (categories && categories.totals) || {};
+  const totalTrades = totals.trades || Object.keys(tradeMap).length;
+  const researchedTrades = Object.keys(tradeMap).filter((k) => tradeMap[k].research > 0).length;
+
+  // 신선도 버킷
+  const today = new Date();
+  const buckets = { fresh: 0, mid: 0, old: 0 };
+  materials.forEach((m) => {
+    if (!m.collected_date) { buckets.old++; return; }
+    const dt = new Date(m.collected_date + 'T00:00:00');
+    const days = Math.floor((today - dt) / 86400000);
+    if (isNaN(days)) buckets.old++;
+    else if (days <= 7) buckets.fresh++;
+    else if (days <= 30) buckets.mid++;
+    else buckets.old++;
+  });
+  let oldestTrade = null;
+  Object.keys(tradeMap).forEach((t) => {
+    const v = tradeMap[t];
+    if (!v.newest) return;
+    if (!oldestTrade || v.newest < oldestTrade.date) oldestTrade = { trade: t, date: v.newest };
+  });
+
+  // 주간 changelog 그룹핑
+  const weekMap = {};
+  (changelog || []).forEach((e) => {
+    const w = e.week || '기타';
+    const wk = weekMap[w] || (weekMap[w] = { week: w, new: 0, price_up: 0, price_down: 0, update: 0 });
+    if (wk[e.type] != null) wk[e.type]++;
+  });
+  const weeks = Object.keys(weekMap).map((k) => weekMap[k]).sort((a, b) => (a.week < b.week ? -1 : 1));
+  const recentEntries = (changelog || []).slice().sort((a, b) => (b.ts || '').localeCompare(a.ts || '')).slice(0, 20);
+  const priceChanges = (changelog || [])
+    .filter((e) => e.type === 'price_up' || e.type === 'price_down')
+    .sort((a, b) => (b.ts || '').localeCompare(a.ts || ''))
+    .slice(0, 12);
+
+  return {
+    total, researchCount, seedCount, manualCount, coveragePct,
+    tradeMap, tree, totalTrades, researchedTrades,
+    buckets, oldestTrade, allBaseline: researchCount === 0,
+    weeks, recentEntries, priceChanges,
+    thisWeek: (stats && stats.thisWeek) || { total: 0, added: 0, changed: 0, week: '' },
+    changelogTotal: (stats && stats.changelogTotal) || 0,
+    seededAt: stats && stats.seededAt,
+  };
+}
+
+function App() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [materials, stats, changelog, categories, queue] = await Promise.all([
+          apiGet('/materials?limit=0'),
+          apiGet('/stats'),
+          apiGet('/changelog?limit=1000'),
+          apiGet('/categories'),
+          apiGet('/research/queue').catch(() => null), // 큐 실패는 페이지 전체를 죽이지 않고 섹션 폴백
+        ]);
+        if (!alive) return;
+        setData({ materials: materials || [], stats: stats || {}, changelog: changelog || [], categories: categories || { tree: [], totals: {} }, queue: queue || null });
+      } catch (e) {
+        if (!alive) return;
+        setError(e.message || String(e));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [reloadKey]);
+
+  const d = useMemo(() => (data ? computeDerived(data) : null), [data]);
+
+  if (loading) return <FullLoading />;
+  if (error) return <ServerErrorCard error={error} onRetry={() => setReloadKey((k) => k + 1)} />;
+  if (!d) return <FullLoading />;
+
+  const catTotals = (data.categories && data.categories.totals) || {};
+  const cat = { categories: catTotals.categories || 0, subcategories: catTotals.subcategories || 0 };
+  const todayStr = fmtDate(new Date().toISOString());
+
+  return (
+    <div>
+      <TopHeader d={d} lastUpdated={data.stats.lastUpdated} />
+      <main className="max-w-[1320px] mx-auto px-4 pb-16">
+        <CoverageHero d={d} cat={cat} />
+
+        <SectionTitle icon="🗂️" title="공종별 커버리지 맵"
+          desc={d.totalTrades + '개 공종 · 행을 클릭하면 대분류 · 중분류와 대표 자재를 펼쳐봅니다'}
+          right={<span className="text-[11.5px] text-[#9aa4b2]">검증 <b className="text-[#9fe6c0]">{d.researchedTrades}</b> / {d.totalTrades} 공종</span>} />
+        <TradeCoverageMap tree={d.tree} tradeMap={d.tradeMap} />
+
+        <WeeklyTimeline d={d} />
+        <PriceHighlights d={d} />
+        <DataFreshness d={d} todayStr={todayStr} />
+        <ResearchQueue queue={data.queue} />
+
+        <footer className="mt-10 pt-5 border-t border-[#2b313d] text-[11.5px] text-[#6b7480] flex flex-wrap gap-x-4 gap-y-1">
+          <span>전체 {comma(d.total)}건 · 검증 {comma(d.researchCount)}건 ({fmtPct(d.coveragePct)})</span>
+          <span>기준선 구축 {fmtDate(d.seededAt)}</span>
+          <span>최근 업데이트 {fmtDate(data.stats.lastUpdated)}</span>
+          <span>매주 월요일 research 에이전트가 출처 단가를 자동 수집합니다.</span>
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+// ========================================
+// 🛡️ Error Boundary (예기치 못한 렌더 오류에도 하얀 화면 방지)
+// ========================================
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) { console.error('ErrorBoundary', err, info); }
+  render() {
+    if (this.state.err) {
+      return (
+        <div className="p-6 min-h-screen flex items-center justify-center">
+          <Card className="p-6 max-w-[520px]">
+            <h2 className="text-white font-bold text-[15px]">화면 렌더 중 오류가 발생했습니다</h2>
+            <p className="text-[12px] text-[#9aa4b2] mt-2 break-all">{String((this.state.err && this.state.err.message) || this.state.err)}</p>
+            <button onClick={() => location.reload()}
+              className="mt-4 bg-[#4f8cff] hover:bg-[#7aa7ff] text-white font-semibold text-[13px] px-4 py-2 rounded-[10px]">새로고침</button>
+          </Card>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ========================================
+// Rendering
+// ========================================
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <ErrorBoundary><App /></ErrorBoundary>
+);
+</script>
+</body>
+</html>

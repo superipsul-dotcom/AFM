@@ -974,6 +974,76 @@ app.get('/api/changelog', (req, res) => {
   return ok(res, 200, entries.slice(0, limit), undefined, { total });
 });
 
+/* ── 리서치 큐 — "미조사 내역을 전부 계획에 올려놓고 매주 조금씩 소화" ──
+ * 대기(pending) = source==='seed' (출처 검증 전 기준선). research/manual 로 승격되면 큐에서 빠진다.
+ * 정렬은 결정적(공종 표준순 → 대분류 → 중분류 → 이름) — 대시보드와 주간 에이전트가 같은 순서를 공유한다. */
+function researchQueueSort(a, b) {
+  return tradeIndex(a.trade) - tradeIndex(b.trade)
+    || String(a.category || '').localeCompare(String(b.category || ''), 'ko')
+    || String(a.subcategory || '').localeCompare(String(b.subcategory || ''), 'ko')
+    || String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+}
+function weekPlus(n) { const d = new Date(); d.setDate(d.getDate() + n * 7); return isoWeek(d); }
+function queueRow(m) {
+  return {
+    id: m.id, trade: m.trade, category: m.category, subcategory: m.subcategory || '',
+    name: m.name, spec: m.spec || '', unit: m.unit,
+    price: m.price ? { min: m.price.min, max: m.price.max } : null,
+    grade: m.grade || '', source: m.source, collected_date: m.collected_date || null
+  };
+}
+
+// 전체 조사 계획: 대기 전량을 주차 배치로 나눠 반환 (기본 25건/주 → 314건이면 약 13주 플랜)
+app.get('/api/research/queue', (req, res) => {
+  let batch = parseInt(req.query.batch, 10);
+  if (!Number.isFinite(batch) || batch <= 0) batch = 25;
+  batch = Math.min(Math.max(batch, 5), 100);
+  const pending = db.materials.filter(m => m.source === 'seed').sort(researchQueueSort);
+  const doneList = db.materials.filter(m => m.source !== 'seed')
+    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+  const batches = [];
+  for (let i = 0; i < pending.length; i += batch) {
+    batches.push({ index: batches.length, week: weekPlus(batches.length), items: pending.slice(i, i + batch).map(queueRow) });
+  }
+  return ok(res, 200, {
+    batchSize: batch,
+    thisWeek: isoWeek(new Date()),
+    totals: {
+      total: db.materials.length,
+      pending: pending.length,
+      researched: doneList.filter(m => m.source === 'research').length,
+      manual: doneList.filter(m => m.source === 'manual').length
+    },
+    etaWeeks: batches.length,
+    etaWeek: batches.length ? batches[batches.length - 1].week : null,
+    batches,
+    recentDone: doneList.slice(0, 100).map(queueRow)
+  });
+});
+
+// 주간 에이전트 작업지시서: 다음 조사 배치 (대기 소진 시 collected_date 오래된 순 재검증 회전)
+app.get('/api/research/next', (req, res) => {
+  let limit = parseInt(req.query.limit, 10);
+  if (!Number.isFinite(limit) || limit <= 0) limit = 25;
+  limit = Math.min(Math.max(limit, 1), 100);
+  const pending = db.materials.filter(m => m.source === 'seed').sort(researchQueueSort);
+  let mode = 'queue', pick = pending.slice(0, limit);
+  if (!pick.length) {
+    mode = 'refresh';
+    pick = db.materials.slice()
+      .sort((a, b) => String(a.collected_date || '').localeCompare(String(b.collected_date || '')) || researchQueueSort(a, b))
+      .slice(0, limit);
+  }
+  const week = isoWeek(new Date());
+  return ok(res, 200, {
+    mode, week,
+    count: pick.length,
+    remainingAfter: mode === 'queue' ? Math.max(0, pending.length - pick.length) : 0,
+    howto: `각 항목을 출처 3곳 이상에서 단가 조사한 뒤, 같은 id를 유지해 POST /api/materials/import body { source:'research', note:'${week} 주간 단가', items:[{ id, price:{min,max}, brands, grade, collected_date:'YYYY-MM-DD(실제 수집일)', notes:'출처: ○○몰, △△ / 수집일' }] } 로 반영한다. 가격이 기준선과 동일해도 '검증 승격'되어 큐에서 빠진다. 클라우드/무인 환경(localhost 접근 불가)이면 동일 body를 material-research/data/incoming/자재DB-{YYYY-MM-DD}.json 으로 커밋하면 로컬 서버 부팅 시 자동 흡수된다.`,
+    items: pick.map(m => Object.assign(queueRow(m), { brands: m.brands || [], use: m.use || '', baseline_note: m.price && m.price.note ? m.price.note : '' }))
+  });
+});
+
 // ★ 월요일 research 에이전트가 호출하는 핵심 엔드포인트 — 멱등 UPSERT
 // body: { items:[...], source?, note? }
 // import 핵심 로직(멱등 UPSERT) — HTTP 라우트와 incoming 파일 인제스트가 공유한다.
@@ -990,7 +1060,7 @@ function runImport(items, source, note) {
     }
     const idSet = new Set(db.materials.map(m => m.id));
 
-    let imported = 0, updated = 0, unchanged = 0;
+    let imported = 0, updated = 0, unchanged = 0, reverified = 0;
     const skipped = [];
     const newLogs = [];
 
@@ -1039,10 +1109,31 @@ function runImport(items, source, note) {
 
       for (const c of applyFieldUpdates(existing, it)) changes.push(c);
 
-      if (changes.length === 0) { unchanged++; continue; }
+      const inDate = (typeof it.collected_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(it.collected_date)) ? it.collected_date : null;
+
+      if (changes.length === 0) {
+        // 값이 전부 동일해도:
+        // ① seed→research 첫 검증은 '검증 승격'으로 기록해 리서치 큐에서 빠지게 한다 (가격 동일 ≠ 미조사)
+        // ② 같은 source의 재확인은 collected_date만 앞으로 당긴다 (신선도 회전, changelog 무기록 → 멱등 유지)
+        if (existing.source !== source && source !== 'seed') {
+          existing.source = source;
+          existing.collected_date = inDate || now.slice(0, 10);
+          existing.updated_at = now;
+          updated++;
+          newLogs.push(makeLog('update', existing, { detail: `기준선 시세 검증 — 가격 동일 (${fmtKRW(existing.price.min)}~${fmtKRW(existing.price.max)}원)`, source, week, now, before }));
+        } else if (inDate && inDate > (existing.collected_date || '')) {
+          existing.collected_date = inDate;
+          existing.updated_at = now;
+          reverified++;
+        } else {
+          unchanged++;
+        }
+        continue;
+      }
 
       existing.updated_at = now;
       existing.source = source;
+      existing.collected_date = inDate || now.slice(0, 10);
       updated++;
       const type = priceDir || 'update';
       newLogs.push(makeLog(type, existing, { detail: changes.join(' / '), source, week, now, before }));
@@ -1055,8 +1146,8 @@ function runImport(items, source, note) {
     if (newLogs.length) saveChangelog();
 
     return {
-      imported, updated, unchanged,
-      processed: imported + updated + unchanged,
+      imported, updated, unchanged, reverified,
+      processed: imported + updated + reverified + unchanged,
       total: db.materials.length,           // 갱신 후 전체 자재 수
       changelogAdded: newLogs.length,
       skipped
