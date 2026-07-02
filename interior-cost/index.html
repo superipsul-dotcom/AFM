@@ -59,7 +59,7 @@
     const COST_CATEGORIES = ['자재비', '인건비', '장비/공구', '운반/물류', '폐기물처리', '가설/안전', '외주(하도급)', '경비(식대/유류)', '임대료', '기타'];
     const PROCESS_CATEGORIES = ['철거', '설비', '전기', '목공', '미장/방수', '타일', '도장/도배', '바닥', '주방/가구', '욕실', '창호/도어', '조명', '준공/청소', '기타'];
     // v20: 자료 유형(파일 분류) + 유형별 뱃지색
-    const DOC_TYPES = ['CAD', '도면', '제안서', '스펙', '견적', '계약', '기타'];
+    const DOC_TYPES = ['CAD', '도면', '렌더링', '제안서', '스펙', '견적', '계약', '기타']; // (v22) 렌더링 추가
     const DOC_TYPE_COLOR = { 'CAD': 'bg-indigo-500', '도면': 'bg-blue-500', '제안서': 'bg-violet-500', '스펙': 'bg-cyan-600', '견적': 'bg-emerald-500', '계약': 'bg-rose-500', '기타': 'bg-slate-400' };
     // v20: 현장사진 공정(다중선택 칩) — 시공 순서 흐름 기준
     const PHOTO_PROCESSES = ['철거', '설비', '전기', '목공', '미장/방수', '타일', '도배', '도장', '창호', '바닥', '주방/가구', '욕실', '조명', '마감', '준공/청소'];
@@ -177,12 +177,12 @@
     }
     // 부팅 시 공유 경로 감지 — 해시(#/share/...) 우선, 쿼리(?share=...) · 실제 경로(/share/...)도 지원.
     function parseShareRoute() {
-      const rx = /(?:^|\/)share\/(estimate|order)\/([^/?#]+)/;
+      const rx = /(?:^|\/)share\/(estimate|order|client)\/([^/?#]+)/; // (v22) client 추가
       const hash = (location.hash || '').replace(/^#/, '');
       let m = hash.match(rx);
       if (m) return { kind: m[1], token: decodeURIComponent(m[2]) };
       const sv = new URLSearchParams(location.search || '').get('share');
-      if (sv) { m = sv.match(/^(estimate|order)\/([^/?#]+)/); if (m) return { kind: m[1], token: decodeURIComponent(m[2]) }; }
+      if (sv) { m = sv.match(/^(estimate|order|client)\/([^/?#]+)/); if (m) return { kind: m[1], token: decodeURIComponent(m[2]) }; }
       m = (location.pathname || '').match(rx);
       if (m) return { kind: m[1], token: decodeURIComponent(m[2]) };
       return null;
@@ -1833,6 +1833,78 @@
             order: { ...cur },
             site: site ? { name: site.name, address: site.address, client: site.client } : null,
             supplier: SUPPLIER,
+          };
+        }
+      },
+      // ════════ v22: 클라이언트 페이지 공유 (현장 단위 공개뷰 — 요약/일정/현장사진/자료) ════════
+      // 관리 3종은 인증(팀 스코핑), fetchSharedClient 는 공개. 폴백 = sitesStore 에 토큰/비번 저장.
+      async getClientShare(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/client-share`); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const s = sitesStore.read().find((x) => String(x.id) === String(siteId));
+          if (!s) { const err = new Error('현장을 찾을 수 없습니다.'); err.status = 404; throw err; }
+          return { share_token: s.client_share_token || null, hasPassword: !!s.client_share_password };
+        }
+      },
+      async shareSiteClient(siteId, opts = {}) {
+        const body = {};
+        if (opts.password !== undefined) body.password = opts.password;
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/client-share`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = sitesStore.read();
+          const cur = list.find((x) => String(x.id) === String(siteId));
+          if (!cur) { const err = new Error('현장을 찾을 수 없습니다.'); err.status = 404; throw err; }
+          const token = cur.client_share_token || genShareToken();
+          let pwd = cur.client_share_password || '';
+          if (opts.password !== undefined) pwd = opts.password ? String(opts.password) : '';
+          const upd = { ...cur, client_share_token: token, client_share_password: pwd };
+          sitesStore.write(list.map((x) => (String(x.id) === String(siteId) ? upd : x)));
+          return { share_token: token, url: '/share/client/' + token, hasPassword: !!pwd };
+        }
+      },
+      async unshareSiteClient(siteId) {
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/client-share`, { method: 'DELETE' }); this._useMock = false; return d; }
+        catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const list = sitesStore.read();
+          const cur = list.find((x) => String(x.id) === String(siteId));
+          if (cur) { const upd = { ...cur, client_share_token: null, client_share_password: '' }; sitesStore.write(list.map((x) => (String(x.id) === String(siteId) ? upd : x))); }
+          return { success: true };
+        }
+      },
+      // 공개(무토큰): password 미전달=GET(비번설정 시 {requiresPassword}) · 전달=POST 검증
+      async fetchSharedClient(token, password) {
+        const url = `${API_BASE_URL}/share/client/${encodeURIComponent(token)}`;
+        try {
+          const d = (password === undefined || password === null)
+            ? await this._publicFetch(url)
+            : await this._publicFetch(url, { method: 'POST', body: JSON.stringify({ password }) });
+          this._useMock = false; return d;
+        } catch (e) {
+          if (e.status) throw e; this._useMock = true;
+          const cur = sitesStore.read().find((s) => s.client_share_token && String(s.client_share_token) === String(token));
+          if (!cur) { const err = new Error('공유를 찾을 수 없습니다.'); err.status = 404; throw err; }
+          if (cur.client_share_password) {
+            if (password === undefined || password === null) return { requiresPassword: true };
+            if (String(password) !== String(cur.client_share_password)) { const err = new Error('비밀번호가 올바르지 않습니다.'); err.status = 401; throw err; }
+          }
+          const schedule = scheduleStore.read()
+            .filter((t) => String(t.site_id) === String(cur.id) && (t.kind || '공사') !== '미팅')
+            .map((t) => ({ id: String(t.id), title: t.title, process: t.process || '', start_date: t.start_date, end_date: t.end_date, status: t.status || '예정', kind: t.kind || '공사' }))
+            .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)));
+          const photos = photosStore.read()
+            .filter((p) => String(p.site_id) === String(cur.id))
+            .map((p) => ({ id: String(p.id), photo_date: p.photo_date, processes: p.processes || '', file_name: p.file_name || '', memo: p.memo || '', created_at: p.created_at, url: null }))
+            .sort((a, b) => String(b.photo_date || '').localeCompare(String(a.photo_date || '')));
+          const documents = documentsStore.read()
+            .filter((d0) => String(d0.site_id) === String(cur.id))
+            .map((d0) => ({ id: String(d0.id), name: d0.name, doc_type: d0.doc_type || '기타', file_name: d0.file_name || '', file_size: Number(d0.file_size || 0), memo: d0.memo || '', created_at: d0.created_at, url: null }))
+            .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+          return {
+            site: { name: cur.name, address: cur.address || '', building_type: cur.building_type || '', floor_area: Number(cur.floor_area || 0), start_date: cur.start_date || null, end_date: cur.end_date || null, move_in_date: cur.move_in_date || null, progress_status: cur.progress_status || '준비', status: cur.status || '진행' },
+            schedule, photos, documents,
           };
         }
       },
@@ -6595,6 +6667,59 @@
 
       const toggleProc = (p) => setPProcs((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
 
+      // ── (v22/#1) 일정 연동: 촬영일에 걸친 일정(kind≠미팅)의 공정을 자동 선택 ──
+      const [schedTasks, setSchedTasks] = useState([]);
+      useEffect(() => {
+        let alive = true;
+        api.listSchedule(site.id).then((d) => { if (alive) setSchedTasks(Array.isArray(d) ? d : []); }).catch(() => { if (alive) setSchedTasks([]); });
+        return () => { alive = false; };
+      }, [site.id]);
+      const autoProcsFor = useCallback((date) => {
+        if (!date) return [];
+        const set = [];
+        schedTasks.forEach((t) => {
+          if ((t.kind || '공사') === '미팅') return;
+          if (!t.start_date || !t.end_date) return;
+          if (t.start_date <= date && date <= t.end_date) {
+            const p = (t.process || '').trim();
+            if (p && !set.includes(p)) set.push(p);
+          }
+        });
+        return set;
+      }, [schedTasks]);
+      const autoProcs = useMemo(() => autoProcsFor(pDate), [autoProcsFor, pDate]);
+      // 날짜/일정 변경 시 자동 적용(이후 수동 토글 가능; 날짜 재변경 시 재계산)
+      useEffect(() => { if (autoProcs.length) setPProcs(autoProcs); }, [pDate, schedTasks]); // eslint-disable-line react-hooks/exhaustive-deps
+      // 칩 목록 = 고정 공정 ∪ 해당일 일정 공정(고정 목록에 없어도 선택 가능)
+      const procChips = useMemo(() => {
+        const extra = autoProcs.filter((p) => !PHOTO_PROCESSES.includes(p));
+        const sel = pProcs.filter((p) => !PHOTO_PROCESSES.includes(p) && !extra.includes(p));
+        return [...PHOTO_PROCESSES, ...extra, ...sel];
+      }, [autoProcs, pProcs]);
+
+      // ── (v22/#1) 업로드 후 알림 보내기 (Web Share → 클립보드 폴백) ──
+      const [lastUpload, setLastUpload] = useState(null); // {date, procs, count}
+      const doNotify = async () => {
+        if (!lastUpload) return;
+        const d = lastUpload.date || '';
+        const md = d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '';
+        let clientUrl = '';
+        try { const cs = await api.getClientShare(site.id); if (cs && cs.share_token) clientUrl = buildShareUrl('client', cs.share_token); } catch (e) {}
+        const lines = [
+          `[${site.name}] ${md} 현장사진 ${lastUpload.count}장 업로드`,
+          `공정: ${lastUpload.procs || '-'}`,
+        ];
+        if (lastUpload.memo) lines.push(`특이사항: ${lastUpload.memo}`);
+        if (clientUrl) lines.push(`👉 현장 페이지: ${clientUrl}`);
+        const text = lines.join('\n');
+        if (navigator.share) {
+          try { await navigator.share({ title: `${site.name} 현장사진`, text }); return; }
+          catch (e) { if (e && e.name === 'AbortError') return; /* 사용자가 취소 */ }
+        }
+        const ok = await copyToClipboard(text);
+        toast(ok ? '알림 문구를 복사했습니다 — 카톡/문자에 붙여넣어 전송하세요.' : '복사에 실패했습니다.', ok ? 'success' : 'error');
+      };
+
       const onPick = async (ev) => {
         const files = Array.from(ev.target.files || []);
         ev.target.value = '';
@@ -6617,7 +6742,7 @@
         if (cfgErr && ok === 0) toast('스토리지가 설정되지 않았습니다. 관리자 설정이 필요합니다. (Supabase 키)', 'error');
         else if (ok) toast(`사진 ${ok}장을 업로드했습니다.` + (fail ? ` (${fail}장 실패)` : ''), fail ? 'info' : 'success');
         else toast('사진 업로드에 실패했습니다.', 'error');
-        if (ok) { setPMemo(''); await reload(); }
+        if (ok) { setLastUpload({ date: pDate, procs: processes, count: ok, memo: pMemo.trim() }); setPMemo(''); await reload(); } // (v22) 알림용 기록
       };
 
       const confirmDel = async () => { const p = delTarget; setDelTarget(null); try { await api.removePhoto(p.id); toast('사진이 삭제되었습니다.', 'info'); await reload(); } catch (e) { toast('삭제에 실패했습니다.', 'error'); } };
@@ -6646,18 +6771,29 @@
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input type="date" label="촬영일" value={pDate} onChange={(e) => setPDate(e.target.value)} disabled={demoMode} />
                 <div>
-                  <span className="block mb-1.5 text-sm font-medium text-slate-700">공정 (다중 선택)</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-medium text-slate-700">공정 (다중 선택)</span>
+                    {autoProcs.length > 0 && (
+                      <button type="button" onClick={() => setPProcs(autoProcs)}
+                        className="text-[11px] text-violet-600 hover:text-violet-800 underline decoration-dotted"
+                        title="촬영일에 걸친 일정의 공정으로 다시 선택">⟳ 일정에서 다시 불러오기</button>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {PHOTO_PROCESSES.map((p) => {
+                    {procChips.map((p) => {
                       const on = pProcs.includes(p);
+                      const isAuto = autoProcs.includes(p);
                       return (
                         <button key={p} type="button" disabled={demoMode} onClick={() => toggleProc(p)}
                           className={`text-xs px-2.5 py-1 rounded-full border transition disabled:opacity-40 ${on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>
-                          {p}
+                          {isAuto && '📅 '}{p}
                         </button>
                       );
                     })}
                   </div>
+                  {autoProcs.length > 0 && (
+                    <p className="mt-1.5 text-[11px] text-violet-600">📅 일정 연동 — {pDate} 진행 공정 {autoProcs.length}개를 자동 선택했습니다.</p>
+                  )}
                 </div>
               </div>
               <Textarea label="특이사항 (선택)" rows={2} value={pMemo} onChange={(e) => setPMemo(e.target.value)} placeholder="예: 타일 균열 발견 · 하자 재시공 필요" disabled={demoMode} />
@@ -6674,6 +6810,17 @@
                 )}
                 <span className="text-xs text-slate-400">업로더·촬영시각은 자동 기록됩니다.</span>
               </div>
+              {lastUpload && !uploading && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm text-emerald-800">
+                    ✅ {lastUpload.date} 사진 <b>{lastUpload.count}장</b> 업로드 완료{lastUpload.procs ? <> · 공정: {lastUpload.procs}</> : null}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" onClick={doNotify}>📣 알림 보내기</Button>
+                    <button onClick={() => setLastUpload(null)} className="text-slate-400 hover:text-slate-600 text-sm" title="닫기">✕</button>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -7739,6 +7886,8 @@
       const [schedulePrintData, setSchedulePrintData] = useState(null); // v6-3 일정표 PDF
       const [orderPrintData, setOrderPrintData] = useState(null); // v10 발주서 PDF
       const [estSiteModalOpen, setEstSiteModalOpen] = useState(false); // v15 견적으로 현장 만들기 모달
+      const [clientShareOpen, setClientShareOpen] = useState(false); // (v22) 클라이언트 페이지 공유 모달
+      const [clientShareInit, setClientShareInit] = useState({ token: null, hasPassword: false });
       const [pendingEstimateOpen, setPendingEstimateOpen] = useState(null); // v15 생성 후 견적 에디터 자동오픈 대상 id
 
       const formRef = useRef(null);
@@ -8058,6 +8207,12 @@
                 <div className="flex flex-wrap gap-2">
                   {selectedSite && (
                     <>
+                      <Button variant="secondary" onClick={async () => {
+                        // (v22) 열기 전에 현재 공유 상태 조회 → 모달 초기값
+                        try { const d = await api.getClientShare(selectedSite.id); setClientShareInit({ token: d.share_token || null, hasPassword: !!d.hasPassword }); }
+                        catch (e) { setClientShareInit({ token: null, hasPassword: false }); }
+                        setClientShareOpen(true);
+                      }}>🔗 클라이언트</Button>
                       <Button variant="secondary" onClick={() => { setEditingSite(selectedSite); setSiteModalOpen(true); }}>현장 수정</Button>
                       <Button variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => setSiteDeleteTarget(selectedSite)}>삭제</Button>
                     </>
@@ -8190,6 +8345,13 @@
             />
           </Modal>
 
+          {/* (v22) 클라이언트 페이지 공유 모달 — 요약/일정/현장사진/자료 읽기전용 공개뷰 */}
+          {selectedSite && (
+            <ShareModal isOpen={clientShareOpen} onClose={() => setClientShareOpen(false)} kind="client"
+              id={selectedSite.id} title={selectedSite.name}
+              initialToken={clientShareInit.token} initialHasPassword={clientShareInit.hasPassword} />
+          )}
+
           {/* 현장 삭제 확인 모달 */}
           <Modal isOpen={!!siteDeleteTarget} onClose={() => setSiteDeleteTarget(null)} title="현장 삭제 확인" size="sm">
             {siteDeleteTarget && (
@@ -8261,7 +8423,7 @@
       const [hasPassword, setHasPassword] = useState(!!initialHasPassword);
       const [busy, setBusy] = useState(false);
       const [copied, setCopied] = useState(false);
-      const label = kind === 'order' ? '발주서' : '견적서';
+      const label = kind === 'order' ? '발주서' : kind === 'client' ? '클라이언트 페이지' : '견적서'; // (v22) client
 
       // 다른 레코드로 열릴 때 상태 초기화
       useEffect(() => {
@@ -8280,7 +8442,7 @@
         else if (hasPassword) { opts.password = ''; } // 기존 비번 제거
         setBusy(true);
         try {
-          const fn = kind === 'order' ? api.shareOrder : api.shareEstimate;
+          const fn = kind === 'order' ? api.shareOrder : kind === 'client' ? api.shareSiteClient : api.shareEstimate;
           const d = await fn.call(api, id, opts);
           setToken(d.share_token); setHasPassword(!!d.hasPassword);
           if (d.hasPassword) setUsePw(true);
@@ -8294,7 +8456,7 @@
         if (busy) return;
         setBusy(true);
         try {
-          const fn = kind === 'order' ? api.unshareOrder : api.unshareEstimate;
+          const fn = kind === 'order' ? api.unshareOrder : kind === 'client' ? api.unshareSiteClient : api.unshareEstimate;
           await fn.call(api, id);
           setToken(null); setHasPassword(false); setUsePw(false); setPw('');
           toast('공유가 해제되었습니다.', 'info');
@@ -8313,7 +8475,9 @@
         <Modal isOpen={isOpen} onClose={onClose} title={`🔗 ${label} 공유`} size="md">
           <div className="space-y-4">
             <p className="text-sm text-slate-500">
-              저장된 {label}를 <b className="text-slate-700">로그인 없이 열람 가능한 읽기전용 링크</b>로 외부(고객)에게 공유합니다.
+              {kind === 'client'
+                ? <>클라이언트(발주처)에게 <b className="text-slate-700">요약·일정·현장사진·자료만 보이는 읽기전용 페이지</b>를 로그인 없이 공유합니다. 비용/견적 등 내부 정보는 포함되지 않습니다.</>
+                : <>저장된 {label}를 <b className="text-slate-700">로그인 없이 열람 가능한 읽기전용 링크</b>로 외부(고객)에게 공유합니다.</>}
               {title ? <> · <span className="text-slate-600 font-medium">{title}</span></> : null}
             </p>
 
@@ -8461,6 +8625,319 @@
                 : <EstimatePrint site={data.site} estimate={data.estimate} totals={data.estimate && data.estimate.totals} />}
             </div>
             <p className="no-print text-center text-[11px] text-slate-400 mt-4">본 문서는 {SUPPLIER.name}에서 공유한 읽기전용 문서입니다.</p>
+          </div>
+        </div>
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // (v22/#3) ClientView — 클라이언트(발주처) 전용 공개 페이지 (무로그인)
+    //   접근: #/share/client/<token> · 요약/일정/현장사진/자료 4탭만, 읽기전용.
+    //   비용/견적/내부담당 정보는 서버 payload 자체에 미포함(화이트리스트).
+    // ══════════════════════════════════════════════════════════════
+    function ClientView({ token }) {
+      const [phase, setPhase] = useState('loading'); // loading | password | ready | error
+      const [data, setData] = useState(null);
+      const [pw, setPw] = useState('');
+      const [err, setErr] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+      const [ctab, setCtab] = useState('summary'); // summary | schedule | photos | docs
+      const [fProc, setFProc] = useState('');
+
+      const load = useCallback(async (password) => {
+        setErr('');
+        try {
+          const d = await api.fetchSharedClient(token, password);
+          if (d && d.requiresPassword) { setPhase('password'); return; }
+          setData(d); setPhase('ready');
+        } catch (e) {
+          if (e && e.status === 401) { setPhase('password'); if (password != null) setErr('비밀번호가 올바르지 않습니다.'); }
+          else if (e && e.status === 404) { setPhase('error'); setErr('존재하지 않거나 해제된 공유 링크입니다.'); }
+          else { setPhase('error'); setErr('현장 페이지를 불러오지 못했습니다. 잠시 후 다시 시도하세요.'); }
+        }
+      }, [token]);
+
+      useEffect(() => { load(); }, [load]);
+
+      const submitPw = async (e) => {
+        e.preventDefault();
+        if (!pw) { setErr('비밀번호를 입력하세요.'); return; }
+        setSubmitting(true); await load(pw); setSubmitting(false);
+      };
+
+      if (phase === 'loading') {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-100">
+            <div className="flex flex-col items-center gap-3 text-slate-400">
+              <div className="w-8 h-8 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin"></div>
+              <span className="text-sm">현장 페이지를 불러오는 중…</span>
+            </div>
+          </div>
+        );
+      }
+
+      if (phase === 'error') {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
+            <Card className="p-8 max-w-md w-full text-center">
+              <div className="text-4xl mb-3">🏗️</div>
+              <h1 className="text-lg font-bold text-slate-800">현장 페이지를 열 수 없습니다</h1>
+              <p className="text-sm text-slate-500 mt-2">{err}</p>
+              <p className="text-[11px] text-slate-400 mt-4">담당자에게 새 링크를 요청하세요.</p>
+            </Card>
+          </div>
+        );
+      }
+
+      if (phase === 'password') {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-10">
+            <div className="w-full max-w-sm">
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-2">🔒</div>
+                <h1 className="text-lg font-extrabold text-slate-800">{SUPPLIER.name} · 현장 페이지</h1>
+                <p className="text-sm text-slate-400 mt-1">비밀번호로 보호된 페이지입니다.</p>
+              </div>
+              <Card className="p-6">
+                <form onSubmit={submitPw} className="space-y-4">
+                  <Input label="비밀번호" type="password" autoComplete="off" value={pw}
+                    onChange={(e) => setPw(e.target.value)} placeholder="공유 비밀번호를 입력하세요" autoFocus />
+                  {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{err}</div>}
+                  <Button type="submit" size="lg" disabled={submitting} className="w-full">
+                    {submitting ? '확인 중…' : '열람하기'}
+                  </Button>
+                </form>
+              </Card>
+              <p className="text-center text-[11px] text-slate-400 mt-4">비밀번호는 담당자에게 문의하세요.</p>
+            </div>
+          </div>
+        );
+      }
+
+      // ── ready ──
+      const site = data.site || {};
+      const schedule = data.schedule || [];
+      const photos = data.photos || [];
+      const documents = data.documents || [];
+
+      // 일정 진행률
+      const schedDone = schedule.filter((t) => t.status === '완료').length;
+      const schedPct = schedule.length ? Math.round((schedDone / schedule.length) * 100) : 0;
+      // D-day (준공 = end_date 기준)
+      let dday = null;
+      if (site.end_date) {
+        const diff = Math.ceil((new Date(site.end_date + 'T00:00:00') - new Date(todayStr() + 'T00:00:00')) / 86400000);
+        dday = diff;
+      }
+      const period = (site.start_date || site.end_date) ? `${site.start_date || '?'} ~ ${site.end_date || '?'}` : '-';
+      const fmtMD = (d) => (d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
+
+      // 사진: 공정 필터 + 날짜 그룹
+      const photoProcs = Array.from(new Set(photos.flatMap((p) => (p.processes || '').split(',').map((s) => s.trim()).filter(Boolean))));
+      const fPhotos = fProc ? photos.filter((p) => (p.processes || '').split(',').map((s) => s.trim()).includes(fProc)) : photos;
+      const photoGroups = [];
+      fPhotos.forEach((p) => {
+        const key = p.photo_date || '날짜 미지정';
+        let g = photoGroups.find((x) => x.date === key);
+        if (!g) { g = { date: key, items: [] }; photoGroups.push(g); }
+        g.items.push(p);
+      });
+
+      const CTABS = [
+        { id: 'summary', label: '요약', icon: '📊' },
+        { id: 'schedule', label: '일정', icon: '📅' },
+        { id: 'photos', label: '현장사진', icon: '📷' },
+        { id: 'docs', label: '자료', icon: '📁' },
+      ];
+
+      return (
+        <div className="min-h-screen bg-slate-100 pb-10">
+          {/* 헤더 */}
+          <div className="bg-white border-b border-slate-200">
+            <div className="max-w-3xl mx-auto px-4 py-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xl">🏗️</span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-slate-400 leading-none mb-0.5">{SUPPLIER.name} · 현장 페이지</p>
+                    <h1 className="text-base font-extrabold text-slate-800 truncate">{site.name}</h1>
+                  </div>
+                </div>
+                <span className="shrink-0 text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-500">읽기전용</span>
+              </div>
+              {/* 탭 */}
+              <div className="mt-3 flex gap-1 overflow-x-auto" role="tablist" aria-label="클라이언트 메뉴">
+                {CTABS.map((t) => {
+                  const on = ctab === t.id;
+                  return (
+                    <button key={t.id} role="tab" aria-selected={on} onClick={() => setCtab(t.id)}
+                      className={`shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium transition ${on ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+                      {t.icon} {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-3xl mx-auto px-4 pt-5 space-y-4">
+            {ctab === 'summary' && (
+              <>
+                <Card className="p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-bold text-slate-700">현장 정보</h2>
+                    <div className="flex gap-1.5">
+                      <Badge color={PROGRESS_STATUS_COLOR[site.progress_status] || 'bg-slate-400'}>{site.progress_status || '준비'}</Badge>
+                      <Badge color={SITE_STATUS_COLOR[site.status] || 'bg-blue-500'}>{site.status || '진행'}</Badge>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="col-span-2"><p className="text-xs text-slate-400">주소</p><p className="font-medium text-slate-700">{site.address || '-'}</p></div>
+                    <div><p className="text-xs text-slate-400">건물 유형</p><p className="font-medium text-slate-700">{site.building_type || '-'}</p></div>
+                    <div><p className="text-xs text-slate-400">면적</p><p className="font-medium text-slate-700">{site.floor_area ? `${site.floor_area}평` : '-'}</p></div>
+                    <div><p className="text-xs text-slate-400">공사 기간</p><p className="font-medium text-slate-700">{period}</p></div>
+                    <div><p className="text-xs text-slate-400">입주 예정</p><p className="font-medium text-slate-700">{site.move_in_date || '-'}</p></div>
+                  </div>
+                </Card>
+                <Card className="p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-sm font-bold text-slate-700">공정 진행률</h2>
+                    {dday != null && (
+                      <span className={`text-xs font-bold ${dday < 0 ? 'text-slate-400' : dday <= 7 ? 'text-red-600' : 'text-blue-600'}`}>
+                        {dday > 0 ? `준공까지 D-${dday}` : dday === 0 ? '오늘 준공 예정' : `준공 예정일 +${-dday}일 경과`}
+                      </span>
+                    )}
+                  </div>
+                  {schedule.length === 0 ? (
+                    <p className="text-sm text-slate-400 py-2">등록된 일정이 없습니다.</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                        <span>완료 {schedDone} / 전체 {schedule.length}</span><span className="font-bold text-slate-700">{schedPct}%</span>
+                      </div>
+                      <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: schedPct + '%' }}></div>
+                      </div>
+                    </>
+                  )}
+                </Card>
+                <Card className="p-5">
+                  <h2 className="text-sm font-bold text-slate-700 mb-2">최근 현장사진</h2>
+                  {photos.length === 0 ? (
+                    <p className="text-sm text-slate-400 py-2">등록된 사진이 없습니다.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {photos.slice(0, 6).map((p) => (
+                        <button key={p.id} onClick={() => { setCtab('photos'); }} className="aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                          {p.url
+                            ? <img src={p.url} alt={p.file_name || '현장사진'} loading="lazy" className="w-full h-full object-cover" />
+                            : <span className="w-full h-full flex items-center justify-center text-2xl text-slate-300">🖼</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </>
+            )}
+
+            {ctab === 'schedule' && (
+              <Card className="p-5">
+                <h2 className="text-sm font-bold text-slate-700 mb-3">공사 일정 <span className="text-xs font-normal text-slate-400">· {schedule.length}건</span></h2>
+                {schedule.length === 0 ? (
+                  <p className="text-sm text-slate-400 py-4 text-center">등록된 일정이 없습니다.</p>
+                ) : (
+                  <ul className="divide-y divide-slate-100">
+                    {schedule.map((t) => (
+                      <li key={t.id} className="py-2.5 flex items-center gap-3">
+                        <span className="shrink-0 w-24 text-xs text-slate-500 font-medium">{fmtMD(t.start_date)} ~ {fmtMD(t.end_date)}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">{t.title}</p>
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {t.process && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{t.process}</span>}
+                            {t.kind === '지원' && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-600">지원</span>}
+                          </div>
+                        </div>
+                        <Badge color={TASK_STATUS_COLOR[t.status] || 'bg-slate-400'}>{t.status}</Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            )}
+
+            {ctab === 'photos' && (
+              <Card className="p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <h2 className="text-sm font-bold text-slate-700">현장사진 <span className="text-xs font-normal text-slate-400">· {fPhotos.length}장</span></h2>
+                  {photoProcs.length > 0 && (
+                    <select value={fProc} onChange={(e) => setFProc(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                      <option value="">전체 공정</option>
+                      {photoProcs.map((p) => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  )}
+                </div>
+                {photoGroups.length === 0 ? (
+                  <p className="text-sm text-slate-400 py-4 text-center">등록된 사진이 없습니다.</p>
+                ) : (
+                  <div className="space-y-5">
+                    {photoGroups.map((g) => (
+                      <div key={g.date}>
+                        <p className="text-xs font-bold text-slate-500 mb-2">📅 {g.date} <span className="font-normal text-slate-400">· {g.items.length}장</span></p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                          {g.items.map((p) => {
+                            const procs = (p.processes || '').split(',').map((s) => s.trim()).filter(Boolean);
+                            return (
+                              <div key={p.id}>
+                                <button onClick={() => p.url && window.open(p.url, '_blank', 'noopener')}
+                                  className={`w-full aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200 ${p.url ? 'cursor-zoom-in' : 'cursor-default'}`}
+                                  title={p.url ? '원본 보기' : '이미지 준비 중'}>
+                                  {p.url
+                                    ? <img src={p.url} alt={p.file_name || '현장사진'} loading="lazy" className="w-full h-full object-cover" />
+                                    : <span className="w-full h-full flex items-center justify-center text-3xl text-slate-300">🖼</span>}
+                                </button>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {procs.map((pr) => <span key={pr} className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{pr}</span>)}
+                                </div>
+                                {p.memo && <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{p.memo}</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[11px] text-slate-300 mt-4">사진이 열리지 않으면 페이지를 새로고침하세요. (보안을 위해 열람 링크는 1시간만 유효합니다)</p>
+              </Card>
+            )}
+
+            {ctab === 'docs' && (
+              <Card className="p-5">
+                <h2 className="text-sm font-bold text-slate-700 mb-3">자료 <span className="text-xs font-normal text-slate-400">· {documents.length}건</span></h2>
+                {documents.length === 0 ? (
+                  <p className="text-sm text-slate-400 py-4 text-center">공유된 자료가 없습니다.</p>
+                ) : (
+                  <ul className="divide-y divide-slate-100">
+                    {documents.map((d) => (
+                      <li key={d.id} className="py-2.5 flex items-center gap-3">
+                        <Badge color="bg-indigo-500">{d.doc_type}</Badge>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700 truncate">{d.name}</p>
+                          <p className="text-[11px] text-slate-400 truncate">{d.file_name || '-'}{d.file_size ? ` · ${fmtBytes(d.file_size)}` : ''}</p>
+                        </div>
+                        <Button size="sm" variant="secondary" disabled={!d.url}
+                          onClick={() => d.url && window.open(d.url, '_blank', 'noopener')}>
+                          {d.url ? '다운로드' : '준비 중'}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="text-[11px] text-slate-300 mt-4">다운로드가 안 되면 페이지를 새로고침하세요. (보안을 위해 링크는 1시간만 유효합니다)</p>
+              </Card>
+            )}
+
+            <p className="text-center text-[11px] text-slate-400 pt-2">본 페이지는 {SUPPLIER.name}에서 공유한 읽기전용 현장 페이지입니다.</p>
           </div>
         </div>
       );
@@ -8615,7 +9092,11 @@
       }, []);
 
       // v17: 공유 경로 → 무로그인 공개 뷰 (모든 훅 이후 분기 — 훅 순서 보존)
-      if (shareRoute) return <ShareView kind={shareRoute.kind} token={shareRoute.token} />;
+      if (shareRoute) {
+        return shareRoute.kind === 'client'
+          ? <ClientView token={shareRoute.token} /> // (v22) 클라이언트 페이지
+          : <ShareView kind={shareRoute.kind} token={shareRoute.token} />;
+      }
       if (status === 'checking') {
         return (
           <div className="min-h-screen flex items-center justify-center bg-slate-100">

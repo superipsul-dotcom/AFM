@@ -1140,3 +1140,47 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - v1~v20 회귀.
 
 > ✅ **구현·검증 완료 (2026-07-02)**. 백엔드 e2e 27/27 통과(위 검증 전 항목 + 잘못된 입사일 400 + 없는 현장 404). admin 백필로 기존 유저(홍평화)가 관리자 승격. 프론트: 헤더 관리자 뱃지 · 관리>조직·직원 마스터(직급/고용형태/이메일/입사일, 비-admin 읽기전용) · 요약>PersonnelSection "프로젝트 배정 인력"(배정/해제, 실서버 플로우 브라우저 확인). 입사일 to_char 직렬화(타임존 안전). 데모/폴백=admin 가정 + siteStaffStore.
+
+---
+
+# v22 확장 — 사진 일정연동·알림(#1) + 자료 렌더링(#2) + 클라이언트 페이지(#3)
+
+> 사용자 요청 3건(이전 세션 오프라인 중단으로 재요청). v20 자료/현장사진 기반 위 보강 + 신규 클라이언트 공개 뷰. v1~v21 100% 보존. 새 패키지 없음.
+
+## 22-1 현장사진 보강 (#1, 프론트 전용)
+- **일정→공정 자동선택**: PhotosTab 이 현장 일정(listSchedule)을 로드, 촬영일(pDate) 변경 시 `start_date<=pDate<=end_date` AND kind≠'미팅' 태스크들의 process(비어있지 않음, 유니크)를 공정 칩에 **자동 선택**. 칩 목록 = PHOTO_PROCESSES ∪ 해당일 일정 공정(동적 추가). 자동선택 후 수동 토글 가능(날짜 재변경 시 재계산). 매칭 시 "📅 일정 연동" 힌트 + [⟳ 일정에서 다시 불러오기] 버튼.
+- **알림 보내기**: 업로드 성공 후 배너에 [📣 알림 보내기] 버튼. 메시지 = `[현장명] M/D 현장사진 N장 업로드 / 공정: …` (+ 클라이언트 페이지 공유링크 있으면 URL 포함). **navigator.share(모바일) → 실패/미지원 시 클립보드 복사** 폴백(카톡/문자 붙여넣기 안내 토스트). 외부 발송서비스 없음(카톡/문자 보류 유지).
+
+## 22-2 자료 카테고리 (#2)
+- DOC_TYPES = ['CAD','도면','렌더링','제안서','스펙','견적','계약','기타'] — '렌더링' 추가. 서버 doc_type 은 자유텍스트라 무변경(프론트 상수+mock 검증만).
+
+## 22-3 클라이언트 페이지 (#3) — v17 공유 패턴 재사용
+### DB (ALTER IF NOT EXISTS)
+- interior_sites + `client_share_token TEXT`, `client_share_password_hash TEXT` + 토큰 인덱스. rowToSite/SITE_COLS 에 **노출 안 함**(견적공유 등 다른 응답으로 토큰 누출 방지).
+### 관리 엔드포인트 (인증·팀 스코핑 = /api/sites/:id 소유검증)
+- `GET /api/sites/:id/client-share` → `{share_token: string|null, hasPassword}` (UI 초기상태용)
+- `POST /api/sites/:id/client-share {password?}` → 토큰 없으면 crypto 발급(있으면 유지), password 키 있으면 설정(''=제거)/없으면 유지 → `{share_token, url:'/share/client/'+token, hasPassword}` (견적 share 와 동형)
+- `DELETE /api/sites/:id/client-share` → 토큰/해시 NULL, `{success:true}`
+### 공개 엔드포인트 (무인증 — 기존 /api/share/* 예외 재사용)
+- `GET /api/share/client/:token` → 비번설정 시 `{requiresPassword:true}`(데이터 없음), 아니면 payload. 없는 토큰 404.
+- `POST /api/share/client/:token {password}` → 검증(실패 401) 후 payload.
+- **payload (화이트리스트 — 비용/금액/팀/토큰/내부담당 절대 미포함)**:
+  - `site`: name, address, building_type, floor_area, start_date, end_date, move_in_date, progress_status, status
+  - `schedule`: kind≠'미팅' 만, `{id,title,process,start_date,end_date,status,kind}` (planned_cost/actual_cost/staff/memo 제외), start_date ASC
+  - `photos`: `{id,photo_date,processes,file_name,memo,created_at,url}` — url=서명 다운로드 URL(1h, Promise.all 일괄; 스토리지 미설정/경로없음 → null). uploader 제외.
+  - `documents`: `{id,name,doc_type,file_name,file_size,memo,created_at,url}` — 동형. uploader 제외.
+### 프론트
+- parseShareRoute kind 에 `client` 추가 (#/share/client/<token>). AuthGate: kind='client' → **ClientView** (무로그인).
+- **ClientView**: ShareView 동형 게이트(loading/password/error) → 성공 시 모바일 우선 읽기전용 뷰. 탭 4개 **[요약|일정|현장사진|자료]**:
+  - 요약: 현장정보 그리드(이름/주소/유형/면적/기간/입주/진행상태) + 일정 진행률(완료/전체 + bar)
+  - 일정: start_date 순 리스트(공정·상태 뱃지, 지원 구분 표시)
+  - 현장사진: 날짜 내림차순 그룹 갤러리(서명 URL 썸네일, 클릭=원본 새탭, url null=플레이스홀더)
+  - 자료: 목록(유형 뱃지/파일명/크기) + [다운로드](서명 URL 새탭)
+- **공유 관리 UI**: 현장 헤더(현장 수정 옆) [🔗 클라이언트 공유] 버튼 → ShareModal 재사용(kind='client', label='클라이언트 페이지', api.shareSiteClient/unshareSiteClient, 열 때 GET 으로 초기상태). 데모 폴백 = sitesStore 에 토큰/비번 저장, fetchSharedClient 폴백 = 로컬 스토어 조합(사진 url null).
+
+## 검증
+- e2e: 임시팀 격리 — client-share 생성/조회/재발급 토큰유지/비번설정→requiresPassword→오답401→정답200/해제→404. payload 화이트리스트(budget/planned_cost/uploader/토큰류 부재), 미팅 일정 제외, 타팀 site 404. 무효토큰 404.
+- Playwright: `#/share/client/<token>` 무로그인 렌더(현장명+탭4), 사진탭 일정연동 힌트.
+- v1~v21 회귀(기존 e2e 스모크).
+
+> ✅ **구현·검증 완료 (2026-07-02)**. 백엔드 e2e 31/31(격리 임시팀 2개, 정리 잔존 0): client-share CRUD/토큰유지/비번(설정→requiresPassword→오답401→정답200)/해제404/무효404/타팀404, payload 화이트리스트(site 민감필드·일정 금액·uploader/storage_path 부재, 미팅 제외), doc_type 렌더링, v21 회귀(staff 200/첫가입 admin). Playwright: ClientView 무로그인 렌더(현장명/읽기전용/4탭/요약·일정·자료), 사진탭 📅 일정연동 자동선택(당일 목공 → 날짜변경 시 목공+타일 재계산) + ⟳ 재불러오기, [🔗 클라이언트] 모달(공유중 상태/새 설명문). 로컬 스토리지 미설정이라 사진 url=null 폴백(준비 중/플레이스홀더) 확인 — 서명 URL 실동작은 라이브(키 설정됨) 대상.

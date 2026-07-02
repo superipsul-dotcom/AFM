@@ -741,6 +741,12 @@ async function initDB() {
     )
   `);
 
+  // (v22 / #3) 클라이언트 페이지 공유 — 현장 단위 공개 토큰(+선택 비번). v17 견적/발주 공유와 동형.
+  //   rowToSite/SITE_COLS 에는 노출하지 않는다(다른 응답 경유 토큰 누출 방지) — 관리 GET 엔드포인트로만 조회.
+  await pool.query(`ALTER TABLE interior_sites ADD COLUMN IF NOT EXISTS client_share_token TEXT`);
+  await pool.query(`ALTER TABLE interior_sites ADD COLUMN IF NOT EXISTS client_share_password_hash TEXT`);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_sites_client_share_token ON interior_sites (client_share_token);');
+
   // (v20) Storage 버킷 ensure (키 있을 때만, best-effort — 실패해도 부팅 계속)
   await ensureStorageBucket();
 
@@ -5887,6 +5893,175 @@ app.post('/api/share/order/:token', async (req, res) => {
   } catch (err) {
     console.error('POST /api/share/order/:token 오류:', err.message);
     res.status(500).json({ success: false, message: '공유 발주서를 불러오지 못했습니다.' });
+  }
+});
+
+// ========================================
+// (v22 / #3) 클라이언트 페이지 공유 — 현장 단위 공개 뷰(요약/일정/현장사진/자료).
+//   · 관리(GET/POST/DELETE /api/sites/:id/client-share)는 인증·팀 스코핑(/api/sites/:id 소유검증 미들웨어).
+//   · 공개(GET/POST /api/share/client/:token)는 무인증 — 기존 /api/share/* 예외 재사용. v17 견적/발주와 동형.
+//   · payload 는 화이트리스트: 비용/금액/팀/토큰/내부담당(uploader·staff) 절대 미포함.
+// ========================================
+
+// GET /api/sites/:id/client-share — 현재 공유 상태(UI 초기값). 토큰 없으면 {share_token:null}.
+app.get('/api/sites/:id/client-share', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const q = await pool.query('SELECT client_share_token, client_share_password_hash FROM interior_sites WHERE id=$1', [id]);
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+    res.json({ share_token: q.rows[0].client_share_token || null, hasPassword: !!q.rows[0].client_share_password_hash });
+  } catch (err) {
+    console.error('GET /api/sites/:id/client-share 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 상태를 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/client-share — 공유 활성화 + 선택적 비번 (견적 share 와 동형 시맨틱).
+//   토큰 없으면 crypto 발급(있으면 유지). body.password 키 있으면 설정(빈문자→해시 제거), 없으면 기존 유지.
+app.post('/api/sites/:id/client-share', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+
+    const cur = await pool.query('SELECT client_share_token, client_share_password_hash FROM interior_sites WHERE id=$1', [id]);
+    if (cur.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+    let token = cur.rows[0].client_share_token;
+    if (!token) token = crypto.randomBytes(16).toString('hex');
+
+    const body = req.body || {};
+    let hash = cur.rows[0].client_share_password_hash;
+    if (Object.prototype.hasOwnProperty.call(body, 'password')) {
+      const pw = typeof body.password === 'string' ? body.password : '';
+      hash = pw ? await bcrypt.hash(pw, 10) : null;
+    }
+
+    await pool.query('UPDATE interior_sites SET client_share_token=$1, client_share_password_hash=$2 WHERE id=$3', [token, hash, id]);
+    res.json({ share_token: token, url: '/share/client/' + token, hasPassword: !!hash });
+  } catch (err) {
+    console.error('POST /api/sites/:id/client-share 오류:', err.message);
+    res.status(500).json({ success: false, message: '클라이언트 공유 링크를 생성하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/sites/:id/client-share — 공유 해제(토큰/해시 NULL).
+app.delete('/api/sites/:id/client-share', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const r = await pool.query(
+      'UPDATE interior_sites SET client_share_token=NULL, client_share_password_hash=NULL WHERE id=$1 RETURNING id',
+      [id]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/sites/:id/client-share 오류:', err.message);
+    res.status(500).json({ success: false, message: '클라이언트 공유를 해제하지 못했습니다.' });
+  }
+});
+
+// 공유 payload — 화이트리스트만. 사진/자료 서명 URL 은 일괄 발급(스토리지 미설정/경로없음 → null).
+async function buildSharedClient(siteRow) {
+  const siteId = siteRow.id;
+  const site = {
+    name: siteRow.name,
+    address: siteRow.address || '',
+    building_type: siteRow.building_type || '',
+    floor_area: Number(siteRow.floor_area || 0),
+    start_date: siteRow.start_date, // 'YYYY-MM-DD' | null (to_char)
+    end_date: siteRow.end_date,
+    move_in_date: siteRow.move_in_date,
+    progress_status: siteRow.progress_status || '준비',
+    status: siteRow.status || '진행',
+  };
+
+  // 일정: 미팅 제외, 금액(planned_cost/actual_cost)·내부담당(staff)·메모 미포함.
+  const sch = await pool.query(
+    `SELECT id, title, process, to_char(start_date,'YYYY-MM-DD') AS start_date,
+            to_char(end_date,'YYYY-MM-DD') AS end_date, status, kind
+       FROM interior_schedule
+      WHERE site_id=$1 AND kind <> '미팅'
+      ORDER BY start_date ASC, id ASC`,
+    [siteId]
+  );
+  const schedule = sch.rows.map((r) => ({
+    id: String(r.id), title: r.title, process: r.process || '',
+    start_date: r.start_date, end_date: r.end_date,
+    status: r.status || '예정', kind: r.kind || '공사',
+  }));
+
+  // 서명 URL 발급 헬퍼 — 실패/미설정 시 null (뷰에서 플레이스홀더 처리).
+  const canSign = storageConfigured();
+  const signOrNull = async (path) => {
+    if (!canSign || !path) return null;
+    try { return await signDownloadUrl(path); } catch (e) { return null; }
+  };
+
+  const ph = await pool.query(
+    `SELECT ${PHOTO_COLS} FROM interior_photos WHERE site_id=$1 ORDER BY photo_date DESC NULLS LAST, created_at DESC, id DESC`,
+    [siteId]
+  );
+  const photos = await Promise.all(ph.rows.map(async (r) => ({
+    id: String(r.id), photo_date: r.photo_date, processes: r.processes || '',
+    file_name: r.file_name || '', memo: r.memo || '',
+    created_at: new Date(r.created_at).toISOString(),
+    url: await signOrNull(r.storage_path),
+  })));
+
+  const dc = await pool.query(
+    `SELECT ${DOCUMENT_COLS} FROM interior_documents WHERE site_id=$1 ORDER BY created_at DESC, id DESC`,
+    [siteId]
+  );
+  const documents = await Promise.all(dc.rows.map(async (r) => ({
+    id: String(r.id), name: r.name, doc_type: r.doc_type || '기타',
+    file_name: r.file_name || '', file_size: Number(r.file_size || 0), memo: r.memo || '',
+    created_at: new Date(r.created_at).toISOString(),
+    url: await signOrNull(r.storage_path),
+  })));
+
+  return { site, schedule, photos, documents };
+}
+
+// GET /api/share/client/:token — 무인증. 비번설정 시 requiresPassword(데이터 없음). 없는 토큰 404.
+app.get('/api/share/client/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ success: false, message: '공유 페이지를 찾을 수 없습니다.' });
+    const q = await pool.query(
+      `SELECT ${SITE_COLS}, client_share_password_hash FROM interior_sites WHERE client_share_token=$1`,
+      [token]
+    );
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '공유 페이지를 찾을 수 없습니다.' });
+    if (q.rows[0].client_share_password_hash) return res.json({ requiresPassword: true });
+    res.json(await buildSharedClient(q.rows[0]));
+  } catch (err) {
+    console.error('GET /api/share/client/:token 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 페이지를 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/share/client/:token body {password} — 비번 검증 실패 401, 성공 시 payload.
+app.post('/api/share/client/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '');
+    if (!token) return res.status(404).json({ success: false, message: '공유 페이지를 찾을 수 없습니다.' });
+    const q = await pool.query(
+      `SELECT ${SITE_COLS}, client_share_password_hash FROM interior_sites WHERE client_share_token=$1`,
+      [token]
+    );
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '공유 페이지를 찾을 수 없습니다.' });
+    const hash = q.rows[0].client_share_password_hash;
+    if (hash) {
+      const pw = typeof (req.body || {}).password === 'string' ? req.body.password : '';
+      const ok = pw ? await bcrypt.compare(pw, hash) : false;
+      if (!ok) return res.status(401).json({ success: false, message: '비밀번호가 올바르지 않습니다.' });
+    }
+    res.json(await buildSharedClient(q.rows[0]));
+  } catch (err) {
+    console.error('POST /api/share/client/:token 오류:', err.message);
+    res.status(500).json({ success: false, message: '공유 페이지를 불러오지 못했습니다.' });
   }
 });
 
