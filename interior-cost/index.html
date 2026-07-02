@@ -1670,8 +1670,10 @@
         }
       },
       // 단건 {trade?,name,spec?,unit?,qty?,source?,source_guid?,memo?} 또는 배치 {items:[...]} (CONTRACT v8)
-      async createTakeoff(siteId, body) {
-        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/takeoff`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
+      async createTakeoff(siteId, body, opts = {}) {
+        // (v23) opts.replaceSketchup — 스케치업 CSV 재임포트: 기존 source='sketchup' 행 대체
+        const qs = opts.replaceSketchup ? '?replace_sketchup=1' : '';
+        try { const d = await this._tryFetch(`${API_BASE_URL}/sites/${siteId}/takeoff${qs}`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d; }
         catch (e) {
           if (e.status) throw e; this._useMock = true;
           const mk = (b) => ({
@@ -1680,8 +1682,10 @@
             memo: b.memo || '', created_at: new Date().toISOString(),
           });
           if (Array.isArray(body && body.items)) {
+            let cur = takeoffStore.read();
+            if (opts.replaceSketchup) cur = cur.filter((x) => !(String(x.site_id) === String(siteId) && x.source === 'sketchup')); // (v23) 폴백도 대체
             const rows = body.items.filter((b) => String(b.name || '').trim()).map(mk);
-            takeoffStore.write([...takeoffStore.read(), ...rows]);
+            takeoffStore.write([...cur, ...rows]);
             return { imported: rows.length, items: rows };
           }
           if (!String(body.name || '').trim()) { const err = new Error('품목명은 필수입니다.'); err.status = 400; throw err; }
@@ -4766,12 +4770,284 @@
       );
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // (v23) 스케치업(DLP Estimator) CSV 임포트 — DLP-TAKEOFF v1 + 레거시 6열 폴백
+    //   파일 기반: 플러그인은 저장만, 앱은 읽기만(네트워크/인증 불개입 — 오류 지점 최소화).
+    // ══════════════════════════════════════════════════════════════
+    // RFC4180 인용 CSV 파서(따옴표 내 콤마/개행/이중따옴표 지원)
+    function parseCsvText(text) {
+      const rows = []; let row = []; let cur = ''; let inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQ) {
+          if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+          else cur += c;
+        } else if (c === '"') inQ = true;
+        else if (c === ',') { row.push(cur); cur = ''; }
+        else if (c === '\n' || c === '\r') {
+          if (c === '\r' && text[i + 1] === '\n') i++;
+          row.push(cur); rows.push(row); row = []; cur = '';
+        } else cur += c;
+      }
+      if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+      return rows.filter((r) => r.some((cell) => String(cell).trim() !== '')); // 빈 행 제거
+    }
+    // 단위 정규화(m²/㎡→m2, 개→EA)
+    function normTakeoffUnit(u) {
+      const s = String(u || '').trim();
+      if (!s) return '';
+      const low = s.toLowerCase().replace(/²|㎡/g, '2').replace('m2', 'm2');
+      if (low === 'm2' || low === 'sqm') return 'm2';
+      if (low === 'm' || low === 'meter') return 'm';
+      if (low === 'ea' || s === '개' || s === '본' || s === '장') return 'EA';
+      return s;
+    }
+    // 숫자 파싱(천단위 콤마/공백 허용) — 실패 시 null
+    function parseTakeoffQty(v) {
+      const s = String(v == null ? '' : v).replace(/,/g, '').trim();
+      if (s === '') return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    }
+    // 공종 자동 매핑(category + 품명/규격 키워드 → TRADE_MASTER 21종). 실패 시 ''(미분류)
+    function guessTradeFromTakeoff(category, name, spec) {
+      const c = String(category || '');
+      const t = `${name || ''} ${spec || ''}`;
+      if (/구조재|보드|가벽/.test(c)) return '목공사';
+      if (/단열/.test(c) || /단열|아이소핑크|XPS|EPS|글라스울|insul/i.test(t)) return '단열/기밀공사';
+      if (/걸레받이|몰딩|목공|다루끼|투바이|석고|합판|MDF|INTwall/i.test(t)) return '목공사';
+      if (/벽지|도배/.test(t)) return '도배공사';
+      if (/페인트|도장|탄성코트/.test(t)) return '도장공사';
+      if (/타일|줄눈/.test(t)) return '타일공사';
+      if (/마루|바닥재|장판|데코타일|강마루|원목마루/.test(t)) return '바닥공사';
+      if (/조명|라이트|매입등|간접등|콘센트|스위치|배선/.test(t)) return '전기공사';
+      if (/필름/.test(t)) return '필름공사';
+      if (/유리|거울|파티션글라스/.test(t)) return '유리공사';
+      if (/철거|폐기/.test(t)) return '철거공사';
+      if (/가구|붙박이|싱크|씽크|수납장/.test(t)) return '가구공사';
+      if (/창호|샷시|섀시|중문/.test(t)) return '창호공사';
+      if (/방수/.test(t)) return '방수공사';
+      if (/도기|양변기|세면대|수전|욕실/.test(t)) return '화장실셋팅공사';
+      return '';
+    }
+    // "이름 (스펙)" → {name, spec} 분리(레거시 6열용)
+    function splitNameSpec(raw) {
+      const s = String(raw || '').trim();
+      const m = s.match(/^(.*?)\s*\((.*)\)\s*$/);
+      if (m) return { name: m[1].trim(), spec: m[2].trim() };
+      const t = s.match(/^(.*)_t(\d+)$/); // aa_insul_t150 → 150T
+      if (t) return { name: t[1].trim(), spec: t[2] + 'T' };
+      return { name: s, spec: '' };
+    }
+    // CSV 텍스트 → { format:'v1'|'legacy', ok:[takeoff초안], skipped:[{line,reason,raw}], meta:{model} }
+    // 지원 포맷이 아니면 Error(message) throw.
+    function parseDlpTakeoffCsv(text) {
+      const clean = String(text || '').replace(/^\uFEFF/, '');
+      const rows = parseCsvText(clean);
+      if (rows.length === 0) throw new Error('빈 파일입니다.');
+
+      const first = rows[0].map((c) => String(c).trim());
+      let format = null; let dataStart = 1; let meta = { model: '' };
+      if (/^#DLP-TAKEOFF/i.test(first[0])) {
+        // v1: 1행 매직헤더(#DLP-TAKEOFF,v1,exported_at=..,model=..) + 2행 컬럼헤더 + 데이터
+        format = 'v1';
+        first.forEach((cell) => { const m = cell.match(/^model=(.*)$/); if (m) meta.model = m[1]; });
+        dataStart = rows[1] && /^category$/i.test(String(rows[1][0]).trim()) ? 2 : 1;
+      } else if (first[0] === '구분' && first[1] === '이름') {
+        format = 'legacy'; // 기존 "견적 산출" 6열: 구분,이름,값,단위,갯수,단위2
+        dataStart = 1;
+      } else {
+        throw new Error('지원하지 않는 파일 형식입니다. 스케치업 AndoEstimator의 [앱으로 내보내기] 또는 [견적 산출] CSV를 선택하세요.');
+      }
+
+      const ok = []; const skipped = [];
+      for (let i = dataStart; i < rows.length; i++) {
+        const r = rows[i].map((c) => String(c).trim());
+        const lineNo = i + 1;
+        let category, name, spec, qty, unit, altQty, altUnit, guid;
+        if (format === 'v1') {
+          [category, name, spec] = [r[0] || '', r[1] || '', r[2] || ''];
+          qty = parseTakeoffQty(r[3]); unit = normTakeoffUnit(r[4]);
+          altQty = parseTakeoffQty(r[5]); altUnit = normTakeoffUnit(r[6]);
+          guid = r[7] || '';
+        } else {
+          // legacy: 구분,이름,값,단위,갯수,단위2 — 구분 괄호(구조재(다루끼) 등)는 spec 으로
+          const catM = (r[0] || '').match(/^(.*?)\((.*)\)$/);
+          category = catM ? catM[1] : (r[0] || '');
+          const ns = splitNameSpec(r[1]);
+          name = ns.name; spec = ns.spec || (catM ? catM[2] : '');
+          qty = parseTakeoffQty(r[2]); unit = normTakeoffUnit(r[3]);
+          altQty = parseTakeoffQty(r[4]); altUnit = normTakeoffUnit(r[5] || (altQty != null ? 'EA' : ''));
+          guid = '';
+        }
+        if (!name) { skipped.push({ line: lineNo, reason: '품목명 없음', raw: r.join(',') }); continue; }
+        // 주수량 없으면 보조수량(장수/본수) 승격 — 수량(aa_qty_)류
+        let alt = null;
+        if (qty == null || qty < 0) {
+          if (altQty != null && altQty >= 0) { qty = altQty; unit = altUnit || 'EA'; }
+          else { skipped.push({ line: lineNo, reason: '수량 없음/잘못됨', raw: r.join(',') }); continue; }
+        } else if (altQty != null && altQty > 0) {
+          alt = `${altQty}${altUnit || 'EA'}`; // 보조수량은 메모로 보존
+        }
+        const memoParts = [];
+        if (category) memoParts.push(category);
+        if (alt) memoParts.push(`보조 ${alt}`);
+        ok.push({
+          trade: guessTradeFromTakeoff(category, name, spec),
+          name, spec, unit, qty,
+          source: 'sketchup', source_guid: guid,
+          memo: memoParts.join(' · '),
+        });
+      }
+      return { format, ok, skipped, meta };
+    }
+
+    // (v23) 스케치업 CSV 임포트 모달 — 파일 선택 → 파싱 미리보기(공종 수정) → takeoff 배치 저장
+    function SketchupImportModal({ isOpen, onClose, siteId, onDone }) {
+      const toast = useToast();
+      const [fileName, setFileName] = useState('');
+      const [parsed, setParsed] = useState(null); // {format, ok, skipped, meta}
+      const [drafts, setDrafts] = useState([]);   // 편집 가능 사본(공종/포함 여부)
+      const [err, setErr] = useState('');
+      const [replace, setReplace] = useState(true);
+      const [busy, setBusy] = useState(false);
+      const fileRef = useRef(null);
+
+      useEffect(() => {
+        if (!isOpen) { setFileName(''); setParsed(null); setDrafts([]); setErr(''); setReplace(true); setBusy(false); }
+      }, [isOpen]);
+
+      const onFile = (ev) => {
+        const f = (ev.target.files || [])[0];
+        ev.target.value = '';
+        if (!f) return;
+        setErr(''); setParsed(null); setDrafts([]); setFileName(f.name || '');
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const p = parseDlpTakeoffCsv(String(reader.result || ''));
+            if (p.ok.length === 0 && p.skipped.length === 0) { setErr('가져올 데이터 행이 없습니다.'); return; }
+            setParsed(p);
+            setDrafts(p.ok.map((d, i) => ({ ...d, _i: i, _include: true })));
+          } catch (e) { setErr(e.message || 'CSV를 읽지 못했습니다.'); }
+        };
+        reader.onerror = () => setErr('파일을 읽지 못했습니다.');
+        reader.readAsText(f, 'utf-8');
+      };
+
+      const setDraft = (i, patch) => setDrafts((prev) => prev.map((d) => (d._i === i ? { ...d, ...patch } : d)));
+      const included = drafts.filter((d) => d._include);
+
+      const doImport = async () => {
+        if (busy || included.length === 0) return;
+        setBusy(true);
+        try {
+          const items = included.map(({ _i, _include, ...rest }) => rest);
+          await api.createTakeoff(siteId, { items }, { replaceSketchup: replace });
+          toast(`스케치업 물량 ${items.length}개를 가져왔습니다.${replace ? ' (기존 스케치업분 대체)' : ''}`, 'success');
+          if (onDone) onDone();
+          onClose();
+        } catch (e) {
+          toast(e.message || '가져오기에 실패했습니다.', 'error');
+        } finally { setBusy(false); }
+      };
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="📄 스케치업 CSV 가져오기 (DLP Estimator)" size="xl">
+          <div className="space-y-3">
+            <p className="text-[11px] text-slate-400">
+              스케치업 AndoEstimator의 <b>[앱으로 내보내기]</b> CSV(권장) 또는 기존 <b>[견적 산출]</b> CSV를 선택하세요.
+              가져온 물량은 이 현장의 <b>물량(Takeoff)</b>에 저장되고, 목록에서 선택해 견적 행으로 추가합니다.
+            </p>
+            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onFile} aria-hidden="true" tabIndex={-1} />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" onClick={() => fileRef.current && fileRef.current.click()}>📄 CSV 파일 선택</Button>
+              {fileName && <span className="text-sm text-slate-500">{fileName}</span>}
+              {parsed && (
+                <span className={`text-[11px] px-2 py-0.5 rounded-full ${parsed.format === 'v1' ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
+                  {parsed.format === 'v1' ? 'DLP-TAKEOFF v1' : '레거시(견적 산출)'}
+                </span>
+              )}
+              {parsed && parsed.meta.model && <span className="text-[11px] text-slate-400">모델: {parsed.meta.model}</span>}
+            </div>
+            {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{err}</div>}
+
+            {parsed && (
+              <>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>가져올 {included.length}/{drafts.length}개{parsed.skipped.length ? ` · 스킵 ${parsed.skipped.length}행` : ''}</span>
+                  <span className="text-slate-400">공종은 자동 추정 — 잘못됐으면 바꿔주세요</span>
+                </div>
+                <div className="border border-slate-100 rounded-xl overflow-hidden">
+                  <div className="max-h-[38vh] overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 sticky top-0">
+                        <tr className="text-left text-xs text-slate-400">
+                          <th className="py-2 px-2 w-8"></th>
+                          <th className="py-2 pr-2 font-medium w-36">공종</th>
+                          <th className="py-2 pr-2 font-medium">품목</th>
+                          <th className="py-2 pr-2 font-medium">규격</th>
+                          <th className="py-2 pr-2 font-medium text-right">수량</th>
+                          <th className="py-2 pr-2 font-medium w-12">단위</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {drafts.map((d) => (
+                          <tr key={d._i} className={d._include ? '' : 'opacity-40'}>
+                            <td className="py-1.5 px-2">
+                              <input type="checkbox" checked={d._include} onChange={(e) => setDraft(d._i, { _include: e.target.checked })} className="w-4 h-4 accent-blue-600" />
+                            </td>
+                            <td className="py-1.5 pr-2">
+                              <select value={d.trade} onChange={(e) => setDraft(d._i, { trade: e.target.value })}
+                                className="w-full px-2 py-1 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                <option value="">미분류</option>
+                                {TRADE_MASTER.map((t) => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </td>
+                            <td className="py-1.5 pr-2 text-slate-700 break-all">{d.name}</td>
+                            <td className="py-1.5 pr-2 text-slate-400 text-xs break-all">{[d.spec, d.memo].filter(Boolean).join(' · ')}</td>
+                            <td className="py-1.5 pr-2 text-right font-medium text-slate-700 whitespace-nowrap">{fmtNum(d.qty)}</td>
+                            <td className="py-1.5 pr-2 text-slate-500">{d.unit || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                {parsed.skipped.length > 0 && (
+                  <details className="text-xs text-slate-400">
+                    <summary className="cursor-pointer hover:text-slate-600">스킵된 {parsed.skipped.length}행 보기</summary>
+                    <ul className="mt-1.5 space-y-0.5 max-h-24 overflow-y-auto">
+                      {parsed.skipped.map((s, i) => <li key={i}>{s.line}행 — {s.reason} <span className="text-slate-300">({s.raw.slice(0, 60)})</span></li>)}
+                    </ul>
+                  </details>
+                )}
+                <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                  <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                  기존 <b>스케치업</b> 물량 대체 <span className="text-[11px] text-slate-400">(재내보내기 반복 시 중복 방지 · 수기 물량은 보존)</span>
+                </label>
+              </>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" onClick={onClose}>닫기</Button>
+              <Button onClick={doImport} disabled={busy || included.length === 0}>
+                {busy ? '가져오는 중…' : `${included.length}개 가져오기`}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
     // (v8) 물량(takeoff) 불러오기 모달 — 현재 현장 물량 목록 다중 선택 → 견적 행으로 추가
     function TakeoffPickerModal({ isOpen, onClose, siteId, onAdd }) {
       const [list, setList] = useState([]);
       const [loading, setLoading] = useState(false);
       const [sel, setSel] = useState(() => new Set());
       const [q, setQ] = useState('');
+      const [importOpen, setImportOpen] = useState(false); // (v23) 스케치업 CSV 임포트
+      const [refreshTick, setRefreshTick] = useState(0);   // (v23) 임포트 후 목록 리프레시
       useEffect(() => {
         if (!isOpen) { setSel(new Set()); setQ(''); return; }
         let alive = true; setLoading(true);
@@ -4780,7 +5056,7 @@
           .catch(() => { if (alive) setList([]); })
           .finally(() => { if (alive) setLoading(false); });
         return () => { alive = false; };
-      }, [isOpen, siteId]);
+      }, [isOpen, siteId, refreshTick]);
       const filtered = useMemo(() => {
         const n = q.trim().toLowerCase();
         if (!n) return list;
@@ -4797,6 +5073,11 @@
             <div className="flex flex-col sm:flex-row gap-2">
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="품목·공종·규격 검색"
                 className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+              <button type="button" onClick={() => setImportOpen(true)}
+                className="px-3 py-2 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-sm text-indigo-700 font-medium whitespace-nowrap"
+                title="스케치업 AndoEstimator에서 내보낸 CSV를 물량으로 가져옵니다">
+                📄 스케치업 CSV 가져오기
+              </button>
               {filtered.length > 0 && (
                 <button type="button" onClick={toggleAll} className="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-sm text-slate-600 whitespace-nowrap">
                   {allSel ? '전체 해제' : '전체 선택'}
@@ -4843,6 +5124,9 @@
               <Button onClick={confirm} disabled={sel.size === 0}>선택한 {sel.size > 0 ? sel.size + '개 ' : ''}견적 행으로 추가</Button>
             </div>
           </div>
+          {/* (v23) 스케치업 CSV 임포트 — 완료 시 물량 목록 리프레시 */}
+          <SketchupImportModal isOpen={importOpen} onClose={() => setImportOpen(false)} siteId={siteId}
+            onDone={() => setRefreshTick((n) => n + 1)} />
         </Modal>
       );
     }

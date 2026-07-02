@@ -5458,7 +5458,8 @@ function validateTakeoff(body) {
 }
 
 // 여러 takeoff 행을 한 번의 multi-row INSERT 로 적재 → rowToTakeoff 배열 반환.
-async function insertTakeoffRows(siteId, valsArr) {
+//   (v23) db 인자: 트랜잭션 client 를 넘기면 그 안에서 실행(기본 pool — 기존 호출 무영향).
+async function insertTakeoffRows(siteId, valsArr, db = pool) {
   if (!valsArr || valsArr.length === 0) return [];
   const cols = ['site_id', 'trade', 'name', 'spec', 'unit', 'qty', 'source', 'source_guid', 'memo'];
   const placeholders = [];
@@ -5468,7 +5469,7 @@ async function insertTakeoffRows(siteId, valsArr) {
     placeholders.push('(' + cols.map((_, j) => '$' + (base + j + 1)).join(',') + ')');
     params.push(siteId, v.trade, v.name, v.spec, v.unit, v.qty, v.source, v.source_guid, v.memo);
   });
-  const { rows } = await pool.query(
+  const { rows } = await db.query(
     `INSERT INTO interior_takeoff (${cols.join(', ')}) VALUES ${placeholders.join(', ')} RETURNING ${TAKEOFF_COLS}`,
     params
   );
@@ -5492,6 +5493,8 @@ app.get('/api/sites/:id/takeoff', async (req, res) => {
 });
 
 // POST /api/sites/:id/takeoff — 단건 {..} 또는 배치 {items:[..]} → 201
+//   (v23) ?replace_sketchup=1 — 스케치업 CSV 재임포트용: source='sketchup' 기존행을 지우고
+//   배치를 넣는다(트랜잭션 — 삭제만 되고 삽입 실패하는 부분 상태 방지). 수기(manual) 물량은 보존.
 app.post('/api/sites/:id/takeoff', async (req, res) => {
   try {
     const id = parseId(req.params.id);
@@ -5512,7 +5515,24 @@ app.post('/api/sites/:id/takeoff', async (req, res) => {
       vals.push(check.values);
     }
 
-    const inserted = await insertTakeoffRows(id, vals);
+    const replaceSketchup = String(req.query.replace_sketchup || '') === '1';
+    let inserted;
+    if (replaceSketchup) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(`DELETE FROM interior_takeoff WHERE site_id=$1 AND source='sketchup'`, [id]);
+        inserted = await insertTakeoffRows(id, vals, client);
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
+      }
+    } else {
+      inserted = await insertTakeoffRows(id, vals);
+    }
     // 단건 요청 → 객체, 배치 요청 → 배열 (orders 등 단건 객체 규약과 일관)
     res.status(201).json(isBatch ? inserted : inserted[0]);
   } catch (err) {

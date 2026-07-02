@@ -1184,3 +1184,36 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - v1~v21 회귀(기존 e2e 스모크).
 
 > ✅ **구현·검증 완료 (2026-07-02)**. 백엔드 e2e 31/31(격리 임시팀 2개, 정리 잔존 0): client-share CRUD/토큰유지/비번(설정→requiresPassword→오답401→정답200)/해제404/무효404/타팀404, payload 화이트리스트(site 민감필드·일정 금액·uploader/storage_path 부재, 미팅 제외), doc_type 렌더링, v21 회귀(staff 200/첫가입 admin). Playwright: ClientView 무로그인 렌더(현장명/읽기전용/4탭/요약·일정·자료), 사진탭 📅 일정연동 자동선택(당일 목공 → 날짜변경 시 목공+타일 재계산) + ⟳ 재불러오기, [🔗 클라이언트] 모달(공유중 상태/새 설명문). 로컬 스토리지 미설정이라 사진 url=null 폴백(준비 중/플레이스홀더) 확인 — 서명 URL 실동작은 라이브(키 설정됨) 대상.
+
+---
+
+# v23 확장 — 스케치업(DLP Estimator) CSV → 견적 물량 임포트 파이프라인
+
+> 사용자 요청: AndoEstimator25(스케치업 플러그인)에 "앱으로 내보내기" → 앱 견적탭에서 CSV 임포트 → 물량/자재 자동 로드. **파일 기반**(네트워크/인증 불개입)으로 오류 최소화. v8 interior_takeoff 스테이징 경유(견적행 추가는 기존 TakeoffPicker 재사용).
+
+## 23-1 데이터 계약 — DLP-TAKEOFF v1 CSV
+- 1행 매직헤더: `#DLP-TAKEOFF,v1,exported_at=<ISO>,model=<모델명>,plugin=AndoEstimator25/<ver>`
+- 2행 컬럼헤더: `category,name,spec,qty,unit,alt_qty,alt_unit,guid`
+- 규칙: UTF-8+BOM · 전 필드 RFC4180 큰따옴표 인용 · 숫자 소수점만(천단위콤마 금지) · 단위 m2/m/EA 정규화 · qty=주수량(면적/길이), alt=보조(장수/본수) · 수량류는 qty 빈값+alt만(임포터가 alt를 주수량 승격) · guid 빈값 허용(v1).
+- category ∈ {면적, 면적(단열), 면적(가벽), 길이, 구조재, 보드, 수량} (자유 확장 허용 — 임포터는 미지 category 도 수용)
+
+## 23-2 플러그인 (AndoEstimator25, 리팩터+신규 버튼)
+- 집계 로직을 `collect_rows` 로 추출 → `[{category,name,spec,qty,unit,alt_qty,alt_unit}]`. **기존 "견적 산출"(사람용 6열 CSV) 출력 100% 동일 유지**(collect_rows 재조립).
+- 신규 커맨드 **"앱으로 내보내기"**: collect_rows → v1 CSV(savepanel, 파일명 `dlp_takeoff_<모델명>.csv`). 툴바에 두 버튼.
+
+## 23-3 앱 임포트 (프론트 파싱 → 기존 배치 POST)
+- **파서(클라이언트)**: BOM 제거 → `#DLP-TAKEOFF,v1` 감지(v1 모드) / 헤더 `구분,이름,값,단위,갯수,단위2` 감지(**레거시 폴백** — 기존 "견적 산출" CSV 그대로 지원) / 둘 다 아니면 명확한 거부 메시지. RFC4180 인용 파서. 행별 검증(name 필수·qty 숫자) → ok/skip(사유) 분리.
+- **공종 자동매핑**(키워드, TRADE_MASTER 21종): category 구조재/보드/가벽→목공사, 단열→단열/기밀공사, name/spec 걸레받이|몰딩|목공→목공사, 벽지|도배→도배공사, 페인트|도장→도장공사, 타일→타일공사, 마루|바닥|장판→바닥공사, 조명|라이트→전기공사, 필름→필름공사, 유리→유리공사, 철거→철거공사, 가구|붙박이→가구공사, 그 외→''(미분류, 미리보기에서 수정 가능).
+- **미리보기 모달**: 파싱 결과 테이블(공종 Combo 수정가능/품목/규격/수량/단위) + 스킵 행 사유 + 요약(N개 가져옴·M개 스킵) + [기존 스케치업 물량 대체] 체크(기본 on) → 확인 시 배치 POST.
+- 진입점: TakeoffPickerModal 에 [📄 스케치업 CSV 가져오기] 버튼(파일 input) → 임포트 후 목록 자동 리프레시.
+- memo 에 `DLP v1|legacy` + alt(`3EA` 등) 기록 → 견적행 추가 시 참고 정보 유지.
+
+## 23-4 서버 (최소 변경)
+- `POST /api/sites/:id/takeoff?replace_sketchup=1` — 트랜잭션: `DELETE FROM interior_takeoff WHERE site_id=$1 AND source='sketchup'` 후 배치 INSERT(전부 source='sketchup'). 플래그 없으면 기존 동작 그대로(v8 100% 보존).
+
+## 검증
+- 파서 유닛: v1 CSV(인용/콤마 포함 이름/수량류 alt 승격)·레거시 6열·비정상 파일 거부·스킵 사유.
+- e2e: replace_sketchup=1 재임포트 시 스케치업분만 대체(manual 보존)·트랜잭션. 플러그인: 스케치업 콘솔 스모크(사용자, 리로드 명령 제공).
+- v1~v22 회귀.
+
+> ✅ **구현·검증 완료 (2026-07-02)**. 백엔드 e2e 12/12(격리 임시팀·잔존0): replace_sketchup 대체(수기 보존·이전 스케치업분 삭제)/불량배치 400+트랜잭션 불변/플래그없음 v8 누적 회귀. 브라우저(Playwright): v1 CSV 10행+스킵1(수량없음 사유)·RFC4180 콤마/이중따옴표 이름 안전·공종 자동매핑(도배/단열/목공/전기, insul 영문키워드 포함)·가져오기→11개 물량(대체 확인)·물량→견적행 추가 관통·레거시 6열 7/7 폴백(이름/스펙 분리·구분괄호→spec·보조수량 memo). 플러그인: collect_rows 리팩터+export_for_app(v1 CSV, RFC4180 인용·m²→m2)+"앱으로 내보내기" 툴바 버튼, ruby -c OK, 사람용 "견적 산출" 6열 출력 유지(BOM ﻿). 스케치업 실기동 스모크는 사용자 수행(리로드 명령 안내).
