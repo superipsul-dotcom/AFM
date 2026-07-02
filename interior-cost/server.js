@@ -152,6 +152,10 @@ function sanitizeFileName(name) {
   s = s.replace(new RegExp('[\\x00-\\x1f\\x7f]', 'g'), '_'); // control chars
   s = s.replace(/^\.+/, '_'); // 선두 점(숨김/상대경로) 차단
   s = s.replace(/\s+/g, '_'); // 공백 → _
+  // Supabase Storage 객체 키는 S3 규격(영숫자 + !-_.*'())만 허용 — 한글 등 비허용 문자는 _ 치환.
+  // (한글 파일명이면 키가 "_.pdf" 꼴이 되지만 timestamp 프리픽스로 유니크, 원본명은 DB file_name 에 보존)
+  s = s.replace(/[^0-9A-Za-z!\-_.*'()]/g, '_');
+  s = s.replace(/_{2,}/g, '_'); // 연속 _ 축약
   if (!s) s = 'file';
   return s.slice(0, 180); // 과도한 길이 컷
 }
@@ -185,7 +189,8 @@ async function ensureStorageBucket() {
 async function signUploadUrl(storagePath) {
   const resp = await fetch(
     `${SUPABASE_URL}/storage/v1/object/upload/sign/${STORAGE_BUCKET}/${storagePath}`,
-    { method: 'POST', headers: storageHeaders() }
+    // body '{}' 필수: Content-Type json + 빈 body 면 Supabase(Fastify) 가 400 "Body cannot be empty".
+    { method: 'POST', headers: storageHeaders(), body: '{}' }
   );
   if (!resp.ok) throw new Error(`sign-upload HTTP ${resp.status}`);
   const data = await resp.json(); // { url: '/object/upload/sign/...?token=...' }
@@ -207,10 +212,13 @@ async function signDownloadUrl(storagePath, expiresIn = 3600) {
 async function deleteStorageObject(storagePath) {
   if (!storageConfigured() || !storagePath) return;
   try {
-    await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`, {
+    // body '{}' 필수: Content-Type json + 빈 body 면 Supabase(Fastify) 400 → 삭제가 조용히 실패했었음.
+    const resp = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`, {
       method: 'DELETE',
       headers: storageHeaders(),
+      body: '{}',
     });
+    if (!resp.ok && resp.status !== 404) console.warn(`⚠️  Storage 객체 삭제 응답 HTTP ${resp.status} (계속 진행): ${storagePath}`);
   } catch (err) {
     console.warn('⚠️  Storage 객체 삭제 예외(무시):', err.message);
   }
