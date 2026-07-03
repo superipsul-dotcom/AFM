@@ -224,6 +224,176 @@ async function deleteStorageObject(storagePath) {
   }
 }
 
+// ════════════════════════════════════════════════════════════════
+// (v24) CODEF 조회 API — KB국민카드 등 카드 승인내역 연동.
+//   보안 원칙: 카드사 비밀번호는 서버/DB에 절대 저장하지 않는다.
+//   등록 시 RSA(PKCS1) 암호화 → CODEF 보안볼트로 즉시 전달, 우리는 connectedId 만 보관.
+//   CODEF 키 미설정이면 mock 모드(전체 플로우 동작, 샘플 데이터) — 키 등록 즉시 실연동.
+// ════════════════════════════════════════════════════════════════
+const CODEF_CLIENT_ID = (process.env.CODEF_CLIENT_ID || '').trim();
+const CODEF_CLIENT_SECRET = (process.env.CODEF_CLIENT_SECRET || '').trim();
+const CODEF_PUBLIC_KEY = (process.env.CODEF_PUBLIC_KEY || '').trim();
+const CODEF_API_HOST = (process.env.CODEF_API_HOST || 'https://development.codef.io').trim().replace(/\/$/, '');
+
+function codefConfigured() {
+  return Boolean(CODEF_CLIENT_ID && CODEF_CLIENT_SECRET && CODEF_PUBLIC_KEY);
+}
+
+// 카드사 기관코드 (CODEF organization)
+const CARD_ORGS = {
+  '0301': 'KB국민카드', '0302': '삼성카드', '0304': '현대카드', '0305': 'BC카드',
+  '0306': '신한카드', '0309': '우리카드', '0311': '롯데카드', '0313': '하나카드', '0321': 'NH농협카드',
+};
+
+// RSA(PKCS1 v1.5) 암호화 — CODEF 규격. PUBLIC_KEY 가 base64 본문만이면 PEM 헤더 자동 감싸기.
+function codefRsaEncrypt(plain) {
+  let pem = CODEF_PUBLIC_KEY;
+  if (!pem.includes('BEGIN')) {
+    const body = pem.replace(/\s+/g, '').match(/.{1,64}/g).join('\n');
+    pem = `-----BEGIN PUBLIC KEY-----\n${body}\n-----END PUBLIC KEY-----`;
+  }
+  return crypto.publicEncrypt(
+    { key: pem, padding: crypto.constants.RSA_PKCS1_PADDING },
+    Buffer.from(String(plain), 'utf8')
+  ).toString('base64');
+}
+
+// OAuth 토큰 캐시 (client_credentials)
+let codefTokenCache = { token: null, expiresAt: 0 };
+async function codefToken() {
+  if (codefTokenCache.token && Date.now() < codefTokenCache.expiresAt - 60000) return codefTokenCache.token;
+  const basic = Buffer.from(`${CODEF_CLIENT_ID}:${CODEF_CLIENT_SECRET}`).toString('base64');
+  const resp = await fetch('https://oauth.codef.io/oauth/token?grant_type=client_credentials&scope=read', {
+    method: 'POST',
+    headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+  if (!resp.ok) throw new Error(`CODEF 토큰 발급 실패 HTTP ${resp.status}`);
+  const data = await resp.json();
+  codefTokenCache = { token: data.access_token, expiresAt: Date.now() + (Number(data.expires_in) || 3600) * 1000 };
+  return codefTokenCache.token;
+}
+
+// CODEF 요청 wrapper — 응답이 URL 인코딩된 JSON 인 경우가 있어 decode 시도 후 파싱.
+//   result.code !== 'CF-00000' 이면 코드+메시지로 throw(추가인증 CF-12xxx 등 사용자에게 그대로 안내).
+async function codefRequest(pathname, body) {
+  const token = await codefToken();
+  const resp = await fetch(`${CODEF_API_HOST}${pathname}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const raw = await resp.text();
+  let parsed;
+  try { parsed = JSON.parse(decodeURIComponent(raw.replace(/\+/g, '%20'))); }
+  catch (e) { try { parsed = JSON.parse(raw); } catch (e2) { throw new Error(`CODEF 응답 파싱 실패 (HTTP ${resp.status})`); } }
+  const code = parsed && parsed.result && parsed.result.code;
+  if (code !== 'CF-00000') {
+    const msg = (parsed && parsed.result && (parsed.result.message || parsed.result.extraMessage)) || '알 수 없는 오류';
+    const err = new Error(`CODEF ${code || 'ERR'}: ${msg}`);
+    err.codefCode = code;
+    throw err;
+  }
+  return parsed.data;
+}
+
+// 계정(카드사 로그인) 등록 → connectedId. 비번은 이 함수 안에서 즉시 암호화되어 나가고 어디에도 저장되지 않는다.
+async function codefCreateAccount({ organization, clientType, loginId, password }) {
+  const data = await codefRequest('/v1/account/create', {
+    accountList: [{
+      countryCode: 'KR', businessType: 'CD', clientType,
+      organization, loginType: '1', id: loginId, password: codefRsaEncrypt(password),
+    }],
+  });
+  const cid = data && data.connectedId;
+  if (!cid) throw new Error('CODEF connectedId 발급 실패');
+  return cid;
+}
+
+async function codefDeleteAccount({ connectedId, organization, clientType }) {
+  await codefRequest('/v1/account/delete', {
+    accountList: [{ countryCode: 'KR', businessType: 'CD', clientType, organization, loginType: '1' }],
+    connectedId,
+  });
+}
+
+// 승인내역 조회 (개인 p / 법인 b) → 표준화 행 배열.
+//   카드사/상품별 응답 필드가 조금씩 달라 후보 키에서 안전 추출.
+function pick(obj, keys, dflt = '') {
+  for (const k of keys) {
+    if (obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return String(obj[k]).trim();
+  }
+  return dflt;
+}
+function codefMapApproval(r) {
+  const dateRaw = pick(r, ['resUsedDate', 'resApprovalDate']); // YYYYMMDD
+  const timeRaw = pick(r, ['resUsedTime', 'resApprovalTime'], '000000'); // HHmmss
+  const d = dateRaw.replace(/\D/g, '');
+  const t = (timeRaw.replace(/\D/g, '') + '000000').slice(0, 6);
+  const usedAt = d.length === 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${t.slice(0, 2)}:${t.slice(2, 4)}:${t.slice(4, 6)}+09:00` : null;
+  const cancelYn = pick(r, ['resCancelYN', 'resCancelYn']);
+  const statusRaw = pick(r, ['resApprovalStatus', 'resPaymentStatus']);
+  const status = cancelYn === '1' || /취소/.test(statusRaw) ? '취소' : '승인';
+  const amount = Number(pick(r, ['resUsedAmount', 'resApprovalAmount', 'resPaymentAmount'], '0').replace(/[^0-9.-]/g, '')) || 0;
+  return {
+    approval_no: pick(r, ['resApprovalNo', 'resApprovalNumber']),
+    used_at: usedAt,
+    merchant: pick(r, ['resMemberStoreName', 'resMemberStoreNm', 'resStoreName']),
+    merchant_biz_no: pick(r, ['resMemberStoreNo', 'resMemberStoreCorpNo', 'resCompanyIdentityNo']),
+    merchant_type: pick(r, ['resMemberStoreType', 'resStoreType', 'resBusinessCode']),
+    amount,
+    card_no: pick(r, ['resCardNo', 'resCardNumber']),
+    status,
+    installment: pick(r, ['resInstallmentMonth', 'resInstallment'], ''),
+  };
+}
+async function codefApprovals({ connectedId, organization, clientType, startDate, endDate }) {
+  const path = clientType === 'B' ? '/v1/kr/card/b/account/approval-list' : '/v1/kr/card/p/account/approval-list';
+  const data = await codefRequest(path, {
+    organization, connectedId,
+    startDate, endDate, // YYYYMMDD
+    orderBy: '0', inquiryType: '0',
+  });
+  const list = Array.isArray(data) ? data : data ? [data] : [];
+  return list.map(codefMapApproval).filter((x) => x.used_at && x.approval_no);
+}
+
+// ── mock 모드: 현실적인 인테리어 지출 샘플 생성 (키 없이 전체 플로우 검증/시연용) ──
+const MOCK_MERCHANTS = [
+  { m: '동화철물백화점', t: '철물점', biz: '1108801234', amtRange: [30000, 400000] },
+  { m: '을지로타일도기', t: '타일도기', biz: '2018812345', amtRange: [100000, 1500000] },
+  { m: '한솔목재상사', t: '목재상', biz: '1058823456', amtRange: [200000, 2000000] },
+  { m: '남대문조명프라자', t: '조명기구', biz: '1048834567', amtRange: [50000, 900000] },
+  { m: '(주)LX하우시스대리점', t: '건축자재', biz: '2148845678', amtRange: [300000, 3000000] },
+  { m: '페인트나라방배점', t: '도료판매', biz: '1208856789', amtRange: [40000, 500000] },
+  { m: 'GS25 성수현장점', t: '편의점', biz: '1178867890', amtRange: [3000, 25000] },
+  { m: '김밥천국 성수점', t: '음식점', biz: '2068878901', amtRange: [7000, 45000] },
+  { m: '스타벅스 성수역점', t: '커피전문점', biz: '2018889012', amtRange: [4500, 32000] },
+  { m: '쿠팡(주)', t: '전자상거래', biz: '1208891234', amtRange: [10000, 300000] },
+  { m: '현대주유소', t: '주유소', biz: '1108802345', amtRange: [50000, 90000] },
+  { m: '철거왕산업폐기물', t: '폐기물처리', biz: '3018813456', amtRange: [150000, 800000] },
+];
+function mockApprovals(startDate, endDate) {
+  const start = new Date(`${startDate.slice(0, 4)}-${startDate.slice(4, 6)}-${startDate.slice(6, 8)}T00:00:00+09:00`);
+  const end = new Date(`${endDate.slice(0, 4)}-${endDate.slice(4, 6)}-${endDate.slice(6, 8)}T23:59:59+09:00`);
+  const span = Math.max(1, end.getTime() - start.getTime());
+  const n = 15 + Math.floor(Math.random() * 11); // 15~25건
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const mm = MOCK_MERCHANTS[Math.floor(Math.random() * MOCK_MERCHANTS.length)];
+    const at = new Date(start.getTime() + Math.random() * span);
+    const amt = Math.round((mm.amtRange[0] + Math.random() * (mm.amtRange[1] - mm.amtRange[0])) / 100) * 100;
+    rows.push({
+      approval_no: 'M' + at.getTime().toString().slice(-8) + String(i).padStart(2, '0'),
+      used_at: at.toISOString(),
+      merchant: mm.m, merchant_biz_no: mm.biz, merchant_type: mm.t,
+      amount: amt, card_no: '5570-12**-****-1234',
+      status: Math.random() < 0.04 ? '취소' : '승인',
+      installment: '',
+    });
+  }
+  return rows;
+}
+
 async function initDB() {
   if (dbInitialized) return;
 
@@ -754,6 +924,56 @@ async function initDB() {
   await pool.query(`ALTER TABLE interior_sites ADD COLUMN IF NOT EXISTS client_share_token TEXT`);
   await pool.query(`ALTER TABLE interior_sites ADD COLUMN IF NOT EXISTS client_share_password_hash TEXT`);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_sites_client_share_token ON interior_sites (client_share_token);');
+
+  // (v24) 카드 연동 — 계정(connectedId만)·거래 스테이징·가맹점 학습규칙. 팀 스코핑 team_id 직접.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_card_accounts (
+      id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id        BIGINT NOT NULL,
+      organization   TEXT NOT NULL DEFAULT '0301',
+      card_type      TEXT NOT NULL DEFAULT 'P',
+      connected_id   TEXT NOT NULL DEFAULT '',
+      label          TEXT NOT NULL DEFAULT '',
+      last_synced_at TIMESTAMPTZ,
+      active         BOOLEAN NOT NULL DEFAULT true,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_card_accounts_team ON interior_card_accounts (team_id);');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_card_txns (
+      id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id         BIGINT NOT NULL,
+      account_id      BIGINT NOT NULL REFERENCES interior_card_accounts(id) ON DELETE CASCADE,
+      approval_no     TEXT NOT NULL DEFAULT '',
+      used_at         TIMESTAMPTZ NOT NULL,
+      merchant        TEXT NOT NULL DEFAULT '',
+      merchant_biz_no TEXT NOT NULL DEFAULT '',
+      merchant_type   TEXT NOT NULL DEFAULT '',
+      amount          BIGINT NOT NULL DEFAULT 0,
+      card_no         TEXT NOT NULL DEFAULT '',
+      status          TEXT NOT NULL DEFAULT '승인',
+      installment     TEXT NOT NULL DEFAULT '',
+      site_id         BIGINT REFERENCES interior_sites(id) ON DELETE SET NULL,
+      cost_id         BIGINT REFERENCES interior_costs(id) ON DELETE SET NULL,
+      excluded        BOOLEAN NOT NULL DEFAULT false,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (account_id, approval_no, used_at)
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_card_txns_team ON interior_card_txns (team_id, used_at DESC);');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_merchant_rules (
+      id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id    BIGINT NOT NULL,
+      merchant   TEXT NOT NULL,
+      site_id    BIGINT REFERENCES interior_sites(id) ON DELETE CASCADE,
+      category   TEXT NOT NULL DEFAULT '자재비',
+      process    TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (team_id, merchant)
+    )
+  `);
 
   // (v20) Storage 버킷 ensure (키 있을 때만, best-effort — 실패해도 부팅 계속)
   await ensureStorageBucket();
@@ -2840,6 +3060,308 @@ app.delete('/api/site-staff/:id', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('DELETE /api/site-staff/:id 오류:', err.message);
     res.status(500).json({ success: false, message: '배정을 해제하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// (v24) REST API — 카드 연동(CODEF): 계정/동기화/거래 스테이징/배분
+//   팀 스코핑 = team_id 직접. 비밀번호는 어떤 경로로도 저장되지 않는다.
+// ========================================
+function rowToCardAccount(row) {
+  return {
+    id: String(row.id),
+    organization: row.organization,
+    organization_name: CARD_ORGS[row.organization] || row.organization,
+    card_type: row.card_type,
+    label: row.label || '',
+    mock: String(row.connected_id || '').startsWith('mock-'),
+    last_synced_at: row.last_synced_at ? new Date(row.last_synced_at).toISOString() : null,
+    active: row.active !== false,
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+function rowToCardTxn(row) {
+  return {
+    id: String(row.id),
+    account_id: String(row.account_id),
+    account_label: row.account_label || '',
+    approval_no: row.approval_no || '',
+    used_at: new Date(row.used_at).toISOString(),
+    merchant: row.merchant || '',
+    merchant_biz_no: row.merchant_biz_no || '',
+    merchant_type: row.merchant_type || '',
+    amount: Number(row.amount),
+    card_no: row.card_no || '',
+    status: row.status || '승인',
+    installment: row.installment || '',
+    site_id: row.site_id == null ? null : String(row.site_id),
+    site_name: row.site_name || null,
+    cost_id: row.cost_id == null ? null : String(row.cost_id),
+    excluded: !!row.excluded,
+    // 가맹점 학습규칙 제안(있을 때만)
+    suggested_site_id: row.sug_site_id == null ? null : String(row.sug_site_id),
+    suggested_category: row.sug_category || null,
+    suggested_process: row.sug_process || null,
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+const yyyymmdd = (d) => {
+  const x = new Date(d);
+  return `${x.getFullYear()}${String(x.getMonth() + 1).padStart(2, '0')}${String(x.getDate()).padStart(2, '0')}`;
+};
+
+// GET /api/card/config — 연동 모드(프론트 뱃지/안내용)
+app.get('/api/card/config', (req, res) => {
+  res.json({ configured: codefConfigured(), mode: codefConfigured() ? 'live' : 'mock', host: CODEF_API_HOST });
+});
+
+// GET /api/card/accounts — 팀의 카드 계정 목록
+app.get('/api/card/accounts', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM interior_card_accounts WHERE team_id=$1 ORDER BY id ASC', [req.teamId]
+    );
+    res.json(rows.map(rowToCardAccount));
+  } catch (err) {
+    console.error('GET /api/card/accounts 오류:', err.message);
+    res.status(500).json({ success: false, message: '카드 계정을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/card/accounts — 카드사 로그인 등록 → connectedId 보관(비번 비저장).
+app.post('/api/card/accounts', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const organization = CARD_ORGS[String(b.organization || '').trim()] ? String(b.organization).trim() : '0301';
+    const cardType = b.card_type === 'B' ? 'B' : 'P';
+    const loginId = typeof b.login_id === 'string' ? b.login_id.trim() : '';
+    const password = typeof b.password === 'string' ? b.password : '';
+    const label = (typeof b.label === 'string' && b.label.trim()) || `${CARD_ORGS[organization]} ${cardType === 'B' ? '법인' : '개인'}`;
+    if (!loginId || !password) return res.status(400).json({ success: false, message: '카드사 아이디와 비밀번호를 입력하세요.' });
+
+    let connectedId;
+    if (codefConfigured()) {
+      try {
+        connectedId = await codefCreateAccount({ organization, clientType: cardType, loginId, password });
+      } catch (e) {
+        // CODEF 오류(로그인 실패/추가인증 등)는 메시지 그대로 안내
+        return res.status(400).json({ success: false, message: e.message });
+      }
+    } else {
+      connectedId = 'mock-' + crypto.randomBytes(12).toString('hex'); // 모의 모드
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO interior_card_accounts (team_id, organization, card_type, connected_id, label)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.teamId, organization, cardType, connectedId, label]
+    );
+    res.status(201).json(rowToCardAccount(rows[0]));
+  } catch (err) {
+    console.error('POST /api/card/accounts 오류:', err.message);
+    res.status(500).json({ success: false, message: '카드 계정을 등록하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/card/accounts/:id — 연동 해제(CODEF 계정 삭제 best-effort + 행 삭제, txns CASCADE. 반영된 비용은 보존)
+app.delete('/api/card/accounts/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 계정 id 형식입니다.' });
+    const q = await pool.query('SELECT * FROM interior_card_accounts WHERE id=$1 AND team_id=$2', [id, req.teamId]);
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '해당 카드 계정을 찾을 수 없습니다.' });
+    const acc = q.rows[0];
+    if (codefConfigured() && !String(acc.connected_id).startsWith('mock-')) {
+      try { await codefDeleteAccount({ connectedId: acc.connected_id, organization: acc.organization, clientType: acc.card_type }); }
+      catch (e) { console.warn('⚠️  CODEF 계정 삭제 실패(무시):', e.message); }
+    }
+    await pool.query('DELETE FROM interior_card_accounts WHERE id=$1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/card/accounts/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '카드 계정을 해제하지 못했습니다.' });
+  }
+});
+
+// POST /api/card/accounts/:id/sync — 승인내역 동기화(기본: 마지막 동기화−3일 ~ 오늘, 최초 30일. UNIQUE 로 중복 차단)
+app.post('/api/card/accounts/:id/sync', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 계정 id 형식입니다.' });
+    const q = await pool.query('SELECT * FROM interior_card_accounts WHERE id=$1 AND team_id=$2', [id, req.teamId]);
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '해당 카드 계정을 찾을 수 없습니다.' });
+    const acc = q.rows[0];
+
+    const b = req.body || {};
+    const today = new Date();
+    let startDate;
+    if (b.start_date && isRealDate(String(b.start_date))) startDate = String(b.start_date).replace(/-/g, '');
+    else if (acc.last_synced_at) startDate = yyyymmdd(new Date(new Date(acc.last_synced_at).getTime() - 3 * 86400000));
+    else startDate = yyyymmdd(new Date(today.getTime() - 30 * 86400000));
+    const endDate = b.end_date && isRealDate(String(b.end_date)) ? String(b.end_date).replace(/-/g, '') : yyyymmdd(today);
+
+    let approvals;
+    if (String(acc.connected_id).startsWith('mock-')) {
+      approvals = mockApprovals(startDate, endDate);
+    } else if (codefConfigured()) {
+      try {
+        approvals = await codefApprovals({
+          connectedId: acc.connected_id, organization: acc.organization, clientType: acc.card_type,
+          startDate, endDate,
+        });
+      } catch (e) {
+        return res.status(400).json({ success: false, message: e.message });
+      }
+    } else {
+      return res.status(503).json({ error: 'CODEF 미설정 — 이 계정은 실연동 계정입니다. CODEF 키를 설정하세요.' });
+    }
+
+    let imported = 0, skipped = 0;
+    for (const a of approvals) {
+      const r = await pool.query(
+        `INSERT INTO interior_card_txns
+           (team_id, account_id, approval_no, used_at, merchant, merchant_biz_no, merchant_type, amount, card_no, status, installment)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         ON CONFLICT (account_id, approval_no, used_at) DO NOTHING RETURNING id`,
+        [req.teamId, id, a.approval_no, a.used_at, a.merchant, a.merchant_biz_no, a.merchant_type,
+         Math.round(a.amount), a.card_no, a.status, a.installment]
+      );
+      if (r.rows.length) imported++; else skipped++;
+    }
+    await pool.query('UPDATE interior_card_accounts SET last_synced_at=now() WHERE id=$1', [id]);
+    res.json({ imported, skipped, total: approvals.length, from: startDate, to: endDate });
+  } catch (err) {
+    console.error('POST /api/card/accounts/:id/sync 오류:', err.message);
+    res.status(500).json({ success: false, message: '카드 내역을 동기화하지 못했습니다.' });
+  }
+});
+
+// GET /api/card/txns?view=unassigned|assigned|excluded|all — 거래 목록(+가맹점 규칙 제안/계정/현장 JOIN)
+app.get('/api/card/txns', async (req, res) => {
+  try {
+    const view = ['unassigned', 'assigned', 'excluded', 'all'].includes(String(req.query.view)) ? String(req.query.view) : 'unassigned';
+    let cond = '';
+    if (view === 'unassigned') cond = 'AND t.cost_id IS NULL AND t.excluded = false';
+    else if (view === 'assigned') cond = 'AND t.cost_id IS NOT NULL';
+    else if (view === 'excluded') cond = 'AND t.excluded = true AND t.cost_id IS NULL';
+    const { rows } = await pool.query(
+      `SELECT t.*, a.label AS account_label, s.name AS site_name,
+              r.site_id AS sug_site_id, r.category AS sug_category, r.process AS sug_process
+         FROM interior_card_txns t
+         JOIN interior_card_accounts a ON a.id = t.account_id
+         LEFT JOIN interior_sites s ON s.id = t.site_id
+         LEFT JOIN interior_merchant_rules r ON r.team_id = t.team_id AND r.merchant = t.merchant
+        WHERE t.team_id=$1 ${cond}
+        ORDER BY t.used_at DESC, t.id DESC
+        LIMIT 500`,
+      [req.teamId]
+    );
+    res.json(rows.map(rowToCardTxn));
+  } catch (err) {
+    console.error('GET /api/card/txns 오류:', err.message);
+    res.status(500).json({ success: false, message: '카드 거래를 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/card/txns/assign — 선택 거래를 현장 비용으로 반영(+선택 시 가맹점 규칙 학습). 트랜잭션.
+app.post('/api/card/txns/assign', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const b = req.body || {};
+    const ids = Array.isArray(b.ids) ? b.ids.map(parseId).filter(Boolean) : [];
+    const siteId = parseId(b.site_id);
+    const category = (typeof b.category === 'string' && b.category.trim()) || '자재비';
+    const processName = typeof b.process === 'string' ? b.process.trim() : '';
+    const remember = !!b.remember;
+    if (ids.length === 0) return res.status(400).json({ success: false, message: '배분할 거래를 선택하세요.' });
+    if (!siteId) return res.status(400).json({ success: false, message: '현장을 선택하세요.' });
+
+    const site = await client.query('SELECT id, name FROM interior_sites WHERE id=$1 AND team_id=$2', [siteId, req.teamId]);
+    if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
+
+    await client.query('BEGIN');
+    const txq = await client.query(
+      `SELECT t.*, a.label AS account_label FROM interior_card_txns t
+         JOIN interior_card_accounts a ON a.id = t.account_id
+        WHERE t.id = ANY($1) AND t.team_id=$2 AND t.cost_id IS NULL AND t.excluded=false AND t.status='승인'
+        FOR UPDATE`,
+      [ids, req.teamId]
+    );
+    let assigned = 0;
+    let lastMerchant = '';
+    for (const t of txq.rows) {
+      const dateStr = new Date(t.used_at).toISOString().slice(0, 10);
+      const memo = `카드 ${t.account_label || ''}${t.approval_no ? ` · 승인 ${t.approval_no}` : ''}`.trim();
+      const c = await client.query(
+        `INSERT INTO interior_costs (site_id, date, amount, category, process, manager, vendor, memo, schedule_id, has_invoice)
+         VALUES ($1,$2,$3,$4,$5,'',$6,$7,NULL,false) RETURNING id`,
+        [siteId, dateStr, Number(t.amount), category, processName, t.merchant || '', memo]
+      );
+      await client.query('UPDATE interior_card_txns SET site_id=$1, cost_id=$2 WHERE id=$3', [siteId, c.rows[0].id, t.id]);
+      assigned++;
+      if (t.merchant) lastMerchant = t.merchant;
+    }
+    if (remember) {
+      // 선택 거래들의 가맹점 전부 학습(같은 값으로) — 다음 동기화부터 제안 프리필
+      const merchants = Array.from(new Set(txq.rows.map((t) => t.merchant).filter(Boolean)));
+      for (const m of merchants) {
+        await client.query(
+          `INSERT INTO interior_merchant_rules (team_id, merchant, site_id, category, process)
+           VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT (team_id, merchant) DO UPDATE SET site_id=$3, category=$4, process=$5`,
+          [req.teamId, m, siteId, category, processName]
+        );
+      }
+    }
+    await client.query('COMMIT');
+    res.json({ assigned, requested: ids.length, skipped: ids.length - assigned, site_name: site.rows[0].name, remembered: remember });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('POST /api/card/txns/assign 오류:', err.message);
+    res.status(500).json({ success: false, message: '비용으로 반영하지 못했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// POST /api/card/txns/:id/unassign — 배분 해제(연결된 비용 삭제 + 링크 해제). 트랜잭션.
+app.post('/api/card/txns/:id/unassign', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 거래 id 형식입니다.' });
+    await client.query('BEGIN');
+    const q = await client.query('SELECT * FROM interior_card_txns WHERE id=$1 AND team_id=$2 FOR UPDATE', [id, req.teamId]);
+    if (q.rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ success: false, message: '해당 거래를 찾을 수 없습니다.' }); }
+    const t = q.rows[0];
+    if (t.cost_id) await client.query('DELETE FROM interior_costs WHERE id=$1', [t.cost_id]);
+    await client.query('UPDATE interior_card_txns SET site_id=NULL, cost_id=NULL WHERE id=$1', [id]);
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('POST /api/card/txns/:id/unassign 오류:', err.message);
+    res.status(500).json({ success: false, message: '배분을 해제하지 못했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// POST /api/card/txns/:id/exclude — 개인지출 등 제외/복원 토글
+app.post('/api/card/txns/:id/exclude', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 거래 id 형식입니다.' });
+    const excluded = parseBool((req.body || {}).excluded, true);
+    const r = await pool.query(
+      'UPDATE interior_card_txns SET excluded=$1 WHERE id=$2 AND team_id=$3 AND cost_id IS NULL RETURNING id',
+      [excluded, id, req.teamId]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ success: false, message: '해당 거래를 찾을 수 없습니다. (배분된 거래는 먼저 해제하세요)' });
+    res.json({ success: true, excluded });
+  } catch (err) {
+    console.error('POST /api/card/txns/:id/exclude 오류:', err.message);
+    res.status(500).json({ success: false, message: '거래를 변경하지 못했습니다.' });
   }
 });
 

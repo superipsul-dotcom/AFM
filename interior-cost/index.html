@@ -1912,6 +1912,35 @@
           };
         }
       },
+      // ════════ v24: 카드 연동(CODEF) — 서버 전용(자격증명/토큰이 서버에 있음), 데모 폴백 없음 ════════
+      async cardConfig() {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/config`); this._useMock = false; return d;
+      },
+      async listCardAccounts() {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/accounts`); this._useMock = false; return d;
+      },
+      async createCardAccount(body) {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/accounts`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d;
+      },
+      async removeCardAccount(id) {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/accounts/${id}`, { method: 'DELETE' }); this._useMock = false; return d;
+      },
+      async syncCardAccount(id, body = {}) {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/accounts/${id}/sync`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d;
+      },
+      async listCardTxns(view = 'unassigned') {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/txns?view=${encodeURIComponent(view)}`); this._useMock = false; return d;
+      },
+      async assignCardTxns(body) {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/txns/assign`, { method: 'POST', body: JSON.stringify(body) }); this._useMock = false; return d;
+      },
+      async unassignCardTxn(id) {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/txns/${id}/unassign`, { method: 'POST', body: JSON.stringify({}) }); this._useMock = false; return d;
+      },
+      async excludeCardTxn(id, excluded) {
+        const d = await this._tryFetch(`${API_BASE_URL}/card/txns/${id}/exclude`, { method: 'POST', body: JSON.stringify({ excluded }) }); this._useMock = false; return d;
+      },
+
       // ════════ v10: 발주 자동생성 (확정 견적 → 공종별 발주 초안) ════════
       async autoGenerateOrders(siteId, opts = {}) {
         const replace = opts.replace ? 1 : 0;
@@ -4767,6 +4796,361 @@
             <div className="flex justify-end pt-1"><Button variant="secondary" onClick={onClose}>닫기</Button></div>
           </div>
         </Modal>
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // (v24) 카드 연동(CODEF) — KB국민카드 등 승인내역 → 현장 비용 배분
+    //   비밀번호는 서버/DB에 저장되지 않음(CODEF connectedId 방식). 키 미설정 시 모의(mock) 모드.
+    // ══════════════════════════════════════════════════════════════
+    const CARD_ORG_OPTIONS = [
+      ['0301', 'KB국민카드'], ['0306', '신한카드'], ['0302', '삼성카드'], ['0304', '현대카드'],
+      ['0311', '롯데카드'], ['0309', '우리카드'], ['0313', '하나카드'], ['0305', 'BC카드'], ['0321', 'NH농협카드'],
+    ];
+
+    function CardConnectModal({ isOpen, onClose, mode, onCreated }) {
+      const toast = useToast();
+      const [org, setOrg] = useState('0301');
+      const [cardType, setCardType] = useState('P');
+      const [loginId, setLoginId] = useState('');
+      const [pw, setPw] = useState('');
+      const [label, setLabel] = useState('');
+      const [agree, setAgree] = useState(false);
+      const [busy, setBusy] = useState(false);
+      useEffect(() => { if (!isOpen) { setLoginId(''); setPw(''); setLabel(''); setAgree(false); setBusy(false); } }, [isOpen]);
+
+      const submit = async (e) => {
+        e.preventDefault();
+        if (busy) return;
+        if (!agree) { toast('보안 안내에 동의해 주세요.', 'error'); return; }
+        setBusy(true);
+        try {
+          await api.createCardAccount({ organization: org, card_type: cardType, login_id: loginId.trim(), password: pw, label: label.trim() });
+          toast('카드가 연결되었습니다. [동기화]를 눌러 내역을 불러오세요.', 'success');
+          if (onCreated) onCreated();
+          onClose();
+        } catch (err) {
+          toast(err.message || '카드 연결에 실패했습니다.', 'error');
+        } finally { setBusy(false); }
+      };
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="💳 카드 연결" size="md">
+          <form onSubmit={submit} className="space-y-4">
+          {mode === 'mock' && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-[12px] text-amber-800">
+              CODEF 키가 아직 설정되지 않아 <b>모의(샘플 데이터) 모드</b>로 등록됩니다. 실연동 전 전체 흐름을 미리 써볼 수 있고,
+              키를 설정하면 새로 연결하는 카드부터 실데이터가 들어옵니다. (아이디/비밀번호는 모의 모드에서 사용되지 않습니다)
+            </div>
+          )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <span className="block mb-1.5 text-sm font-medium text-slate-700">카드사</span>
+                <select value={org} onChange={(e) => setOrg(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  {CARD_ORG_OPTIONS.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+                </select>
+              </div>
+              <div>
+                <span className="block mb-1.5 text-sm font-medium text-slate-700">구분</span>
+                <div className="flex gap-1.5">
+                  {[['P', '개인'], ['B', '법인']].map(([v, n]) => (
+                    <button key={v} type="button" onClick={() => setCardType(v)}
+                      className={`flex-1 px-3 py-2.5 rounded-xl border text-sm font-medium transition ${cardType === v ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Input label="카드사 홈페이지 아이디" value={loginId} onChange={(e) => setLoginId(e.target.value)} autoComplete="off" required />
+            <Input label="카드사 홈페이지 비밀번호" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" required />
+            <Input label="별칭 (선택)" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="예: 대표 개인카드" />
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 space-y-1.5 text-[12px] text-slate-500">
+              <p className="font-semibold text-slate-600">🔒 보안 안내</p>
+              <p>· 비밀번호는 <b>이 앱 서버/DB에 저장되지 않습니다.</b> 등록 즉시 RSA 암호화되어 금융데이터 전문기관 CODEF의 보안볼트로만 전달·보관됩니다.</p>
+              <p>· 이 앱은 조회 전용 토큰(connectedId)만 보관하며, 카드 승인내역 <b>조회 외 어떤 작업도 할 수 없습니다.</b></p>
+              <p>· 연동은 언제든 [해제]로 끊을 수 있습니다.</p>
+              <label className="flex items-center gap-2 pt-1 cursor-pointer text-slate-600 font-medium">
+                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                위 내용을 확인했으며 카드 내역 조회에 동의합니다.
+              </label>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={onClose}>취소</Button>
+              <Button type="submit" disabled={busy}>{busy ? '연결 중…' : '카드 연결'}</Button>
+            </div>
+          </form>
+        </Modal>
+      );
+    }
+
+    // 비용 탭 상단 카드 내역 섹션 — 팀 레벨(현장 무관 수집 → 배분 시 현장 지정)
+    function CardTxnSection({ sites, selectedSiteId, catNames, procNames, onCostsChanged, demoMode = false }) {
+      const toast = useToast();
+      const [expanded, setExpanded] = useState(() => localStorage.getItem('interior_card_open') !== '0');
+      const [cfg, setCfg] = useState(null); // {configured, mode}
+      const [accounts, setAccounts] = useState([]);
+      const [txns, setTxns] = useState([]);
+      const [view, setView] = useState('unassigned');
+      const [loading, setLoading] = useState(false);
+      const [sel, setSel] = useState(() => new Set());
+      const [syncBusy, setSyncBusy] = useState(null); // account id
+      const [connectOpen, setConnectOpen] = useState(false);
+      const [delTarget, setDelTarget] = useState(null); // account
+      const [form, setForm] = useState({ site_id: '', category: '자재비', process: '', remember: true });
+      const [busy, setBusy] = useState(false);
+
+      const activeSites = useMemo(() => (sites || []).filter((s) => !s.archived), [sites]);
+
+      const toggleOpen = () => setExpanded((v) => { const n = !v; try { localStorage.setItem('interior_card_open', n ? '1' : '0'); } catch (e) {} return n; });
+
+      const reload = useCallback(async (v = view) => {
+        if (demoMode) return;
+        setLoading(true);
+        try {
+          const [c, a, t] = await Promise.all([api.cardConfig(), api.listCardAccounts(), api.listCardTxns(v)]);
+          setCfg(c); setAccounts(Array.isArray(a) ? a : []); setTxns(Array.isArray(t) ? t : []);
+        } catch (e) { /* 서버 미연결 등 — 섹션은 조용히 비움 */ setCfg(null); }
+        finally { setLoading(false); }
+      }, [demoMode, view]);
+      useEffect(() => { reload(view); setSel(new Set()); }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+      useEffect(() => { if (selectedSiteId && !form.site_id) setForm((f) => ({ ...f, site_id: String(selectedSiteId) })); }, [selectedSiteId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+      const toggleSel = (t) => {
+        setSel((prev) => {
+          const n = new Set(prev);
+          if (n.has(t.id)) n.delete(t.id);
+          else {
+            n.add(t.id);
+            // 첫 선택 시 제안 프리필(사용자 값 우선 — site 는 비었을 때만 교체)
+            if (n.size === 1 && t.suggested_site_id) {
+              setForm((f) => ({ ...f, site_id: String(t.suggested_site_id), category: t.suggested_category || f.category, process: t.suggested_process || f.process }));
+            }
+          }
+          return n;
+        });
+      };
+      const unTxns = txns; // 현재 view 목록
+      const allSel = unTxns.length > 0 && unTxns.every((t) => sel.has(t.id) || t.status === '취소');
+      const toggleAll = () => setSel((prev) => {
+        const n = new Set(prev);
+        if (allSel) unTxns.forEach((t) => n.delete(t.id));
+        else unTxns.forEach((t) => { if (t.status !== '취소') n.add(t.id); });
+        return n;
+      });
+
+      const doSync = async (acc) => {
+        if (syncBusy) return;
+        setSyncBusy(acc.id);
+        try {
+          const r = await api.syncCardAccount(acc.id);
+          toast(`동기화 완료 — 신규 ${r.imported}건${r.skipped ? ` (중복 ${r.skipped}건 제외)` : ''}`, 'success');
+          await reload();
+        } catch (e) { toast(e.message || '동기화에 실패했습니다.', 'error'); }
+        finally { setSyncBusy(null); }
+      };
+
+      const doAssign = async () => {
+        if (busy || sel.size === 0) return;
+        if (!form.site_id) { toast('배분할 현장을 선택하세요.', 'error'); return; }
+        setBusy(true);
+        try {
+          const r = await api.assignCardTxns({ ids: Array.from(sel), site_id: form.site_id, category: form.category, process: form.process, remember: form.remember });
+          toast(`${r.assigned}건을 '${r.site_name}' 비용으로 반영했습니다.${r.remembered ? ' (가맹점 기억됨)' : ''}`, 'success');
+          setSel(new Set());
+          await reload();
+          if (onCostsChanged) onCostsChanged();
+        } catch (e) { toast(e.message || '배분에 실패했습니다.', 'error'); }
+        finally { setBusy(false); }
+      };
+
+      const doUnassign = async (t) => {
+        try { await api.unassignCardTxn(t.id); toast('배분을 해제했습니다. (비용도 삭제됨)', 'info'); await reload(); if (onCostsChanged) onCostsChanged(); }
+        catch (e) { toast('해제에 실패했습니다.', 'error'); }
+      };
+      const doExclude = async (t, excluded) => {
+        try { await api.excludeCardTxn(t.id, excluded); await reload(); }
+        catch (e) { toast('변경에 실패했습니다.', 'error'); }
+      };
+      const confirmDelAccount = async () => {
+        const acc = delTarget; setDelTarget(null);
+        try { await api.removeCardAccount(acc.id); toast('카드 연동을 해제했습니다. (반영된 비용은 유지)', 'info'); await reload(); }
+        catch (e) { toast('해제에 실패했습니다.', 'error'); }
+      };
+
+      const fmtDT = (iso) => { const d = new Date(iso); return `${String(d.getMonth() + 1)}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+      const unassignedCount = view === 'unassigned' ? txns.length : null;
+
+      return (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button type="button" onClick={toggleOpen} className="flex items-center gap-2 text-left">
+              <span className={`text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`}>▶</span>
+              <h2 className="text-base font-bold text-slate-800">💳 카드 내역</h2>
+              {cfg && (
+                <span className={`text-[11px] px-2 py-0.5 rounded-full ${cfg.mode === 'live' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {cfg.mode === 'live' ? '실연동' : '모의 모드'}
+                </span>
+              )}
+              {unassignedCount != null && unassignedCount > 0 && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold">미배분 {unassignedCount}</span>
+              )}
+            </button>
+            {expanded && !demoMode && cfg && (
+              <Button size="sm" variant="secondary" onClick={() => setConnectOpen(true)}>+ 카드 연결</Button>
+            )}
+          </div>
+
+          {expanded && (demoMode || !cfg ? (
+            <p className="mt-3 text-sm text-slate-400">카드 연동은 서버 연결(로그인) 상태에서 사용할 수 있습니다.</p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {/* 계정 칩 */}
+              {accounts.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 px-4 py-4 text-sm text-slate-400">
+                  연결된 카드가 없습니다. <b>[+ 카드 연결]</b>로 KB국민카드 등을 연결하면 승인내역을 불러와 현장별 비용으로 배분할 수 있어요.
+                  <span className="block mt-1 text-[11px]">비밀번호는 이 앱에 저장되지 않습니다 (CODEF 보안볼트 · connectedId 방식)</span>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {accounts.map((a) => (
+                    <div key={a.id} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 pl-3 pr-1.5 py-1.5">
+                      <div className="text-sm">
+                        <span className="font-semibold text-slate-700">{a.label}</span>
+                        <span className="ml-1.5 text-[11px] text-slate-400">{a.organization_name} · {a.card_type === 'B' ? '법인' : '개인'}{a.mock ? ' · 모의' : ''}</span>
+                        <span className="block text-[10px] text-slate-400">
+                          {a.last_synced_at ? `마지막 동기화 ${fmtDT(a.last_synced_at)}` : '아직 동기화 안 함'}
+                        </span>
+                      </div>
+                      <Button size="sm" onClick={() => doSync(a)} disabled={!!syncBusy}>
+                        {syncBusy === a.id ? '동기화 중…' : '⟳ 동기화'}
+                      </Button>
+                      <button onClick={() => setDelTarget(a)} className="px-1 text-slate-300 hover:text-red-500" title="연동 해제">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 뷰 탭 + 목록 */}
+              <div className="flex items-center gap-1">
+                {[['unassigned', '미배분'], ['assigned', '배분됨'], ['excluded', '제외']].map(([v, n]) => (
+                  <button key={v} onClick={() => setView(v)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${view === v ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+                    {n}
+                  </button>
+                ))}
+                {loading && <span className="ml-2 text-xs text-slate-400">불러오는 중…</span>}
+              </div>
+
+              {txns.length === 0 ? (
+                <p className="text-sm text-slate-400 py-3 text-center">
+                  {view === 'unassigned' ? '미배분 거래가 없습니다. [⟳ 동기화]로 카드 내역을 불러오세요.' : '해당 거래가 없습니다.'}
+                </p>
+              ) : (
+                <div className="border border-slate-100 rounded-xl overflow-x-auto">
+                  <table className="w-full text-sm min-w-[640px]">
+                    <thead className="bg-slate-50">
+                      <tr className="text-left text-xs text-slate-400">
+                        {view === 'unassigned' && (
+                          <th className="py-2 px-2 w-8"><input type="checkbox" checked={allSel} onChange={toggleAll} className="w-4 h-4 accent-blue-600" /></th>
+                        )}
+                        <th className="py-2 pr-2 font-medium w-24">일시</th>
+                        <th className="py-2 pr-2 font-medium">가맹점</th>
+                        <th className="py-2 pr-2 font-medium text-right w-24">금액</th>
+                        <th className="py-2 pr-2 font-medium w-28">{view === 'assigned' ? '현장' : '제안'}</th>
+                        <th className="py-2 pr-2 font-medium w-16 text-right">{view === 'unassigned' ? '' : '관리'}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 max-h-[40vh]">
+                      {txns.map((t) => {
+                        const canceled = t.status === '취소';
+                        return (
+                          <tr key={t.id} className={`${sel.has(t.id) ? 'bg-blue-50' : ''} ${canceled ? 'opacity-40' : ''}`}
+                            onClick={() => view === 'unassigned' && !canceled && toggleSel(t)}
+                            style={{ cursor: view === 'unassigned' && !canceled ? 'pointer' : 'default' }}>
+                            {view === 'unassigned' && (
+                              <td className="py-2 px-2"><input type="checkbox" readOnly checked={sel.has(t.id)} disabled={canceled} className="w-4 h-4 accent-blue-600 pointer-events-none" /></td>
+                            )}
+                            <td className="py-2 pr-2 text-xs text-slate-500 whitespace-nowrap">{fmtDT(t.used_at)}</td>
+                            <td className="py-2 pr-2">
+                              <span className="font-medium text-slate-700">{t.merchant || '-'}</span>
+                              {canceled && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600">취소</span>}
+                              <span className="block text-[10px] text-slate-400">{[t.merchant_type, t.account_label].filter(Boolean).join(' · ')}</span>
+                            </td>
+                            <td className="py-2 pr-2 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtNum(t.amount)}원</td>
+                            <td className="py-2 pr-2">
+                              {view === 'assigned' && t.site_name && <Badge color="bg-blue-500">{t.site_name}</Badge>}
+                              {view !== 'assigned' && t.suggested_site_id && (
+                                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-600" title="가맹점 학습 제안">
+                                  💡 {(activeSites.find((s) => String(s.id) === String(t.suggested_site_id)) || {}).name || '현장'}{t.suggested_category ? ` · ${t.suggested_category}` : ''}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 pr-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              {view === 'unassigned' && !canceled && (
+                                <button onClick={() => doExclude(t, true)} className="text-[11px] text-slate-300 hover:text-slate-500 underline decoration-dotted" title="개인지출 등 비용에서 제외">제외</button>
+                              )}
+                              {view === 'assigned' && (
+                                <button onClick={() => doUnassign(t)} className="text-[11px] text-red-400 hover:text-red-600 underline decoration-dotted">해제</button>
+                              )}
+                              {view === 'excluded' && (
+                                <button onClick={() => doExclude(t, false)} className="text-[11px] text-blue-400 hover:text-blue-600 underline decoration-dotted">복원</button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* 배분 바 */}
+              {view === 'unassigned' && sel.size > 0 && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3.5 flex flex-wrap items-end gap-3">
+                  <div className="min-w-[160px]">
+                    <span className="block mb-1 text-xs font-medium text-slate-600">현장</span>
+                    <select value={form.site_id} onChange={(e) => setForm({ ...form, site_id: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                      <option value="">현장 선택…</option>
+                      {activeSites.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="min-w-[120px]">
+                    <span className="block mb-1 text-xs font-medium text-slate-600">카테고리</span>
+                    <Combo placeholder="자재비" value={form.category} options={catNames} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+                  </div>
+                  <div className="min-w-[120px]">
+                    <span className="block mb-1 text-xs font-medium text-slate-600">공정 (선택)</span>
+                    <Combo placeholder="공정" value={form.process} options={procNames} onChange={(e) => setForm({ ...form, process: e.target.value })} />
+                  </div>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer pb-2.5">
+                    <input type="checkbox" checked={form.remember} onChange={(e) => setForm({ ...form, remember: e.target.checked })} className="w-4 h-4 accent-blue-600" />
+                    이 가맹점 기억 <span className="text-slate-400">(다음부터 자동 제안)</span>
+                  </label>
+                  <Button onClick={doAssign} disabled={busy}>{busy ? '반영 중…' : `${sel.size}건 비용으로 배분`}</Button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          <CardConnectModal isOpen={connectOpen} onClose={() => setConnectOpen(false)} mode={cfg ? cfg.mode : 'mock'} onCreated={() => reload()} />
+          <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="카드 연동 해제" size="sm">
+            {delTarget && (
+              <div>
+                <p className="text-sm text-slate-600">
+                  '<b>{delTarget.label}</b>' 연동을 해제할까요?<br />
+                  대기 중(미배분) 거래는 삭제되고, <b>이미 비용으로 반영된 내역은 유지</b>됩니다.
+                </p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setDelTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDelAccount}>해제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </Card>
       );
     }
 
@@ -8567,6 +8951,10 @@
                 )}
                 {activeTab === 'cost' && (
                   <div className="space-y-6">
+                    {/* (v24) 카드 내역 — 팀 레벨 수집 → 현장 배분 */}
+                    <CardTxnSection sites={sites} selectedSiteId={selectedSite.id}
+                      catNames={costCatNames} procNames={procCatNames}
+                      onCostsChanged={refreshDetail} demoMode={demoMode} />
                     <div ref={formRef}>
                       <CostForm onSubmit={handleSubmitCost} editing={editingCost} onCancelEdit={() => setEditingCost(null)} siteId={selectedSite.id}
                         catNames={costCatNames} procNames={procCatNames} staffNames={staffNames} vendorNames={vendorNames} scheduleOptions={schedule} />

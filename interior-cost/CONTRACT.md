@@ -1226,3 +1226,44 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - **v23.1 `9b7fcda`**: ① signUploadUrl/deleteStorageObject — `Content-Type: application/json` + 빈 body → Supabase(Fastify) 400 "Body cannot be empty" → `body:'{}'` 추가(삭제는 조용히 실패하고 있었음 → warn 로그 추가). ② sanitizeFileName — Storage 키는 S3 문자셋만 허용, 한글 파일명 → InvalidKey → 비허용문자 `_` 치환(원본명은 DB file_name 보존).
 - **v23.2 `490a75e`**: createSiteFolder 의 mkdirSync 가 Vercel read-only FS 에서 throw → **라이브에서 현장 신규생성이 400 으로 죽던 버그** → best-effort(경로탈출 검증 유지).
 - 검증: storage e2e **로컬 15/15 + 라이브 15/15** (sign→PUT→메타→목록→서명URL 내용일치→삭제→Storage list 잔존0, 자료+사진, 임시팀 정리).
+
+---
+
+# v24 — KB국민카드 연동 (B안: CODEF 조회 API, connectedId 자격증명 비보관)
+
+> 사용자 결정: B(조회 API)로 시작. **보안 원칙: 우리 서버/DB는 카드사 비밀번호를 절대 저장하지 않는다** — 등록 시 RSA(PKCS1) 암호화 후 CODEF로 즉시 전달, 우리는 connectedId(토큰)만 보관. CODEF 키 미설정 시 **mock 모드**로 전체 플로우 동작(키 등록 즉시 실연동, 스토리지 v20 패턴).
+
+## 환경변수
+- `CODEF_CLIENT_ID` / `CODEF_CLIENT_SECRET` / `CODEF_PUBLIC_KEY`(대시보드 RSA 공개키) / `CODEF_API_HOST`(기본 https://development.codef.io — 데모, 정식계약 시 https://api.codef.io). 셋(ID/SECRET/PUBLIC_KEY) 다 있으면 live, 아니면 mock.
+
+## DB (CREATE IF NOT EXISTS, 팀 스코핑 team_id 직접)
+- `interior_card_accounts`: id, team_id, organization('0301'=KB국민카드 등), card_type('P'개인/'B'법인), connected_id, label, last_synced_at, active, created_at. **비번 컬럼 없음.**
+- `interior_card_txns`(스테이징): id, team_id, account_id(FK CASCADE), approval_no, used_at(timestamptz), merchant, merchant_biz_no, merchant_type(업종), amount, card_no(마스킹), status('승인'/'취소'), installment, site_id(FK SET NULL), cost_id(FK interior_costs SET NULL), excluded(bool), created_at. **UNIQUE(account_id, approval_no, used_at)** — 재동기화 중복 차단.
+- `interior_merchant_rules`(가맹점 학습): id, team_id, merchant, site_id(FK CASCADE), category, process, created_at, UNIQUE(team_id, merchant).
+
+## CODEF 모듈 (server)
+- OAuth 토큰(client_credentials, Basic) 캐시. 요청 wrapper: 응답 text→decodeURIComponent 시도→JSON.parse, `result.code!=='CF-00000'`→에러 메시지 그대로 전달(추가인증 CF-12xxx 등).
+- rsaEncrypt: `crypto.publicEncrypt(RSA_PKCS1_PADDING)` base64. PEM 헤더 자동 감싸기.
+- 계정: POST /v1/account/create {countryCode KR, businessType CD, clientType P|B, organization, loginType '1', id, password(enc)}→connectedId · /v1/account/delete(해제 best-effort).
+- 승인내역: POST /v1/kr/card/{p|b}/account/approval-list {organization, connectedId, startDate, endDate, orderBy'0', inquiryType'0'} → 필드 후보키 매퍼(resApprovalNo/resUsedDate+Time/resMemberStoreName/resUsedAmount/resCancelYN/resCardNo/resInstallmentMonth/resMemberStoreNo/resMemberStoreType).
+- mock: 등록=connectedId 'mock-…', sync=현실적 가맹점 풀(철물/타일/목재/조명/식대 등)에서 기간 내 15~25건 생성.
+
+## 엔드포인트 (인증 필수)
+- `GET /api/card/config` → {configured, mode:'live'|'mock', host}
+- `GET /api/card/accounts` · `POST /api/card/accounts` {organization?, card_type?, login_id, password, label?} (비번 비저장·즉시 암호화 전달, live 실패 시 CODEF 메시지 400) · `DELETE /api/card/accounts/:id`(CODEF 해제 best-effort + 행 삭제, txns CASCADE — 이미 반영된 비용은 보존)
+- `POST /api/card/accounts/:id/sync` {start_date?, end_date?} — 기본 (last_synced−3일)~오늘, 최초 30일. ON CONFLICT DO NOTHING → {imported, skipped, from, to}
+- `GET /api/card/txns?view=unassigned|assigned|excluded|all` — rules JOIN 제안(suggested_site_id/category/process) + account label + site name, used_at DESC limit 500
+- `POST /api/card/txns/assign` {ids[], site_id, category, process?, remember?} — 트랜잭션: 검증(팀/미배분/미제외/승인건) → interior_costs INSERT(date=승인일, vendor=가맹점, memo='카드 {label} 승인 {no}') → txn 링크 → remember면 rule upsert
+- `POST /api/card/txns/:id/exclude` {excluded} · `POST /api/card/txns/:id/unassign`(비용 삭제+링크 해제, 트랜잭션)
+
+## UI (비용 탭 상단, 팀 레벨 접이식 섹션)
+- 💳 카드 내역 + 모드 뱃지(실연동/모의) + 미배분 카운트. 계정칩(별칭·카드사·마지막 동기화·[⟳ 동기화]·[✕]) + [+ 카드 연결].
+- 연결 모달: 카드사 셀렉트(KB국민카드 기본)+개인/법인+ID/PW+별칭+**보안고지**(비번 비저장·CODEF 암호화보관·동의 체크). mock이면 모의 안내.
+- 거래 목록 [미배분|배분됨|제외] 탭: ☑/일시/가맹점(업종)/금액/카드/제안 뱃지. 선택 → 배분 바(현장 Combo=전체 sites·카테고리·공정·[☑ 이 가맹점 기억]) → [N건 배분]→비용 생성+목록 리프레시. 제안 있으면 프리필. 배분됨 뷰=[해제], 제외 뷰=[복원]. 취소건 배분 차단.
+- 데모(비로그인) 모드: 서버 연결 필요 안내(스토리지 패턴).
+
+## 검증
+- mock e2e: config→계정등록(비번 미저장 확인=DB에 컬럼 자체 없음)→sync(imported>0)→재sync(중복 0)→목록→assign 2건(remember)→costs 생성·rule 생성→신규 동일가맹점 sync→suggestion 프리필→unassign(비용 삭제)→exclude/복원→타팀 404/빈목록→계정삭제 CASCADE. Playwright: 비용탭 섹션·연결모달·동기화·배분→비용반영.
+- live 연동은 사용자 CODEF 키 등록 후(가입→데모 키→.env/Vercel). v1~v23 회귀.
+
+> ✅ **구현·검증 완료 (2026-07-03)**. 백엔드 e2e 29/29(격리 임시팀 2, 잔존0): mock config/계정등록(connectedId)/**DB에 비밀번호류 컬럼 자체 없음 검증**/sync 15~25건/미배분 목록/배분 2건→비용 생성(카테고리·공정·vendor=가맹점·memo=카드·승인번호)/가맹점 규칙 학습→동일 가맹점 제안 프리필/unassign(비용 삭제)/제외·복원/배분된 거래 제외 404/취소건 배분 skip/타팀(계정·거래 빈값, sync·assign 404)/계정 삭제 CASCADE+반영 비용 보존(FK SET NULL). Playwright: 비용탭 섹션(모의 뱃지·보안 문구)→연결 모달(모의 안내·보안 동의)→등록→동기화(미배분 15)→행 선택→배분 바(현장 프리필)→배분→미배분 13+비용 목록 반영. 로컬 백그라운드 서버가 검증 중 1회 SIGHUP 계열로 사망(코드 무관, 재기동 후 동일 요청 정상 — 프로덕션 서버리스 무관).
