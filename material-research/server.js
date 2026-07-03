@@ -1044,6 +1044,226 @@ app.get('/api/research/next', (req, res) => {
   });
 });
 
+/* ── 제품 라이브러리 — 브랜드 × 모델 단위의 실제 제품(특징·사진·출처)을 한곳에 ──
+ * 자재(materials)가 "범주+시세"라면 products 는 그 아래 실물 SKU: 신한벽지 SH6790-1 처럼
+ * 브랜드/모델/특징/사진/출처링크를 담는다. 매칭 키 = id → slugify(brand-model) (멱등 UPSERT).
+ * 사진은 image_url(원본)을 로컬(data/product-images/)로 캐시해 핫링크 차단에 대비한다. */
+const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
+const PRODUCT_IMG_DIR = path.join(DATA_DIR, 'product-images');
+const pdb = { version: 1, products: [] };
+
+function loadProducts() {
+  try {
+    if (fs.existsSync(PRODUCTS_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
+      if (parsed && Array.isArray(parsed.products)) pdb.products = parsed.products;
+    }
+  } catch (e) { console.error('[products] 로드 실패:', e.message); }
+}
+function saveProducts() { atomicWriteJSON(PRODUCTS_FILE, { version: pdb.version, products: pdb.products }); }
+loadProducts();
+
+function productKey(brand, model) { return slugify(`${brand}-${model}`); }
+
+function runProductsImport(items, source, note) {
+  const now = new Date().toISOString();
+  const byId = new Map(pdb.products.map(p => [p.id, p]));
+  const byKey = new Map(pdb.products.map(p => [productKey(p.brand, p.model), p]));
+  let imported = 0, updated = 0, unchanged = 0;
+  const skipped = [];
+  const strFields = ['name', 'trade', 'category', 'subcategory', 'description', 'spec', 'unit', 'url', 'image_url', 'material_id'];
+
+  for (const raw of (items || [])) {
+    const it = raw || {};
+    const brand = String(it.brand || '').trim();
+    const model = String(it.model || '').trim();
+    if (!brand || !model) { skipped.push({ name: it.name || model || '(무명)', reason: 'brand/model 누락' }); continue; }
+    const key = productKey(brand, model);
+    const inDate = (typeof it.collected_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(it.collected_date)) ? it.collected_date : now.slice(0, 10);
+    const inPrice = normalizePrice(it.price, it.unit);
+    let existing = (typeof it.id === 'string' && byId.get(it.id.trim())) || byKey.get(key) || null;
+
+    if (!existing) {
+      let id = key || `p-${pdb.products.length + 1}`, n = 2;
+      while (byId.has(id)) { id = `${key}-${n}`; n++; }
+      const rec = {
+        id, brand, model,
+        name: String(it.name || '').trim(),
+        trade: String(it.trade || '').trim(),
+        category: String(it.category || '').trim(),
+        subcategory: String(it.subcategory || '').trim(),
+        material_id: String(it.material_id || '').trim() || null,
+        features: Array.isArray(it.features) ? it.features.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()).slice(0, 12) : [],
+        description: String(it.description || '').trim(),
+        spec: String(it.spec || '').trim(),
+        unit: String(it.unit || '').trim(),
+        price: (inPrice && (inPrice.min != null || inPrice.max != null)) ? { min: inPrice.min, max: inPrice.max } : null,
+        image_url: String(it.image_url || '').trim(),
+        image_path: null,
+        url: String(it.url || '').trim(),
+        source: source || 'research',
+        collected_date: inDate,
+        updated_at: now
+      };
+      pdb.products.push(rec);
+      byId.set(rec.id, rec); byKey.set(key, rec);
+      imported++;
+      continue;
+    }
+
+    // 기존 → 변경 병합 (빈 값은 기존 유지)
+    let changed = false;
+    for (const f of strFields) {
+      const v = (typeof it[f] === 'string') ? it[f].trim() : null;
+      if (v && v !== (existing[f] || '')) {
+        if (f === 'image_url') existing.image_path = null; // 새 이미지 → 재캐시
+        existing[f] = v; changed = true;
+      }
+    }
+    if (Array.isArray(it.features)) {
+      const nf = it.features.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()).slice(0, 12);
+      if (nf.length && JSON.stringify(nf) !== JSON.stringify(existing.features || [])) { existing.features = nf; changed = true; }
+    }
+    if (inPrice && (inPrice.min != null || inPrice.max != null)) {
+      const cur = existing.price || {};
+      if (cur.min !== inPrice.min || cur.max !== inPrice.max) { existing.price = { min: inPrice.min, max: inPrice.max }; changed = true; }
+    }
+    if (changed) {
+      existing.source = source || existing.source;
+      existing.collected_date = inDate;
+      existing.updated_at = now;
+      updated++;
+    } else {
+      if (inDate > (existing.collected_date || '')) { existing.collected_date = inDate; existing.updated_at = now; }
+      unchanged++;
+    }
+  }
+
+  if (imported || updated) saveProducts();
+  return { imported, updated, unchanged, processed: imported + updated + unchanged, total: pdb.products.length, skipped };
+}
+
+// 이미지 로컬 캐시 — image_url 은 있는데 캐시 파일이 없는 제품을 내려받는다 (실패해도 원본 URL 폴백)
+let productImageCacheRunning = false;
+async function cacheProductImages() {
+  if (productImageCacheRunning) return;
+  productImageCacheRunning = true;
+  try {
+    const targets = pdb.products.filter(p => p.image_url && (!p.image_path || !fs.existsSync(path.join(__dirname, p.image_path))));
+    if (!targets.length) return;
+    fs.mkdirSync(PRODUCT_IMG_DIR, { recursive: true });
+    let saved = 0;
+    for (let i = 0; i < targets.length; i += 4) {
+      await Promise.allSettled(targets.slice(i, i + 4).map(async p => {
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 12000);
+          const r = await fetch(p.image_url, {
+            signal: ctrl.signal, redirect: 'follow',
+            // Referer 는 encodeURI 필수 — 한글 URL 을 그대로 넣으면 fetch 가 헤더 검증에서 throw 한다
+            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36', 'Referer': encodeURI(p.url || p.image_url) }
+          });
+          clearTimeout(t);
+          if (!r.ok) return;
+          const ct = String(r.headers.get('content-type') || '');
+          if (!ct.startsWith('image/')) return;
+          const buf = Buffer.from(await r.arrayBuffer());
+          if (!buf.length || buf.length > 4 * 1024 * 1024) return;
+          const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : ct.includes('svg') ? 'svg' : 'jpg';
+          const file = `${p.id}.${ext}`;
+          fs.writeFileSync(path.join(PRODUCT_IMG_DIR, file), buf);
+          p.image_path = `data/product-images/${file}`;
+          saved++;
+        } catch (_e) { /* 캐시 실패 → image_url 폴백 유지 */ }
+      }));
+    }
+    if (saved) { saveProducts(); console.log(`[products] 이미지 캐시 ${saved}건 저장`); }
+  } finally { productImageCacheRunning = false; }
+}
+
+// 제품 목록 (필터/검색)
+app.get('/api/products', (req, res) => {
+  try {
+    const { brand, trade, category, subcategory } = req.query;
+    const q = String(req.query.search || '').trim().toLowerCase();
+    let limit = parseInt(req.query.limit, 10);
+    if (!Number.isFinite(limit) || limit <= 0) limit = 0;
+    if (limit > 5000) limit = 5000;
+    let rows = pdb.products;
+    if (brand) rows = rows.filter(p => p.brand === brand);
+    if (trade) rows = rows.filter(p => p.trade === trade);
+    if (category) rows = rows.filter(p => p.category === category);
+    if (subcategory) rows = rows.filter(p => (p.subcategory || '') === subcategory);
+    if (q) {
+      rows = rows.filter(p => [p.brand, p.model, p.name, p.category, p.subcategory, p.description, p.spec, (p.features || []).join(' ')]
+        .join(' ').toLowerCase().includes(q));
+    }
+    rows = rows.slice().sort((a, b) => String(a.brand).localeCompare(String(b.brand), 'ko') || String(a.model).localeCompare(String(b.model), 'ko'));
+    const total = rows.length;
+    const data = limit > 0 ? rows.slice(0, limit) : rows;
+    return ok(res, 200, data, undefined, { total, count: data.length });
+  } catch (e) {
+    console.error('[products] error', e);
+    return fail(res, 500, '제품 조회 중 오류가 발생했습니다.');
+  }
+});
+
+// 제품 파셋 (필터 UI용 카운트)
+app.get('/api/products/facets', (_req, res) => {
+  const by = (field) => {
+    const m = new Map();
+    for (const p of pdb.products) { const v = p[field] || '기타'; m.set(v, (m.get(v) || 0) + 1); }
+    return [...m.entries()].map(([value, count]) => ({ value, count }));
+  };
+  return ok(res, 200, {
+    total: pdb.products.length,
+    withImage: pdb.products.filter(p => p.image_path || p.image_url).length,
+    brands: by('brand').sort((a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value), 'ko')),
+    trades: by('trade').sort((a, b) => tradeIndex(a.value) - tradeIndex(b.value)),
+    categories: by('category').sort((a, b) => b.count - a.count),
+    lastUpdated: pdb.products.reduce((acc, p) => (p.updated_at && (!acc || p.updated_at > acc) ? p.updated_at : acc), null)
+  });
+});
+
+// 제품 import — 멱등 UPSERT (키: id → brand+model). 주간 에이전트/초기 수집이 호출
+app.post('/api/products/import', (req, res) => {
+  try {
+    const body = req.body || {};
+    const items = Array.isArray(body.items) ? body.items : (Array.isArray(body) ? body : null);
+    if (!items) return fail(res, 400, 'items 배열이 필요합니다. { items:[...] }');
+    const source = (typeof body.source === 'string' && body.source.trim()) ? body.source.trim() : 'research';
+    const note = typeof body.note === 'string' ? body.note.trim() : '';
+    const summary = runProductsImport(items, source, note);
+    cacheProductImages(); // 비동기 — 응답을 막지 않음
+    return ok(res, 200, summary, note || `제품 import 완료 (source=${source})`);
+  } catch (e) {
+    console.error('[products import] error', e);
+    return fail(res, 500, '제품 import 처리 중 오류가 발생했습니다.');
+  }
+});
+
+// 이미지 캐시 수동 재시도
+app.post('/api/products/cache-images', (_req, res) => {
+  const pendingBefore = pdb.products.filter(p => p.image_url && !p.image_path).length;
+  cacheProductImages();
+  return ok(res, 200, { pending: pendingBefore }, '이미지 캐시를 백그라운드에서 시작했습니다.');
+});
+
+// 제품 단건 / 삭제
+app.get('/api/products/:id', (req, res) => {
+  const p = pdb.products.find(x => x.id === req.params.id);
+  if (!p) return fail(res, 404, '제품을 찾을 수 없습니다.');
+  return ok(res, 200, p);
+});
+app.delete('/api/products/:id', (req, res) => {
+  const i = pdb.products.findIndex(x => x.id === req.params.id);
+  if (i < 0) return fail(res, 404, '제품을 찾을 수 없습니다.');
+  const [removed] = pdb.products.splice(i, 1);
+  if (removed.image_path) { try { fs.unlinkSync(path.join(__dirname, removed.image_path)); } catch (_e) {} }
+  saveProducts();
+  return ok(res, 200, { removed: removed.id, total: pdb.products.length });
+});
+
 // ★ 월요일 research 에이전트가 호출하는 핵심 엔드포인트 — 멱등 UPSERT
 // body: { items:[...], source?, note? }
 // import 핵심 로직(멱등 UPSERT) — HTTP 라우트와 incoming 파일 인제스트가 공유한다.
@@ -1187,8 +1407,11 @@ function ingestIncomingDir() {
       if (!items) { results.push({ file: f, error: 'items 배열이 없습니다.' }); continue; }
       const source = (parsed && typeof parsed.source === 'string' && parsed.source.trim()) ? parsed.source.trim() : 'research';
       const note = (parsed && typeof parsed.note === 'string') ? parsed.note.trim() : `incoming:${f}`;
-      const summary = runImport(items, source, note);
-      results.push({ file: f, ...summary });
+      // 봉투 라우팅: kind:"products" 또는 파일명 '제품*' → 제품 라이브러리, 그 외 → 자재 DB
+      const isProducts = (parsed && parsed.kind === 'products') || /^제품/.test(f);
+      const summary = isProducts ? runProductsImport(items, source, note) : runImport(items, source, note);
+      if (isProducts) cacheProductImages();
+      results.push({ file: f, kind: isProducts ? 'products' : 'materials', ...summary });
       fs.renameSync(full, path.join(PROCESSED_DIR, f)); // 처리완료 → 보관
     } catch (e) {
       results.push({ file: f, error: e.message });

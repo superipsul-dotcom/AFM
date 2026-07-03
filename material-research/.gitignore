@@ -9,6 +9,9 @@ data/incoming/*.tmp-*
 # 처리 완료된 주간 업데이트 봉투(이미 materials.json/changelog.json에 반영됨) — 추적 제외
 data/incoming/processed/
 
+# 제품 이미지 로컬 캐시 — products.json의 image_url로 언제든 재생성 가능(POST /api/products/cache-images)
+data/product-images/
+
 # data/ 의 JSON(materials.json, changelog.json)은 커밋합니다 — 베이스라인 + 주간 누적이 자산입니다.
 # 만약 데이터를 추적에서 빼고 싶다면 아래 두 줄의 주석을 해제하세요.
 # data/materials.json

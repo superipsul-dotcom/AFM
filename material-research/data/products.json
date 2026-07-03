@@ -1,0 +1,2195 @@
+{
+  "version": 1,
+  "products": [
+    {
+      "id": "lx하우시스-82600-03",
+      "brand": "LX하우시스",
+      "model": "82600-03",
+      "name": "베스트 양각 회벽 크림 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "베스트 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2026년형"
+      ],
+      "description": "LX하우시스 베스트 실크벽지 '양각 회벽 크림 화이트' — 다음벽지 판매가 49,300원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 49300,
+        "max": 49300
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202601/f2a6b2c228b55331ec1a2e9b425846e9.jpg",
+      "image_path": "data/product-images/lx하우시스-82600-03.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-베스트-82600-03-양각-회벽-크림-화이트-1롤5평-실크벽지-2026년/16332/category/414/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-82601-05",
+      "brand": "LX하우시스",
+      "model": "82601-05",
+      "name": "베스트 디아 회벽 크림 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "베스트 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2026년형"
+      ],
+      "description": "LX하우시스 베스트 실크벽지 '디아 회벽 크림 화이트' — 다음벽지 판매가 49,300원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 49300,
+        "max": 49300
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202601/df3bc865df720a44dfeb124bcb1b2347.jpg",
+      "image_path": "data/product-images/lx하우시스-82601-05.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-베스트-82601-05-디아-회벽-크림-화이트-1롤5평-실크벽지-2026년/16330/category/414/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-t1032-01",
+      "brand": "LX하우시스",
+      "model": "T1032-01",
+      "name": "지아 패브릭 다이아몬드 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "천장벽지",
+      "material_id": null,
+      "features": [
+        "지아 패브릭 컬렉션",
+        "천장벽지",
+        "1롤(8평형)"
+      ],
+      "description": "LX하우시스 지아 패브릭 천장벽지 '다이아몬드 화이트' — 다음벽지 판매가 75,600원 기준",
+      "spec": "1롤(8평형)",
+      "unit": "롤",
+      "price": {
+        "min": 75600,
+        "max": 75600
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/54da9f78138825a51083f54d678e03d0.jpg",
+      "image_path": "data/product-images/lx하우시스-t1032-01.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-지아-패브릭-t1032-01-다이아몬드-화이트-1롤8평-천장벽지-실크벽지/12047/category/414/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-82539-01",
+      "brand": "LX하우시스",
+      "model": "82539-01",
+      "name": "더 리얼 페인트 흰눈색",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "더 리얼 페인트 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "LX하우시스 더 리얼 페인트 실크벽지 '흰눈색' — 다음벽지 판매가 49,300원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 49300,
+        "max": 49300
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/3832a1f59ad62a62cf74da16e6f65a14.jpg",
+      "image_path": "data/product-images/lx하우시스-82539-01.jpg",
+      "url": "https://daumdeco.com/product/lx베스띠-더-리얼-페인트-82539-01-흰눈색-1롤5평-실크벽지-2025년/10960/category/414/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-82601-01",
+      "brand": "LX하우시스",
+      "model": "82601-01",
+      "name": "베스트 디아 회벽 퓨어 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "베스트 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2026년형"
+      ],
+      "description": "LX하우시스 베스트 실크벽지 '디아 회벽 퓨어 화이트' — 다음벽지 판매가 49,300원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 49300,
+        "max": 49300
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202601/8e8e13263ed3a30b7d7a193d71dc8817.jpg",
+      "image_path": "data/product-images/lx하우시스-82601-01.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-베스트-82601-01-디아-회벽-퓨어-화이트-1롤5평-실크벽지-2026년/16342/category/414/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-8192-01",
+      "brand": "LX하우시스",
+      "model": "8192-01",
+      "name": "새틴 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "실크벽지",
+        "1롤(10평형)",
+        "24년형"
+      ],
+      "description": "LX하우시스 실크벽지 '새틴 화이트' — 다음벽지 판매가 55,200원 기준",
+      "spec": "1롤(10평형)",
+      "unit": "롤",
+      "price": {
+        "min": 55200,
+        "max": 55200
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202403/10f32dd3b2c55168f491aac803c0fcc0.jpg",
+      "image_path": "data/product-images/lx하우시스-8192-01.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-8192-01-새틴-화이트-1롤10평-실크벽지-24년/10688/category/416/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-7090-05",
+      "brand": "LX하우시스",
+      "model": "7090-05",
+      "name": "테라피 라이트 그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "테라피 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "24년형"
+      ],
+      "description": "LX하우시스 테라피 실크벽지 '라이트 그레이' — 다음벽지 판매가 42,300원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 42300,
+        "max": 42300
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/804071f56045f639ccf3199a3a2a2816.jpg",
+      "image_path": "data/product-images/lx하우시스-7090-05.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-테라피-7090-05-라이트-그레이-1롤5평-실크벽지-24년/11720/category/416/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-7111-03",
+      "brand": "LX하우시스",
+      "model": "7111-03",
+      "name": "테라피 프렌치 크림",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "테라피 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "24년형"
+      ],
+      "description": "LX하우시스 테라피 실크벽지 '프렌치 크림' — 다음벽지 판매가 42,300원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 42300,
+        "max": 42300
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/58a5458b22a534f9047783065a894859.jpg",
+      "image_path": "data/product-images/lx하우시스-7111-03.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-테라피-7111-03-프렌치-크림-1롤5평-실크벽지-24년/11695/category/416/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-7116-03",
+      "brand": "LX하우시스",
+      "model": "7116-03",
+      "name": "테라피 퓨어 민트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "테라피 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "24년형"
+      ],
+      "description": "LX하우시스 테라피 실크벽지 '퓨어 민트' — 다음벽지 판매가 42,300원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 42300,
+        "max": 42300
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/30fadc1ba419e2b70e6b88b57975f4b6.jpg",
+      "image_path": "data/product-images/lx하우시스-7116-03.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-테라피-7116-03-퓨어-민트-1롤5평-실크벽지-24년/11706/category/416/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "lx하우시스-7090-01",
+      "brand": "LX하우시스",
+      "model": "7090-01",
+      "name": "테라피 새하얀 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "테라피 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "24년형"
+      ],
+      "description": "LX하우시스 테라피 실크벽지 '새하얀 화이트' — 다음벽지 판매가 42,300원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 42300,
+        "max": 42300
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/669a898af3e6e6d328ee1a34a49d15cd.jpg",
+      "image_path": "data/product-images/lx하우시스-7090-01.jpg",
+      "url": "https://daumdeco.com/product/lx벽지-테라피-7090-01-새하얀-화이트-1롤5평-실크벽지-24년/11711/category/416/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "코스모스벽지-3422-4",
+      "brand": "코스모스벽지",
+      "model": "3422-4",
+      "name": "아트론 웜그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "소폭합지",
+      "material_id": null,
+      "features": [
+        "아트론 컬렉션",
+        "소폭합지",
+        "1박스(20롤)"
+      ],
+      "description": "코스모스벽지 아트론 소폭합지 '웜그레이' — 다음벽지 판매가 91,000원 기준",
+      "spec": "1박스(20롤)",
+      "unit": "박스",
+      "price": {
+        "min": 91000,
+        "max": 91000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/a9ddc035ace81fcd11cc8e7e666e719d.jpg",
+      "image_path": "data/product-images/코스모스벽지-3422-4.jpg",
+      "url": "https://daumdeco.com/product/코스모스-아트론-3422-4-웜그레이-1박스20롤-소폭합지벽지/11205/category/419/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "코스모스벽지-3424-3",
+      "brand": "코스모스벽지",
+      "model": "3424-3",
+      "name": "아트론 핑크베이지",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "소폭합지",
+      "material_id": null,
+      "features": [
+        "아트론 컬렉션",
+        "소폭합지",
+        "1박스(20롤)"
+      ],
+      "description": "코스모스벽지 아트론 소폭합지 '핑크베이지' — 다음벽지 판매가 91,000원 기준",
+      "spec": "1박스(20롤)",
+      "unit": "박스",
+      "price": {
+        "min": 91000,
+        "max": 91000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/ee2c1ea0c58d14727f46c8556e155099.png",
+      "image_path": "data/product-images/코스모스벽지-3424-3.png",
+      "url": "https://daumdeco.com/product/코스모스-아트론-3424-3-핑크베이지-1박스20롤-소폭합지벽지/11206/category/419/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "코스모스벽지-3423-2",
+      "brand": "코스모스벽지",
+      "model": "3423-2",
+      "name": "아트론 퓨어그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "소폭합지",
+      "material_id": null,
+      "features": [
+        "아트론 컬렉션",
+        "소폭합지",
+        "1박스(20롤)"
+      ],
+      "description": "코스모스벽지 아트론 소폭합지 '퓨어그레이' — 다음벽지 판매가 91,000원 기준",
+      "spec": "1박스(20롤)",
+      "unit": "박스",
+      "price": {
+        "min": 91000,
+        "max": 91000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/5cd2820d5387ddf56bb73e71cd21e29c.jpg",
+      "image_path": "data/product-images/코스모스벽지-3423-2.jpg",
+      "url": "https://daumdeco.com/product/코스모스-아트론-3423-2-퓨어그레이-1박스20롤-소폭합지벽지/11207/category/419/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "코스모스벽지-3425-3",
+      "brand": "코스모스벽지",
+      "model": "3425-3",
+      "name": "아트론 라이트그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "소폭합지",
+      "material_id": null,
+      "features": [
+        "아트론 컬렉션",
+        "소폭합지",
+        "1박스(20롤)"
+      ],
+      "description": "코스모스벽지 아트론 소폭합지 '라이트그레이' — 다음벽지 판매가 91,000원 기준",
+      "spec": "1박스(20롤)",
+      "unit": "박스",
+      "price": {
+        "min": 91000,
+        "max": 91000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/b1ccff271558e8161a62fd7cfc8df9b6.jpg",
+      "image_path": "data/product-images/코스모스벽지-3425-3.jpg",
+      "url": "https://daumdeco.com/product/코스모스-아트론-3425-3-라이트그레이-1박스20롤-소폭합지벽지/11208/category/419/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "코스모스벽지-3419-2",
+      "brand": "코스모스벽지",
+      "model": "3419-2",
+      "name": "아트론 라이트그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "소폭합지",
+      "material_id": null,
+      "features": [
+        "아트론 컬렉션",
+        "소폭합지",
+        "1박스(20롤)"
+      ],
+      "description": "코스모스벽지 아트론 소폭합지 '라이트그레이' — 다음벽지 판매가 91,000원 기준",
+      "spec": "1박스(20롤)",
+      "unit": "박스",
+      "price": {
+        "min": 91000,
+        "max": 91000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/047c48c9c757cb2ffe69d2b96bec4d20.jpg",
+      "image_path": "data/product-images/코스모스벽지-3419-2.jpg",
+      "url": "https://daumdeco.com/product/코스모스-아트론-3419-2-라이트그레이-1박스20롤-소폭합지벽지/11209/category/419/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-39359-2",
+      "brand": "개나리벽지",
+      "model": "39359-2",
+      "name": "트랜디 큐티도트 페일블루",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "트랜디 컬렉션",
+        "장폭합지",
+        "1롤(5평형)",
+        "2023-24년형"
+      ],
+      "description": "개나리벽지 트랜디 장폭합지 '큐티도트 페일블루' — 다음벽지 판매가 26,100원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 26100,
+        "max": 26100
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/828fbe069f6112814b273c9cbe1bae0f.png",
+      "image_path": "data/product-images/개나리벽지-39359-2.png",
+      "url": "https://daumdeco.com/product/gni개나리벽지-트랜디-39359-2-큐티도트-페일블루-1롤5평-장폭합지벽지-2023-24년/12401/category/421/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-39371-7",
+      "brand": "개나리벽지",
+      "model": "39371-7",
+      "name": "트랜디 페인트 옐로우",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "트랜디 컬렉션",
+        "장폭합지",
+        "1롤(5평형)",
+        "2023-24년형"
+      ],
+      "description": "개나리벽지 트랜디 장폭합지 '페인트 옐로우' — 다음벽지 판매가 26,100원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 26100,
+        "max": 26100
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/5a5517cd468c0f1c7edbf485ffd9ef84.jpg",
+      "image_path": "data/product-images/개나리벽지-39371-7.jpg",
+      "url": "https://daumdeco.com/product/gni개나리벽지-트랜디-39371-7-페인트-옐로우-1롤5평-장폭합지벽지-2023-24년/12400/category/421/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-39374-2",
+      "brand": "개나리벽지",
+      "model": "39374-2",
+      "name": "트랜디 조엘 라이트웜그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "트랜디 컬렉션",
+        "장폭합지",
+        "1롤(5평형)",
+        "2023-24년형"
+      ],
+      "description": "개나리벽지 트랜디 장폭합지 '조엘 라이트웜그레이' — 다음벽지 판매가 26,100원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 26100,
+        "max": 26100
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/3c5e99e1ae435f467f58594514064037.png",
+      "image_path": "data/product-images/개나리벽지-39374-2.png",
+      "url": "https://daumdeco.com/product/gni개나리벽지-트랜디-39374-2-조엘-라이트웜그레이-1롤5평-장폭합지벽지-2023-24년/12399/category/421/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-39374-6",
+      "brand": "개나리벽지",
+      "model": "39374-6",
+      "name": "트랜디 조엘 바닐라화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "트랜디 컬렉션",
+        "장폭합지",
+        "1롤(5평형)",
+        "2023-24년형"
+      ],
+      "description": "개나리벽지 트랜디 장폭합지 '조엘 바닐라화이트' — 다음벽지 판매가 26,100원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 26100,
+        "max": 26100
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/8b2895ecb48debeb967dda03fae34d08.jpg",
+      "image_path": "data/product-images/개나리벽지-39374-6.jpg",
+      "url": "https://daumdeco.com/product/gni개나리벽지-트랜디-39374-6-조엘-바닐라화이트-1롤5평-장폭합지벽지-2023-24년/12398/category/421/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-39373-3",
+      "brand": "개나리벽지",
+      "model": "39373-3",
+      "name": "트랜디 시몬 그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "트랜디 컬렉션",
+        "장폭합지",
+        "1롤(5평형)",
+        "2023-24년형"
+      ],
+      "description": "개나리벽지 트랜디 장폭합지 '시몬 그레이' — 다음벽지 판매가 26,100원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 26100,
+        "max": 26100
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/be33d55b45613c049d355626059fb337.png",
+      "image_path": "data/product-images/개나리벽지-39373-3.png",
+      "url": "https://daumdeco.com/product/gni개나리벽지-트랜디-39373-3-시몬-그레이-1롤5평-장폭합지벽지-2023-24년/12397/category/421/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-c9643-11",
+      "brand": "신한벽지",
+      "model": "C9643-11",
+      "name": "천장벽지 C9643-11",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "천장벽지",
+      "material_id": null,
+      "features": [
+        "천장벽지",
+        "1롤(10평형)"
+      ],
+      "description": "신한벽지 천장벽지 — 다음벽지 판매가 49,500원 기준",
+      "spec": "1롤(10평형)",
+      "unit": "롤",
+      "price": {
+        "min": 49500,
+        "max": 49500
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202403/ded4c1cce95df57abf03fb96d057219f.jpg",
+      "image_path": "data/product-images/신한벽지-c9643-11.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-c9643-11-1롤10평-스타-화이트펄없음-현장용-천장벽지-실크벽지/10693/category/431/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-910-1",
+      "brand": "신한벽지",
+      "model": "910-1",
+      "name": "특판",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "특판 컬렉션",
+        "실크벽지",
+        "1롤(5평형)"
+      ],
+      "description": "신한벽지 특판 실크벽지 — 다음벽지 판매가 62,500원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 62500,
+        "max": 62500
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/1eebbbc4c3bc2d9962c975b92feabf58.jpg",
+      "image_path": "data/product-images/신한벽지-910-1.jpg",
+      "url": "https://daumdeco.com/product/특판용-신한벽지-910-1-1롤5평-실크벽지/13738/category/431/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-15106-1",
+      "brand": "신한벽지",
+      "model": "15106-1",
+      "name": "스케치 즐거운 소식",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "스케치 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "24년형"
+      ],
+      "description": "신한벽지 스케치 실크벽지 '즐거운 소식' — 다음벽지 판매가 37,600원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 37600,
+        "max": 37600
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/33054389094d8a3780d76a2329666e02.jpg",
+      "image_path": "data/product-images/신한벽지-15106-1.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-스케치-15106-1-즐거운-소식-1롤5평-실크벽지-24년/11778/category/431/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-15096-1",
+      "brand": "신한벽지",
+      "model": "15096-1",
+      "name": "스케치 별의 속삭임",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "스케치 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "24년형"
+      ],
+      "description": "신한벽지 스케치 실크벽지 '별의 속삭임' — 다음벽지 판매가 37,600원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 37600,
+        "max": 37600
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/8cf38b1394f233a39d01ed34e4eb0cd2.jpg",
+      "image_path": "data/product-images/신한벽지-15096-1.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-스케치-15096-1-별의-속삭임-1롤5평-실크벽지-24년/11812/category/431/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-15080-2",
+      "brand": "신한벽지",
+      "model": "15080-2",
+      "name": "스케치 도시밤하늘 라이트그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "스케치 컬렉션",
+        "실크벽지",
+        "1롤(5평형)"
+      ],
+      "description": "신한벽지 스케치 실크벽지 '도시밤하늘 라이트그레이' — 다음벽지 판매가 37,600원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 37600,
+        "max": 37600
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202403/6f058267f01147d9ac1453ff1609315d.jpg",
+      "image_path": "data/product-images/신한벽지-15080-2.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-스케치-15080-2-도시밤하늘-라이트그레이-1롤5평-실크벽지/10650/category/431/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-57231-1",
+      "brand": "개나리벽지",
+      "model": "57231-1",
+      "name": "아트북 페어화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "아트북 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "개나리벽지 아트북 실크벽지 '페어화이트' — 다음벽지 판매가 40,700원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 40700,
+        "max": 40700
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/7332321061ac33c8aa2a633f43aff53d.jpg",
+      "image_path": "data/product-images/개나리벽지-57231-1.jpg",
+      "url": "https://daumdeco.com/product/개나리벽지-아트북-57231-1-페어화이트-1롤5평-친환경-실크벽지-2025년/13590/category/433/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-57206-2",
+      "brand": "개나리벽지",
+      "model": "57206-2",
+      "name": "아트북 크림화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "아트북 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "개나리벽지 아트북 실크벽지 '크림화이트' — 다음벽지 판매가 40,700원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 40700,
+        "max": 40700
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/e600168e038a6de7bb36443cbf6ea9f1.jpg",
+      "image_path": "data/product-images/개나리벽지-57206-2.jpg",
+      "url": "https://daumdeco.com/product/개나리벽지-아트북-57206-2-크림화이트-1롤5평-친환경-실크벽지-2025년/13605/category/433/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-57144-1",
+      "brand": "개나리벽지",
+      "model": "57144-1",
+      "name": "아트북 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "아트북 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "개나리벽지 아트북 실크벽지 '화이트' — 다음벽지 판매가 40,700원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 40700,
+        "max": 40700
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/cb8780fbda3de2473bf4f4039fd6fcd1.jpg",
+      "image_path": "data/product-images/개나리벽지-57144-1.jpg",
+      "url": "https://daumdeco.com/product/개나리벽지-아트북-57144-1-화이트-1롤5평-친환경-실크벽지-2025년/13585/category/433/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-57223-1",
+      "brand": "개나리벽지",
+      "model": "57223-1",
+      "name": "아트북 파인화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "아트북 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "개나리벽지 아트북 실크벽지 '파인화이트' — 다음벽지 판매가 40,700원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 40700,
+        "max": 40700
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/8dc6e5f6820ddce954fac2bd38e8af78.jpg",
+      "image_path": "data/product-images/개나리벽지-57223-1.jpg",
+      "url": "https://daumdeco.com/product/개나리벽지-아트북-57223-1-파인화이트-1롤5평-친환경-실크벽지-2025년/13521/category/433/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "개나리벽지-57231-3",
+      "brand": "개나리벽지",
+      "model": "57231-3",
+      "name": "아트북 실버새틴 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "아트북 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "개나리벽지 아트북 실크벽지 '실버새틴 화이트' — 다음벽지 판매가 40,700원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 40700,
+        "max": 40700
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202502/cf7786835bd5472a24fdd6a75fb95c13.jpg",
+      "image_path": "data/product-images/개나리벽지-57231-3.jpg",
+      "url": "https://daumdeco.com/product/개나리벽지-아트북-57231-3-실버새틴-화이트-1롤5평-친환경-실크벽지-2025년/13608/category/433/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-70244-1",
+      "brand": "신한벽지",
+      "model": "70244-1",
+      "name": "리빙 테오도르",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "리빙 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2024년형"
+      ],
+      "description": "신한벽지 리빙 실크벽지 '테오도르' — 다음벽지 판매가 43,500원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 43500,
+        "max": 43500
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202503/8bbca1ef1bba67d2e8aeb182f441a4f8.jpg",
+      "image_path": "data/product-images/신한벽지-70244-1.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-리빙-70244-1-테오도르-1롤5평-실크벽지-2024년/14202/category/434/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-70284-1",
+      "brand": "신한벽지",
+      "model": "70284-1",
+      "name": "리빙 아트월",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "리빙 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2024년형"
+      ],
+      "description": "신한벽지 리빙 실크벽지 '아트월' — 다음벽지 판매가 43,500원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 43500,
+        "max": 43500
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202503/925ba50bb38956e76cec83c0345bacd8.jpg",
+      "image_path": "data/product-images/신한벽지-70284-1.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-리빙-70284-1-아트월-1롤5평-실크벽지-2024년/14135/category/434/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-70277-1",
+      "brand": "신한벽지",
+      "model": "70277-1",
+      "name": "리빙 로코코",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "리빙 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2024년형"
+      ],
+      "description": "신한벽지 리빙 실크벽지 '로코코' — 다음벽지 판매가 43,500원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 43500,
+        "max": 43500
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202503/ba400249310f21b6f5b2994a4e97dda0.jpg",
+      "image_path": "data/product-images/신한벽지-70277-1.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-리빙-70277-1-로코코-1롤5평-실크벽지-2024년/14139/category/434/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-70257-1",
+      "brand": "신한벽지",
+      "model": "70257-1",
+      "name": "리빙 리얼샌드",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "리빙 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2024년형"
+      ],
+      "description": "신한벽지 리빙 실크벽지 '리얼샌드' — 다음벽지 판매가 43,500원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 43500,
+        "max": 43500
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202503/f338c4a87047de7a4893589769094723.jpg",
+      "image_path": "data/product-images/신한벽지-70257-1.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-리빙-70257-1-리얼샌드-1롤5평-실크벽지-2024년/14121/category/434/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-70254-3",
+      "brand": "신한벽지",
+      "model": "70254-3",
+      "name": "리빙 제프리",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "리빙 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2024년형"
+      ],
+      "description": "신한벽지 리빙 실크벽지 '제프리' — 다음벽지 판매가 43,500원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 43500,
+        "max": 43500
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202503/efe6c1826c02c80c83fa29dd75bdbfba.jpg",
+      "image_path": "data/product-images/신한벽지-70254-3.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-리빙-70254-3-제프리-1롤5평-실크벽지-2024년/14096/category/434/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "서울벽지-433-2",
+      "brand": "서울벽지",
+      "model": "433-2",
+      "name": "플레인 스톤 그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "플레인 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "서울벽지 플레인 실크벽지 '스톤 그레이' — 다음벽지 판매가 36,000원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 36000,
+        "max": 36000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/cd856e8ccc37728ba41a47c1fd73542d.jpg",
+      "image_path": "data/product-images/서울벽지-433-2.jpg",
+      "url": "https://daumdeco.com/product/서울벽지-플레인-433-2-스톤-그레이-1롤5평-실크벽지-2025년/11381/category/437/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "서울벽지-438-1",
+      "brand": "서울벽지",
+      "model": "438-1",
+      "name": "플레인 크래프트 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "플레인 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "서울벽지 플레인 실크벽지 '크래프트 화이트' — 다음벽지 판매가 36,000원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 36000,
+        "max": 36000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/dc1a4d554b958b9b77b91ed675c3147d.jpg",
+      "image_path": "data/product-images/서울벽지-438-1.jpg",
+      "url": "https://daumdeco.com/product/서울벽지-플레인-438-1-크래프트-화이트-1롤5평-실크벽지-2025년/11423/category/437/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "서울벽지-425-4",
+      "brand": "서울벽지",
+      "model": "425-4",
+      "name": "플레인 쿨 그레이",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "플레인 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "서울벽지 플레인 실크벽지 '쿨 그레이' — 다음벽지 판매가 36,000원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 36000,
+        "max": 36000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/3a82e844791f5e35b964e8255aca629d.jpg",
+      "image_path": "data/product-images/서울벽지-425-4.jpg",
+      "url": "https://daumdeco.com/product/서울벽지-플레인-425-4-쿨-그레이-1롤5평-실크벽지-2025년/11438/category/437/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "서울벽지-431-6",
+      "brand": "서울벽지",
+      "model": "431-6",
+      "name": "플레인 포레스트 그린",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "플레인 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "서울벽지 플레인 실크벽지 '포레스트 그린' — 다음벽지 판매가 36,000원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 36000,
+        "max": 36000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/5acf1e7f27d60016483724db9f7f15bf.jpg",
+      "image_path": "data/product-images/서울벽지-431-6.jpg",
+      "url": "https://daumdeco.com/product/서울벽지-플레인-431-6-포레스트-그린-1롤5평-실크벽지-2025년/11392/category/437/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "서울벽지-346-1",
+      "brand": "서울벽지",
+      "model": "346-1",
+      "name": "플레인 퓨어 화이트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "플레인 컬렉션",
+        "실크벽지",
+        "1롤(5평형)",
+        "2025년형"
+      ],
+      "description": "서울벽지 플레인 실크벽지 '퓨어 화이트' — 다음벽지 판매가 36,000원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 36000,
+        "max": 36000
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202501/65ff3e7920060dfe6a0090f1a7495466.jpg",
+      "image_path": "data/product-images/서울벽지-346-1.jpg",
+      "url": "https://daumdeco.com/product/서울벽지-플레인-346-1-퓨어-화이트-1롤5평-실크벽지-2025년/11386/category/437/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "제일벽지-6974-1",
+      "brand": "제일벽지",
+      "model": "6974-1",
+      "name": "해피데이 멀티컬러",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "해피데이 컬렉션",
+        "장폭합지",
+        "1롤(5평형)",
+        "26년형"
+      ],
+      "description": "제일벽지 해피데이 장폭합지 '멀티컬러' — 다음벽지 판매가 21,800원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 21800,
+        "max": 21800
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202512/98578ef9920cac5f592d34d5eaf0aca0.jpg",
+      "image_path": "data/product-images/제일벽지-6974-1.jpg",
+      "url": "https://daumdeco.com/product/제일벽지-해피데이-6974-1-멀티컬러-1롤5평-장폭합지벽지-26년/16073/category/478/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "제일벽지-6981-1",
+      "brand": "제일벽지",
+      "model": "6981-1",
+      "name": "해피데이 멀티컬러",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "해피데이 컬렉션",
+        "장폭합지",
+        "1롤(5평형)",
+        "26년형"
+      ],
+      "description": "제일벽지 해피데이 장폭합지 '멀티컬러' — 다음벽지 판매가 21,800원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 21800,
+        "max": 21800
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202512/df653b43dc5922e4538e421b9e2a1a15.jpg",
+      "image_path": "data/product-images/제일벽지-6981-1.jpg",
+      "url": "https://daumdeco.com/product/제일벽지-해피데이-6981-1-멀티컬러-1롤5평-장폭합지벽지-26년/16070/category/478/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "제일벽지-6980-7",
+      "brand": "제일벽지",
+      "model": "6980-7",
+      "name": "해피데이 피코크블루",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "해피데이 컬렉션",
+        "장폭합지",
+        "펄",
+        "1롤(5평형)",
+        "26년형"
+      ],
+      "description": "제일벽지 해피데이 장폭합지 '피코크블루' — 다음벽지 판매가 21,800원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 21800,
+        "max": 21800
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202512/dd1090e25a8c35555bd5c55220d07470.jpg",
+      "image_path": "data/product-images/제일벽지-6980-7.jpg",
+      "url": "https://daumdeco.com/product/제일벽지-해피데이-6980-7-피코크블루-펄있음-1롤5평-장폭합지벽지-26년/16065/category/478/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "제일벽지-6979-5",
+      "brand": "제일벽지",
+      "model": "6979-5",
+      "name": "해피데이 퓨어아이보리",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "해피데이 컬렉션",
+        "장폭합지",
+        "펄",
+        "1롤(5평형)",
+        "26년형"
+      ],
+      "description": "제일벽지 해피데이 장폭합지 '퓨어아이보리' — 다음벽지 판매가 21,800원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 21800,
+        "max": 21800
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202512/7fb3064d3593b0c3a9bf28e042a632fd.jpg",
+      "image_path": "data/product-images/제일벽지-6979-5.jpg",
+      "url": "https://daumdeco.com/product/제일벽지-해피데이-6979-5-퓨어아이보리-펄있음-1롤5평-장폭합지벽지-26년/16062/category/478/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "제일벽지-6970-4",
+      "brand": "제일벽지",
+      "model": "6970-4",
+      "name": "해피데이 민트",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "장폭합지",
+      "material_id": null,
+      "features": [
+        "해피데이 컬렉션",
+        "장폭합지",
+        "1롤(5평형)",
+        "26년형"
+      ],
+      "description": "제일벽지 해피데이 장폭합지 '민트' — 다음벽지 판매가 21,800원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 21800,
+        "max": 21800
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202512/0a439054ca1db7f734a315cd87ebbc39.jpg",
+      "image_path": "data/product-images/제일벽지-6970-4.jpg",
+      "url": "https://daumdeco.com/product/제일벽지-해피데이-6970-4-민트-1롤5평-장폭합지벽지-26년/16057/category/478/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-fc9643-11",
+      "brand": "신한벽지",
+      "model": "FC9643-11",
+      "name": "방염 스타",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "방염 컬렉션",
+        "실크벽지",
+        "무펄",
+        "방염(소방 인증)",
+        "1롤(5평형)",
+        "2026년형"
+      ],
+      "description": "신한벽지 방염 실크벽지 '스타' — 다음벽지 판매가 64,600원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 64600,
+        "max": 64600
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202603/23b20346d212127cffc4f5006e81fcd2.jpg",
+      "image_path": "data/product-images/신한벽지-fc9643-11.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-방염-fc9643-11-펄없음-스타-1롤5평-실크벽지-2026년/16623/category/366/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-fc8052-1",
+      "brand": "신한벽지",
+      "model": "FC8052-1",
+      "name": "방염 알토",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "방염 컬렉션",
+        "실크벽지",
+        "무펄",
+        "방염(소방 인증)",
+        "1롤(5평형)",
+        "2026년형"
+      ],
+      "description": "신한벽지 방염 실크벽지 '알토' — 다음벽지 판매가 64,600원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 64600,
+        "max": 64600
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202603/caa582e527ebce232445a2e22b972ce2.jpg",
+      "image_path": "data/product-images/신한벽지-fc8052-1.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-방염-fc8052-1-펄없음-알토-1롤5평-실크벽지-2026년/16622/category/366/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-fc8052-3",
+      "brand": "신한벽지",
+      "model": "FC8052-3",
+      "name": "방염 알토",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "방염 컬렉션",
+        "실크벽지",
+        "펄",
+        "방염(소방 인증)",
+        "1롤(5평형)",
+        "2026년형"
+      ],
+      "description": "신한벽지 방염 실크벽지 '알토' — 다음벽지 판매가 64,600원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 64600,
+        "max": 64600
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202603/2796569ddb1a87acff98310c5c97d070.jpg",
+      "image_path": "data/product-images/신한벽지-fc8052-3.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-방염-fc8052-3-펄있음-알토-1롤5평-실크벽지-2026년/16621/category/366/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "신한벽지-fc8123-1",
+      "brand": "신한벽지",
+      "model": "FC8123-1",
+      "name": "방염 테너",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "material_id": null,
+      "features": [
+        "방염 컬렉션",
+        "실크벽지",
+        "무펄",
+        "방염(소방 인증)",
+        "1롤(5평형)",
+        "2026년형"
+      ],
+      "description": "신한벽지 방염 실크벽지 '테너' — 다음벽지 판매가 64,600원 기준",
+      "spec": "1롤(5평형)",
+      "unit": "롤",
+      "price": {
+        "min": 64600,
+        "max": 64600
+      },
+      "image_url": "https://daumdeco.com/web/product/medium/202603/05db3fa6caf26482331f61494a75838d.jpg",
+      "image_path": "data/product-images/신한벽지-fc8123-1.jpg",
+      "url": "https://daumdeco.com/product/신한벽지-방염-fc8123-1-펄없음-테너-1롤5평-실크벽지-2026년/16620/category/366/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "동화자연마루-바움-190",
+      "brand": "동화자연마루",
+      "model": "바움 190",
+      "name": "바움 190 원목마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "material_id": null,
+      "features": [
+        "동화자연마루 원목마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "동화자연마루 원목마루 바움 190 — 마루올 판매가 150,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 150000,
+        "max": 150000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/0e69fb98838f92c6ef89d25959f3099f.png",
+      "image_path": "data/product-images/동화자연마루-바움-190.png",
+      "url": "https://maruall.com/product/동화자연마루-원목마루-바움-190/68/category/67/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "동화자연마루-바움-165",
+      "brand": "동화자연마루",
+      "model": "바움 165",
+      "name": "바움 165 원목마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "material_id": null,
+      "features": [
+        "동화자연마루 원목마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "동화자연마루 원목마루 바움 165 — 마루올 판매가 70,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 70000,
+        "max": 70000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/369b2f3e2798d84c09a973f7d560cc96.png",
+      "image_path": "data/product-images/동화자연마루-바움-165.png",
+      "url": "https://maruall.com/product/동화자연마루-원목마루-바움-165/67/category/67/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "동화자연마루-바움-125",
+      "brand": "동화자연마루",
+      "model": "바움 125",
+      "name": "바움 125 원목마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "material_id": null,
+      "features": [
+        "동화자연마루 원목마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "동화자연마루 원목마루 바움 125 — 마루올 판매가 90,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 90000,
+        "max": 90000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/c82ac3e6355d952ddc65e5c7481cba95.png",
+      "image_path": "data/product-images/동화자연마루-바움-125.png",
+      "url": "https://maruall.com/product/동화자연마루-원목마루-바움-125/66/category/67/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "동화자연마루-나투스강-포레",
+      "brand": "동화자연마루",
+      "model": "나투스강 포레",
+      "name": "나투스강 포레 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "동화자연마루 강마루",
+        "판매단위 1박스=0.96평",
+        "나투스 라인"
+      ],
+      "description": "동화자연마루 강마루 나투스강 포레 — 마루올 판매가 73,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 73000,
+        "max": 73000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/fd73e35ac043e34c616b7f4dcb6578ed.png",
+      "image_path": "data/product-images/동화자연마루-나투스강-포레.png",
+      "url": "https://maruall.com/product/동화자연마루-강마루-나투스강-포레/65/category/67/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "동화자연마루-나투스듀오-텍스쳐",
+      "brand": "동화자연마루",
+      "model": "나투스듀오 텍스쳐",
+      "name": "나투스듀오 텍스쳐 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "동화자연마루 강마루",
+        "판매단위 1박스=0.96평",
+        "나투스 라인"
+      ],
+      "description": "동화자연마루 강마루 나투스듀오 텍스쳐 — 마루올 판매가 83,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 83000,
+        "max": 83000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/40ad4a4f1c88b3c5bd26c37847f99a21.png",
+      "image_path": "data/product-images/동화자연마루-나투스듀오-텍스쳐.png",
+      "url": "https://maruall.com/product/동화자연마루-강마루-나투스듀오-텍스쳐/64/category/67/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "동화자연마루-나투스진-네이쳐",
+      "brand": "동화자연마루",
+      "model": "나투스진 네이쳐",
+      "name": "나투스진 네이쳐 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "동화자연마루 강마루",
+        "판매단위 1박스=0.96평",
+        "나투스 라인"
+      ],
+      "description": "동화자연마루 강마루 나투스진 네이쳐 — 마루올 판매가 86,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 86000,
+        "max": 86000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/4aff543d18e6d17ba2e5ffd9b3c82996.png",
+      "image_path": "data/product-images/동화자연마루-나투스진-네이쳐.png",
+      "url": "https://maruall.com/product/동화자연마루-강마루-나투스진-네이쳐/63/category/67/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "구정마루-모던강",
+      "brand": "구정마루",
+      "model": "모던강",
+      "name": "모던강 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "구정마루 강마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "구정마루 강마루 모던강 — 마루올 판매가 75,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 75000,
+        "max": 75000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/daf96af984aa78454d21a6555aee4a93.png",
+      "image_path": "data/product-images/구정마루-모던강.png",
+      "url": "https://maruall.com/product/구정-강마루-모던강/83/category/75/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "구정마루-맥시강",
+      "brand": "구정마루",
+      "model": "맥시강",
+      "name": "맥시강 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "구정마루 강마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "구정마루 강마루 맥시강 — 마루올 판매가 150,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 150000,
+        "max": 150000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/53b46f2b4ce71cd8fb57b851e6a634cd.png",
+      "image_path": "data/product-images/구정마루-맥시강.png",
+      "url": "https://maruall.com/product/구정-강마루-맥시강/82/category/75/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "구정마루-프리미엄-리얼",
+      "brand": "구정마루",
+      "model": "프리미엄 리얼",
+      "name": "프리미엄 리얼 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "구정마루 강마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "구정마루 강마루 프리미엄 리얼 — 마루올 판매가 150,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 150000,
+        "max": 150000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/a5b9acb63bbeba8d8ccf42a6e2410c1a.png",
+      "image_path": "data/product-images/구정마루-프리미엄-리얼.png",
+      "url": "https://maruall.com/product/구정-강마루-프리미엄-리얼/43/category/75/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "구정마루-프리미엄-텍스쳐",
+      "brand": "구정마루",
+      "model": "프리미엄 텍스쳐",
+      "name": "프리미엄 텍스쳐 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "구정마루 강마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "구정마루 강마루 프리미엄 텍스쳐 — 마루올 판매가 97,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 97000,
+        "max": 97000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/7343450e857ad0d63ab412f774cdbbe3.png",
+      "image_path": "data/product-images/구정마루-프리미엄-텍스쳐.png",
+      "url": "https://maruall.com/product/구정-강마루-프리미엄-텍스쳐/42/category/75/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "이건마루-세라-플렉스",
+      "brand": "이건마루",
+      "model": "세라 플렉스",
+      "name": "세라 플렉스 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "이건마루 강마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "이건마루 강마루 세라 플렉스 — 마루올 판매가 60,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 60000,
+        "max": 60000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/4bb7dd026b18198de55292fe9f2d3f26.png",
+      "image_path": "data/product-images/이건마루-세라-플렉스.png",
+      "url": "https://maruall.com/product/이건-강마루-세라-플렉스/44/category/100/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "이건마루-세라",
+      "brand": "이건마루",
+      "model": "세라",
+      "name": "세라 강마루",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "material_id": null,
+      "features": [
+        "이건마루 강마루",
+        "판매단위 1박스=0.96평"
+      ],
+      "description": "이건마루 강마루 세라 — 마루올 판매가 86,000원/박스(0.96평) 기준",
+      "spec": "1박스(0.96평)",
+      "unit": "박스",
+      "price": {
+        "min": 86000,
+        "max": 86000
+      },
+      "image_url": "https://maruall.com/web/product/medium/202301/52328389eab3a274e3930467a088349c.png",
+      "image_path": "data/product-images/이건마루-세라.png",
+      "url": "https://maruall.com/product/이건-강마루-세라/26/category/100/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cc-767",
+      "brand": "대림바스",
+      "model": "CC-767",
+      "name": "CC-767 양변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "양변기",
+      "material_id": null,
+      "features": [
+        "양변기"
+      ],
+      "description": "대림바스 양변기 CC-767 — 바스스토리 판매가 310,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 310000,
+        "max": 310000
+      },
+      "image_url": "https://bath-story.co.kr/web/product/medium/cool0789_1065.jpg",
+      "image_path": "data/product-images/대림바스-cc-767.jpg",
+      "url": "https://bath-story.co.kr/product/대림바스cc-767-양변기/1065/category/154/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cc-763",
+      "brand": "대림바스",
+      "model": "CC-763",
+      "name": "CC-763 양변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "양변기",
+      "material_id": null,
+      "features": [
+        "양변기"
+      ],
+      "description": "대림바스 양변기 CC-763 — 바스스토리 판매가 245,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 245000,
+        "max": 245000
+      },
+      "image_url": "https://bath-story.co.kr/web/product/medium/cool0789_1066.jpg",
+      "image_path": "data/product-images/대림바스-cc-763.jpg",
+      "url": "https://bath-story.co.kr/product/대림바스cc-763-양변기/1066/category/154/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cc-730",
+      "brand": "대림바스",
+      "model": "CC-730",
+      "name": "CC-730 양변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "양변기",
+      "material_id": null,
+      "features": [
+        "투피스",
+        "국산"
+      ],
+      "description": "대림바스 양변기 CC-730 — 바스스토리 판매가 368,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 368000,
+        "max": 368000
+      },
+      "image_url": "https://bath-story.co.kr/web/product/medium/cool0789_1069.jpg",
+      "image_path": "data/product-images/대림바스-cc-730.jpg",
+      "url": "https://bath-story.co.kr/product/대림바스cc-730-양변기투피스수로밀페형국산포세이도방식cc730치마형반피스슬림회오리/1069/category/154/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cc-260",
+      "brand": "대림바스",
+      "model": "CC-260",
+      "name": "CC-260 양변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "양변기",
+      "material_id": null,
+      "features": [
+        "원피스(일체형)"
+      ],
+      "description": "대림바스 양변기 CC-260 — 바스스토리 판매가 405,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 405000,
+        "max": 405000
+      },
+      "image_url": "https://bath-story.co.kr/web/product/medium/cool0789_1075.jpg",
+      "image_path": "data/product-images/대림바스-cc-260.jpg",
+      "url": "https://bath-story.co.kr/product/대림바스cc-260-원피스-양변기일체형고급대형욕실화장실인테리어리모델링/1075/category/154/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cc-259",
+      "brand": "대림바스",
+      "model": "CC-259",
+      "name": "CC-259 양변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "양변기",
+      "material_id": null,
+      "features": [
+        "원피스(일체형)"
+      ],
+      "description": "대림바스 양변기 CC-259 — 바스스토리 판매가 355,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 355000,
+        "max": 355000
+      },
+      "image_url": "https://bath-story.co.kr/web/product/medium/cool0789_1076.jpg",
+      "image_path": "data/product-images/대림바스-cc-259.jpg",
+      "url": "https://bath-story.co.kr/product/대림바스cc-259-원피스-양변기/1076/category/154/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cc-256",
+      "brand": "대림바스",
+      "model": "CC-256",
+      "name": "CC-256 양변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "양변기",
+      "material_id": null,
+      "features": [
+        "양변기"
+      ],
+      "description": "대림바스 양변기 CC-256 — 바스스토리 판매가 365,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 365000,
+        "max": 365000
+      },
+      "image_url": "https://bath-story.co.kr/web/product/medium/cool0789_1079.JPG",
+      "image_path": "data/product-images/대림바스-cc-256.jpg",
+      "url": "https://bath-story.co.kr/product/대림바스cc-256-양변기/1079/category/154/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cu-760s",
+      "brand": "대림바스",
+      "model": "CU-760S",
+      "name": "CU-760S 소변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "소변기",
+      "material_id": null,
+      "features": [
+        "적외선 센서",
+        "벽걸이",
+        "벽배수"
+      ],
+      "description": "대림바스 소변기 CU-760S — 바스앤모어 판매가 549,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 549000,
+        "max": 549000
+      },
+      "image_url": "https://bathnmore.co.kr/web/product/medium/202604/e1f2b55479896b5b6715ff945b4e640a.jpg",
+      "image_path": "data/product-images/대림바스-cu-760s.jpg",
+      "url": "https://bathnmore.co.kr/product/대림바스-cu-760s-적외선-센서-스톨-소변기-소형-벽걸이-벽배수-cu760s/14146/category/618/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cu-750s",
+      "brand": "대림바스",
+      "model": "CU-750S",
+      "name": "CU-750S 소변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "소변기",
+      "material_id": null,
+      "features": [
+        "적외선 센서",
+        "벽걸이",
+        "벽배수"
+      ],
+      "description": "대림바스 소변기 CU-750S — 바스앤모어 판매가 564,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 564000,
+        "max": 564000
+      },
+      "image_url": "https://bathnmore.co.kr/web/product/medium/202604/fdb1d6f4afa65eab5f6a2f1dcb90634d.jpg",
+      "image_path": "data/product-images/대림바스-cu-750s.jpg",
+      "url": "https://bathnmore.co.kr/product/대림바스-cu-750s-적외선-센서-스톨-소변기-소형-벽걸이-벽배수-cu750s/14145/category/618/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-cu-730s",
+      "brand": "대림바스",
+      "model": "CU-730S",
+      "name": "CU-730S 소변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "소변기",
+      "material_id": null,
+      "features": [
+        "적외선 센서",
+        "벽걸이",
+        "벽배수"
+      ],
+      "description": "대림바스 소변기 CU-730S — 바스앤모어 판매가 517,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 517000,
+        "max": 517000
+      },
+      "image_url": "https://bathnmore.co.kr/web/product/medium/202604/58044e37296e9af41c6ee995e046ca0e.jpg",
+      "image_path": "data/product-images/대림바스-cu-730s.jpg",
+      "url": "https://bathnmore.co.kr/product/대림바스-cu-730s-적외선-센서-스톨-소변기-소형-벽걸이-벽배수-cu730s/14144/category/618/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "대림바스-dst-790",
+      "brand": "대림바스",
+      "model": "DST-790",
+      "name": "DST-790 비데일체형 양변기",
+      "trade": "화장실셋팅공사",
+      "category": "위생도기",
+      "subcategory": "비데일체형 양변기",
+      "material_id": null,
+      "features": [
+        "림리스",
+        "직수타입",
+        "스마트렛"
+      ],
+      "description": "대림바스 비데일체형 양변기 DST-790 — 바스앤모어 판매가 924,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 924000,
+        "max": 924000
+      },
+      "image_url": "https://bathnmore.co.kr/web/product/medium/202603/21743c93fb551a44f140b94ab54bc1f0.jpg",
+      "image_path": "data/product-images/대림바스-dst-790.jpg",
+      "url": "https://bathnmore.co.kr/product/대림바스-dst-790-비데일체형-양변기-림리스-직수타입-스마트렛-dst790/14137/category/618/display/1/",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "노루페인트-팬톤-멀티",
+      "brand": "노루페인트",
+      "model": "팬톤 멀티",
+      "name": "팬톤페인트 다용도 멀티 (외부/철제/가구/방문용)",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "다용도 페인트",
+      "material_id": null,
+      "features": [
+        "팬톤 컬러",
+        "다용도(철제/가구/방문)",
+        "1L·4L"
+      ],
+      "description": "노루페인트 팬톤페인트 다용도 멀티 (외부/철제/가구/방문용) — 페인트팩토리몰 판매가 22,000원(1L)~ 기준",
+      "spec": "1L·4L",
+      "unit": "통",
+      "price": {
+        "min": 22000,
+        "max": 22000
+      },
+      "image_url": "https://paintfactorymall.com/web/product/big/202209/80b563ae63dadece6d0ccfd6767eae73.jpg",
+      "image_path": "data/product-images/노루페인트-팬톤-멀티.jpg",
+      "url": "https://paintfactorymall.com/product/detail.html?product_no=449",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "노루페인트-팬톤-인테리어",
+      "brand": "노루페인트",
+      "model": "팬톤 인테리어",
+      "name": "팬톤페인트 인테리어 (벽면/벽지용)",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "내부용 수성페인트",
+      "material_id": null,
+      "features": [
+        "팬톤 컬러",
+        "실내 벽면/벽지용",
+        "1L·4L"
+      ],
+      "description": "노루페인트 팬톤페인트 인테리어 (벽면/벽지용) — 페인트팩토리몰 판매가 19,000원(1L)~ 기준",
+      "spec": "1L·4L",
+      "unit": "통",
+      "price": {
+        "min": 19000,
+        "max": 19000
+      },
+      "image_url": "https://paintfactorymall.com/web/product/big/202209/510ce06947e43e1476dcc0ccd05280d6.jpg",
+      "image_path": "data/product-images/노루페인트-팬톤-인테리어.jpg",
+      "url": "https://paintfactorymall.com/product/detail.html?product_no=450",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "노루페인트-팬톤-프리미엄-수성",
+      "brand": "노루페인트",
+      "model": "팬톤 프리미엄 수성",
+      "name": "팬톤 프리미엄 친환경 수성페인트 (외부용)",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "외부용 수성페인트",
+      "material_id": null,
+      "features": [
+        "팬톤 컬러",
+        "친환경",
+        "수성",
+        "외부용",
+        "1L·4L"
+      ],
+      "description": "노루페인트 팬톤 프리미엄 친환경 수성페인트 (외부용) — 페인트팩토리몰 판매가 20,500원(1L)~ 기준",
+      "spec": "1L·4L",
+      "unit": "통",
+      "price": {
+        "min": 20500,
+        "max": 20500
+      },
+      "image_url": "https://paintfactorymall.com/web/product/big/202209/09dc55872c7d10d50bd09c6bc130549f.jpg",
+      "image_path": "data/product-images/노루페인트-팬톤-프리미엄-수성.jpg",
+      "url": "https://paintfactorymall.com/product/detail.html?product_no=451",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "비츠조명-led-175mm-6인치",
+      "brand": "비츠조명",
+      "model": "LED 175mm(6인치)",
+      "name": "국산 LED 6인치 다운라이트 매입등 15W/20W",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "다운라이트",
+      "material_id": null,
+      "features": [
+        "국산",
+        "6인치(175mm)",
+        "15W/20W"
+      ],
+      "description": "비츠조명 국산 LED 6인치 다운라이트 매입등 15W/20W — 비츠 공식몰 판매가 20,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 20000,
+        "max": 20000
+      },
+      "image_url": "https://www.vittz.co.kr/shopimages/vittz/0630130003503.jpg",
+      "image_path": "data/product-images/비츠조명-led-175mm-6인치.jpg",
+      "url": "",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "비츠조명-쓰리온-cob-85mm-3인치",
+      "brand": "비츠조명",
+      "model": "쓰리온 COB 85mm(3인치)",
+      "name": "쓰리온 COB 3인치 실린더 다운라이트 8W",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "다운라이트",
+      "material_id": null,
+      "features": [
+        "3인치(85mm)",
+        "8W",
+        "잔불방지 특허",
+        "플리커프리",
+        "DC타입"
+      ],
+      "description": "비츠조명 쓰리온 COB 3인치 실린더 다운라이트 8W — 비츠 공식몰 판매가 20,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 20000,
+        "max": 20000
+      },
+      "image_url": "https://www.vittz.co.kr/shopimages/vittz/0630130004903.jpg",
+      "image_path": "data/product-images/비츠조명-쓰리온-cob-85mm-3인치.jpg",
+      "url": "",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    },
+    {
+      "id": "비츠조명-쓰리온-led-85mm-3인치-움푹",
+      "brand": "비츠조명",
+      "model": "쓰리온 LED 85mm(3인치) 움푹",
+      "name": "쓰리온 LED 3인치 움푹 다운라이트 8W",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "다운라이트",
+      "material_id": null,
+      "features": [
+        "3인치(85mm)",
+        "8W",
+        "잔불방지 특허",
+        "플리커프리",
+        "DC타입"
+      ],
+      "description": "비츠조명 쓰리온 LED 3인치 움푹 다운라이트 8W — 비츠 공식몰 판매가 20,000원 기준",
+      "spec": "",
+      "unit": "EA",
+      "price": {
+        "min": 20000,
+        "max": 20000
+      },
+      "image_url": "https://www.vittz.co.kr/shopimages/vittz/0630130004893.jpg",
+      "image_path": "data/product-images/비츠조명-쓰리온-led-85mm-3인치-움푹.jpg",
+      "url": "",
+      "source": "research",
+      "collected_date": "2026-07-03",
+      "updated_at": "2026-07-03T12:34:31.581Z"
+    }
+  ]
+}

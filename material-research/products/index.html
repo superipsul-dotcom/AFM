@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>제품 라이브러리 — 자재 브랜드·모델·사진</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>
+  // @babel/standalone 자동 런타임이 UMD React에서 import 를 주입해 백지가 되는 문제 방지 — classic 런타임 고정
+  Babel.registerPreset('app-react', {
+    presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+  });
+  tailwind.config = {
+    theme: { extend: { colors: {
+      bg: '#0f1115', panel: '#171a21', panel2: '#1f242e', line: '#2b313d',
+      txt: '#e8ecf3', mut: '#9aa4b2', mut2: '#6b7480',
+      accent: '#4f8cff', accent2: '#7aa7ff', ok: '#34c77b', up: '#ff6b6b', down: '#36b5e0', vio: '#9b8cff'
+    } } }
+  };
+</script>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",Roboto,sans-serif}
+  ::-webkit-scrollbar{width:9px;height:9px} ::-webkit-scrollbar-thumb{background:#2b313d;border-radius:8px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+</style>
+</head>
+<body class="bg-bg text-txt text-[14px] leading-normal">
+<div id="root"></div>
+<script type="text/babel" data-presets="app-react">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+// ========================================
+// 상수 / 유틸
+// ========================================
+const API_BASE_URL = '/api';
+const fmtKRW = (n) => (n == null ? '' : Number(n).toLocaleString('ko-KR'));
+const BRAND_HUE = {};
+const hueOf = (s) => {
+  if (BRAND_HUE[s] != null) return BRAND_HUE[s];
+  let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+  BRAND_HUE[s] = h; return h;
+};
+
+// ========================================
+// 🎨 Design System
+// ========================================
+function Badge({ children, tone = 'default', className = '' }) {
+  const tones = {
+    default: 'bg-[#242a35] text-mut border-line',
+    blue: 'bg-accent/10 text-[#bcd2ff] border-accent/40',
+    green: 'bg-ok/10 text-[#9fe6c0] border-ok/40',
+    violet: 'bg-vio/10 text-[#ddc8ff] border-vio/40',
+  };
+  return <span className={`inline-flex items-center text-[10.5px] px-2 py-[2px] rounded-full border whitespace-nowrap ${tones[tone] || tones.default} ${className}`}>{children}</span>;
+}
+
+function BrandDot({ brand, size = 22, fontSize = 10 }) {
+  const h = hueOf(brand);
+  return (
+    <span className="inline-flex items-center justify-center rounded-md font-extrabold text-white shrink-0"
+      style={{ width: size, height: size, fontSize, background: `linear-gradient(135deg, hsl(${h},62%,52%), hsl(${(h + 40) % 360},62%,42%))` }}>
+      {brand.slice(0, 1)}
+    </span>
+  );
+}
+
+function ProductImage({ p, className, roundedClass = 'rounded-t-[13px]' }) {
+  // 로컬 캐시 → 원본 URL → 브랜드 플레이스홀더 순 폴백
+  const [stage, setStage] = useState(p.image_path ? 0 : (p.image_url ? 1 : 2));
+  useEffect(() => { setStage(p.image_path ? 0 : (p.image_url ? 1 : 2)); }, [p.id]);
+  if (stage >= 2 || (stage === 1 && !p.image_url)) {
+    const h = hueOf(p.brand);
+    return (
+      <div className={`${className} ${roundedClass} flex flex-col items-center justify-center gap-1`}
+        style={{ background: `linear-gradient(135deg, hsl(${h},38%,22%), hsl(${(h + 40) % 360},38%,14%))` }}>
+        <span className="text-3xl font-black text-white/80">{p.brand.slice(0, 2)}</span>
+        <span className="text-[10px] text-white/50">이미지 준비 중</span>
+      </div>
+    );
+  }
+  const src = stage === 0 ? '/' + p.image_path : p.image_url;
+  return <img src={src} alt={`${p.brand} ${p.model}`} loading="lazy" referrerPolicy="no-referrer"
+    className={`${className} ${roundedClass} object-cover bg-panel2`}
+    onError={() => setStage(stage + 1)} />;
+}
+
+function Select({ value, onChange, options, all }) {
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className="px-3 py-[9px] bg-panel border border-line rounded-[11px] text-[13px] text-txt outline-none focus:border-accent cursor-pointer max-w-[46vw]">
+      <option value="">{all}</option>
+      {options.map(o => <option key={o.value} value={o.value}>{o.value} ({o.count})</option>)}
+    </select>
+  );
+}
+
+// ========================================
+// 🧩 상세 모달
+// ========================================
+function DetailModal({ p, onClose }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', h);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', h); document.body.style.overflow = ''; };
+  }, []);
+  if (!p) return null;
+  let host = '';
+  try { host = new URL(p.url).hostname.replace(/^www\./, ''); } catch (e) {}
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="bg-panel border border-line rounded-2xl max-w-[860px] w-full max-h-[90vh] overflow-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="grid md:grid-cols-[380px_1fr]">
+          <ProductImage p={p} className="w-full h-[280px] md:h-full md:min-h-[360px]" roundedClass="rounded-t-2xl md:rounded-l-2xl md:rounded-tr-none" />
+          <div className="p-5 min-w-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <BrandDot brand={p.brand} size={34} fontSize={15} />
+                <div className="min-w-0">
+                  <div className="text-[12px] text-mut">{p.brand}</div>
+                  <div className="mono text-[16px] font-bold text-white truncate">{p.model}</div>
+                </div>
+              </div>
+              <button onClick={onClose} aria-label="닫기" className="text-mut hover:text-white text-xl leading-none px-1">×</button>
+            </div>
+            <h2 className="text-[18px] font-bold text-white mt-3 leading-snug">{p.name || `${p.brand} ${p.model}`}</h2>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <Badge tone="blue">{p.trade}</Badge>
+              {p.category && <Badge>{p.category}</Badge>}
+              {p.subcategory && <Badge>{p.subcategory}</Badge>}
+              {p.source === 'research' && <Badge tone="green">출처 검증</Badge>}
+            </div>
+            {p.features && p.features.length > 0 && (
+              <div className="mt-4">
+                <div className="text-[11px] text-mut uppercase tracking-wide mb-1.5">특징</div>
+                <div className="flex flex-wrap gap-1.5">{p.features.map((f, i) => <Badge key={i} tone="violet">{f}</Badge>)}</div>
+              </div>
+            )}
+            <dl className="mt-4 grid grid-cols-[76px_1fr] gap-y-1.5 text-[13px]">
+              {p.spec ? [<dt key="a" className="text-mut">규격</dt>, <dd key="b" className="text-txt">{p.spec}{p.unit ? ` · ${p.unit}` : ''}</dd>] : null}
+              {p.price ? [<dt key="c" className="text-mut">판매가</dt>, <dd key="d" className="text-white font-bold">
+                {fmtKRW(p.price.min)}{p.price.max !== p.price.min ? `~${fmtKRW(p.price.max)}` : ''}원
+                <span className="text-mut font-normal"> (판매처 관측가)</span></dd>] : null}
+              <dt className="text-mut">수집일</dt><dd className="text-txt">{p.collected_date}</dd>
+              {host ? [<dt key="e" className="text-mut">출처</dt>, <dd key="f" className="text-txt">{host}</dd>] : null}
+            </dl>
+            {p.description && <p className="mt-3 text-[12.5px] text-mut leading-relaxed">{p.description}</p>}
+            <div className="mt-5 flex gap-2 flex-wrap">
+              {p.url && <a href={p.url} target="_blank" rel="noopener noreferrer"
+                className="px-4 py-2 rounded-[10px] bg-accent hover:bg-accent2 text-white text-[13px] font-semibold transition-colors">판매 페이지 열기 ↗</a>}
+              <a href={`/?search=${encodeURIComponent(p.brand)}`}
+                className="px-4 py-2 rounded-[10px] bg-panel2 border border-line hover:border-accent text-[13px] text-txt transition-colors">자재 DB에서 {p.brand} 검색</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ========================================
+// 🧩 제품 카드
+// ========================================
+function ProductCard({ p, onOpen }) {
+  return (
+    <div onClick={() => onOpen(p)} role="button" tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter') onOpen(p); }}
+      className="bg-panel border border-line rounded-[14px] cursor-pointer transition-all hover:border-[#42506a] hover:-translate-y-[1px] hover:shadow-[0_8px_30px_rgba(0,0,0,.35)] flex flex-col overflow-hidden">
+      <ProductImage p={p} className="w-full h-[150px]" />
+      <div className="p-3.5 flex flex-col gap-2 flex-1">
+        <div className="flex items-center gap-2">
+          <BrandDot brand={p.brand} />
+          <span className="text-[11.5px] text-mut truncate">{p.brand}</span>
+          <span className="mono text-[11.5px] font-bold text-accent2 ml-auto truncate max-w-[45%]">{p.model}</span>
+        </div>
+        <div className="text-[14px] font-bold text-white leading-snug line-clamp-2">{p.name || `${p.brand} ${p.model}`}</div>
+        <div className="flex flex-wrap gap-1">
+          {p.subcategory && <Badge>{p.subcategory}</Badge>}
+          {(p.features || []).slice(0, 2).map((f, i) => <Badge key={i} tone="violet">{f}</Badge>)}
+        </div>
+        <div className="mt-auto pt-1 flex items-baseline justify-between">
+          <span className="text-[14px] font-extrabold text-white">
+            {p.price ? `${fmtKRW(p.price.min)}원` : <span className="text-mut font-normal text-[12px]">가격 판매처 문의</span>}
+          </span>
+          <span className="text-[10.5px] text-mut2">{p.collected_date}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ========================================
+// 🚀 App
+// ========================================
+function App() {
+  const [products, setProducts] = useState(null);
+  const [facets, setFacets] = useState(null);
+  const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [brand, setBrand] = useState('');
+  const [trade, setTrade] = useState('');
+  const [category, setCategory] = useState('');
+  const [detail, setDetail] = useState(null);
+
+  const load = useCallback(() => {
+    setError(null);
+    Promise.all([
+      fetch(`${API_BASE_URL}/products?limit=0`).then(r => r.json()),
+      fetch(`${API_BASE_URL}/products/facets`).then(r => r.json()),
+    ]).then(([list, fc]) => {
+      if (!list.success || !fc.success) throw new Error('API 오류');
+      setProducts(list.data); setFacets(fc.data);
+    }).catch(() => setError('서버(3011)에 연결할 수 없습니다 — `node server.js` 실행 후 새로고침 해주세요.'));
+  }, []);
+  useEffect(load, []);
+
+  const filtered = useMemo(() => {
+    if (!products) return [];
+    const q = search.trim().toLowerCase();
+    return products.filter(p =>
+      (!brand || p.brand === brand) &&
+      (!trade || p.trade === trade) &&
+      (!category || p.category === category) &&
+      (!q || [p.brand, p.model, p.name, p.category, p.subcategory, p.description, (p.features || []).join(' ')].join(' ').toLowerCase().includes(q))
+    );
+  }, [products, search, brand, trade, category]);
+
+  const grouped = useMemo(() => {
+    const m = new Map();
+    for (const p of filtered) { if (!m.has(p.brand)) m.set(p.brand, []); m.get(p.brand).push(p); }
+    return [...m.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], 'ko'));
+  }, [filtered]);
+
+  const hasFilter = search || brand || trade || category;
+
+  return (
+    <div>
+      {/* 헤더 */}
+      <header className="sticky top-0 z-30 border-b border-line" style={{ background: 'linear-gradient(180deg,#141821,#10131a)', backdropFilter: 'blur(6px)' }}>
+        <div className="max-w-[1320px] mx-auto px-4 py-3.5 flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg,#4f8cff,#9b8cff)' }}>📦</div>
+            <div>
+              <h1 className="text-[17px] font-bold tracking-tight text-white m-0">제품 라이브러리</h1>
+              <div className="text-[11.5px] text-mut">브랜드 × 모델 × 특징 × 사진 — 실제 판매 페이지 출처 기반</div>
+            </div>
+          </div>
+          <div className="flex gap-5 ml-auto items-center flex-wrap">
+            {facets && (
+              <div className="flex gap-4">
+                <div className="text-right"><div className="text-[18px] font-extrabold text-white leading-tight">{facets.total}</div><div className="text-[10px] text-mut uppercase tracking-wider">제품</div></div>
+                <div className="text-right"><div className="text-[18px] font-extrabold text-white leading-tight">{facets.brands.length}</div><div className="text-[10px] text-mut uppercase tracking-wider">브랜드</div></div>
+                <div className="text-right"><div className="text-[18px] font-extrabold text-white leading-tight">{facets.withImage}</div><div className="text-[10px] text-mut uppercase tracking-wider">사진</div></div>
+              </div>
+            )}
+            <nav className="flex gap-3 text-[12.5px]">
+              <a href="/" className="text-accent2 hover:text-white">🧱 자재 DB</a>
+              <a href="/research/" className="text-accent2 hover:text-white">📊 리서치 현황</a>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-[1320px] mx-auto px-4 pb-16 pt-4">
+        {error && (
+          <div className="bg-up/10 border border-up/40 rounded-[14px] p-5 text-center my-8">
+            <div className="text-[15px] font-bold text-[#ffb3b3] mb-1">연결 실패</div>
+            <div className="text-[13px] text-mut">{error}</div>
+            <button onClick={load} className="mt-3 px-4 py-2 rounded-[10px] bg-panel2 border border-line text-[13px] hover:border-accent">다시 시도</button>
+          </div>
+        )}
+        {!error && !products && (
+          <div className="flex items-center justify-center py-24 text-mut gap-3">
+            <span className="inline-block w-5 h-5 border-2 border-line border-t-accent rounded-full animate-spin"></span> 제품 불러오는 중…
+          </div>
+        )}
+        {products && (
+          <React.Fragment>
+            {/* 필터 바 */}
+            <div className="flex gap-2.5 flex-wrap items-center mb-3">
+              <div className="relative flex-1 min-w-[210px]">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-mut2">🔎</span>
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="브랜드 · 모델(품번) · 제품명 · 특징 검색  (예: 신한 스케치, CC-767)"
+                  className="w-full pl-10 pr-3 py-[10px] bg-panel border border-line rounded-[11px] text-[13.5px] text-txt outline-none focus:border-accent placeholder:text-mut2" aria-label="제품 검색" />
+              </div>
+              {facets && <Select value={brand} onChange={setBrand} options={facets.brands} all="브랜드 전체" />}
+              {facets && <Select value={trade} onChange={setTrade} options={facets.trades} all="공종 전체" />}
+              {facets && <Select value={category} onChange={setCategory} options={facets.categories} all="분류 전체" />}
+              {hasFilter && <button onClick={() => { setSearch(''); setBrand(''); setTrade(''); setCategory(''); }}
+                className="px-3 py-[9px] rounded-[11px] bg-panel2 border border-line text-[12.5px] text-mut hover:text-white hover:border-accent">초기화 ×</button>}
+            </div>
+
+            {/* 브랜드 칩 */}
+            {facets && !brand && !hasFilter && (
+              <div className="flex gap-1.5 flex-wrap mb-4">
+                {facets.brands.map(b => (
+                  <button key={b.value} onClick={() => setBrand(b.value)}
+                    className="flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-panel border border-line hover:border-accent text-[12px] text-mut hover:text-white transition-colors">
+                    <BrandDot brand={b.value} size={18} fontSize={9} />{b.value}
+                    <span className="text-[10.5px] text-mut2">{b.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="text-[12.5px] text-mut mb-3 flex justify-between items-center flex-wrap gap-2">
+              <span><b className="text-white">{filtered.length}</b>개 제품{hasFilter ? ' (필터 적용)' : ''} · 가격은 판매처 관측가 기준</span>
+              <span className="text-mut2">매주 월요일 리서치가 신규 제품·가격을 누적합니다</span>
+            </div>
+
+            {filtered.length === 0 && (
+              <div className="bg-panel border border-line rounded-[14px] p-10 text-center text-mut">
+                {products.length === 0
+                  ? <span>아직 수집된 제품이 없습니다 — 주간 리서치가 돌면 브랜드·모델·사진이 여기에 쌓입니다.</span>
+                  : <span>조건에 맞는 제품이 없습니다. 필터를 초기화해 보세요.</span>}
+              </div>
+            )}
+
+            {/* 브랜드별 그룹 그리드 */}
+            {grouped.map(([bName, items]) => (
+              <section key={bName} className="mb-7" aria-label={bName}>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <BrandDot brand={bName} size={26} fontSize={12} />
+                  <h2 className="text-[15px] font-bold text-white m-0">{bName}</h2>
+                  <span className="text-[11.5px] text-mut bg-[#242a35] rounded-full px-2 py-[1px]">{items.length}</span>
+                </div>
+                <div className="grid gap-3.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(235px, 1fr))' }}>
+                  {items.map(p => <ProductCard key={p.id} p={p} onOpen={setDetail} />)}
+                </div>
+              </section>
+            ))}
+          </React.Fragment>
+        )}
+      </main>
+
+      {detail && <DetailModal p={detail} onClose={() => setDetail(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
