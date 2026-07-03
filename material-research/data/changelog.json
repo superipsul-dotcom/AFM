@@ -1,4 +1,3007 @@
 {
   "version": 1,
-  "entries": []
+  "entries": [
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-1",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-한치각-다루끼-30각-30x30x3600",
+      "name": "한치각(다루끼 30각)",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "각재",
+      "spec": "30x30x3600",
+      "detail": "신규 등록 (30x30x3600) · 시세 2,000~3,500원",
+      "source": "seed",
+      "price": {
+        "min": 2000,
+        "max": 3500,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-2",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-오비끼-대각재-69x69x3600",
+      "name": "오비끼(대각재)",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "각재",
+      "spec": "69x69x3600",
+      "detail": "신규 등록 (69x69x3600) · 시세 9,000~16,000원",
+      "source": "seed",
+      "price": {
+        "min": 9000,
+        "max": 16000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-3",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-spf-구조목-2x6-38x140x3600",
+      "name": "SPF 구조목 2x6",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "각재",
+      "spec": "38x140x3600",
+      "detail": "신규 등록 (38x140x3600) · 시세 9,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 9000,
+        "max": 15000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-4",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-졸대-오림목-세각-9x30x3600",
+      "name": "졸대(오림목 세각)",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "각재",
+      "spec": "9x30x3600",
+      "detail": "신규 등록 (9x30x3600) · 시세 800~1,800원",
+      "source": "seed",
+      "price": {
+        "min": 800,
+        "max": 1800,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-5",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-라왕-합판-4-8t-3x6",
+      "name": "라왕 합판",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "판재",
+      "spec": "4.8T 3x6",
+      "detail": "신규 등록 (4.8T 3x6) · 시세 12,000~18,000원",
+      "source": "seed",
+      "price": {
+        "min": 12000,
+        "max": 18000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-6",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-낙엽송-합판-11-5t-4x8",
+      "name": "낙엽송 합판",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "판재",
+      "spec": "11.5T 4x8",
+      "detail": "신규 등록 (11.5T 4x8) · 시세 30,000~45,000원",
+      "source": "seed",
+      "price": {
+        "min": 30000,
+        "max": 45000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-7",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-태고합판-코팅합판-11-5t-4x8",
+      "name": "태고합판(코팅합판)",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "판재",
+      "spec": "11.5T 4x8",
+      "detail": "신규 등록 (11.5T 4x8) · 시세 28,000~40,000원",
+      "source": "seed",
+      "price": {
+        "min": 28000,
+        "max": 40000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-8",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-코어합판-라왕-18t-4x8",
+      "name": "코어합판(라왕)",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "판재",
+      "spec": "18T 4x8",
+      "detail": "신규 등록 (18T 4x8) · 시세 40,000~60,000원",
+      "source": "seed",
+      "price": {
+        "min": 40000,
+        "max": 60000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-9",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-방염-mdf-9t-4x8",
+      "name": "방염 MDF",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "판재",
+      "spec": "9T 4x8",
+      "detail": "신규 등록 (9T 4x8) · 시세 25,000~40,000원",
+      "source": "seed",
+      "price": {
+        "min": 25000,
+        "max": 40000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-10",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-일반-석고보드-9-5t-900x1800",
+      "name": "일반 석고보드",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "spec": "9.5T 900x1800",
+      "detail": "신규 등록 (9.5T 900x1800) · 시세 4,500~6,500원",
+      "source": "seed",
+      "price": {
+        "min": 4500,
+        "max": 6500,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-11",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-방수-석고보드-9-5t-900x1800",
+      "name": "방수 석고보드",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "spec": "9.5T 900x1800",
+      "detail": "신규 등록 (9.5T 900x1800) · 시세 7,000~9,500원",
+      "source": "seed",
+      "price": {
+        "min": 7000,
+        "max": 9500,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-12",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-방화-석고보드-12-5t-900x1800",
+      "name": "방화 석고보드",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "spec": "12.5T 900x1800",
+      "detail": "신규 등록 (12.5T 900x1800) · 시세 6,500~9,000원",
+      "source": "seed",
+      "price": {
+        "min": 6500,
+        "max": 9000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-13",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-차음-석고보드-12-5t-900x1800",
+      "name": "차음 석고보드",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "spec": "12.5T 900x1800",
+      "detail": "신규 등록 (12.5T 900x1800) · 시세 8,000~12,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 12000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-14",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-판재-목재-석고보드-3x8-9-5t-900x2400",
+      "name": "석고보드 3x8",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "spec": "9.5T 900x2400",
+      "detail": "신규 등록 (9.5T 900x2400) · 시세 6,000~8,500원",
+      "source": "seed",
+      "price": {
+        "min": 6000,
+        "max": 8500,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-15",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-목공용-본드-오공-205-3kg",
+      "name": "목공용 본드(오공 205)",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "접착제",
+      "spec": "3kg",
+      "detail": "신규 등록 (3kg) · 시세 7,000~11,000원",
+      "source": "seed",
+      "price": {
+        "min": 7000,
+        "max": 11000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-16",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-목공용-본드-오공-601-800g",
+      "name": "목공용 본드(오공 601)",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "접착제",
+      "spec": "800g",
+      "detail": "신규 등록 (800g) · 시세 3,000~5,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 5000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-17",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-순간접착제-401-500g",
+      "name": "순간접착제(401)",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "접착제",
+      "spec": "500g",
+      "detail": "신규 등록 (500g) · 시세 8,000~14,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 14000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-18",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-실타카핀-630-j핀-30mm-1박스",
+      "name": "실타카핀 630(J핀)",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "타카핀",
+      "spec": "30mm 1박스",
+      "detail": "신규 등록 (30mm 1박스) · 시세 2,500~4,500원",
+      "source": "seed",
+      "price": {
+        "min": 2500,
+        "max": 4500,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-19",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-타카핀-f30-30mm-1박스",
+      "name": "타카핀 F30",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "타카핀",
+      "spec": "30mm 1박스",
+      "detail": "신규 등록 (30mm 1박스) · 시세 3,000~5,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 5000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-20",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-타카핀-dt64-대두정-64mm-1박스",
+      "name": "타카핀 DT64(대두정)",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "타카핀",
+      "spec": "64mm 1박스",
+      "detail": "신규 등록 (64mm 1박스) · 시세 6,000~9,500원",
+      "source": "seed",
+      "price": {
+        "min": 6000,
+        "max": 9500,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-21",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-콘크리트-타카핀-st38-38mm-1박스",
+      "name": "콘크리트 타카핀 ST38",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "타카핀",
+      "spec": "38mm 1박스",
+      "detail": "신규 등록 (38mm 1박스) · 시세 7,000~11,000원",
+      "source": "seed",
+      "price": {
+        "min": 7000,
+        "max": 11000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-22",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-타카핀-422-실린더-22mm-1박스",
+      "name": "타카핀 422(실린더)",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "타카핀",
+      "spec": "22mm 1박스",
+      "detail": "신규 등록 (22mm 1박스) · 시세 3,000~5,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 5000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-23",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-석고피스-32mm-1000개",
+      "name": "석고피스",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "피스",
+      "spec": "32mm 1000개",
+      "detail": "신규 등록 (32mm 1000개) · 시세 4,500~8,000원",
+      "source": "seed",
+      "price": {
+        "min": 4500,
+        "max": 8000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-24",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-목공피스-아연-38mm-500개",
+      "name": "목공피스(아연)",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "피스",
+      "spec": "38mm 500개",
+      "detail": "신규 등록 (38mm 500개) · 시세 4,000~7,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 7000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-25",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-우레탄폼-1액형-750ml",
+      "name": "우레탄폼 1액형",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "폼·퍼티",
+      "spec": "750ml",
+      "detail": "신규 등록 (750ml) · 시세 4,500~8,000원",
+      "source": "seed",
+      "price": {
+        "min": 4500,
+        "max": 8000,
+        "unit": "캔"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-26",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-우드필러-아쿠아퍼티-200g",
+      "name": "우드필러(아쿠아퍼티)",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "폼·퍼티",
+      "spec": "200g",
+      "detail": "신규 등록 (200g) · 시세 4,000~7,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 7000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-27",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "목공사-부자재-pvc-코너비드-2-4m",
+      "name": "PVC 코너비드",
+      "trade": "목공사",
+      "category": "부자재",
+      "subcategory": "비드",
+      "spec": "2.4M",
+      "detail": "신규 등록 (2.4M) · 시세 1,000~2,000원",
+      "source": "seed",
+      "price": {
+        "min": 1000,
+        "max": 2000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-28",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-런너-50형-3m",
+      "name": "런너 50형",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "벽체틀",
+      "spec": "3M",
+      "detail": "신규 등록 (3M) · 시세 3,000~5,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 5000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-29",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-스터드-50형-3m",
+      "name": "스터드 50형",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "벽체틀",
+      "spec": "3M",
+      "detail": "신규 등록 (3M) · 시세 3,500~6,000원",
+      "source": "seed",
+      "price": {
+        "min": 3500,
+        "max": 6000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-30",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-스터드-65형-3m",
+      "name": "스터드 65형",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "벽체틀",
+      "spec": "3M",
+      "detail": "신규 등록 (3M) · 시세 4,000~6,500원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 6500,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-31",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-스터드-75형-3m",
+      "name": "스터드 75형",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "벽체틀",
+      "spec": "3M",
+      "detail": "신규 등록 (3M) · 시세 4,500~7,500원",
+      "source": "seed",
+      "price": {
+        "min": 4500,
+        "max": 7500,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-32",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-캐링찬넬-38형-3m",
+      "name": "캐링찬넬 38형",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "천장틀",
+      "spec": "3M",
+      "detail": "신규 등록 (3M) · 시세 3,500~6,000원",
+      "source": "seed",
+      "price": {
+        "min": 3500,
+        "max": 6000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-33",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-마이너찬넬-엠바-3m",
+      "name": "마이너찬넬(엠바)",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "천장틀",
+      "spec": "3M",
+      "detail": "신규 등록 (3M) · 시세 2,000~3,500원",
+      "source": "seed",
+      "price": {
+        "min": 2000,
+        "max": 3500,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-34",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-엠바클립-100개",
+      "name": "엠바클립",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "천장틀",
+      "spec": "100개",
+      "detail": "신규 등록 (100개) · 시세 5,000~9,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 9000,
+        "unit": "봉"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-35",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-행거-행거볼트-세트-1조",
+      "name": "행거+행거볼트 세트",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "천장틀",
+      "spec": "1조",
+      "detail": "신규 등록 (1조) · 시세 800~1,500원",
+      "source": "seed",
+      "price": {
+        "min": 800,
+        "max": 1500,
+        "unit": "조"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-36",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-전산볼트-달대-9mm-1m",
+      "name": "전산볼트(달대)",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "천장틀",
+      "spec": "9mm 1M",
+      "detail": "신규 등록 (9mm 1M) · 시세 1,000~2,000원",
+      "source": "seed",
+      "price": {
+        "min": 1000,
+        "max": 2000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-37",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-부자재-경량-피스-화스너-19mm-1000개",
+      "name": "경량 피스(화스너)",
+      "trade": "경량공사",
+      "category": "부자재",
+      "subcategory": "피스",
+      "spec": "19mm 1000개",
+      "detail": "신규 등록 (19mm 1000개) · 시세 4,000~7,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 7000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-38",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "경량공사-경량자재-아연-앵글-40x40-3m",
+      "name": "아연 앵글",
+      "trade": "경량공사",
+      "category": "경량자재",
+      "subcategory": "벽체틀",
+      "spec": "40x40 3M",
+      "detail": "신규 등록 (40x40 3M) · 시세 2,500~4,500원",
+      "source": "seed",
+      "price": {
+        "min": 2500,
+        "max": 4500,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-39",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "타일공사-부자재-타일-압착시멘트-일반-25kg",
+      "name": "타일 압착시멘트(일반)",
+      "trade": "타일공사",
+      "category": "부자재",
+      "subcategory": "접착제",
+      "spec": "25kg",
+      "detail": "신규 등록 (25kg) · 시세 6,000~10,000원",
+      "source": "seed",
+      "price": {
+        "min": 6000,
+        "max": 10000,
+        "unit": "포"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-40",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "타일공사-부자재-유기질-타일본드-d2-20kg",
+      "name": "유기질 타일본드(D2)",
+      "trade": "타일공사",
+      "category": "부자재",
+      "subcategory": "접착제",
+      "spec": "20kg",
+      "detail": "신규 등록 (20kg) · 시세 28,000~40,000원",
+      "source": "seed",
+      "price": {
+        "min": 28000,
+        "max": 40000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-41",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "타일공사-부자재-고성능-접착-몰탈-아덱스-x77-20kg",
+      "name": "고성능 접착 몰탈(아덱스 X77)",
+      "trade": "타일공사",
+      "category": "부자재",
+      "subcategory": "접착제",
+      "spec": "20kg",
+      "detail": "신규 등록 (20kg) · 시세 45,000~62,000원",
+      "source": "seed",
+      "price": {
+        "min": 45000,
+        "max": 62000,
+        "unit": "포"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-42",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "타일공사-부자재-폴리머-줄눈재-5kg",
+      "name": "폴리머 줄눈재",
+      "trade": "타일공사",
+      "category": "부자재",
+      "subcategory": "줄눈",
+      "spec": "5kg",
+      "detail": "신규 등록 (5kg) · 시세 6,000~10,000원",
+      "source": "seed",
+      "price": {
+        "min": 6000,
+        "max": 10000,
+        "unit": "포"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-43",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "타일공사-부자재-타일-스페이서-2mm-1000개",
+      "name": "타일 스페이서",
+      "trade": "타일공사",
+      "category": "부자재",
+      "subcategory": "시공보조",
+      "spec": "2mm 1000개",
+      "detail": "신규 등록 (2mm 1000개) · 시세 3,000~6,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 6000,
+        "unit": "봉"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-44",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "타일공사-부자재-레벨링-클립-웨지-세트-각-100개",
+      "name": "레벨링 클립+웨지 세트",
+      "trade": "타일공사",
+      "category": "부자재",
+      "subcategory": "시공보조",
+      "spec": "각 100개",
+      "detail": "신규 등록 (각 100개) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "조"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-45",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "타일공사-부자재-졸리컷-코너비드-알루미늄-2-5m",
+      "name": "졸리컷 코너비드(알루미늄)",
+      "trade": "타일공사",
+      "category": "부자재",
+      "subcategory": "비드",
+      "spec": "2.5M",
+      "detail": "신규 등록 (2.5M) · 시세 4,000~8,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 8000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-46",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "타일공사-부자재-석재-타일-발수제-1l",
+      "name": "석재·타일 발수제",
+      "trade": "타일공사",
+      "category": "부자재",
+      "subcategory": "보수·보호",
+      "spec": "1L",
+      "detail": "신규 등록 (1L) · 시세 12,000~20,000원",
+      "source": "seed",
+      "price": {
+        "min": 12000,
+        "max": 20000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-47",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "방수공사-방수재-시멘트-액체방수제-18l",
+      "name": "시멘트 액체방수제",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "액체방수",
+      "spec": "18L",
+      "detail": "신규 등록 (18L) · 시세 15,000~25,000원",
+      "source": "seed",
+      "price": {
+        "min": 15000,
+        "max": 25000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-48",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "방수공사-방수재-고뫄스-아스팔트-도막-18l",
+      "name": "고뫄스(아스팔트 도막)",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "도막방수",
+      "spec": "18L",
+      "detail": "신규 등록 (18L) · 시세 30,000~45,000원",
+      "source": "seed",
+      "price": {
+        "min": 30000,
+        "max": 45000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-49",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "방수공사-방수재-아쿠아디펜스-4kg",
+      "name": "아쿠아디펜스",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "도막방수",
+      "spec": "4kg",
+      "detail": "신규 등록 (4kg) · 시세 35,000~50,000원",
+      "source": "seed",
+      "price": {
+        "min": 35000,
+        "max": 50000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-50",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "방수공사-방수재-우레탄-방수-중도-18l",
+      "name": "우레탄 방수 중도",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "우레탄방수",
+      "spec": "18L",
+      "detail": "신규 등록 (18L) · 시세 55,000~80,000원",
+      "source": "seed",
+      "price": {
+        "min": 55000,
+        "max": 80000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-51",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "방수공사-방수재-우레탄-방수-상도-18l",
+      "name": "우레탄 방수 상도",
+      "trade": "방수공사",
+      "category": "방수재",
+      "subcategory": "우레탄방수",
+      "spec": "18L",
+      "detail": "신규 등록 (18L) · 시세 60,000~90,000원",
+      "source": "seed",
+      "price": {
+        "min": 60000,
+        "max": 90000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-52",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "방수공사-부자재-방수-보강-부직포-메쉬-1m폭",
+      "name": "방수 보강 부직포(메쉬)",
+      "trade": "방수공사",
+      "category": "부자재",
+      "subcategory": "보강",
+      "spec": "1M폭",
+      "detail": "신규 등록 (1M폭) · 시세 1,500~3,000원",
+      "source": "seed",
+      "price": {
+        "min": 1500,
+        "max": 3000,
+        "unit": "M"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-53",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "방수공사-부자재-급결-지수제-4kg",
+      "name": "급결 지수제",
+      "trade": "방수공사",
+      "category": "부자재",
+      "subcategory": "보수",
+      "spec": "4kg",
+      "detail": "신규 등록 (4kg) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-54",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도배공사-부자재-초배지-운용지-1롤",
+      "name": "초배지(운용지)",
+      "trade": "도배공사",
+      "category": "부자재",
+      "subcategory": "초배",
+      "spec": "1롤",
+      "detail": "신규 등록 (1롤) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-55",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도배공사-부자재-부직포-아이텍스-1롤",
+      "name": "부직포(아이텍스)",
+      "trade": "도배공사",
+      "category": "부자재",
+      "subcategory": "초배",
+      "spec": "1롤",
+      "detail": "신규 등록 (1롤) · 시세 25,000~40,000원",
+      "source": "seed",
+      "price": {
+        "min": 25000,
+        "max": 40000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-56",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도배공사-부자재-도배풀-밀풀-20kg",
+      "name": "도배풀(밀풀)",
+      "trade": "도배공사",
+      "category": "부자재",
+      "subcategory": "접착",
+      "spec": "20kg",
+      "detail": "신규 등록 (20kg) · 시세 12,000~18,000원",
+      "source": "seed",
+      "price": {
+        "min": 12000,
+        "max": 18000,
+        "unit": "포"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-57",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도배공사-부자재-도배용-수성본드-1kg",
+      "name": "도배용 수성본드",
+      "trade": "도배공사",
+      "category": "부자재",
+      "subcategory": "접착",
+      "spec": "1kg",
+      "detail": "신규 등록 (1kg) · 시세 4,000~7,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 7000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-58",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도배공사-부자재-수성-실리콘-도배용-300ml",
+      "name": "수성 실리콘(도배용)",
+      "trade": "도배공사",
+      "category": "부자재",
+      "subcategory": "접착",
+      "spec": "300ml",
+      "detail": "신규 등록 (300ml) · 시세 1,500~3,000원",
+      "source": "seed",
+      "price": {
+        "min": 1500,
+        "max": 3000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-59",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도배공사-부자재-네바리-심-테이프-1롤",
+      "name": "네바리(심) 테이프",
+      "trade": "도배공사",
+      "category": "부자재",
+      "subcategory": "보수",
+      "spec": "1롤",
+      "detail": "신규 등록 (1롤) · 시세 3,000~6,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 6000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-60",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도배공사-부자재-조인트-코너-보수-테이프-1롤",
+      "name": "조인트(코너) 보수 테이프",
+      "trade": "도배공사",
+      "category": "부자재",
+      "subcategory": "보수",
+      "spec": "1롤",
+      "detail": "신규 등록 (1롤) · 시세 3,000~6,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 6000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-61",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도장공사-부자재-핸디코트-퍼티-5kg",
+      "name": "핸디코트(퍼티)",
+      "trade": "도장공사",
+      "category": "부자재",
+      "subcategory": "퍼티",
+      "spec": "5kg",
+      "detail": "신규 등록 (5kg) · 시세 8,000~13,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 13000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-62",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도장공사-부자재-젯소-수성-프라이머-4l",
+      "name": "젯소(수성 프라이머)",
+      "trade": "도장공사",
+      "category": "부자재",
+      "subcategory": "프라이머",
+      "spec": "4L",
+      "detail": "신규 등록 (4L) · 시세 15,000~25,000원",
+      "source": "seed",
+      "price": {
+        "min": 15000,
+        "max": 25000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-63",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도장공사-부자재-바인더-침투-프라이머-18l",
+      "name": "바인더(침투 프라이머)",
+      "trade": "도장공사",
+      "category": "부자재",
+      "subcategory": "프라이머",
+      "spec": "18L",
+      "detail": "신규 등록 (18L) · 시세 25,000~40,000원",
+      "source": "seed",
+      "price": {
+        "min": 25000,
+        "max": 40000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-64",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도장공사-부자재-마스킹-테이프-24mm",
+      "name": "마스킹 테이프",
+      "trade": "도장공사",
+      "category": "부자재",
+      "subcategory": "보양",
+      "spec": "24mm",
+      "detail": "신규 등록 (24mm) · 시세 800~1,500원",
+      "source": "seed",
+      "price": {
+        "min": 800,
+        "max": 1500,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-65",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도장공사-부자재-커버링-테이프-2-6m-x-25m",
+      "name": "커버링 테이프",
+      "trade": "도장공사",
+      "category": "부자재",
+      "subcategory": "보양",
+      "spec": "2.6M x 25M",
+      "detail": "신규 등록 (2.6M x 25M) · 시세 2,000~4,000원",
+      "source": "seed",
+      "price": {
+        "min": 2000,
+        "max": 4000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-66",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도장공사-부자재-샌드페이퍼-220방-50매",
+      "name": "샌드페이퍼(220방)",
+      "trade": "도장공사",
+      "category": "부자재",
+      "subcategory": "연마",
+      "spec": "50매",
+      "detail": "신규 등록 (50매) · 시세 10,000~18,000원",
+      "source": "seed",
+      "price": {
+        "min": 10000,
+        "max": 18000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-67",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도장공사-부자재-롤러-트레이-세트-9인치",
+      "name": "롤러+트레이 세트",
+      "trade": "도장공사",
+      "category": "부자재",
+      "subcategory": "도구",
+      "spec": "9인치",
+      "detail": "신규 등록 (9인치) · 시세 5,000~10,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 10000,
+        "unit": "조"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-68",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "도장공사-부자재-수성용-붓-3인치",
+      "name": "수성용 붓",
+      "trade": "도장공사",
+      "category": "부자재",
+      "subcategory": "도구",
+      "spec": "3인치",
+      "detail": "신규 등록 (3인치) · 시세 2,000~4,500원",
+      "source": "seed",
+      "price": {
+        "min": 2000,
+        "max": 4500,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-69",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-부자재-마루-시공본드-우레탄-2액형-8kg",
+      "name": "마루 시공본드(우레탄 2액형)",
+      "trade": "바닥공사",
+      "category": "부자재",
+      "subcategory": "접착제",
+      "spec": "8kg",
+      "detail": "신규 등록 (8kg) · 시세 25,000~40,000원",
+      "source": "seed",
+      "price": {
+        "min": 25000,
+        "max": 40000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-70",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-부자재-데코타일-본드-아크릴-18l",
+      "name": "데코타일 본드(아크릴)",
+      "trade": "바닥공사",
+      "category": "부자재",
+      "subcategory": "접착제",
+      "spec": "18L",
+      "detail": "신규 등록 (18L) · 시세 30,000~45,000원",
+      "source": "seed",
+      "price": {
+        "min": 30000,
+        "max": 45000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-71",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-부자재-셀프레벨링-몰탈-25kg",
+      "name": "셀프레벨링 몰탈",
+      "trade": "바닥공사",
+      "category": "부자재",
+      "subcategory": "바탕처리",
+      "spec": "25kg",
+      "detail": "신규 등록 (25kg) · 시세 12,000~20,000원",
+      "source": "seed",
+      "price": {
+        "min": 12000,
+        "max": 20000,
+        "unit": "포"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-72",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-부자재-pe-방습필름-0-1t-x-90cm-x-50m",
+      "name": "PE 방습필름",
+      "trade": "바닥공사",
+      "category": "부자재",
+      "subcategory": "바탕처리",
+      "spec": "0.1T x 90cm x 50M",
+      "detail": "신규 등록 (0.1T x 90cm x 50M) · 시세 15,000~25,000원",
+      "source": "seed",
+      "price": {
+        "min": 15000,
+        "max": 25000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-73",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-부자재-층간-차음재-epp-20t",
+      "name": "층간 차음재(EPP)",
+      "trade": "바닥공사",
+      "category": "부자재",
+      "subcategory": "차음",
+      "spec": "20T",
+      "detail": "신규 등록 (20T) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "M2"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-74",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-부자재-접착식-pvc-굽도리-10cm",
+      "name": "접착식 PVC 굽도리",
+      "trade": "바닥공사",
+      "category": "부자재",
+      "subcategory": "마감",
+      "spec": "10cm",
+      "detail": "신규 등록 (10cm) · 시세 800~1,500원",
+      "source": "seed",
+      "price": {
+        "min": 800,
+        "max": 1500,
+        "unit": "M"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-75",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-조적-미장-레미탈-건비빔-몰탈-25kg",
+      "name": "레미탈(건비빔 몰탈)",
+      "trade": "기타공사",
+      "category": "조적·미장",
+      "subcategory": "몰탈",
+      "spec": "25kg",
+      "detail": "신규 등록 (25kg) · 시세 4,500~7,500원",
+      "source": "seed",
+      "price": {
+        "min": 4500,
+        "max": 7500,
+        "unit": "포"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-76",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-조적-미장-포틀랜드-시멘트-40kg",
+      "name": "포틀랜드 시멘트",
+      "trade": "기타공사",
+      "category": "조적·미장",
+      "subcategory": "몰탈",
+      "spec": "40kg",
+      "detail": "신규 등록 (40kg) · 시세 6,500~9,500원",
+      "source": "seed",
+      "price": {
+        "min": 6500,
+        "max": 9500,
+        "unit": "포"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-77",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-조적-미장-세척사-모래-25kg",
+      "name": "세척사(모래)",
+      "trade": "기타공사",
+      "category": "조적·미장",
+      "subcategory": "몰탈",
+      "spec": "25kg",
+      "detail": "신규 등록 (25kg) · 시세 3,000~5,500원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 5500,
+        "unit": "포"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-78",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-조적-미장-시멘트-벽돌-190x90x57",
+      "name": "시멘트 벽돌",
+      "trade": "기타공사",
+      "category": "조적·미장",
+      "subcategory": "조적",
+      "spec": "190x90x57",
+      "detail": "신규 등록 (190x90x57) · 시세 150~350원",
+      "source": "seed",
+      "price": {
+        "min": 150,
+        "max": 350,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-79",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-조적-미장-alc-블럭-100t-600x400",
+      "name": "ALC 블럭",
+      "trade": "기타공사",
+      "category": "조적·미장",
+      "subcategory": "조적",
+      "spec": "100T 600x400",
+      "detail": "신규 등록 (100T 600x400) · 시세 2,500~4,500원",
+      "source": "seed",
+      "price": {
+        "min": 2500,
+        "max": 4500,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-80",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-조적-미장-미장-코너비드-스톱비드-2-4m",
+      "name": "미장 코너비드(스톱비드)",
+      "trade": "기타공사",
+      "category": "조적·미장",
+      "subcategory": "보강",
+      "spec": "2.4M",
+      "detail": "신규 등록 (2.4M) · 시세 1,000~2,500원",
+      "source": "seed",
+      "price": {
+        "min": 1000,
+        "max": 2500,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-81",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-조적-미장-와이어메쉬-8-900x1800",
+      "name": "와이어메쉬(#8)",
+      "trade": "기타공사",
+      "category": "조적·미장",
+      "subcategory": "보강",
+      "spec": "900x1800",
+      "detail": "신규 등록 (900x1800) · 시세 5,000~12,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-82",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-하드웨어-부자재-무초산-실리콘-300ml",
+      "name": "무초산 실리콘",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "실란트",
+      "spec": "300ml",
+      "detail": "신규 등록 (300ml) · 시세 2,500~4,500원",
+      "source": "seed",
+      "price": {
+        "min": 2500,
+        "max": 4500,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-83",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-하드웨어-부자재-초산-실리콘-유리용-300ml",
+      "name": "초산 실리콘(유리용)",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "실란트",
+      "spec": "300ml",
+      "detail": "신규 등록 (300ml) · 시세 1,500~3,000원",
+      "source": "seed",
+      "price": {
+        "min": 1500,
+        "max": 3000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-84",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-하드웨어-부자재-바이오-실리콘-방곰팡이-300ml",
+      "name": "바이오 실리콘(방곰팡이)",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "실란트",
+      "spec": "300ml",
+      "detail": "신규 등록 (300ml) · 시세 3,500~6,000원",
+      "source": "seed",
+      "price": {
+        "min": 3500,
+        "max": 6000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-85",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "price_down",
+      "materialId": "기타공사-하드웨어-부자재-우레탄-실란트-300ml",
+      "name": "우레탄 실란트",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "실란트",
+      "spec": "300ml",
+      "detail": "가격 4,000~9,000 → 4,000~7,000원 / 브랜드 변경 / 등급 변경 / 단위 변경 / 용도 변경 / 메모 변경 / 중분류 변경",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 7000,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 4000,
+          "max": 9000
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "300ml",
+        "grade": "보급",
+        "unit": "개"
+      }
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-86",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-하드웨어-부자재-변성실리콘-ms폴리머-300ml",
+      "name": "변성실리콘(MS폴리머)",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "실란트",
+      "spec": "300ml",
+      "detail": "신규 등록 (300ml) · 시세 5,000~9,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 9000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-87",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-하드웨어-부자재-글루스틱-투명-11mm-1kg",
+      "name": "글루스틱(투명)",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "접착",
+      "spec": "11mm 1kg",
+      "detail": "신규 등록 (11mm 1kg) · 시세 5,000~9,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 9000,
+        "unit": "봉"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-88",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-하드웨어-부자재-아크릴폼-양면테이프-20mm-x-10m",
+      "name": "아크릴폼 양면테이프",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "접착",
+      "spec": "20mm x 10M",
+      "detail": "신규 등록 (20mm x 10M) · 시세 4,000~8,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 8000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-89",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "기타공사-하드웨어-부자재-케이블타이-300mm-100개",
+      "name": "케이블타이",
+      "trade": "기타공사",
+      "category": "하드웨어·부자재",
+      "subcategory": "결속",
+      "spec": "300mm 100개",
+      "detail": "신규 등록 (300mm 100개) · 시세 2,000~4,000원",
+      "source": "seed",
+      "price": {
+        "min": 2000,
+        "max": 4000,
+        "unit": "봉"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-90",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-hiv-전선-2-5sq-100m",
+      "name": "HIV 전선 2.5sq",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "전선",
+      "spec": "100M",
+      "detail": "신규 등록 (100M) · 시세 25,000~40,000원",
+      "source": "seed",
+      "price": {
+        "min": 25000,
+        "max": 40000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-91",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-hiv-전선-4sq-100m",
+      "name": "HIV 전선 4sq",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "전선",
+      "spec": "100M",
+      "detail": "신규 등록 (100M) · 시세 40,000~60,000원",
+      "source": "seed",
+      "price": {
+        "min": 40000,
+        "max": 60000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-92",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-lan-케이블-cat-6-100m",
+      "name": "LAN 케이블 Cat.6",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "전선",
+      "spec": "100M",
+      "detail": "신규 등록 (100M) · 시세 35,000~55,000원",
+      "source": "seed",
+      "price": {
+        "min": 35000,
+        "max": 55000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-93",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-cd-주름관-16mm-100m",
+      "name": "CD 주름관 16mm",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "배관",
+      "spec": "100M",
+      "detail": "신규 등록 (100M) · 시세 15,000~25,000원",
+      "source": "seed",
+      "price": {
+        "min": 15000,
+        "max": 25000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-94",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-cd-주름관-22mm-50m",
+      "name": "CD 주름관 22mm",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "배관",
+      "spec": "50M",
+      "detail": "신규 등록 (50M) · 시세 12,000~20,000원",
+      "source": "seed",
+      "price": {
+        "min": 12000,
+        "max": 20000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-95",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-4각-복스-매입-스틸-pvc",
+      "name": "4각 복스(매입)",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "복스",
+      "spec": "스틸/PVC",
+      "detail": "신규 등록 (스틸/PVC) · 시세 300~700원",
+      "source": "seed",
+      "price": {
+        "min": 300,
+        "max": 700,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-96",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-8각-복스-매입-스틸-pvc",
+      "name": "8각 복스(매입)",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "복스",
+      "spec": "스틸/PVC",
+      "detail": "신규 등록 (스틸/PVC) · 시세 300~700원",
+      "source": "seed",
+      "price": {
+        "min": 300,
+        "max": 700,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-97",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-스위치-복스-매입-1개용",
+      "name": "스위치 복스(매입)",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "복스",
+      "spec": "1개용",
+      "detail": "신규 등록 (1개용) · 시세 300~800원",
+      "source": "seed",
+      "price": {
+        "min": 300,
+        "max": 800,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-98",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-누전차단기-2p-30a",
+      "name": "누전차단기",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "차단기",
+      "spec": "2P 30A",
+      "detail": "신규 등록 (2P 30A) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-99",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-전기-통신-배선용-차단기-2p-20a",
+      "name": "배선용 차단기",
+      "trade": "전기공사",
+      "category": "전기·통신",
+      "subcategory": "차단기",
+      "spec": "2P 20A",
+      "detail": "신규 등록 (2P 20A) · 시세 4,000~9,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 9000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-100",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-부자재-절연-테이프-19mm",
+      "name": "절연 테이프",
+      "trade": "전기공사",
+      "category": "부자재",
+      "subcategory": "소모품",
+      "spec": "19mm",
+      "detail": "신규 등록 (19mm) · 시세 500~1,200원",
+      "source": "seed",
+      "price": {
+        "min": 500,
+        "max": 1200,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-101",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "전기공사-부자재-와이어-커넥터-중형-100개",
+      "name": "와이어 커넥터",
+      "trade": "전기공사",
+      "category": "부자재",
+      "subcategory": "소모품",
+      "spec": "중형 100개",
+      "detail": "신규 등록 (중형 100개) · 시세 4,000~8,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 8000,
+        "unit": "봉"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-102",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-설비-배관-pb-파이프-15a-m",
+      "name": "PB 파이프 15A",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "급수배관",
+      "spec": "M",
+      "detail": "신규 등록 (M) · 시세 800~1,500원",
+      "source": "seed",
+      "price": {
+        "min": 800,
+        "max": 1500,
+        "unit": "M"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-103",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-설비-배관-xl-파이프-15a-m",
+      "name": "XL 파이프 15A",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "급수배관",
+      "spec": "M",
+      "detail": "신규 등록 (M) · 시세 500~1,000원",
+      "source": "seed",
+      "price": {
+        "min": 500,
+        "max": 1000,
+        "unit": "M"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-104",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-설비-배관-pb-엘보-15a-ea",
+      "name": "PB 엘보 15A",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "부속",
+      "spec": "EA",
+      "detail": "신규 등록 (EA) · 시세 400~900원",
+      "source": "seed",
+      "price": {
+        "min": 400,
+        "max": 900,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-105",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-설비-배관-pb-티-15a-ea",
+      "name": "PB 티 15A",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "부속",
+      "spec": "EA",
+      "detail": "신규 등록 (EA) · 시세 500~1,100원",
+      "source": "seed",
+      "price": {
+        "min": 500,
+        "max": 1100,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-106",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-설비-배관-pb-소켓-유니온-15a-ea",
+      "name": "PB 소켓/유니온 15A",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "부속",
+      "spec": "EA",
+      "detail": "신규 등록 (EA) · 시세 500~1,200원",
+      "source": "seed",
+      "price": {
+        "min": 500,
+        "max": 1200,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-107",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "price_up",
+      "materialId": "설비공사-설비-배관-앵글밸브-15a",
+      "name": "앵글밸브",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "밸브",
+      "spec": "15A",
+      "detail": "가격 2,500~6,000 → 3,000~7,000원 / 용도 변경 / 메모 변경 / 중분류 변경",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 2500,
+          "max": 6000
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "15A",
+        "grade": "보급",
+        "unit": "EA"
+      }
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-108",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-설비-배관-볼밸브-15a-니켈",
+      "name": "볼밸브 15A",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "밸브",
+      "spec": "니켈",
+      "detail": "신규 등록 (니켈) · 시세 3,500~8,000원",
+      "source": "seed",
+      "price": {
+        "min": 3500,
+        "max": 8000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-109",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-설비-배관-배수-주름관-32mm-1-5m",
+      "name": "배수 주름관 32mm",
+      "trade": "설비공사",
+      "category": "설비·배관",
+      "subcategory": "배수",
+      "spec": "1.5M",
+      "detail": "신규 등록 (1.5M) · 시세 2,000~4,000원",
+      "source": "seed",
+      "price": {
+        "min": 2000,
+        "max": 4000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-110",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-부자재-배관-보온재-발포pe-15a용-2m",
+      "name": "배관 보온재(발포PE) 15A용",
+      "trade": "설비공사",
+      "category": "부자재",
+      "subcategory": "보온",
+      "spec": "2M",
+      "detail": "신규 등록 (2M) · 시세 800~1,800원",
+      "source": "seed",
+      "price": {
+        "min": 800,
+        "max": 1800,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-111",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-부자재-테프론-테이프-12mm",
+      "name": "테프론 테이프",
+      "trade": "설비공사",
+      "category": "부자재",
+      "subcategory": "소모품",
+      "spec": "12mm",
+      "detail": "신규 등록 (12mm) · 시세 300~800원",
+      "source": "seed",
+      "price": {
+        "min": 300,
+        "max": 800,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-112",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "설비공사-부자재-배관-새들-u클립-100개",
+      "name": "배관 새들(U클립)",
+      "trade": "설비공사",
+      "category": "부자재",
+      "subcategory": "고정",
+      "spec": "100개",
+      "detail": "신규 등록 (100개) · 시세 3,000~7,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "봉"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-113",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "금속공사-금속재-아연-각관-30x30-1-4t-6m",
+      "name": "아연 각관 30x30",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "각관",
+      "spec": "1.4T 6M",
+      "detail": "신규 등록 (1.4T 6M) · 시세 12,000~20,000원",
+      "source": "seed",
+      "price": {
+        "min": 12000,
+        "max": 20000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-114",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "금속공사-금속재-아연-각관-50x50-1-6t-6m",
+      "name": "아연 각관 50x50",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "각관",
+      "spec": "1.6T 6M",
+      "detail": "신규 등록 (1.6T 6M) · 시세 25,000~40,000원",
+      "source": "seed",
+      "price": {
+        "min": 25000,
+        "max": 40000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-115",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "금속공사-금속재-c형강-60x30-2-3t-6m",
+      "name": "C형강 60x30",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "형강",
+      "spec": "2.3T 6M",
+      "detail": "신규 등록 (2.3T 6M) · 시세 15,000~28,000원",
+      "source": "seed",
+      "price": {
+        "min": 15000,
+        "max": 28000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-116",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "금속공사-금속재-평철-30x3t-6m",
+      "name": "평철 30x3T",
+      "trade": "금속공사",
+      "category": "금속재",
+      "subcategory": "평철",
+      "spec": "6M",
+      "detail": "신규 등록 (6M) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "본"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-117",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "금속공사-부자재-세트-앙카-m10-50개",
+      "name": "세트 앙카 M10",
+      "trade": "금속공사",
+      "category": "부자재",
+      "subcategory": "앵커",
+      "spec": "50개",
+      "detail": "신규 등록 (50개) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-118",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "금속공사-부자재-스트롱-앙카-m8-100개",
+      "name": "스트롱 앙카 M8",
+      "trade": "금속공사",
+      "category": "부자재",
+      "subcategory": "앵커",
+      "spec": "100개",
+      "detail": "신규 등록 (100개) · 시세 10,000~18,000원",
+      "source": "seed",
+      "price": {
+        "min": 10000,
+        "max": 18000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-119",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "금속공사-부자재-케미컬-앵커-380ml",
+      "name": "케미컬 앵커",
+      "trade": "금속공사",
+      "category": "부자재",
+      "subcategory": "앵커",
+      "spec": "380ml",
+      "detail": "신규 등록 (380ml) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-120",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "금속공사-부자재-용접봉-저수소계-2-6mm-5kg",
+      "name": "용접봉(저수소계)",
+      "trade": "금속공사",
+      "category": "부자재",
+      "subcategory": "용접",
+      "spec": "2.6mm 5kg",
+      "detail": "신규 등록 (2.6mm 5kg) · 시세 15,000~25,000원",
+      "source": "seed",
+      "price": {
+        "min": 15000,
+        "max": 25000,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-121",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "단열-기밀공사-단열재-아이소핑크-xps-30t-900x1800",
+      "name": "아이소핑크(XPS)",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "압출법",
+      "spec": "30T 900x1800",
+      "detail": "신규 등록 (30T 900x1800) · 시세 8,000~13,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 13000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-122",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "단열-기밀공사-단열재-아이소핑크-xps-50t-900x1800",
+      "name": "아이소핑크(XPS)",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "압출법",
+      "spec": "50T 900x1800",
+      "detail": "신규 등록 (50T 900x1800) · 시세 12,000~19,000원",
+      "source": "seed",
+      "price": {
+        "min": 12000,
+        "max": 19000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-123",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "단열-기밀공사-단열재-비드법-eps-스티로폼-50t-900x1800",
+      "name": "비드법 EPS(스티로폼)",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "비드법",
+      "spec": "50T 900x1800",
+      "detail": "신규 등록 (50T 900x1800) · 시세 5,000~9,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 9000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-124",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "단열-기밀공사-단열재-열반사-단열재-10t-1m-x-50m",
+      "name": "열반사 단열재",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "반사형",
+      "spec": "10T 1M x 50M",
+      "detail": "신규 등록 (10T 1M x 50M) · 시세 40,000~70,000원",
+      "source": "seed",
+      "price": {
+        "min": 40000,
+        "max": 70000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-125",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "단열-기밀공사-단열재-글라스울-24k-매트-1롤",
+      "name": "글라스울 24K",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "섬유형",
+      "spec": "매트 1롤",
+      "detail": "신규 등록 (매트 1롤) · 시세 15,000~30,000원",
+      "source": "seed",
+      "price": {
+        "min": 15000,
+        "max": 30000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-126",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "단열-기밀공사-단열재-이보드-단열-마감-30t-900x2400",
+      "name": "이보드(단열+마감)",
+      "trade": "단열/기밀공사",
+      "category": "단열재",
+      "subcategory": "복합",
+      "spec": "30T 900x2400",
+      "detail": "신규 등록 (30T 900x2400) · 시세 12,000~20,000원",
+      "source": "seed",
+      "price": {
+        "min": 12000,
+        "max": 20000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-127",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "단열-기밀공사-부자재-기밀-방습-테이프-60mm-x-25m",
+      "name": "기밀·방습 테이프",
+      "trade": "단열/기밀공사",
+      "category": "부자재",
+      "subcategory": "기밀",
+      "spec": "60mm x 25M",
+      "detail": "신규 등록 (60mm x 25M) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-128",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "단열-기밀공사-부자재-단열재용-폼본드-g2-850ml",
+      "name": "단열재용 폼본드(G2)",
+      "trade": "단열/기밀공사",
+      "category": "부자재",
+      "subcategory": "접착",
+      "spec": "850ml",
+      "detail": "신규 등록 (850ml) · 시세 6,000~10,000원",
+      "source": "seed",
+      "price": {
+        "min": 6000,
+        "max": 10000,
+        "unit": "캔"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-129",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "창호공사-부자재-백업재-원형-10mm-400m",
+      "name": "백업재(원형 10mm)",
+      "trade": "창호공사",
+      "category": "부자재",
+      "subcategory": "충진",
+      "spec": "400M",
+      "detail": "신규 등록 (400M) · 시세 10,000~20,000원",
+      "source": "seed",
+      "price": {
+        "min": 10000,
+        "max": 20000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-130",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "창호공사-부자재-창호용-우레탄폼-저팽창-750ml",
+      "name": "창호용 우레탄폼(저팽창)",
+      "trade": "창호공사",
+      "category": "부자재",
+      "subcategory": "충진",
+      "spec": "750ml",
+      "detail": "신규 등록 (750ml) · 시세 6,000~10,000원",
+      "source": "seed",
+      "price": {
+        "min": 6000,
+        "max": 10000,
+        "unit": "캔"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-131",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "창호공사-부자재-외부용-변성실리콘-300ml",
+      "name": "외부용 변성실리콘",
+      "trade": "창호공사",
+      "category": "부자재",
+      "subcategory": "실란트",
+      "spec": "300ml",
+      "detail": "신규 등록 (300ml) · 시세 4,000~8,000원",
+      "source": "seed",
+      "price": {
+        "min": 4000,
+        "max": 8000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-132",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "창호공사-부자재-창호-피스-칼블럭-세트-100조",
+      "name": "창호 피스+칼블럭 세트",
+      "trade": "창호공사",
+      "category": "부자재",
+      "subcategory": "고정",
+      "spec": "100조",
+      "detail": "신규 등록 (100조) · 시세 5,000~10,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 10000,
+        "unit": "조"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-133",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "창호공사-부자재-알루미늄-방충망-1m-x-30m",
+      "name": "알루미늄 방충망",
+      "trade": "창호공사",
+      "category": "부자재",
+      "subcategory": "방충",
+      "spec": "1M x 30M",
+      "detail": "신규 등록 (1M x 30M) · 시세 25,000~45,000원",
+      "source": "seed",
+      "price": {
+        "min": 25000,
+        "max": 45000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-134",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "가설공사-부자재-플라베니아-보양판-2-5t-900x1800",
+      "name": "플라베니아(보양판)",
+      "trade": "가설공사",
+      "category": "부자재",
+      "subcategory": "보양",
+      "spec": "2.5T 900x1800",
+      "detail": "신규 등록 (2.5T 900x1800) · 시세 3,000~5,500원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 5500,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-135",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "가설공사-부자재-보양용-골판지-1800x900",
+      "name": "보양용 골판지",
+      "trade": "가설공사",
+      "category": "부자재",
+      "subcategory": "보양",
+      "spec": "1800x900",
+      "detail": "신규 등록 (1800x900) · 시세 1,500~3,000원",
+      "source": "seed",
+      "price": {
+        "min": 1500,
+        "max": 3000,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-136",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "가설공사-부자재-보양-테이프-면테이프-48mm",
+      "name": "보양 테이프(면테이프)",
+      "trade": "가설공사",
+      "category": "부자재",
+      "subcategory": "보양",
+      "spec": "48mm",
+      "detail": "신규 등록 (48mm) · 시세 1,500~3,000원",
+      "source": "seed",
+      "price": {
+        "min": 1500,
+        "max": 3000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-137",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "가설공사-부자재-분진-차단막-비닐-2m-x-50m",
+      "name": "분진 차단막(비닐)",
+      "trade": "가설공사",
+      "category": "부자재",
+      "subcategory": "분진",
+      "spec": "2M x 50M",
+      "detail": "신규 등록 (2M x 50M) · 시세 15,000~30,000원",
+      "source": "seed",
+      "price": {
+        "min": 15000,
+        "max": 30000,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-138",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "철거공사-부자재-pp-마대-대형-ea",
+      "name": "PP 마대(대형)",
+      "trade": "철거공사",
+      "category": "부자재",
+      "subcategory": "폐기",
+      "spec": "EA",
+      "detail": "신규 등록 (EA) · 시세 300~800원",
+      "source": "seed",
+      "price": {
+        "min": 300,
+        "max": 800,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-139",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "철거공사-부자재-톤백-1톤-마대-ea",
+      "name": "톤백(1톤 마대)",
+      "trade": "철거공사",
+      "category": "부자재",
+      "subcategory": "폐기",
+      "spec": "EA",
+      "detail": "신규 등록 (EA) · 시세 3,000~7,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-140",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "화장실셋팅공사-부자재-양변기-고정-세트-플랜지-앙카-1조",
+      "name": "양변기 고정 세트(플랜지+앙카)",
+      "trade": "화장실셋팅공사",
+      "category": "부자재",
+      "subcategory": "설치",
+      "spec": "1조",
+      "detail": "신규 등록 (1조) · 시세 5,000~12,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 12000,
+        "unit": "조"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-141",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "화장실셋팅공사-부자재-후렉시블-호스-냉온수-300-500mm",
+      "name": "후렉시블 호스(냉온수)",
+      "trade": "화장실셋팅공사",
+      "category": "부자재",
+      "subcategory": "설치",
+      "spec": "300~500mm",
+      "detail": "신규 등록 (300~500mm) · 시세 3,000~7,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 7000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-142",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "화장실셋팅공사-부자재-세면기-팝업-트랩-세트-1조",
+      "name": "세면기 팝업+트랩 세트",
+      "trade": "화장실셋팅공사",
+      "category": "부자재",
+      "subcategory": "배수",
+      "spec": "1조",
+      "detail": "신규 등록 (1조) · 시세 8,000~18,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 18000,
+        "unit": "조"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-143",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "필름공사-부자재-필름용-프라이머-1l",
+      "name": "필름용 프라이머",
+      "trade": "필름공사",
+      "category": "부자재",
+      "subcategory": "바탕처리",
+      "spec": "1L",
+      "detail": "신규 등록 (1L) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-144",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "유리공사-부자재-구조용-유리-실리콘-300ml",
+      "name": "구조용 유리 실리콘",
+      "trade": "유리공사",
+      "category": "부자재",
+      "subcategory": "시공",
+      "spec": "300ml",
+      "detail": "신규 등록 (300ml) · 시세 5,000~9,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 9000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-145",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "유리공사-부자재-세팅블럭-100개",
+      "name": "세팅블럭",
+      "trade": "유리공사",
+      "category": "부자재",
+      "subcategory": "시공",
+      "spec": "100개",
+      "detail": "신규 등록 (100개) · 시세 3,000~6,000원",
+      "source": "seed",
+      "price": {
+        "min": 3000,
+        "max": 6000,
+        "unit": "봉"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-146",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "에어컨공사-부자재-냉매-동관-2분3분-페어코일-m",
+      "name": "냉매 동관(2분3분 페어코일)",
+      "trade": "에어컨공사",
+      "category": "부자재",
+      "subcategory": "배관",
+      "spec": "M",
+      "detail": "신규 등록 (M) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "M"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-147",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "에어컨공사-부자재-드레인-호스-16mm-m",
+      "name": "드레인 호스 16mm",
+      "trade": "에어컨공사",
+      "category": "부자재",
+      "subcategory": "배수",
+      "spec": "M",
+      "detail": "신규 등록 (M) · 시세 500~1,200원",
+      "source": "seed",
+      "price": {
+        "min": 500,
+        "max": 1200,
+        "unit": "M"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-148",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "공조공사-부자재-알루미늄-플렉시블-덕트-100mm-5m",
+      "name": "알루미늄 플렉시블 덕트 100mm",
+      "trade": "공조공사",
+      "category": "부자재",
+      "subcategory": "덕트",
+      "spec": "5M",
+      "detail": "신규 등록 (5M) · 시세 8,000~15,000원",
+      "source": "seed",
+      "price": {
+        "min": 8000,
+        "max": 15000,
+        "unit": "EA"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-03T15-00-52-531Z-149",
+      "ts": "2026-07-03T15:00:52.531Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "공조공사-부자재-역풍방지-댐퍼-100mm-ea",
+      "name": "역풍방지 댐퍼 100mm",
+      "trade": "공조공사",
+      "category": "부자재",
+      "subcategory": "부속",
+      "spec": "EA",
+      "detail": "신규 등록 (EA) · 시세 5,000~10,000원",
+      "source": "seed",
+      "price": {
+        "min": 5000,
+        "max": 10000,
+        "unit": "EA"
+      },
+      "before": null
+    }
+  ]
 }

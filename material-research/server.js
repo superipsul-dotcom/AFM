@@ -1476,6 +1476,102 @@ app.post('/api/materials/sync', (_req, res) => {
 });
 
 /* =====================================================================
+ *  즐겨찾기 + 현장 그룹
+ *  - data/favorites.json { ids: [materialId] }
+ *  - data/groups.json    { groups: [{ id, name, items:[materialId], created_at, updated_at }] }
+ * ===================================================================== */
+const FAVORITES_FILE = path.join(DATA_DIR, 'favorites.json');
+const GROUPS_FILE = path.join(DATA_DIR, 'groups.json');
+const fdb = { favorites: [], groups: [] };
+
+function loadFavGroups() {
+  try {
+    if (fs.existsSync(FAVORITES_FILE)) {
+      const p = JSON.parse(fs.readFileSync(FAVORITES_FILE, 'utf8'));
+      if (Array.isArray(p.ids)) fdb.favorites = p.ids.filter(x => typeof x === 'string');
+    }
+  } catch (e) { console.error('[favorites] load 실패', e.message); }
+  try {
+    if (fs.existsSync(GROUPS_FILE)) {
+      const p = JSON.parse(fs.readFileSync(GROUPS_FILE, 'utf8'));
+      if (Array.isArray(p.groups)) fdb.groups = p.groups.filter(g => g && typeof g.id === 'string');
+    }
+  } catch (e) { console.error('[groups] load 실패', e.message); }
+}
+function saveFavorites() { atomicWriteJSON(FAVORITES_FILE, { ids: fdb.favorites }); }
+function saveGroups() { atomicWriteJSON(GROUPS_FILE, { groups: fdb.groups }); }
+function groupView(g) {
+  // 삭제된 자재 id는 노출에서만 걸러준다 (파일은 그대로 → import로 복구되면 다시 보임)
+  const alive = g.items.filter(id => db.materials.some(m => m.id === id));
+  return { id: g.id, name: g.name, items: alive, count: alive.length, created_at: g.created_at, updated_at: g.updated_at };
+}
+
+app.get('/api/favorites', (_req, res) => ok(res, 200, { ids: fdb.favorites }));
+
+app.post('/api/favorites/toggle', (req, res) => {
+  const id = String((req.body || {}).id || '').trim();
+  if (!id) return fail(res, 400, 'id가 필요합니다.');
+  if (!db.materials.some(m => m.id === id)) return fail(res, 404, '자재를 찾을 수 없습니다.');
+  const i = fdb.favorites.indexOf(id);
+  const favored = i < 0;
+  if (favored) fdb.favorites.push(id); else fdb.favorites.splice(i, 1);
+  saveFavorites();
+  return ok(res, 200, { id, favored, ids: fdb.favorites }, favored ? '즐겨찾기에 추가했습니다.' : '즐겨찾기에서 뺐습니다.');
+});
+
+app.get('/api/groups', (_req, res) => ok(res, 200, fdb.groups.map(groupView)));
+
+app.post('/api/groups', (req, res) => {
+  const name = String((req.body || {}).name || '').trim();
+  if (!name) return fail(res, 400, '그룹 이름(현장명)이 필요합니다.');
+  if (fdb.groups.some(g => g.name === name)) return fail(res, 409, '같은 이름의 그룹이 이미 있습니다.');
+  const now = new Date().toISOString();
+  const g = { id: 'grp-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, items: [], created_at: now, updated_at: now };
+  fdb.groups.push(g);
+  saveGroups();
+  return ok(res, 201, groupView(g), `그룹 "${name}" 생성`);
+});
+
+app.patch('/api/groups/:id', (req, res) => {
+  const g = fdb.groups.find(x => x.id === req.params.id);
+  if (!g) return fail(res, 404, '그룹을 찾을 수 없습니다.');
+  const name = String((req.body || {}).name || '').trim();
+  if (!name) return fail(res, 400, '새 이름이 필요합니다.');
+  if (fdb.groups.some(x => x.name === name && x.id !== g.id)) return fail(res, 409, '같은 이름의 그룹이 이미 있습니다.');
+  g.name = name; g.updated_at = new Date().toISOString();
+  saveGroups();
+  return ok(res, 200, groupView(g), '이름을 변경했습니다.');
+});
+
+app.delete('/api/groups/:id', (req, res) => {
+  const i = fdb.groups.findIndex(x => x.id === req.params.id);
+  if (i < 0) return fail(res, 404, '그룹을 찾을 수 없습니다.');
+  const [removed] = fdb.groups.splice(i, 1);
+  saveGroups();
+  return ok(res, 200, { id: removed.id, deleted: true }, `그룹 "${removed.name}" 삭제`);
+});
+
+app.post('/api/groups/:id/items', (req, res) => {
+  const g = fdb.groups.find(x => x.id === req.params.id);
+  if (!g) return fail(res, 404, '그룹을 찾을 수 없습니다.');
+  const mid = String((req.body || {}).materialId || '').trim();
+  if (!mid) return fail(res, 400, 'materialId가 필요합니다.');
+  if (!db.materials.some(m => m.id === mid)) return fail(res, 404, '자재를 찾을 수 없습니다.');
+  if (!g.items.includes(mid)) { g.items.push(mid); g.updated_at = new Date().toISOString(); saveGroups(); }
+  return ok(res, 200, groupView(g), '그룹에 담았습니다.');
+});
+
+app.delete('/api/groups/:id/items/:materialId', (req, res) => {
+  const g = fdb.groups.find(x => x.id === req.params.id);
+  if (!g) return fail(res, 404, '그룹을 찾을 수 없습니다.');
+  const i = g.items.indexOf(req.params.materialId);
+  if (i < 0) return fail(res, 404, '그룹에 없는 자재입니다.');
+  g.items.splice(i, 1); g.updated_at = new Date().toISOString();
+  saveGroups();
+  return ok(res, 200, groupView(g), '그룹에서 뺐습니다.');
+});
+
+/* =====================================================================
  *  /api 404 (JSON) → SPA fallback → 에러 핸들러
  * ===================================================================== */
 app.use('/api', (_req, res) => fail(res, 404, '존재하지 않는 API 경로입니다.'));
@@ -1493,6 +1589,7 @@ app.use((err, _req, res, _next) => {
  *  부팅 (로컬) / export (서버리스)
  * ===================================================================== */
 loadStore();
+loadFavGroups();
 ingestIncomingDir(); // 부팅 시 data/incoming/ 의 주간 업데이트(클라우드 트리거가 레포에 커밋한 파일) 자동 반영
 
 if (require.main === module) {

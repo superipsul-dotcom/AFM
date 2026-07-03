@@ -75,6 +75,23 @@
   .card .ct{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
   .card .nm{font-weight:700;font-size:14.5px;color:#fff;letter-spacing:-.2px}
   .card .badge{font-size:10.5px;padding:2px 8px;border-radius:20px;white-space:nowrap;border:1px solid var(--line);color:var(--mut)}
+  /* 즐겨찾기·그룹 */
+  .cacts{display:flex;gap:4px;flex-shrink:0}
+  .cbtn{width:26px;height:26px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--mut);cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;opacity:.45;transition:.12s}
+  .card:hover .cbtn{opacity:1}
+  .cbtn:hover{color:#fff;border-color:#7a8699}
+  .cbtn.fav.on{opacity:1;color:#ffd166;border-color:rgba(255,209,102,.55)}
+  .gact{display:none;font-size:11px;color:var(--mut);cursor:pointer;padding:0 2px}
+  .trow:hover .gact{display:inline}
+  .gact:hover{color:#fff}
+  .gadd{cursor:pointer;color:var(--mut);font-size:12px;font-weight:600}
+  .gadd:hover{color:#fff}
+  .gmenu{position:fixed;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.45);min-width:210px;max-width:280px;max-height:300px;overflow:auto;padding:6px}
+  .gmenu .gm-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:13px}
+  .gmenu .gm-item:hover{background:var(--panel2)}
+  .gmenu .gm-new{border-top:1px solid var(--line);margin-top:6px;padding-top:9px;color:#4f8cff}
+  .gmenu .chk{width:14px;text-align:center;color:#6ee7a0;flex-shrink:0}
+  .gmenu .gm-hint{padding:7px 10px;font-size:12px;color:var(--mut)}
   .badge.보급{color:#9fe6c0;border-color:rgba(52,199,123,.4);background:rgba(52,199,123,.1)}
   .badge.중급{color:#bcd2ff;border-color:rgba(79,140,255,.4);background:rgba(79,140,255,.1)}
   .badge.고급{color:#ddc8ff;border-color:rgba(155,140,255,.4);background:rgba(155,140,255,.1)}
@@ -181,6 +198,8 @@
     <section id="view-browse">
       <div class="layout">
         <aside class="sidebar">
+          <div class="sb-head"><span>내 목록</span><span class="gadd" id="gAdd" title="새 그룹(현장) 만들기">＋ 그룹</span></div>
+          <div class="tree" id="mylist" style="border-bottom:1px solid var(--line)"><div class="loading"><span class="spin"></span>로딩…</div></div>
           <div class="sb-head"><span>공종 · 분류</span><span class="tcount" id="treeTotal">–</span></div>
           <div class="tree" id="tree"><div class="loading"><span class="spin"></span>로딩…</div></div>
         </aside>
@@ -243,7 +262,7 @@
       : "잠시 후 다시 시도해 주세요.";
     return '<div class="empty">'+esc(what)+' 로딩 실패: '+esc(reason)+'<br><span style="font-size:12px;opacity:.8">'+hint+'</span><br><button onclick="location.reload()" style="margin-top:10px;padding:6px 14px;border:1px solid #888;border-radius:6px;background:transparent;color:inherit;cursor:pointer">다시 시도</button></div>';
   }
-  var state = { tree:[], cats:{}, items:[], filter:{trade:"",category:"",subcategory:"",grade:"",search:""}, sort:"trade", expanded:{} };
+  var state = { tree:[], cats:{}, items:[], filter:{trade:"",category:"",subcategory:"",grade:"",search:"",view:""}, sort:"trade", expanded:{}, favs:new Set(), groups:[] };
 
   function el(id){ return document.getElementById(id); }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
@@ -256,6 +275,10 @@
   }
   function api(path){
     return fetch(API+path).then(function(r){ return r.json().then(function(j){ if(!r.ok||j.success===false) throw new Error(j.message||("HTTP "+r.status)); return j; }); });
+  }
+  function apiSend(path, method, body){
+    return fetch(API+path,{method:method,headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined})
+      .then(function(r){ return r.json().then(function(j){ if(!r.ok||j.success===false) throw new Error(j.message||("HTTP "+r.status)); return j; }); });
   }
   function fmtDate(iso){ if(!iso) return "–"; try{ var d=new Date(iso); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }catch(e){ return String(iso).slice(0,10);} }
 
@@ -329,7 +352,14 @@
   }
   function applyFilter(){
     var f=state.filter, q=(f.search||"").toLowerCase();
+    var groupSet=null;
+    if(f.view && f.view!=="favs"){
+      var vg=state.groups.find(function(g){return g.id===f.view;});
+      groupSet=new Set(vg?vg.items:[]);
+    }
     var rows=state.items.filter(function(m){
+      if(f.view==="favs" && !state.favs.has(m.id)) return false;
+      if(groupSet && !groupSet.has(m.id)) return false;
       if(f.trade && m.trade!==f.trade) return false;
       if(f.category && m.category!==f.category) return false;
       if(f.subcategory && (m.subcategory||"")!==f.subcategory) return false;
@@ -355,6 +385,10 @@
 
   function renderChips(){
     var f=state.filter, parts=[];
+    if(f.view){
+      var vname = f.view==="favs" ? "⭐ 즐겨찾기" : (function(){ var g=state.groups.find(function(x){return x.id===f.view;}); return "📁 "+(g?g.name:"그룹"); })();
+      parts.push(chip("보기",vname,"view"));
+    }
     if(f.trade) parts.push(chip("공종",f.trade,"trade"));
     if(f.category) parts.push(chip("대분류",f.category,"category"));
     if(f.subcategory) parts.push(chip("중분류",f.subcategory,"subcategory"));
@@ -362,7 +396,7 @@
     if(f.search) parts.push(chip("검색",f.search,"search"));
     el("chips").innerHTML=parts.join("");
     el("chips").querySelectorAll(".x").forEach(function(x){
-      x.addEventListener("click",function(){ var k=x.getAttribute("data-k"); state.filter[k]=""; if(k==="search") el("q").value=""; if(k==="trade"){state.filter.category="";state.filter.subcategory="";} renderTree(); applyFilter(); });
+      x.addEventListener("click",function(){ var k=x.getAttribute("data-k"); state.filter[k]=""; if(k==="search") el("q").value=""; if(k==="trade"){state.filter.category="";state.filter.subcategory="";} renderTree(); renderMyList(); applyFilter(); });
     });
   }
   function chip(label,val,k){ return '<span class="chip"><b>'+esc(label)+'</b> '+esc(val)+' <span class="x" data-k="'+k+'">✕</span></span>'; }
@@ -373,8 +407,11 @@
     rows.forEach(function(m){
       var p=priceText(m.price);
       var g=m.grade||"";
+      var fav=state.favs.has(m.id);
       html+='<div class="card" data-id="'+esc(m.id)+'">';
-      html+='<div class="ct"><div class="nm">'+esc(m.name)+'</div>'+(g?'<div class="badge '+esc(g)+'">'+esc(g)+'</div>':'')+'</div>';
+      html+='<div class="ct"><div class="nm">'+esc(m.name)+'</div>'+(g?'<div class="badge '+esc(g)+'">'+esc(g)+'</div>':'')
+          +'<div class="cacts"><button class="cbtn fav'+(fav?' on':'')+'" data-fav="'+esc(m.id)+'" title="즐겨찾기">'+(fav?'★':'☆')+'</button>'
+          +'<button class="cbtn grp" data-grp="'+esc(m.id)+'" title="그룹(현장)에 담기">📁</button></div></div>';
       html+='<div class="specrow">'+esc(m.spec||"")+(m.spec?' · ':'')+esc(m.subcategory||"")+'</div>';
       html+='<div class="tagline"><span class="tag">'+esc(m.trade)+'</span><span class="tag">'+esc(m.category)+'</span>'+(m.use?'<span class="tag">'+esc(m.use)+'</span>':'')+'</div>';
       if(m.brands&&m.brands.length) html+='<div class="brands">'+esc(m.brands.join(", "))+'</div>';
@@ -383,6 +420,112 @@
     });
     el("grid").innerHTML=html;
     el("grid").querySelectorAll(".card").forEach(function(c){ c.addEventListener("click",function(){ openDetail(c.getAttribute("data-id")); }); });
+    el("grid").querySelectorAll("[data-fav]").forEach(function(b){
+      b.addEventListener("click",function(e){ e.stopPropagation(); toggleFav(b.getAttribute("data-fav")); });
+    });
+    el("grid").querySelectorAll("[data-grp]").forEach(function(b){
+      b.addEventListener("click",function(e){ e.stopPropagation(); openGroupMenu(b, b.getAttribute("data-grp")); });
+    });
+  }
+
+  /* ---------- 즐겨찾기 · 현장 그룹 ---------- */
+  function loadMyList(){
+    return Promise.all([api("/favorites"), api("/groups")]).then(function(res){
+      state.favs=new Set(res[0].data.ids||[]);
+      state.groups=res[1].data||[];
+      renderMyList();
+      applyFilter(); // 카드 ★ 상태 반영
+    }).catch(function(e){ el("mylist").innerHTML='<div class="empty" style="padding:10px;font-size:12px">'+esc(e.message)+'</div>'; });
+  }
+  function renderMyList(){
+    var v=state.filter.view, html="";
+    html+='<div class="tnode"><div class="trow'+(v==="favs"?' active':'')+'" data-view="favs"><span class="tname">⭐ 즐겨찾기</span><span class="tcount">'+state.favs.size+'</span></div></div>';
+    if(!state.groups.length){
+      html+='<div style="padding:4px 9px 10px;font-size:11.5px;color:var(--mut)">［＋ 그룹］으로 현장별 자재 묶음을 만들어 보세요.</div>';
+    }
+    state.groups.forEach(function(g){
+      html+='<div class="tnode"><div class="trow'+(v===g.id?' active':'')+'" data-view="'+esc(g.id)+'">'
+          +'<span class="tname">📁 '+esc(g.name)+'</span>'
+          +'<span class="gact" data-ren="'+esc(g.id)+'" title="이름 변경">✏️</span>'
+          +'<span class="gact" data-del="'+esc(g.id)+'" title="그룹 삭제">✕</span>'
+          +'<span class="tcount">'+g.count+'</span></div></div>';
+    });
+    el("mylist").innerHTML=html;
+    el("mylist").querySelectorAll(".trow[data-view]").forEach(function(n){
+      n.addEventListener("click",function(){
+        var vv=n.getAttribute("data-view");
+        state.filter.view = (state.filter.view===vv) ? "" : vv; // 다시 누르면 해제
+        renderMyList(); applyFilter();
+      });
+    });
+    el("mylist").querySelectorAll("[data-ren]").forEach(function(n){
+      n.addEventListener("click",function(e){
+        e.stopPropagation();
+        var gid=n.getAttribute("data-ren"), g=state.groups.find(function(x){return x.id===gid;});
+        var name=prompt("그룹(현장) 이름 변경:", g?g.name:"");
+        if(!name||!name.trim()||(g&&name.trim()===g.name)) return;
+        apiSend("/groups/"+encodeURIComponent(gid),"PATCH",{name:name.trim()}).then(function(){ return loadMyList(); }).catch(function(err){ alert(err.message); });
+      });
+    });
+    el("mylist").querySelectorAll("[data-del]").forEach(function(n){
+      n.addEventListener("click",function(e){
+        e.stopPropagation();
+        var gid=n.getAttribute("data-del"), g=state.groups.find(function(x){return x.id===gid;});
+        if(!confirm('그룹 "'+(g?g.name:"")+'" 을(를) 삭제할까요? (자재 데이터는 지워지지 않습니다)')) return;
+        apiSend("/groups/"+encodeURIComponent(gid),"DELETE").then(function(){
+          if(state.filter.view===gid) state.filter.view="";
+          return loadMyList();
+        }).catch(function(err){ alert(err.message); });
+      });
+    });
+  }
+  function toggleFav(id){
+    apiSend("/favorites/toggle","POST",{id:id}).then(function(j){
+      state.favs=new Set(j.data.ids||[]);
+      renderMyList(); applyFilter();
+    }).catch(function(err){ alert(err.message); });
+  }
+  var gmenuEl=null;
+  function closeGroupMenu(){ if(gmenuEl){ gmenuEl.remove(); gmenuEl=null; document.removeEventListener("click",closeGroupMenu); } }
+  function openGroupMenu(anchor, materialId){
+    closeGroupMenu();
+    var d=document.createElement("div"); d.className="gmenu";
+    var html="";
+    if(!state.groups.length) html+='<div class="gm-hint">아직 그룹이 없습니다.</div>';
+    state.groups.forEach(function(g){
+      var inG=g.items.indexOf(materialId)>=0;
+      html+='<div class="gm-item" data-g="'+esc(g.id)+'"><span class="chk">'+(inG?"✓":"")+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📁 '+esc(g.name)+'</span><span class="tcount">'+g.count+'</span></div>';
+    });
+    html+='<div class="gm-item gm-new" data-new="1">＋ 새 그룹 만들고 담기</div>';
+    d.innerHTML=html;
+    document.body.appendChild(d);
+    var r=anchor.getBoundingClientRect();
+    d.style.left=Math.max(8,Math.min(r.left, window.innerWidth-d.offsetWidth-8))+"px";
+    d.style.top=Math.min(r.bottom+6, window.innerHeight-d.offsetHeight-8)+"px";
+    d.addEventListener("click",function(e){ e.stopPropagation(); });
+    d.querySelectorAll(".gm-item[data-g]").forEach(function(it){
+      it.addEventListener("click",function(){
+        var gid=it.getAttribute("data-g"), g=state.groups.find(function(x){return x.id===gid;});
+        var inG=g && g.items.indexOf(materialId)>=0;
+        var p=inG ? apiSend("/groups/"+encodeURIComponent(gid)+"/items/"+encodeURIComponent(materialId),"DELETE")
+                  : apiSend("/groups/"+encodeURIComponent(gid)+"/items","POST",{materialId:materialId});
+        p.then(function(j){
+          var ng=j.data, i=state.groups.findIndex(function(x){return x.id===ng.id;});
+          if(i>=0) state.groups[i]=ng;
+          renderMyList(); applyFilter();
+          closeGroupMenu(); openGroupMenu(anchor, materialId); // 체크 상태 갱신해 다시 열기
+        }).catch(function(err){ alert(err.message); });
+      });
+    });
+    d.querySelector("[data-new]").addEventListener("click",function(){
+      var name=prompt("새 그룹(현장) 이름:");
+      if(!name||!name.trim()) return;
+      apiSend("/groups","POST",{name:name.trim()}).then(function(j){
+        return apiSend("/groups/"+encodeURIComponent(j.data.id)+"/items","POST",{materialId:materialId});
+      }).then(function(){ closeGroupMenu(); return loadMyList(); }).catch(function(err){ alert(err.message); });
+    });
+    setTimeout(function(){ document.addEventListener("click",closeGroupMenu); },0);
+    gmenuEl=d;
   }
 
   /* ---------- 상세 ---------- */
@@ -480,9 +623,16 @@
   el("fGrade").addEventListener("change",function(){ state.filter.grade=el("fGrade").value; applyFilter(); });
   el("fSort").addEventListener("change",function(){ state.sort=el("fSort").value; applyFilter(); });
 
+  el("gAdd").addEventListener("click",function(){
+    var name=prompt("새 그룹(현장) 이름:");
+    if(!name||!name.trim()) return;
+    apiSend("/groups","POST",{name:name.trim()}).then(function(){ return loadMyList(); }).catch(function(err){ alert(err.message); });
+  });
+
   /* ---------- init ---------- */
   loadHeaderAndTree();
   loadAll();
+  loadMyList();
 })();
 </script>
 </body>
