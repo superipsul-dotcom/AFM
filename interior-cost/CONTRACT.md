@@ -1267,3 +1267,8 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - live 연동은 사용자 CODEF 키 등록 후(가입→데모 키→.env/Vercel). v1~v23 회귀.
 
 > ✅ **구현·검증 완료 (2026-07-03)**. 백엔드 e2e 29/29(격리 임시팀 2, 잔존0): mock config/계정등록(connectedId)/**DB에 비밀번호류 컬럼 자체 없음 검증**/sync 15~25건/미배분 목록/배분 2건→비용 생성(카테고리·공정·vendor=가맹점·memo=카드·승인번호)/가맹점 규칙 학습→동일 가맹점 제안 프리필/unassign(비용 삭제)/제외·복원/배분된 거래 제외 404/취소건 배분 skip/타팀(계정·거래 빈값, sync·assign 404)/계정 삭제 CASCADE+반영 비용 보존(FK SET NULL). Playwright: 비용탭 섹션(모의 뱃지·보안 문구)→연결 모달(모의 안내·보안 동의)→등록→동기화(미배분 15)→행 선택→배분 바(현장 프리필)→배분→미배분 13+비용 목록 반영. 로컬 백그라운드 서버가 검증 중 1회 SIGHUP 계열로 사망(코드 무관, 재기동 후 동일 요청 정상 — 프로덕션 서버리스 무관).
+
+## v24.1 — CODEF 실연동 활성 (2026-07-03)
+> 사용자가 codef.io 데모 가입 후 키 공유 → **로컬 .env + Vercel Production env에 CODEF_CLIENT_ID/SECRET/PUBLIC_KEY 등록**(키 자체는 어디에도 커밋 금지). 코드 변경 없음(v24 그대로).
+> 검증(전 구간 실동작): ① oauth.codef.io 토큰 발급 OK — JWT authorities에 CARD 포함(BANK/보험/공공 등도 부여됨) ② RSA(PKCS1) 암호화 OK(2048bit, 콘솔 공개키 base64 본문→PEM 자동래핑) ③ 로컬 `/api/card/config` → `{mode:"live", host:development.codef.io}` ④ Vercel 재배포 후 라이브 동일 확인(임시 스모크 유저 가입→확인→DB삭제) ⑤ **데모 API 관통**: 가짜 ID로 `/v1/account/create` 호출 → KB국민카드 실응답 `CF-12800 아이디 오류`(토큰·상품권한·암호화·카드사 도달 전부 증명).
+> 주의: Vercel env가 sensitive 타입이라 `vercel env pull`은 빈 값 반환(정상 — 런타임엔 주입됨). 데모 환경은 호출량 제한 있음, 정식 전환 시 CODEF_API_HOST=https://api.codef.io + 정식 키로 교체. mock connectedId(`mock-*`) 계정은 키 등록 후에도 mock 데이터 유지 — 실데이터는 카드사 계정 새로 등록.
