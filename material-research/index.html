@@ -234,7 +234,15 @@
 <script>
 (function(){
   "use strict";
-  var API = "/api";
+  /* http(s)로 서버에서 열면 상대경로, 파일을 직접 열면(file://) 로컬 서버로 폴백 */
+  var API = (location.protocol === "http:" || location.protocol === "https:") ? "/api" : "http://localhost:3011/api";
+  function loadErrorHtml(what, e){
+    var reason = e && e.message ? e.message : "알 수 없는 오류";
+    var hint = /Failed to fetch|NetworkError|Load failed/i.test(reason)
+      ? "서버(포트 3011)에 연결하지 못했습니다. 터미널에서 <b>cd ~/AFM/material-research && node server.js</b> 로 서버를 켠 뒤, 주소창에 <b>http://localhost:3011</b> 로 접속하세요."
+      : "잠시 후 다시 시도해 주세요.";
+    return '<div class="empty">'+esc(what)+' 로딩 실패: '+esc(reason)+'<br><span style="font-size:12px;opacity:.8">'+hint+'</span><br><button onclick="location.reload()" style="margin-top:10px;padding:6px 14px;border:1px solid #888;border-radius:6px;background:transparent;color:inherit;cursor:pointer">다시 시도</button></div>';
+  }
   var state = { tree:[], cats:{}, items:[], filter:{trade:"",category:"",subcategory:"",grade:"",search:""}, sort:"trade", expanded:{} };
 
   function el(id){ return document.getElementById(id); }
@@ -276,7 +284,7 @@
       el("treeTotal").textContent=comma(c.totals.materials);
       state.tree=c.tree;
       renderTree();
-    }).catch(function(e){ el("tree").innerHTML='<div class="empty">트리 로딩 실패: '+esc(e.message)+'</div>'; });
+    }).catch(function(e){ el("tree").innerHTML=loadErrorHtml("트리", e); });
   }
   function renderTree(){
     var html='<div class="tnode"><div class="trow'+(!state.filter.trade?' active':'')+'" data-all="1"><span class="caret"></span><span class="tname">전체 자재</span><span class="tcount">'+comma(el("hsTotal").textContent.replace(/,/g,""))+'</span></div></div>';
@@ -317,7 +325,7 @@
   /* ---------- 목록 ---------- */
   function loadAll(){
     api("/materials?limit=5000").then(function(j){ state.items=j.data; applyFilter(); })
-      .catch(function(e){ el("grid").innerHTML='<div class="empty">목록 로딩 실패: '+esc(e.message)+'</div>'; });
+      .catch(function(e){ el("grid").innerHTML=loadErrorHtml("목록", e); });
   }
   function applyFilter(){
     var f=state.filter, q=(f.search||"").toLowerCase();

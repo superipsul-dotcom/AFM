@@ -55,7 +55,7 @@
 const { useState, useEffect, useMemo, useRef } = React;
 
 // 페이지가 /research/ 에 있으므로 루트 절대경로가 맞다. (localhost 하드코딩 금지)
-const API_BASE_URL = '/api';
+const API_BASE_URL = (location.protocol === 'http:' || location.protocol === 'https:') ? '/api' : 'http://localhost:3011/api';
 
 // ========================================
 // 🔧 유틸 / 포매터

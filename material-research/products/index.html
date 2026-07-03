@@ -35,7 +35,7 @@ const { useState, useEffect, useMemo, useCallback } = React;
 // ========================================
 // 상수 / 유틸
 // ========================================
-const API_BASE_URL = '/api';
+const API_BASE_URL = (location.protocol === 'http:' || location.protocol === 'https:') ? '/api' : 'http://localhost:3011/api';
 const fmtKRW = (n) => (n == null ? '' : Number(n).toLocaleString('ko-KR'));
 const BRAND_HUE = {};
 const hueOf = (s) => {
