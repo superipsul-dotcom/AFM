@@ -102,6 +102,7 @@ const SCHEMA_DOC = `
   category   text     -- 지출: 식비/교통/주거/구독료/경조사/쇼핑/의료/기타, 수입: 급여/용돈/부수입/기타
   memo       text
   date       date     -- 거래 날짜
+  scope      text     -- 'personal'(개인) | 'company'(회사 경비) 사용 분류
   created_at timestamptz
 
 테이블 budgets  -- 카테고리별 "월 예산" 한도
@@ -116,6 +117,9 @@ const SCHEMA_DOC = `
 - 요일: to_char(date,'Dy') 또는 extract(dow from date) (0=일요일..6=토요일).
 - 주말 = dow in (0,6), 주중 = dow in (1,2,3,4,5).
 - 금액은 항상 원(KRW) 단위 정수.
+- "회사 경비/법인 지출"은 scope='company', "개인 지출"은 scope='personal' 로 필터.
+- 이번 달 데이터가 없으면 최근 데이터가 있는 달을 찾아 그 기준으로도 알려주면 좋다.
+  단, 그 경우 "이번 달(7월)은 0원이고, 최근 기록이 있는 6월엔 ~원" 처럼 어느 달 기준인지 반드시 명시할 것.
 `;
 
 const SYSTEM_PROMPT = `너는 사용자의 개인 가계부 데이터를 분석하는 한국어 재무 비서야.
