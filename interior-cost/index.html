@@ -7693,74 +7693,159 @@
       );
     }
 
-    // v14-3: 거래처 사용내역 모달 — GET /api/vendors/:id/usage (현장별 비용/발주/계획 합 + 최근일)
-    function VendorUsageModal({ vendor, onClose }) {
+    // (v26) 거래처 상세 페이지 — 이름 클릭 시 목록 대신 표시. 기본 정보 + 시공 단가(기공/조공 일당) 셋팅 + 사용내역(비용/발주/계획/인건비) 통합.
+    //   v14-3 사용내역 모달을 이 페이지로 흡수(모달 제거).
+    function VendorDetailPage({ vendor, onBack, onEdit, onChanged }) {
       const toast = useToast();
       const [loading, setLoading] = useState(true);
       const [data, setData] = useState(null);
-      useEffect(() => {
+      const [sRate, setSRate] = useState(vendor.skilled_rate ? String(vendor.skilled_rate) : '');
+      const [hRate, setHRate] = useState(vendor.helper_rate ? String(vendor.helper_rate) : '');
+      const [savingRate, setSavingRate] = useState(false);
+
+      const reload = useCallback(() => {
         let alive = true;
-        setLoading(true); setData(null);
+        setLoading(true);
         api.vendorUsage(vendor.id)
           .then((d) => { if (alive) setData(d); })
           .catch((e) => { if (alive) toast(e.message || '사용내역을 불러오지 못했습니다.', 'error'); })
           .finally(() => { if (alive) setLoading(false); });
         return () => { alive = false; };
       }, [vendor.id]);
+      useEffect(() => { reload(); }, [reload]);
+      useEffect(() => {
+        setSRate(vendor.skilled_rate ? String(vendor.skilled_rate) : '');
+        setHRate(vendor.helper_rate ? String(vendor.helper_rate) : '');
+      }, [vendor.id, vendor.skilled_rate, vendor.helper_rate]);
+
+      const isConstruction = vendor.kind === '하도급' || !!vendor.trade; // 시공 파트 판단(하도급 구분 또는 공정 지정)
+      const saveRates = async () => {
+        setSavingRate(true);
+        try {
+          // validateVendor 가 name 필수 + kind/phone/memo 를 통째로 덮으므로 기존 값 함께 전송(trade/grade/단가는 provided 시에만 갱신)
+          await api.updateVendor(vendor.id, {
+            name: vendor.name, kind: vendor.kind || '', phone: vendor.phone || '', memo: vendor.memo || '',
+            active: vendor.active !== false,
+            skilled_rate: Number(sRate) || 0, helper_rate: Number(hRate) || 0,
+          });
+          toast('일당 프리셋을 저장했습니다. 출력인원에서 이 시공팀을 고르면 자동 적용돼요.', 'success');
+          await onChanged();
+        } catch (e) { toast(e.message || '단가 저장에 실패했습니다.', 'error'); }
+        finally { setSavingRate(false); }
+      };
+
       const bySite = (data && data.bySite) || [];
-      const totals = (data && data.totals) || { costTotal: 0, orderTotal: 0, plannedTotal: 0 };
-      const grand = totals.costTotal + totals.orderTotal + totals.plannedTotal;
+      const totals = (data && data.totals) || { costTotal: 0, orderTotal: 0, plannedTotal: 0, laborTotal: 0, laborDays: 0, laborSkilled: 0, laborHelper: 0 };
+      const hasLabor = totals.laborDays > 0 || totals.laborTotal > 0;
+
       return (
-        <Modal isOpen={true} onClose={onClose} title={`${vendor.name} · 사용내역`} size="lg">
-          {loading ? (
-            <div className="h-40 bg-slate-100 rounded-xl animate-pulse"></div>
-          ) : (
-            <div className="space-y-5">
-              <div className="grid grid-cols-3 gap-2">
-                {[['비용 합', totals.costTotal], ['발주 합', totals.orderTotal], ['계획(일정) 합', totals.plannedTotal]].map(([lbl, val]) => (
-                  <div key={lbl} className="rounded-xl bg-slate-50 p-3 text-center">
-                    <p className="text-[11px] text-slate-400">{lbl}</p>
-                    <p className="text-sm font-bold text-slate-800">{fmtWon(val)}</p>
-                  </div>
-                ))}
+        <div className="space-y-4">
+          {/* 헤더: 기본 정보 */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <Button variant="secondary" size="sm" onClick={onBack}>← 목록</Button>
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  {vendor.name}
+                  {vendor.trade && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white" style={{ backgroundColor: tradeHex(vendor.trade) }}>{vendor.trade}</span>}
+                  {vendor.active === false && <Badge color="bg-slate-400">비활성</Badge>}
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  {[vendor.kind, vendor.grade && `등급 ${vendor.grade}`, vendor.phone].filter(Boolean).join(' · ') || '구분/연락처 미입력'}
+                  {vendor.memo && <span className="block mt-0.5 text-slate-500">{vendor.memo}</span>}
+                </p>
               </div>
-              {bySite.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">아직 이 거래처의 사용 내역이 없습니다.<br />비용·발주·일정에 거래처명을 지정하면 현장별로 집계됩니다.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
-                      <th className="py-2 pr-3 font-medium">현장</th>
-                      <th className="py-2 pr-3 font-medium text-right">비용</th>
-                      <th className="py-2 pr-3 font-medium text-right">발주</th>
-                      <th className="py-2 pr-3 font-medium text-right">계획</th>
-                      <th className="py-2 font-medium">최근일</th>
-                    </tr></thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {bySite.map((s) => (
-                        <tr key={s.site_id}>
-                          <td className="py-2 pr-3 font-medium text-slate-700">{s.site_name}</td>
-                          <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">{fmtWon(s.costTotal)}</td>
-                          <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">{fmtWon(s.orderTotal)}</td>
-                          <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">{fmtWon(s.plannedTotal)}</td>
-                          <td className="py-2 text-slate-400 whitespace-nowrap">{s.lastDate || '-'}</td>
-                        </tr>
-                      ))}
-                      <tr className="border-t-2 border-slate-200 font-bold text-slate-800">
-                        <td className="py-2 pr-3">총계</td>
-                        <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtWon(totals.costTotal)}</td>
-                        <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtWon(totals.orderTotal)}</td>
-                        <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtWon(totals.plannedTotal)}</td>
-                        <td className="py-2"></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <p className="text-[11px] text-slate-400 text-right">합계 {fmtWon(grand)} (비용+발주+계획)</p>
             </div>
-          )}
-        </Modal>
+            <Button variant="secondary" size="sm" onClick={() => onEdit(vendor)}>✏️ 정보 수정</Button>
+          </div>
+
+          {/* (v26) 시공 단가 프리셋 */}
+          <div className={`rounded-xl border p-4 ${isConstruction ? 'border-blue-200 bg-blue-50/40' : 'border-slate-200 bg-slate-50/50'}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-slate-700">👷 시공 일당 프리셋 {isConstruction && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600">시공 파트</span>}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">출력인원에서 이 팀을 시공팀으로 고르면 기공/조공 일당이 자동 입력됩니다(행별 수정 가능, 과거 기록은 불변).</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1 text-xs text-slate-500">기공 일당
+                  <input type="number" min="0" step="10000" value={sRate} onChange={(e) => setSRate(e.target.value)} placeholder="예: 350000"
+                    className="w-28 px-2.5 py-2 rounded-lg border border-slate-300 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                </label>
+                <label className="flex items-center gap-1 text-xs text-slate-500">조공 일당
+                  <input type="number" min="0" step="10000" value={hRate} onChange={(e) => setHRate(e.target.value)} placeholder="예: 200000"
+                    className="w-28 px-2.5 py-2 rounded-lg border border-slate-300 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                </label>
+                <Button size="sm" onClick={saveRates} disabled={savingRate}>{savingRate ? '저장 중…' : '단가 저장'}</Button>
+              </div>
+            </div>
+          </div>
+
+          {/* 사용 내역 (v14 모달 → 페이지 통합 + 인건비) */}
+          <div>
+            <h3 className="text-sm font-bold text-slate-700 mb-2">📊 사용 내역</h3>
+            {loading ? (
+              <div className="h-40 bg-slate-100 rounded-xl animate-pulse"></div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[['비용 합', totals.costTotal], ['발주 합', totals.orderTotal], ['계획(일정) 합', totals.plannedTotal], ['인건비 합(출력)', totals.laborTotal]].map(([lbl, val]) => (
+                    <div key={lbl} className="rounded-xl bg-slate-50 p-3 text-center">
+                      <p className="text-[11px] text-slate-400">{lbl}</p>
+                      <p className="text-sm font-bold text-slate-800">{fmtWon(val)}</p>
+                    </div>
+                  ))}
+                </div>
+                {hasLabor && (
+                  <p className="text-xs text-slate-500 -mt-1">출력 누적: <b>{totals.laborDays}일</b> · 기공 <b>{totals.laborSkilled}</b> · 조공 <b>{totals.laborHelper}</b></p>
+                )}
+                {bySite.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-6">아직 이 거래처의 사용 내역이 없습니다.<br />비용·발주·일정·출력인원(시공팀)에 이 거래처를 지정하면 현장별로 집계됩니다.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                        <th className="py-2 pr-3 font-medium">현장</th>
+                        <th className="py-2 pr-3 font-medium text-right">비용</th>
+                        <th className="py-2 pr-3 font-medium text-right">발주</th>
+                        <th className="py-2 pr-3 font-medium text-right">계획</th>
+                        <th className="py-2 pr-3 font-medium text-right">인건비(출력)</th>
+                        <th className="py-2 font-medium">최근일</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {bySite.map((s) => (
+                          <tr key={s.site_id}>
+                            <td className="py-2 pr-3 font-medium text-slate-700">{s.site_name}</td>
+                            <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">{fmtWon(s.costTotal)}</td>
+                            <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">{fmtWon(s.orderTotal)}</td>
+                            <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">{fmtWon(s.plannedTotal)}</td>
+                            <td className="py-2 pr-3 text-right text-slate-600 whitespace-nowrap">
+                              {s.laborTotal > 0 || s.laborDays > 0 ? (
+                                <>
+                                  {fmtWon(s.laborTotal)}
+                                  <span className="block text-[10px] text-slate-400">{s.laborDays}일 · 기 {s.laborSkilled} · 조 {s.laborHelper}</span>
+                                </>
+                              ) : '-'}
+                            </td>
+                            <td className="py-2 text-slate-400 whitespace-nowrap">{s.lastDate || '-'}</td>
+                          </tr>
+                        ))}
+                        <tr className="border-t-2 border-slate-200 font-bold text-slate-800">
+                          <td className="py-2 pr-3">총계</td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtWon(totals.costTotal)}</td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtWon(totals.orderTotal)}</td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap">{fmtWon(totals.plannedTotal)}</td>
+                          <td className="py-2 pr-3 text-right whitespace-nowrap text-emerald-600">{fmtWon(totals.laborTotal)}</td>
+                          <td className="py-2"></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <p className="text-[11px] text-slate-400 text-right">합계 {fmtWon(totals.costTotal + totals.orderTotal + totals.plannedTotal + totals.laborTotal)} (비용+발주+계획+인건비)</p>
+              </div>
+            )}
+          </div>
+        </div>
       );
     }
 
@@ -7768,7 +7853,8 @@
       const toast = useToast();
       const [form, setForm] = useState({ name: '', kind: '', phone: '', trade: '', grade: '', memo: '' });
       const [editing, setEditing] = useState(null);
-      const [usageVendor, setUsageVendor] = useState(null); // v14-3 사용내역 모달 대상
+      const [detailId, setDetailId] = useState(null); // (v26) 상세 페이지 대상 — id 로 저장해 onChanged 후에도 최신 vendor 반영
+      const detailVendor = detailId ? vendors.find((v) => String(v.id) === String(detailId)) || null : null;
       const [eForm, setEForm] = useState({ name: '', kind: '', phone: '', trade: '', grade: '', memo: '', active: true });
       const add = async (e) => {
         e.preventDefault();
@@ -7784,9 +7870,38 @@
       };
       const toggle = async (v) => { try { await api.updateVendor(v.id, { name: v.name, kind: v.kind || '', phone: v.phone || '', trade: v.trade || '', grade: v.grade || '', memo: v.memo || '', active: !(v.active !== false) }); await onChanged(); } catch (e) { toast('변경 실패', 'error'); } };
       const remove = async (v) => { try { await api.removeVendor(v.id); toast('삭제됨', 'info'); await onChanged(); } catch (e) { toast('삭제 실패', 'error'); } };
+      // (v26) 상세 페이지 모드 — 목록 대신 상세(정보+단가+사용내역). 수정 모달은 공용이라 아래 유지.
+      if (detailVendor) {
+        return (
+          <Card className="p-5">
+            <VendorDetailPage vendor={detailVendor} onBack={() => setDetailId(null)} onEdit={startEdit} onChanged={onChanged} />
+            <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="거래처 수정" size="md">
+              {editing && (
+                <div className="space-y-3">
+                  <Input label="거래처명 *" value={eForm.name} onChange={(e) => setEForm({ ...eForm, name: e.target.value })} />
+                  <Combo label="구분" value={eForm.kind} options={VENDOR_KINDS} onChange={(e) => setEForm({ ...eForm, kind: e.target.value })} />
+                  <Combo label="공정" placeholder="예: 목공사" value={eForm.trade} options={TRADE_MASTER} onChange={(e) => setEForm({ ...eForm, trade: e.target.value })} />
+                  <Combo label="기술력/등급" placeholder="예: 상,고가" value={eForm.grade} options={['상', '중', '하']} onChange={(e) => setEForm({ ...eForm, grade: e.target.value })} />
+                  <Input label="연락처" value={eForm.phone} onChange={(e) => setEForm({ ...eForm, phone: e.target.value })} />
+                  <Textarea label="메모" rows="2" value={eForm.memo} onChange={(e) => setEForm({ ...eForm, memo: e.target.value })} />
+                  <label className="flex items-center gap-2 text-sm text-slate-700">
+                    <input type="checkbox" checked={eForm.active} onChange={(e) => setEForm({ ...eForm, active: e.target.checked })} /> 활성
+                  </label>
+                  <div className="flex gap-2 justify-end pt-1">
+                    <Button variant="secondary" onClick={() => setEditing(null)}>취소</Button>
+                    <Button onClick={saveEdit}>저장</Button>
+                  </div>
+                </div>
+              )}
+            </Modal>
+          </Card>
+        );
+      }
+
       return (
         <Card className="p-5">
           <h2 className="text-base font-bold text-slate-800 mb-4">거래처 마스터</h2>
+          <p className="text-xs text-slate-400 -mt-3 mb-4">거래처 이름을 클릭하면 상세 페이지(기본 정보 · 시공 일당 셋팅 · 사용 내역)가 열립니다.</p>
           <form onSubmit={add} className="space-y-2 mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-2">
               <Input placeholder="거래처명 *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -7811,7 +7926,13 @@
                 <tbody className="divide-y divide-slate-100">
                   {vendors.map((v) => (
                     <tr key={v.id} className={v.active === false ? 'opacity-50' : ''}>
-                      <td className="py-2 pr-3 font-medium text-slate-700">{v.name}</td>
+                      <td className="py-2 pr-3">
+                        <button onClick={() => setDetailId(v.id)} title="상세 페이지 (정보·단가·사용내역)"
+                          className="font-medium text-slate-700 hover:text-blue-600 underline-offset-2 hover:underline text-left">{v.name}</button>
+                        {(v.skilled_rate > 0 || v.helper_rate > 0) && (
+                          <span className="block text-[10px] text-slate-400">일당 기 {Math.round((v.skilled_rate || 0) / 10000)}만 · 조 {Math.round((v.helper_rate || 0) / 10000)}만</span>
+                        )}
+                      </td>
                       <td className="py-2 pr-3 text-slate-500">{v.kind || '-'}</td>
                       <td className="py-2 pr-3">{v.trade ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white" style={{ backgroundColor: tradeHex(v.trade) }}>{v.trade}</span> : <span className="text-slate-300">-</span>}</td>
                       <td className="py-2 pr-3">{v.grade ? <span className="flex flex-wrap gap-1">{String(v.grade).split(',').map((g, i) => g.trim() ? <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px]">{g.trim()}</span> : null)}</span> : <span className="text-slate-300">-</span>}</td>
@@ -7819,7 +7940,7 @@
                       <td className="py-2 pr-3 text-slate-500 truncate max-w-[140px]">{v.memo || '-'}</td>
                       <td className="py-2 pr-3"><button onClick={() => toggle(v)}><Badge color={v.active === false ? 'bg-slate-400' : 'bg-emerald-500'}>{v.active === false ? '비활성' : '활성'}</Badge></button></td>
                       <td className="py-2 text-right whitespace-nowrap">
-                        <button onClick={() => setUsageVendor(v)} title="사용내역" className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-500 border border-slate-200 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50">📊 사용내역</button>
+                        <button onClick={() => setDetailId(v.id)} title="상세 (정보·단가·사용내역)" className="px-2 py-1 rounded-lg text-[11px] font-medium text-slate-500 border border-slate-200 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50">상세</button>
                         <button onClick={() => startEdit(v)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50">✏️</button>
                         <button onClick={() => remove(v)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50">🗑️</button>
                       </td>
@@ -7848,7 +7969,6 @@
               </div>
             )}
           </Modal>
-          {usageVendor && <VendorUsageModal vendor={usageVendor} onClose={() => setUsageVendor(null)} />}
         </Card>
       );
     }
@@ -8710,8 +8830,49 @@
       );
     }
 
+    // ── (v26) 공정별 인원 추이 — 최근 30일 일자×공정 스택 바 ──
+    function LaborTrendChart({ dailyProcess }) {
+      const canvasRef = useRef(null);
+      const dates = useMemo(() => [...new Set(dailyProcess.map((d) => d.date))].sort(), [dailyProcess]);
+      const procs = useMemo(() => [...new Set(dailyProcess.map((d) => d.process))], [dailyProcess]);
+      useEffect(() => {
+        if (!canvasRef.current || typeof Chart === 'undefined' || dates.length === 0) return;
+        const palette = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#64748b'];
+        const datasets = procs.map((p, i) => {
+          const hex = tradeHex(p);
+          return {
+            label: p,
+            data: dates.map((d) => {
+              const row = dailyProcess.find((x) => x.date === d && x.process === p);
+              return row ? row.total : 0;
+            }),
+            backgroundColor: hex !== '#94a3b8' ? hex : palette[i % palette.length],
+            stack: 'labor', borderRadius: 3, maxBarThickness: 26,
+          };
+        });
+        const chart = new Chart(canvasRef.current.getContext('2d'), {
+          type: 'bar',
+          data: { labels: dates.map((d) => d.slice(5)), datasets },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10 } },
+              tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y}명` } },
+            },
+            scales: {
+              x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 } } },
+              y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: 'rgba(148,163,184,0.15)' } },
+            },
+          },
+        });
+        return () => chart.destroy();
+      }, [JSON.stringify(dailyProcess)]);
+      return <div className="h-56"><canvas ref={canvasRef} /></div>;
+    }
+
     // ── 👷 출력인원: 당일 일정(공사) 공정 자동 행 + 기공/조공 기입 → [입력 완료]=팀원 알림 ──
-    function LaborTab({ site, demoMode }) {
+    //   (v26) 시공팀(거래처) 선택 → 일당 프리셋 자동, 행별 인건비 + 당일/누적 인건비 + 공정별 추이.
+    function LaborTab({ site, vendors = [], demoMode }) {
       const toast = useToast();
       const [date, setDate] = useState(todayStr());
       const [rows, setRows] = useState([]);
@@ -8735,6 +8896,9 @@
             merged.push({
               key: 'sch-' + s.id, schedule_id: s.id, process: proc, label: s.title,
               skilled: log ? String(log.skilled) : '', helper: log ? String(log.helper) : '',
+              vendor_id: log && log.vendor_id ? String(log.vendor_id) : '',
+              skilled_rate: log && log.skilled_rate ? String(log.skilled_rate) : '',
+              helper_rate: log && log.helper_rate ? String(log.helper_rate) : '',
               memo: log ? log.memo : '', id: log ? log.id : null, done: log ? log.done : false, custom: false,
             });
           });
@@ -8743,7 +8907,11 @@
             seen.add(l.process);
             merged.push({
               key: 'log-' + l.id, schedule_id: l.schedule_id, process: l.process, label: l.process || '(공정 미지정)',
-              skilled: String(l.skilled), helper: String(l.helper), memo: l.memo, id: l.id, done: l.done, custom: false,
+              skilled: String(l.skilled), helper: String(l.helper),
+              vendor_id: l.vendor_id ? String(l.vendor_id) : '',
+              skilled_rate: l.skilled_rate ? String(l.skilled_rate) : '',
+              helper_rate: l.helper_rate ? String(l.helper_rate) : '',
+              memo: l.memo, id: l.id, done: l.done, custom: false,
             });
           });
           setRows(merged);
@@ -8771,10 +8939,22 @@
           const saved = await api.saveLabor(site.id, {
             work_date: date, process: proc, schedule_id: r.schedule_id || null,
             skilled: Number(r.skilled) || 0, helper: Number(r.helper) || 0, memo: r.memo || '',
+            vendor_id: r.vendor_id || null,
+            skilled_rate: Number(r.skilled_rate) || 0, helper_rate: Number(r.helper_rate) || 0,
           });
           setRow(r.key, { id: saved.id, done: saved.done, custom: false, label: r.custom ? proc : r.label });
-          toast(`저장: ${proc} — 기공 ${saved.skilled} · 조공 ${saved.helper}`, 'success');
+          toast(`저장: ${proc} — 기공 ${saved.skilled} · 조공 ${saved.helper}${saved.cost > 0 ? ` · 인건비 ${fmtWon(saved.cost)}` : ''}`, 'success');
+          loadSummary(); // 누적 인건비 갱신
         } catch (e) { toast(e.message || '저장에 실패했습니다.', 'error'); }
+      };
+      // (v26) 시공팀 선택 → 그 거래처의 기공/조공 일당 프리셋으로 단가 채움
+      const pickVendor = (r, vid) => {
+        const v = vendors.find((x) => String(x.id) === String(vid));
+        setRow(r.key, {
+          vendor_id: vid,
+          skilled_rate: v && v.skilled_rate ? String(v.skilled_rate) : (vid ? '' : r.skilled_rate),
+          helper_rate: v && v.helper_rate ? String(v.helper_rate) : (vid ? '' : r.helper_rate),
+        });
       };
       const removeRow = async (r) => {
         if (r.id) {
@@ -8782,7 +8962,8 @@
         }
         setRows((prev) => prev.filter((x) => x.key !== r.key));
       };
-      const addCustomRow = () => setRows((prev) => [...prev, { key: 'new-' + uid(), schedule_id: null, process: '', label: '', skilled: '', helper: '', memo: '', id: null, done: false, custom: true }]);
+      const addCustomRow = () => setRows((prev) => [...prev, { key: 'new-' + uid(), schedule_id: null, process: '', label: '', skilled: '', helper: '', vendor_id: '', skilled_rate: '', helper_rate: '', memo: '', id: null, done: false, custom: true }]);
+      const rowCost = (r) => (Number(r.skilled) || 0) * (Number(r.skilled_rate) || 0) + (Number(r.helper) || 0) * (Number(r.helper_rate) || 0);
 
       const handleComplete = async () => {
         const unsaved = rows.some((r) => !r.id && ((Number(r.skilled) || 0) + (Number(r.helper) || 0) > 0 || (r.process || '').trim()));
@@ -8827,31 +9008,54 @@
                 )}
                 <div className="space-y-2">
                   {rows.map((r) => (
-                    <div key={r.key} className={`flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-xl border ${r.done ? 'border-green-200 bg-green-50/50' : r.id ? 'border-slate-200 bg-white' : 'border-dashed border-slate-300 bg-slate-50/50'}`}>
-                      <div className="flex-1 min-w-0 flex items-center gap-2">
-                        {r.custom ? (
-                          <input value={r.process} onChange={(e) => setRow(r.key, { process: e.target.value })} placeholder="공정명 (예: 목공)"
-                            list="v25-proc-list" className="w-36 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                        ) : (
-                          <span className="text-sm font-semibold text-slate-700 truncate">{r.label || r.process}</span>
-                        )}
-                        {!r.custom && r.process !== r.label && r.process && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{r.process}</span>}
-                        {r.done && <Badge color="bg-green-500">완료됨</Badge>}
-                        {r.id && !r.done && <span className="text-[10px] text-slate-400">저장됨</span>}
+                    <div key={r.key} className={`p-3 rounded-xl border space-y-2 ${r.done ? 'border-green-200 bg-green-50/50' : r.id ? 'border-slate-200 bg-white' : 'border-dashed border-slate-300 bg-slate-50/50'}`}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex-1 min-w-[140px] flex items-center gap-2">
+                          {r.custom ? (
+                            <input value={r.process} onChange={(e) => setRow(r.key, { process: e.target.value })} placeholder="공정명 (예: 목공)"
+                              list="v25-proc-list" className="w-36 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                          ) : (
+                            <span className="text-sm font-semibold text-slate-700 truncate">{r.label || r.process}</span>
+                          )}
+                          {!r.custom && r.process !== r.label && r.process && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{r.process}</span>}
+                          {r.done && <Badge color="bg-green-500">완료됨</Badge>}
+                          {r.id && !r.done && <span className="text-[10px] text-slate-400">저장됨</span>}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <label className="flex items-center gap-1 text-xs text-slate-500">기공
+                            <input type="number" min="0" value={r.skilled} onChange={(e) => setRow(r.key, { skilled: e.target.value })}
+                              className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                          </label>
+                          <label className="flex items-center gap-1 text-xs text-slate-500">조공
+                            <input type="number" min="0" value={r.helper} onChange={(e) => setRow(r.key, { helper: e.target.value })}
+                              className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                          </label>
+                          {rowCost(r) > 0 && <span className="text-xs font-semibold text-blue-600 whitespace-nowrap">{fmtWon(rowCost(r))}</span>}
+                          <Button size="sm" variant="secondary" onClick={() => saveRow(r)}>저장</Button>
+                          <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => removeRow(r)}>✕</Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <label className="flex items-center gap-1 text-xs text-slate-500">기공
-                          <input type="number" min="0" value={r.skilled} onChange={(e) => setRow(r.key, { skilled: e.target.value })}
-                            className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      {/* (v26) 시공팀 · 일당 · 비고 — 시공팀 고르면 거래처 프리셋 일당 자동 입력 */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select value={r.vendor_id} onChange={(e) => pickVendor(r, e.target.value)} title="시공팀(거래처) — 선택 시 일당 자동"
+                          className="w-40 px-2 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                          <option value="">시공팀 선택 (일당 자동)</option>
+                          {vendors.map((v) => (
+                            <option key={v.id} value={String(v.id)}>
+                              {v.name}{(v.skilled_rate || v.helper_rate) ? ` (기 ${Math.round((v.skilled_rate || 0) / 10000)}만/조 ${Math.round((v.helper_rate || 0) / 10000)}만)` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <label className="flex items-center gap-1 text-[11px] text-slate-400">기공 일당
+                          <input type="number" min="0" step="10000" value={r.skilled_rate} onChange={(e) => setRow(r.key, { skilled_rate: e.target.value })} placeholder="0"
+                            className="w-24 px-2 py-1.5 rounded-lg border border-slate-200 text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-400" />
                         </label>
-                        <label className="flex items-center gap-1 text-xs text-slate-500">조공
-                          <input type="number" min="0" value={r.helper} onChange={(e) => setRow(r.key, { helper: e.target.value })}
-                            className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                        <label className="flex items-center gap-1 text-[11px] text-slate-400">조공 일당
+                          <input type="number" min="0" step="10000" value={r.helper_rate} onChange={(e) => setRow(r.key, { helper_rate: e.target.value })} placeholder="0"
+                            className="w-24 px-2 py-1.5 rounded-lg border border-slate-200 text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-400" />
                         </label>
                         <input value={r.memo} onChange={(e) => setRow(r.key, { memo: e.target.value })} placeholder="비고 (예: 조공 1명 반차)"
-                          className="w-36 sm:w-44 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                        <Button size="sm" variant="secondary" onClick={() => saveRow(r)}>저장</Button>
-                        <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => removeRow(r)}>✕</Button>
+                          className="flex-1 min-w-[120px] px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" />
                       </div>
                     </div>
                   ))}
@@ -8862,7 +9066,7 @@
                 <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100">
                   <div className="flex items-center gap-3">
                     <Button variant="secondary" size="sm" onClick={addCustomRow}>+ 공정 추가</Button>
-                    <span className="text-sm text-slate-600">합계 <b className="text-slate-800">기공 {totSkilled}</b> · <b className="text-slate-800">조공 {totHelper}</b> · 계 <b className="text-blue-600">{totSkilled + totHelper}명</b></span>
+                    <span className="text-sm text-slate-600">합계 <b className="text-slate-800">기공 {totSkilled}</b> · <b className="text-slate-800">조공 {totHelper}</b> · 계 <b className="text-blue-600">{totSkilled + totHelper}명</b>{rows.reduce((a, r) => a + rowCost(r), 0) > 0 && <> · 당일 인건비 <b className="text-emerald-600">{fmtWon(rows.reduce((a, r) => a + rowCost(r), 0))}</b></>}</span>
                   </div>
                   <Button onClick={handleComplete} disabled={completing || rows.length === 0}
                     className={allDone ? 'bg-green-600 hover:bg-green-700' : ''}>
@@ -8873,12 +9077,12 @@
             )}
           </Card>
 
-          {/* 최근 출력 요약 */}
+          {/* 최근 출력 요약 + (v26) 인건비 */}
           {summary && (summary.daily.length > 0 || summary.total.days > 0) && (
             <Card className="p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h3 className="text-sm font-bold text-slate-700">최근 출력 현황</h3>
-                <span className="text-xs text-slate-400">누적 기공 <b className="text-slate-600">{summary.total.skilled}</b> · 조공 <b className="text-slate-600">{summary.total.helper}</b> · 총 {summary.total.days}일</span>
+                <span className="text-xs text-slate-400">누적 기공 <b className="text-slate-600">{summary.total.skilled}</b> · 조공 <b className="text-slate-600">{summary.total.helper}</b> · 총 {summary.total.days}일{summary.total.cost > 0 && <> · <b className="text-emerald-600">인건비 총 {fmtWon(summary.total.cost)}</b></>}</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -8888,6 +9092,7 @@
                       <th className="py-1.5 pr-3 font-medium text-center">기공</th>
                       <th className="py-1.5 pr-3 font-medium text-center">조공</th>
                       <th className="py-1.5 pr-3 font-medium text-center">계</th>
+                      <th className="py-1.5 pr-3 font-medium text-right">인건비</th>
                       <th className="py-1.5 font-medium text-center">완료</th>
                     </tr>
                   </thead>
@@ -8898,9 +9103,58 @@
                         <td className="py-1.5 pr-3 text-center text-slate-700">{d.skilled}</td>
                         <td className="py-1.5 pr-3 text-center text-slate-700">{d.helper}</td>
                         <td className="py-1.5 pr-3 text-center font-semibold text-slate-800">{d.skilled + d.helper}</td>
+                        <td className="py-1.5 pr-3 text-right text-slate-600 whitespace-nowrap">{d.cost > 0 ? fmtWon(d.cost) : <span className="text-slate-300">-</span>}</td>
                         <td className="py-1.5 text-center">{d.done ? '✅' : <span className="text-slate-300">—</span>}</td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* (v26) 공정별 인원 추이 + 공정별 누적 */}
+          {summary && summary.by_process && summary.by_process.length > 0 && (
+            <Card className="p-4 sm:p-5">
+              <h3 className="text-sm font-bold text-slate-700 mb-3">공정별 인원 추이 <span className="text-xs font-normal text-slate-400">· 최근 30일</span></h3>
+              {summary.daily_process && summary.daily_process.length > 0 ? (
+                <LaborTrendChart dailyProcess={summary.daily_process} />
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-4">최근 30일 내 출력 기록이 없습니다.</p>
+              )}
+              <div className="overflow-x-auto mt-4 pt-3 border-t border-slate-100">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                      <th className="py-1.5 pr-3 font-medium">공정</th>
+                      <th className="py-1.5 pr-3 font-medium text-center">출력일</th>
+                      <th className="py-1.5 pr-3 font-medium text-center">기공</th>
+                      <th className="py-1.5 pr-3 font-medium text-center">조공</th>
+                      <th className="py-1.5 pr-3 font-medium text-center">계</th>
+                      <th className="py-1.5 font-medium text-right">인건비</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.by_process.map((p) => (
+                      <tr key={p.process} className="border-b border-slate-50">
+                        <td className="py-1.5 pr-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white" style={{ backgroundColor: tradeHex(p.process) }}>{p.process}</span>
+                        </td>
+                        <td className="py-1.5 pr-3 text-center text-slate-600">{p.days}일</td>
+                        <td className="py-1.5 pr-3 text-center text-slate-700">{p.skilled}</td>
+                        <td className="py-1.5 pr-3 text-center text-slate-700">{p.helper}</td>
+                        <td className="py-1.5 pr-3 text-center font-semibold text-slate-800">{p.skilled + p.helper}</td>
+                        <td className="py-1.5 text-right text-slate-600 whitespace-nowrap">{p.cost > 0 ? fmtWon(p.cost) : <span className="text-slate-300">-</span>}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-slate-200 font-bold text-slate-800">
+                      <td className="py-1.5 pr-3">합계</td>
+                      <td className="py-1.5 pr-3 text-center">{summary.total.days}일</td>
+                      <td className="py-1.5 pr-3 text-center">{summary.total.skilled}</td>
+                      <td className="py-1.5 pr-3 text-center">{summary.total.helper}</td>
+                      <td className="py-1.5 pr-3 text-center">{summary.total.skilled + summary.total.helper}</td>
+                      <td className="py-1.5 text-right whitespace-nowrap text-emerald-600">{summary.total.cost > 0 ? fmtWon(summary.total.cost) : '-'}</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -9892,7 +10146,7 @@
                     procNames={procCatNames} staffNames={staffNames} vendorNames={vendorNames} onChanged={refreshDetail} onPrintSchedule={handlePrintSchedule} />
                 )}
                 {activeTab === 'labor' && (
-                  <LaborTab key={'lab-' + selectedSite.id} site={selectedSite} demoMode={demoMode} />
+                  <LaborTab key={'lab-' + selectedSite.id} site={selectedSite} vendors={vendors} demoMode={demoMode} />
                 )}
                 {activeTab === 'manuals' && (
                   <ManualsTab key={'man-' + selectedSite.id} site={selectedSite} isAdmin={isAdmin} demoMode={demoMode} />

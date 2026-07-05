@@ -1311,3 +1311,26 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 - Playwright: 로그인→내 업무 랜딩→할일 추가→완료 체크→🔔 뱃지→출력인원 기입→완료→매뉴얼 선택→현장 매뉴얼 표시.
 
 > ✅ **구현·검증 완료 (2026-07-05)**. 백엔드 e2e **45/45**(임시팀 2·유저 3, 정리 후 잔존 0 — interior_users/sites 의 team_id 는 v13 ALTER 추가라 팀삭제 CASCADE 미적용 → e2e 정리는 sites→users→teams 순서 필수). Playwright 전 플로우: 로그인→**내 업무 자동 랜딩**→할일 추가(D-DAY 뱃지)→완료 체크 즉시 제거→팀원 API 완료→**🔔 뱃지+task_done 알림+모두 읽음**→출력인원(당일 일정 '철거 공사' 자동 행→기공3·조공2 저장→입력 완료→'완료됨' 뱃지+누적 요약 테이블 ✅)→매뉴얼 픽커(유형 칩 기본=현장 building_type, 2건 선택 저장)→공정 그룹 카드→본문 모달→관리›매뉴얼 DB 서브탭(테이블+추가/수정/삭제). 시드: 부팅 시 안도공간(team 1)에 노션 43건 적재 확인. 참고: 장시간 유휴 세션에서 알림 폴링 500 다발은 로컬 서버 DNS(ENOTFOUND pooler) — 코드 무관(맥 절전), 벨은 에러 무시하고 정상 동작 유지.
+
+# v26 — 출력인원 인건비(일당 프리셋)·공정별 추이 + 거래처 상세 페이지
+
+> 사용자 요청(2026-07-05): ① 출력인원 공정별 인원 추이 ② 일당 프리셋 → 당일 인건비+누적 인건비 ③ 거래처(시공 파트) 기공/조공 일당 셋팅 ④ 거래처 이름 클릭 → 상세 페이지에 세부정보+단가+사용내역 통합(사용내역 모달 이동).
+
+## DB (ALTER, 멱등)
+- `interior_vendors` +`skilled_rate`/`helper_rate` BIGINT≥0 (기공/조공 일당 프리셋).
+- `interior_labor_logs` +`vendor_id`(vendors, SET NULL) +`skilled_rate`/`helper_rate` (행 스냅샷 — **거래처 단가 이후 변경과 무관하게 과거 인건비 불변**). 인건비 = skilled×skilled_rate + helper×helper_rate (저장 안 함, 조회 시 계산).
+
+## REST
+- vendors: rowToVendor/validateVendor에 단가 2필드(음수→0), POST 저장·PUT COALESCE(미전달 보존, 기존 편집모달 하위호환).
+- POST /api/sites/:id/labor: +vendor_id(팀 검증, 타팀→무시)·skilled_rate/helper_rate — **명시 단가 > 거래처 프리셋 > 0** 우선순위로 스냅샷. upsert 시 단가/시공팀 갱신. 응답에 vendor_name·cost.
+- GET labor?date: 로그에 vendor_name(JOIN)·단가·cost.
+- GET labor/summary: daily/total에 `cost` + **`by_process`**(공정별 출력일/기공/조공/인건비) + **`daily_process`**(최근 30일 일자×공정 인원 — 추이 차트용).
+- GET /api/vendors/:id/usage: +labor 집계(현장별 laborTotal/laborDays/laborSkilled/laborHelper, vendor_id 기준) — totals 합류, lastDate=costs·labor 중 최근, vendor에 memo·단가 포함.
+
+## UI
+- 출력인원 행 2단: 1단 공정|기공|조공|행 인건비|저장|✕ · 2단 **시공팀 select(옵션에 "기 N만/조 N만" 표기, 선택 시 일당 자동 채움)**|기공·조공 일당|비고. 합계에 당일 인건비, 요약에 누적 인건비+일자별 인건비 컬럼.
+- **공정별 인원 추이 카드**: Chart.js 스택바(일자×공정, tradeHex 색+팔레트 폴백) + 공정별 누적 테이블(출력일/기공/조공/계/인건비+합계).
+- **거래처 상세 페이지(VendorDetailPage)**: 관리›거래처에서 이름(또는 [상세]) 클릭 → 목록 대신 표시. ← 목록 / 헤더(이름·공정뱃지·구분·등급·연락처·메모·[✏️ 정보 수정]=기존 모달) / 👷 시공 일당 프리셋 카드(kind=하도급 또는 trade 있으면 "시공 파트" 강조, 저장 시 기존 기본필드 함께 전송) / 📊 사용 내역(요약 4칸 비용·발주·계획·**인건비** + 출력 누적 + 현장별 테이블 인건비(일수·기·조)·최근일·총계). **v14-3 VendorUsageModal 삭제(페이지로 흡수)**. 목록 이름 밑에 일당 프리셋 요약 표시.
+
+## 검증
+> ✅ **구현·검증 완료 (2026-07-05)**. 백엔드 e2e **17/17**(임시팀 2, 잔존 0 — **interior_vendors.team_id 도 v13 ALTER 라 팀삭제 CASCADE 없음** → 정리에 vendors 명시 삭제 추가): 단가 프리셋 저장/음수 보정/PUT 보존/vendor만 전달→프리셋 자동 스냅샷(145만)/명시 단가 override(156만)/**프리셋 변경 후 행 불변**/수동 단가/타팀 vendor 무시/summary cost·by_process·daily_process/일자별 cost/usage laborTotal·현장별·타팀 404. Playwright: 시공팀 선택→일당 자동(35만/20만)→행 인건비 145만→당일 인건비→누적 223만(2일)→공정별 추이 차트(스택바 렌더 스크린샷 확인)+누적 테이블→거래처 이름 클릭→상세 페이지(시공 파트 뱃지·단가 프리필·사용내역 인건비 145만·현장별 1일 기3조2).

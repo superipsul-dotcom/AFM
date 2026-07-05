@@ -1014,6 +1014,14 @@ async function initDB() {
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_labor_logs_site_date ON interior_labor_logs (site_id, work_date);');
 
+  // (v26) 인건비: 거래처(시공팀) 일당 프리셋 + 출력 로그의 시공팀/단가 스냅샷.
+  //   단가는 행에 스냅샷 저장 → 거래처 단가를 나중에 바꿔도 과거 인건비 불변. 인건비 = skilled*skilled_rate + helper*helper_rate (조회 시 계산).
+  await pool.query(`ALTER TABLE interior_vendors ADD COLUMN IF NOT EXISTS skilled_rate BIGINT NOT NULL DEFAULT 0 CHECK (skilled_rate >= 0)`);
+  await pool.query(`ALTER TABLE interior_vendors ADD COLUMN IF NOT EXISTS helper_rate  BIGINT NOT NULL DEFAULT 0 CHECK (helper_rate >= 0)`);
+  await pool.query(`ALTER TABLE interior_labor_logs ADD COLUMN IF NOT EXISTS vendor_id BIGINT REFERENCES interior_vendors(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE interior_labor_logs ADD COLUMN IF NOT EXISTS skilled_rate BIGINT NOT NULL DEFAULT 0 CHECK (skilled_rate >= 0)`);
+  await pool.query(`ALTER TABLE interior_labor_logs ADD COLUMN IF NOT EXISTS helper_rate  BIGINT NOT NULL DEFAULT 0 CHECK (helper_rate >= 0)`);
+
   // (v25) 매뉴얼 DB — 노션 시공매뉴얼 구조(항목/공정/유형/상태) + 인앱 본문/노션 링크.
   await pool.query(`
     CREATE TABLE IF NOT EXISTS interior_manuals (
@@ -1563,6 +1571,8 @@ function rowToVendor(row) {
     memo: row.memo || '',
     trade: row.trade || '', // (v9) 공정
     grade: row.grade || '', // (v9) 기술력/등급
+    skilled_rate: Number(row.skilled_rate) || 0, // (v26) 기공 일당(원)
+    helper_rate: Number(row.helper_rate) || 0,   // (v26) 조공 일당(원)
     active: row.active,
     created_at: new Date(row.created_at).toISOString(),
   };
@@ -1810,7 +1820,7 @@ const SITE_COLS =
 const COST_COLS =
   "id, site_id, to_char(date,'YYYY-MM-DD') AS date, amount, category, process, manager, vendor, memo, schedule_id, has_invoice, created_at";
 const STAFF_COLS = "id, name, role, phone, active, grade, employment_type, email, to_char(hire_date,'YYYY-MM-DD') AS hire_date, created_at"; // (v21) 직원마스터 확장
-const VENDOR_COLS = 'id, name, kind, phone, memo, trade, grade, active, created_at';
+const VENDOR_COLS = 'id, name, kind, phone, memo, trade, grade, skilled_rate, helper_rate, active, created_at';
 const CATEGORY_COLS = 'id, kind, name, sort_order, active';
 const ESTIMATE_COLS =
   "id, site_id, title, client_name, client_contact, to_char(estimate_date,'YYYY-MM-DD') AS estimate_date, to_char(valid_until,'YYYY-MM-DD') AS valid_until, vat_mode, vat_rate, discount, status, memo, created_at, " +
@@ -2223,6 +2233,11 @@ function validateVendor(body) {
       grade: typeof b.grade === 'string' ? b.grade.trim() : '',
       tradeProvided: b.trade !== undefined,
       gradeProvided: b.grade !== undefined,
+      // (v26) 기공/조공 일당 — 음수/비숫자는 0. PUT 미전달 시 기존값 보존.
+      skilledRate: Math.max(0, Math.round(Number(b.skilled_rate) || 0)),
+      helperRate: Math.max(0, Math.round(Number(b.helper_rate) || 0)),
+      skilledRateProvided: b.skilled_rate !== undefined,
+      helperRateProvided: b.helper_rate !== undefined,
       active: parseBool(b.active, true),
     },
   };
@@ -3503,8 +3518,8 @@ app.post('/api/vendors', async (req, res) => {
     if (!check.valid) return res.status(400).json({ success: false, message: check.message });
     const v = check.values;
     const { rows } = await pool.query(
-      `INSERT INTO interior_vendors (name, kind, phone, memo, trade, grade, active, team_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING ${VENDOR_COLS}`,
-      [v.name, v.kind, v.phone, v.memo, v.trade, v.grade, v.active, req.teamId]
+      `INSERT INTO interior_vendors (name, kind, phone, memo, trade, grade, skilled_rate, helper_rate, active, team_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${VENDOR_COLS}`,
+      [v.name, v.kind, v.phone, v.memo, v.trade, v.grade, v.skilledRate, v.helperRate, v.active, req.teamId]
     );
     res.status(201).json(rowToVendor(rows[0]));
   } catch (err) {
@@ -3584,9 +3599,11 @@ app.put('/api/vendors/:id', async (req, res) => {
     const v = check.values;
     const { rows } = await pool.query(
       `UPDATE interior_vendors SET name=$1, kind=$2, phone=$3, memo=$4, active=$5,
-              trade=COALESCE($6, trade), grade=COALESCE($7, grade)
-       WHERE id=$8 AND team_id=$9 RETURNING ${VENDOR_COLS}`,
-      [v.name, v.kind, v.phone, v.memo, v.active, v.tradeProvided ? v.trade : null, v.gradeProvided ? v.grade : null, id, req.teamId]
+              trade=COALESCE($6, trade), grade=COALESCE($7, grade),
+              skilled_rate=COALESCE($8, skilled_rate), helper_rate=COALESCE($9, helper_rate)
+       WHERE id=$10 AND team_id=$11 RETURNING ${VENDOR_COLS}`,
+      [v.name, v.kind, v.phone, v.memo, v.active, v.tradeProvided ? v.trade : null, v.gradeProvided ? v.grade : null,
+       v.skilledRateProvided ? v.skilledRate : null, v.helperRateProvided ? v.helperRate : null, id, req.teamId]
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 거래처를 찾을 수 없습니다.' });
     res.json(rowToVendor(rows[0]));
@@ -3622,7 +3639,7 @@ app.get('/api/vendors/:id/usage', async (req, res) => {
 
     // 1) 거래처가 이 팀 소속인지 확인 (아니면 404). 이 거래처의 name 으로 사용내역을 집계.
     const vq = await pool.query(
-      `SELECT id, name, kind, phone, trade, grade FROM interior_vendors WHERE id=$1 AND team_id=$2`,
+      `SELECT id, name, kind, phone, trade, grade, memo, skilled_rate, helper_rate FROM interior_vendors WHERE id=$1 AND team_id=$2`,
       [id, req.teamId]
     );
     if (vq.rows.length === 0) {
@@ -3658,13 +3675,25 @@ app.get('/api/vendors/:id/usage', async (req, res) => {
         GROUP BY sc.site_id`,
       [req.teamId, name]
     );
+    // (v26) 출력인원(시공팀=이 거래처) — 현장별 출력일수/기공/조공/인건비(행 스냅샷 단가)
+    const laborQ = await pool.query(
+      `SELECT l.site_id, COUNT(DISTINCT l.work_date)::int AS days,
+              COALESCE(SUM(l.skilled),0)::int AS skilled, COALESCE(SUM(l.helper),0)::int AS helper,
+              COALESCE(SUM(l.skilled*l.skilled_rate + l.helper*l.helper_rate),0)::bigint AS total,
+              to_char(MAX(l.work_date),'YYYY-MM-DD') AS last_date
+         FROM interior_labor_logs l
+         JOIN interior_sites s ON s.id = l.site_id
+        WHERE s.team_id=$1 AND l.vendor_id=$2
+        GROUP BY l.site_id`,
+      [req.teamId, id]
+    );
 
     // 3) 세 소스 site 합집합 → bySite (각 0 기본). lastDate 는 costs 에서만 채움.
     const map = new Map(); // site_id(string) → 누적 객체
     const ensure = (sid) => {
       const key = String(sid);
       if (!map.has(key)) {
-        map.set(key, { site_id: key, site_name: '', costTotal: 0, orderTotal: 0, plannedTotal: 0, lastDate: null });
+        map.set(key, { site_id: key, site_name: '', costTotal: 0, orderTotal: 0, plannedTotal: 0, laborTotal: 0, laborDays: 0, laborSkilled: 0, laborHelper: 0, lastDate: null });
       }
       return map.get(key);
     };
@@ -3675,6 +3704,14 @@ app.get('/api/vendors/:id/usage', async (req, res) => {
     }
     for (const r of ordersQ.rows) ensure(r.site_id).orderTotal = Number(r.total);
     for (const r of planQ.rows) ensure(r.site_id).plannedTotal = Number(r.total);
+    for (const r of laborQ.rows) {
+      const e = ensure(r.site_id);
+      e.laborTotal = Number(r.total);
+      e.laborDays = Number(r.days);
+      e.laborSkilled = Number(r.skilled);
+      e.laborHelper = Number(r.helper);
+      if (r.last_date && (!e.lastDate || r.last_date > e.lastDate)) e.lastDate = r.last_date; // 최근일 = costs·labor 중 더 최근
+    }
 
     // 4) 현장명 채우기 (팀 소속만; 합집합 site 들 1회 조회 — N+1 금지).
     const siteIds = [...map.keys()];
@@ -3691,8 +3728,8 @@ app.get('/api/vendors/:id/usage', async (req, res) => {
 
     // 사용액 큰 현장 우선(동률 시 site_id). 합계는 bySite 누적.
     const bySite = [...map.values()].sort((a, b) => {
-      const sb = b.costTotal + b.orderTotal + b.plannedTotal;
-      const sa = a.costTotal + a.orderTotal + a.plannedTotal;
+      const sb = b.costTotal + b.orderTotal + b.plannedTotal + b.laborTotal;
+      const sa = a.costTotal + a.orderTotal + a.plannedTotal + a.laborTotal;
       if (sb !== sa) return sb - sa;
       return Number(a.site_id) - Number(b.site_id);
     });
@@ -3701,9 +3738,13 @@ app.get('/api/vendors/:id/usage', async (req, res) => {
         acc.costTotal += s.costTotal;
         acc.orderTotal += s.orderTotal;
         acc.plannedTotal += s.plannedTotal;
+        acc.laborTotal += s.laborTotal;
+        acc.laborDays += s.laborDays;
+        acc.laborSkilled += s.laborSkilled;
+        acc.laborHelper += s.laborHelper;
         return acc;
       },
-      { costTotal: 0, orderTotal: 0, plannedTotal: 0 }
+      { costTotal: 0, orderTotal: 0, plannedTotal: 0, laborTotal: 0, laborDays: 0, laborSkilled: 0, laborHelper: 0 }
     );
 
     res.json({
@@ -3714,6 +3755,9 @@ app.get('/api/vendors/:id/usage', async (req, res) => {
         phone: vendorRow.phone || '',
         trade: vendorRow.trade || '',
         grade: vendorRow.grade || '',
+        memo: vendorRow.memo || '',
+        skilled_rate: Number(vendorRow.skilled_rate) || 0,
+        helper_rate: Number(vendorRow.helper_rate) || 0,
       },
       totals,
       bySite,
@@ -7171,21 +7215,30 @@ app.delete('/api/tasks/:id', async (req, res) => {
 
 // ── 출력인원 ──
 function rowToLabor(r) {
+  const skilled = Number(r.skilled) || 0;
+  const helper = Number(r.helper) || 0;
+  const skilledRate = Number(r.skilled_rate) || 0;
+  const helperRate = Number(r.helper_rate) || 0;
   return {
     id: String(r.id),
     site_id: String(r.site_id),
     work_date: r.work_date_s,
     schedule_id: r.schedule_id == null ? null : String(r.schedule_id),
     process: r.process || '',
-    skilled: Number(r.skilled) || 0,
-    helper: Number(r.helper) || 0,
+    skilled, helper,
+    // (v26) 시공팀(거래처) + 일당 스냅샷 → 인건비
+    vendor_id: r.vendor_id == null ? null : String(r.vendor_id),
+    vendor_name: r.vendor_name || null,
+    skilled_rate: skilledRate,
+    helper_rate: helperRate,
+    cost: skilled * skilledRate + helper * helperRate,
     memo: r.memo || '',
     done: !!r.done,
     done_at: r.done_at ? new Date(r.done_at).toISOString() : null,
     created_at: new Date(r.created_at).toISOString(),
   };
 }
-const LABOR_COLS = "id, site_id, to_char(work_date,'YYYY-MM-DD') AS work_date_s, schedule_id, process, skilled, helper, memo, done, done_at, created_at";
+const LABOR_COLS = "l.id, l.site_id, to_char(l.work_date,'YYYY-MM-DD') AS work_date_s, l.schedule_id, l.process, l.skilled, l.helper, l.vendor_id, l.skilled_rate, l.helper_rate, l.memo, l.done, l.done_at, l.created_at";
 
 // GET /api/sites/:id/labor?date=YYYY-MM-DD — 그날 로그 + 당일 일정(kind=공사, 겹침)
 app.get('/api/sites/:id/labor', async (req, res) => {
@@ -7194,7 +7247,11 @@ app.get('/api/sites/:id/labor', async (req, res) => {
     const date = req.query.date && isRealDate(String(req.query.date)) ? String(req.query.date) : null;
     if (!id || !date) return res.status(400).json({ success: false, message: 'date(YYYY-MM-DD)가 필요합니다.' });
     const [logs, scheds] = await Promise.all([
-      pool.query(`SELECT ${LABOR_COLS} FROM interior_labor_logs WHERE site_id=$1 AND work_date=$2 ORDER BY id ASC`, [id, date]),
+      pool.query(
+        `SELECT ${LABOR_COLS}, v.name AS vendor_name
+         FROM interior_labor_logs l LEFT JOIN interior_vendors v ON v.id = l.vendor_id
+         WHERE l.site_id=$1 AND l.work_date=$2 ORDER BY l.id ASC`, [id, date]
+      ),
       pool.query(
         `SELECT id, title, process, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, status
          FROM interior_schedule WHERE site_id=$1 AND kind='공사' AND start_date<=$2 AND end_date>=$2
@@ -7228,14 +7285,31 @@ app.post('/api/sites/:id/labor', async (req, res) => {
       const sc = await pool.query('SELECT id FROM interior_schedule WHERE id=$1 AND site_id=$2', [scheduleId, id]);
       if (sc.rows.length === 0) scheduleId = null;
     }
-    const { rows } = await pool.query(
-      `INSERT INTO interior_labor_logs (team_id, site_id, work_date, schedule_id, process, skilled, helper, memo, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    // (v26) 시공팀(거래처) + 일당: 명시 단가 > 거래처 프리셋 > 0. 행에 스냅샷 저장(이후 거래처 단가 변경과 무관).
+    let vendorId = parseId(b.vendor_id) || null;
+    let vendorRow = null;
+    if (vendorId) {
+      const vq = await pool.query('SELECT id, skilled_rate, helper_rate FROM interior_vendors WHERE id=$1 AND team_id=$2', [vendorId, req.teamId]);
+      if (vq.rows.length === 0) vendorId = null; else vendorRow = vq.rows[0];
+    }
+    const skilledRate = b.skilled_rate !== undefined ? Math.max(0, Math.round(Number(b.skilled_rate) || 0))
+      : vendorRow ? Number(vendorRow.skilled_rate) : 0;
+    const helperRate = b.helper_rate !== undefined ? Math.max(0, Math.round(Number(b.helper_rate) || 0))
+      : vendorRow ? Number(vendorRow.helper_rate) : 0;
+    const ins = await pool.query(
+      `INSERT INTO interior_labor_logs (team_id, site_id, work_date, schedule_id, process, skilled, helper, vendor_id, skilled_rate, helper_rate, memo, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        ON CONFLICT (site_id, work_date, process) DO UPDATE
          SET skilled=EXCLUDED.skilled, helper=EXCLUDED.helper, memo=EXCLUDED.memo,
+             vendor_id=EXCLUDED.vendor_id, skilled_rate=EXCLUDED.skilled_rate, helper_rate=EXCLUDED.helper_rate,
              schedule_id=COALESCE(EXCLUDED.schedule_id, interior_labor_logs.schedule_id)
-       RETURNING ${LABOR_COLS}`,
-      [req.teamId, id, date, scheduleId, process, skilled, helper, memo, req.userId]
+       RETURNING id`,
+      [req.teamId, id, date, scheduleId, process, skilled, helper, vendorId, skilledRate, helperRate, memo, req.userId]
+    );
+    const { rows } = await pool.query(
+      `SELECT ${LABOR_COLS}, v.name AS vendor_name
+       FROM interior_labor_logs l LEFT JOIN interior_vendors v ON v.id = l.vendor_id
+       WHERE l.id=$1`, [ins.rows[0].id]
     );
     res.status(201).json(rowToLabor(rows[0]));
   } catch (err) {
@@ -7295,20 +7369,41 @@ app.get('/api/sites/:id/labor/summary', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
-    const [daily, total] = await Promise.all([
+    const [daily, total, byProcess, dailyProcess] = await Promise.all([
       pool.query(
-        `SELECT to_char(work_date,'YYYY-MM-DD') AS d, SUM(skilled)::int AS skilled, SUM(helper)::int AS helper, COUNT(*)::int AS entries, bool_and(done) AS done
+        `SELECT to_char(work_date,'YYYY-MM-DD') AS d, SUM(skilled)::int AS skilled, SUM(helper)::int AS helper,
+                COALESCE(SUM(skilled*skilled_rate + helper*helper_rate),0)::bigint AS cost,
+                COUNT(*)::int AS entries, bool_and(done) AS done
          FROM interior_labor_logs WHERE site_id=$1 AND work_date >= (CURRENT_DATE - INTERVAL '60 days')
          GROUP BY work_date ORDER BY work_date DESC`, [id]
       ),
       pool.query(
-        `SELECT COALESCE(SUM(skilled),0)::int AS skilled, COALESCE(SUM(helper),0)::int AS helper, COUNT(DISTINCT work_date)::int AS days
+        `SELECT COALESCE(SUM(skilled),0)::int AS skilled, COALESCE(SUM(helper),0)::int AS helper,
+                COALESCE(SUM(skilled*skilled_rate + helper*helper_rate),0)::bigint AS cost,
+                COUNT(DISTINCT work_date)::int AS days
          FROM interior_labor_logs WHERE site_id=$1`, [id]
+      ),
+      // (v26) 공정별 누적 — 인원·인건비·출력일수
+      pool.query(
+        `SELECT process, COUNT(DISTINCT work_date)::int AS days,
+                COALESCE(SUM(skilled),0)::int AS skilled, COALESCE(SUM(helper),0)::int AS helper,
+                COALESCE(SUM(skilled*skilled_rate + helper*helper_rate),0)::bigint AS cost
+         FROM interior_labor_logs WHERE site_id=$1
+         GROUP BY process ORDER BY (COALESCE(SUM(skilled),0)+COALESCE(SUM(helper),0)) DESC, process ASC`, [id]
+      ),
+      // (v26) 공정별 인원 추이(최근 30일, 일자×공정) — 스택 차트용
+      pool.query(
+        `SELECT to_char(work_date,'YYYY-MM-DD') AS d, process,
+                (COALESCE(SUM(skilled),0)+COALESCE(SUM(helper),0))::int AS total
+         FROM interior_labor_logs WHERE site_id=$1 AND work_date >= (CURRENT_DATE - INTERVAL '30 days')
+         GROUP BY work_date, process ORDER BY work_date ASC`, [id]
       ),
     ]);
     res.json({
-      daily: daily.rows.map((r) => ({ date: r.d, skilled: r.skilled, helper: r.helper, entries: r.entries, done: !!r.done })),
-      total: { skilled: total.rows[0].skilled, helper: total.rows[0].helper, days: total.rows[0].days },
+      daily: daily.rows.map((r) => ({ date: r.d, skilled: r.skilled, helper: r.helper, cost: Number(r.cost), entries: r.entries, done: !!r.done })),
+      total: { skilled: total.rows[0].skilled, helper: total.rows[0].helper, cost: Number(total.rows[0].cost), days: total.rows[0].days },
+      by_process: byProcess.rows.map((r) => ({ process: r.process || '(공정 미지정)', days: r.days, skilled: r.skilled, helper: r.helper, cost: Number(r.cost) })),
+      daily_process: dailyProcess.rows.map((r) => ({ date: r.d, process: r.process || '(공정 미지정)', total: r.total })),
     });
   } catch (err) {
     console.error('GET /api/sites/:id/labor/summary 오류:', err.message);
