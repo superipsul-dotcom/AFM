@@ -56,6 +56,13 @@ const { useState, useEffect, useMemo, useRef } = React;
 
 // 페이지가 /research/ 에 있으므로 루트 절대경로가 맞다. (localhost 하드코딩 금지)
 const API_BASE_URL = (location.protocol === 'http:' || location.protocol === 'https:') ? '/api' : 'http://localhost:3011/api';
+// file:// 로 직접 열면 절대경로 링크가 깨짐 → 상대경로로 전환
+const IS_FILE = location.protocol === 'file:';
+const NAV = {
+  home: IS_FILE ? '../index.html' : '/',
+  products: IS_FILE ? '../products/index.html' : '/products/',
+  textures: IS_FILE ? '../textures/index.html' : '/textures/'
+};
 
 // ========================================
 // 🔧 유틸 / 포매터
@@ -248,8 +255,9 @@ function TopHeader({ d, lastUpdated }) {
     <header className="sticky top-0 z-30 border-b border-[#2b313d]"
             style={{ background: 'linear-gradient(180deg,#141821,#10131a)', backdropFilter: 'blur(6px)' }}>
       <div className="max-w-[1320px] mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
-        <a href="/" className="text-[12px] text-[#7aa7ff] hover:underline shrink-0">← 자재 DB</a>
-        <a href="/products/" className="text-[12px] text-[#7aa7ff] hover:underline shrink-0">📦 제품 라이브러리</a>
+        <a href={NAV.home} className="text-[12px] text-[#7aa7ff] hover:underline shrink-0">← 자재 DB</a>
+        <a href={NAV.products} className="text-[12px] text-[#7aa7ff] hover:underline shrink-0">📦 제품 라이브러리</a>
+        <a href={NAV.textures} className="text-[12px] text-[#7aa7ff] hover:underline shrink-0">🎨 머티리얼</a>
         <div className="flex items-center gap-3">
           <div className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center text-[18px]"
                style={{ background: 'linear-gradient(135deg,#4f8cff,#9b8cff)' }} aria-hidden="true">📊</div>

@@ -235,6 +235,13 @@
 (function(){
 "use strict";
 var API=(location.protocol==="http:"||location.protocol==="https:")?"/api":"http://localhost:3011/api";
+/* file:// 로 열면 절대경로 링크가 깨짐 → 상대경로 재작성 */
+if(location.protocol==="file:"){
+  document.querySelectorAll('a[href^="/"]').forEach(function(a){
+    var p=a.getAttribute("href");
+    a.setAttribute("href", p==="/" ? "../index.html" : "../"+p.replace(/^\//,"").replace(/\/$/,"")+"/index.html");
+  });
+}
 function $(id){return document.getElementById(id);}
 function api(p){return fetch(API+p).then(function(r){return r.json().then(function(j){if(!r.ok||j.success===false)throw new Error(j.message||("HTTP "+r.status));return j;});});}
 function apiSend(p,m,b){return fetch(API+p,{method:m,headers:{"Content-Type":"application/json"},body:b?JSON.stringify(b):undefined}).then(function(r){return r.json().then(function(j){if(!r.ok||j.success===false)throw new Error(j.message||("HTTP "+r.status));return j;});});}

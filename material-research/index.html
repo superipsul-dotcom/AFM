@@ -256,6 +256,19 @@
   "use strict";
   /* http(s)로 서버에서 열면 상대경로, 파일을 직접 열면(file://) 로컬 서버로 폴백 */
   var API = (location.protocol === "http:" || location.protocol === "https:") ? "/api" : "http://localhost:3011/api";
+  /* file:// 로 열면 절대경로 링크(/products/ 등)가 ERR_FILE_NOT_FOUND → 상대경로로 재작성 + 서버 모드 안내 */
+  if(location.protocol==="file:"){
+    document.querySelectorAll('a[href^="/"]').forEach(function(a){
+      var p=a.getAttribute("href");
+      a.setAttribute("href", p==="/" ? "index.html" : p.replace(/^\//,"").replace(/\/$/,"")+"/index.html");
+    });
+    fetch("http://localhost:3011/api/health").then(function(r){ if(r.ok){
+      var b=document.createElement("div");
+      b.style.cssText="background:#1f2a3f;border-bottom:1px solid #4f8cff;color:#cdd6e4;font-size:12.5px;padding:8px 16px;text-align:center";
+      b.innerHTML='파일로 직접 연 화면입니다 — <a href="http://localhost:3011/" style="color:#8fb3ff;font-weight:700;text-decoration:underline">http://localhost:3011 서버 모드로 열기</a> (탭 이동·사진이 가장 안정적)';
+      document.body.insertBefore(b, document.body.firstChild);
+    }}).catch(function(){});
+  }
   function loadErrorHtml(what, e){
     var reason = e && e.message ? e.message : "알 수 없는 오류";
     var hint = /Failed to fetch|NetworkError|Load failed/i.test(reason)

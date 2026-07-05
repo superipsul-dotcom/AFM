@@ -36,6 +36,14 @@ const { useState, useEffect, useMemo, useCallback } = React;
 // 상수 / 유틸
 // ========================================
 const API_BASE_URL = (location.protocol === 'http:' || location.protocol === 'https:') ? '/api' : 'http://localhost:3011/api';
+// file:// 로 직접 열면 절대경로 링크가 깨짐 → 상대경로로 전환
+const IS_FILE = location.protocol === 'file:';
+const NAV = {
+  home: IS_FILE ? '../index.html' : '/',
+  products: IS_FILE ? '../products/index.html' : '/products/',
+  textures: IS_FILE ? '../textures/index.html' : '/textures/',
+  research: IS_FILE ? '../research/index.html' : '/research/'
+};
 const fmtKRW = (n) => (n == null ? '' : Number(n).toLocaleString('ko-KR'));
 const BRAND_HUE = {};
 const hueOf = (s) => {
@@ -257,8 +265,9 @@ function App() {
               </div>
             )}
             <nav className="flex gap-3 text-[12.5px]">
-              <a href="/" className="text-accent2 hover:text-white">🧱 자재 DB</a>
-              <a href="/research/" className="text-accent2 hover:text-white">📊 리서치 현황</a>
+              <a href={NAV.home} className="text-accent2 hover:text-white">🧱 자재 DB</a>
+              <a href={NAV.textures} className="text-accent2 hover:text-white">🎨 머티리얼</a>
+              <a href={NAV.research} className="text-accent2 hover:text-white">📊 리서치 현황</a>
             </nav>
           </div>
         </div>
