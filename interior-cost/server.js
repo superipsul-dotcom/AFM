@@ -975,11 +975,129 @@ async function initDB() {
     )
   `);
 
+  // (v25) 개인 할일 — 담당자/현장/마감일. 유저·현장 삭제에도 행 보존(SET NULL).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_tasks (
+      id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id          BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      site_id          BIGINT REFERENCES interior_sites(id) ON DELETE SET NULL,
+      title            TEXT NOT NULL,
+      memo             TEXT NOT NULL DEFAULT '',
+      due_date         DATE,
+      status           TEXT NOT NULL DEFAULT '진행',
+      assignee_user_id BIGINT REFERENCES interior_users(id) ON DELETE SET NULL,
+      created_by       BIGINT REFERENCES interior_users(id) ON DELETE SET NULL,
+      completed_at     TIMESTAMPTZ,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_tasks_team_assignee ON interior_tasks (team_id, assignee_user_id, status);');
+
+  // (v25) 출력인원 — 현장×날짜×공정 1행(upsert), 기공(skilled)/조공(helper) 분리. 일정 삭제돼도 기록 보존.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_labor_logs (
+      id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id     BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      site_id     BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      work_date   DATE NOT NULL,
+      schedule_id BIGINT REFERENCES interior_schedule(id) ON DELETE SET NULL,
+      process     TEXT NOT NULL DEFAULT '',
+      skilled     INT NOT NULL DEFAULT 0 CHECK (skilled >= 0),
+      helper      INT NOT NULL DEFAULT 0 CHECK (helper >= 0),
+      memo        TEXT NOT NULL DEFAULT '',
+      done        BOOLEAN NOT NULL DEFAULT false,
+      done_at     TIMESTAMPTZ,
+      created_by  BIGINT REFERENCES interior_users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (site_id, work_date, process)
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_labor_logs_site_date ON interior_labor_logs (site_id, work_date);');
+
+  // (v25) 매뉴얼 DB — 노션 시공매뉴얼 구조(항목/공정/유형/상태) + 인앱 본문/노션 링크.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_manuals (
+      id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id    BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      title      TEXT NOT NULL,
+      trade      TEXT NOT NULL DEFAULT '',
+      types      TEXT NOT NULL DEFAULT '',
+      status     TEXT NOT NULL DEFAULT '작성 전',
+      content    TEXT NOT NULL DEFAULT '',
+      notion_url TEXT NOT NULL DEFAULT '',
+      sort_order INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  // (v25) 현장별 매뉴얼 선택(관리자 지정 → 현장 매뉴얼 탭에 선택본만 노출)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_site_manuals (
+      id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id    BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      site_id    BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      manual_id  BIGINT NOT NULL REFERENCES interior_manuals(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (site_id, manual_id)
+    )
+  `);
+
+  // (v25) 인앱 알림 — 수신자 단위 행. 유저 삭제 시 알림도 정리(CASCADE), 현장 삭제 시 관련 알림 정리.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_notifications (
+      id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id       BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      user_id       BIGINT NOT NULL REFERENCES interior_users(id) ON DELETE CASCADE,
+      actor_user_id BIGINT REFERENCES interior_users(id) ON DELETE SET NULL,
+      type          TEXT NOT NULL DEFAULT '',
+      title         TEXT NOT NULL,
+      body          TEXT NOT NULL DEFAULT '',
+      site_id       BIGINT REFERENCES interior_sites(id) ON DELETE CASCADE,
+      ref_type      TEXT NOT NULL DEFAULT '',
+      ref_id        BIGINT,
+      read_at       TIMESTAMPTZ,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_notifications_user ON interior_notifications (user_id, read_at);');
+
+  // (v25) 매뉴얼 시드 — 전체 0건일 때만 노션 43건을 가장 오래된 팀에 적재
+  await seedManualsIfEmpty();
+
   // (v20) Storage 버킷 ensure (키 있을 때만, best-effort — 실패해도 부팅 계속)
   await ensureStorageBucket();
 
   dbInitialized = true;
   console.log('🗄️  interior_* (sites/costs/staff/vendors/categories/schedule/schedule_deps/estimates/estimate_items/catalog/clients/orders/meetings/as/takeoff/documents/photos) 준비 완료 + 카테고리/카탈로그 시드.');
+}
+
+// (v25) 매뉴얼이 전체 0건일 때만 seed/manuals.json(노션 시공매뉴얼 DB 43건)을 가장 오래된 팀에 적재.
+//   단일팀 전제(안도공간). 전부 지운 뒤 재부팅하면 재시드됨 — 관리 탭에서 개별 삭제로 관리.
+async function seedManualsIfEmpty() {
+  try {
+    const cnt = await pool.query('SELECT COUNT(*)::int AS n FROM interior_manuals');
+    if (Number(cnt.rows[0].n) > 0) return;
+    const team = await pool.query('SELECT id FROM interior_teams ORDER BY id ASC LIMIT 1');
+    if (team.rows.length === 0) return; // 팀 없으면 (최초 부팅 순서상) 다음 부팅에서 시드
+    const teamId = team.rows[0].id;
+    const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'seed', 'manuals.json'), 'utf8'));
+    const items = Array.isArray(raw.manuals) ? raw.manuals : [];
+    if (items.length === 0) return;
+    const params = [];
+    const values = items.map((m, i) => {
+      params.push(teamId, String(m.title || '').trim(), String(m.trade || ''), String(m.types || ''),
+        String(m.status || '작성 전'), String(m.content || ''), String(m.notion_url || ''), i);
+      const o = i * 8;
+      return `($${o + 1},$${o + 2},$${o + 3},$${o + 4},$${o + 5},$${o + 6},$${o + 7},$${o + 8})`;
+    });
+    await pool.query(
+      `INSERT INTO interior_manuals (team_id, title, trade, types, status, content, notion_url, sort_order)
+       VALUES ${values.join(',')}`, params
+    );
+    console.log(`📖 매뉴얼 시드 완료: ${items.length}건 (team ${teamId})`);
+  } catch (err) {
+    console.warn('⚠️  매뉴얼 시드 실패(부팅 계속):', err.message);
+  }
 }
 
 // (v3) 카탈로그가 비어 있을 때만 seed/catalog.json 을 읽어 일괄 적재 (트랜잭션). 실패해도 부팅은 계속.
@@ -6833,6 +6951,582 @@ app.delete('/api/photos/:id', async (req, res) => {
 
 // GET /api/photos/:id/download — 서명 다운로드 URL {url}
 app.get('/api/photos/:id/download', makeDownloadHandler('interior_photos', '현장사진'));
+
+// ========================================
+// (v25) 개인 할일 · 출력인원(기공/조공) · 매뉴얼 · 인앱 알림
+//   알림 규칙: 할일 할당→담당자 / 할일 완료→팀 admin+생성자 / 출력 완료→팀원 전체 (모두 actor 제외)
+// ========================================
+// 알림 생성 헬퍼 — 수신자 dedupe + actor 제외 + 빈 배열 no-op. 실패해도 본 요청은 성공 처리(warn).
+async function notifyUsers({ teamId, userIds, actorUserId, type, title, body = '', siteId = null, refType = '', refId = null }) {
+  try {
+    const targets = [...new Set((userIds || []).map(Number).filter((x) => Number.isFinite(x) && x > 0 && x !== Number(actorUserId)))];
+    if (targets.length === 0) return;
+    const params = [];
+    const values = targets.map((uid, i) => {
+      params.push(teamId, uid, actorUserId || null, type, title, body, siteId, refType, refId);
+      const o = i * 9;
+      return `($${o + 1},$${o + 2},$${o + 3},$${o + 4},$${o + 5},$${o + 6},$${o + 7},$${o + 8},$${o + 9})`;
+    });
+    await pool.query(
+      `INSERT INTO interior_notifications (team_id, user_id, actor_user_id, type, title, body, site_id, ref_type, ref_id)
+       VALUES ${values.join(',')}`, params
+    );
+  } catch (err) {
+    console.warn('⚠️  알림 생성 실패(요청은 계속):', err.message);
+  }
+}
+async function teamUserIdsByRole(teamId, onlyAdmin) {
+  const { rows } = await pool.query(
+    `SELECT id FROM interior_users WHERE team_id=$1 ${onlyAdmin ? "AND role='admin'" : ''}`, [teamId]
+  );
+  return rows.map((r) => Number(r.id));
+}
+
+// GET /api/team/users — 담당자 피커용 팀 유저 목록(전원 열람)
+app.get('/api/team/users', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, COALESCE(NULLIF(name,''), email) AS name, email, role FROM interior_users WHERE team_id=$1 ORDER BY id ASC`,
+      [req.teamId]
+    );
+    res.json(rows.map((r) => ({ id: String(r.id), name: r.name, email: r.email, role: r.role || 'member' })));
+  } catch (err) {
+    console.error('GET /api/team/users 오류:', err.message);
+    res.status(500).json({ success: false, message: '팀원 목록을 불러오지 못했습니다.' });
+  }
+});
+
+// ── 할일 ──
+const TASK_SELECT = `
+  SELECT t.id, t.team_id, t.site_id, t.title, t.memo, to_char(t.due_date,'YYYY-MM-DD') AS due_date,
+         t.status, t.assignee_user_id, t.created_by, t.completed_at, t.created_at,
+         s.name AS site_name,
+         COALESCE(NULLIF(au.name,''), au.email) AS assignee_name,
+         COALESCE(NULLIF(cu.name,''), cu.email) AS creator_name
+  FROM interior_tasks t
+  LEFT JOIN interior_sites s ON s.id = t.site_id
+  LEFT JOIN interior_users au ON au.id = t.assignee_user_id
+  LEFT JOIN interior_users cu ON cu.id = t.created_by`;
+function rowToTask(r) {
+  return {
+    id: String(r.id),
+    title: r.title, memo: r.memo || '',
+    due_date: r.due_date || null,
+    status: r.status || '진행',
+    site_id: r.site_id == null ? null : String(r.site_id),
+    site_name: r.site_name || null,
+    assignee_user_id: r.assignee_user_id == null ? null : String(r.assignee_user_id),
+    assignee_name: r.assignee_name || null,
+    created_by: r.created_by == null ? null : String(r.created_by),
+    creator_name: r.creator_name || null,
+    completed_at: r.completed_at ? new Date(r.completed_at).toISOString() : null,
+    created_at: new Date(r.created_at).toISOString(),
+  };
+}
+
+// GET /api/tasks?view=mine|team&status=진행|완료|all&site_id= — 기본 mine·진행. 마감 임박순(NULL 마지막).
+app.get('/api/tasks', async (req, res) => {
+  try {
+    const view = req.query.view === 'team' ? 'team' : 'mine';
+    const status = ['진행', '완료', 'all'].includes(String(req.query.status)) ? String(req.query.status) : '진행';
+    const conds = ['t.team_id=$1'];
+    const params = [req.teamId];
+    if (view === 'mine') { params.push(req.userId); conds.push(`t.assignee_user_id=$${params.length}`); }
+    if (status !== 'all') { params.push(status); conds.push(`t.status=$${params.length}`); }
+    const siteId = parseId(req.query.site_id);
+    if (siteId) { params.push(siteId); conds.push(`t.site_id=$${params.length}`); }
+    const order = status === '완료' ? 't.completed_at DESC NULLS LAST, t.id DESC' : 't.due_date ASC NULLS LAST, t.id ASC';
+    const { rows } = await pool.query(`${TASK_SELECT} WHERE ${conds.join(' AND ')} ORDER BY ${order} LIMIT 300`, params);
+    res.json(rows.map(rowToTask));
+  } catch (err) {
+    console.error('GET /api/tasks 오류:', err.message);
+    res.status(500).json({ success: false, message: '할일을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/tasks — 팀 전원 생성 가능. 담당자 기본=본인, 타인 할당 시 task_assigned 알림.
+app.post('/api/tasks', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const title = typeof b.title === 'string' ? b.title.trim() : '';
+    if (!title) return res.status(400).json({ success: false, message: '할일 제목을 입력하세요.' });
+    const memo = typeof b.memo === 'string' ? b.memo : '';
+    const dueDate = b.due_date && isRealDate(String(b.due_date)) ? String(b.due_date) : null;
+    let assignee = parseId(b.assignee_user_id) || req.userId;
+    // 담당자는 우리 팀 유저만
+    const chk = await pool.query('SELECT id FROM interior_users WHERE id=$1 AND team_id=$2', [assignee, req.teamId]);
+    if (chk.rows.length === 0) assignee = req.userId;
+    let siteId = parseId(b.site_id) || null;
+    if (siteId) {
+      const sc = await pool.query('SELECT id, name FROM interior_sites WHERE id=$1 AND team_id=$2', [siteId, req.teamId]);
+      if (sc.rows.length === 0) siteId = null;
+    }
+    const ins = await pool.query(
+      `INSERT INTO interior_tasks (team_id, site_id, title, memo, due_date, assignee_user_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [req.teamId, siteId, title, memo, dueDate, assignee, req.userId]
+    );
+    const { rows } = await pool.query(`${TASK_SELECT} WHERE t.id=$1`, [ins.rows[0].id]);
+    const task = rowToTask(rows[0]);
+    if (Number(assignee) !== Number(req.userId)) {
+      const actorName = await currentUserName(req);
+      await notifyUsers({
+        teamId: req.teamId, userIds: [assignee], actorUserId: req.userId, type: 'task_assigned',
+        title: `📌 새 할일: ${title}`,
+        body: `${actorName || '팀원'}님이 할일을 배정했습니다.${task.due_date ? ` 마감 ${task.due_date}` : ''}${task.site_name ? ` · ${task.site_name}` : ''}`,
+        siteId, refType: 'task', refId: Number(task.id),
+      });
+    }
+    res.status(201).json(task);
+  } catch (err) {
+    console.error('POST /api/tasks 오류:', err.message);
+    res.status(500).json({ success: false, message: '할일을 저장하지 못했습니다.' });
+  }
+});
+
+// PATCH /api/tasks/:id — 부분 수정. status '완료' 전환 시 completed_at + 팀 admin/생성자 알림, '진행' 복귀 시 해제.
+app.patch('/api/tasks/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 할일 id 형식입니다.' });
+    const cur = await pool.query('SELECT * FROM interior_tasks WHERE id=$1 AND team_id=$2', [id, req.teamId]);
+    if (cur.rows.length === 0) return res.status(404).json({ success: false, message: '해당 할일을 찾을 수 없습니다.' });
+    const prev = cur.rows[0];
+    const b = req.body || {};
+    const sets = [];
+    const params = [];
+    const push = (frag, v) => { params.push(v); sets.push(`${frag}$${params.length}`); };
+    if (typeof b.title === 'string' && b.title.trim()) push('title=', b.title.trim());
+    if (typeof b.memo === 'string') push('memo=', b.memo);
+    if (b.due_date !== undefined) push('due_date=', b.due_date && isRealDate(String(b.due_date)) ? String(b.due_date) : null);
+    let newAssignee = null;
+    if (b.assignee_user_id !== undefined) {
+      newAssignee = parseId(b.assignee_user_id);
+      if (newAssignee) {
+        const chk = await pool.query('SELECT id FROM interior_users WHERE id=$1 AND team_id=$2', [newAssignee, req.teamId]);
+        if (chk.rows.length === 0) newAssignee = null;
+      }
+      push('assignee_user_id=', newAssignee);
+    }
+    if (b.site_id !== undefined) {
+      let siteId = parseId(b.site_id) || null;
+      if (siteId) {
+        const sc = await pool.query('SELECT id FROM interior_sites WHERE id=$1 AND team_id=$2', [siteId, req.teamId]);
+        if (sc.rows.length === 0) siteId = null;
+      }
+      push('site_id=', siteId);
+    }
+    let statusChangedToDone = false;
+    if (b.status === '완료' || b.status === '진행') {
+      push('status=', b.status);
+      if (b.status === '완료' && prev.status !== '완료') { sets.push('completed_at=now()'); statusChangedToDone = true; }
+      if (b.status === '진행') sets.push('completed_at=NULL');
+    }
+    if (sets.length === 0) return res.status(400).json({ success: false, message: '수정할 내용이 없습니다.' });
+    params.push(id);
+    await pool.query(`UPDATE interior_tasks SET ${sets.join(', ')} WHERE id=$${params.length}`, params);
+    const { rows } = await pool.query(`${TASK_SELECT} WHERE t.id=$1`, [id]);
+    const task = rowToTask(rows[0]);
+
+    const actorName = await currentUserName(req);
+    if (statusChangedToDone) {
+      // 완료 알림 → 팀 admin 전원 + 생성자 (actor 제외, dedupe)
+      const admins = await teamUserIdsByRole(req.teamId, true);
+      const targets = [...admins, prev.created_by ? Number(prev.created_by) : null].filter(Boolean);
+      await notifyUsers({
+        teamId: req.teamId, userIds: targets, actorUserId: req.userId, type: 'task_done',
+        title: `✅ 할일 완료: ${task.title}`,
+        body: `${actorName || '팀원'}님이 완료했습니다.${task.site_name ? ` · ${task.site_name}` : ''}`,
+        siteId: task.site_id ? Number(task.site_id) : null, refType: 'task', refId: Number(task.id),
+      });
+    } else if (newAssignee && Number(newAssignee) !== Number(prev.assignee_user_id || 0) && Number(newAssignee) !== Number(req.userId)) {
+      // 담당자 변경 알림 → 새 담당자
+      await notifyUsers({
+        teamId: req.teamId, userIds: [newAssignee], actorUserId: req.userId, type: 'task_assigned',
+        title: `📌 새 할일: ${task.title}`,
+        body: `${actorName || '팀원'}님이 할일을 배정했습니다.${task.due_date ? ` 마감 ${task.due_date}` : ''}${task.site_name ? ` · ${task.site_name}` : ''}`,
+        siteId: task.site_id ? Number(task.site_id) : null, refType: 'task', refId: Number(task.id),
+      });
+    }
+    res.json(task);
+  } catch (err) {
+    console.error('PATCH /api/tasks/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '할일을 수정하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/tasks/:id
+app.delete('/api/tasks/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 할일 id 형식입니다.' });
+    const del = await pool.query('DELETE FROM interior_tasks WHERE id=$1 AND team_id=$2 RETURNING id', [id, req.teamId]);
+    if (del.rows.length === 0) return res.status(404).json({ success: false, message: '해당 할일을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/tasks/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '할일을 삭제하지 못했습니다.' });
+  }
+});
+
+// ── 출력인원 ──
+function rowToLabor(r) {
+  return {
+    id: String(r.id),
+    site_id: String(r.site_id),
+    work_date: r.work_date_s,
+    schedule_id: r.schedule_id == null ? null : String(r.schedule_id),
+    process: r.process || '',
+    skilled: Number(r.skilled) || 0,
+    helper: Number(r.helper) || 0,
+    memo: r.memo || '',
+    done: !!r.done,
+    done_at: r.done_at ? new Date(r.done_at).toISOString() : null,
+    created_at: new Date(r.created_at).toISOString(),
+  };
+}
+const LABOR_COLS = "id, site_id, to_char(work_date,'YYYY-MM-DD') AS work_date_s, schedule_id, process, skilled, helper, memo, done, done_at, created_at";
+
+// GET /api/sites/:id/labor?date=YYYY-MM-DD — 그날 로그 + 당일 일정(kind=공사, 겹침)
+app.get('/api/sites/:id/labor', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    const date = req.query.date && isRealDate(String(req.query.date)) ? String(req.query.date) : null;
+    if (!id || !date) return res.status(400).json({ success: false, message: 'date(YYYY-MM-DD)가 필요합니다.' });
+    const [logs, scheds] = await Promise.all([
+      pool.query(`SELECT ${LABOR_COLS} FROM interior_labor_logs WHERE site_id=$1 AND work_date=$2 ORDER BY id ASC`, [id, date]),
+      pool.query(
+        `SELECT id, title, process, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, status
+         FROM interior_schedule WHERE site_id=$1 AND kind='공사' AND start_date<=$2 AND end_date>=$2
+         ORDER BY sort_order ASC, id ASC`, [id, date]
+      ),
+    ]);
+    res.json({
+      date,
+      logs: logs.rows.map(rowToLabor),
+      schedules: scheds.rows.map((s) => ({ id: String(s.id), title: s.title, process: s.process || '', start_date: s.start_date, end_date: s.end_date, status: s.status })),
+    });
+  } catch (err) {
+    console.error('GET /api/sites/:id/labor 오류:', err.message);
+    res.status(500).json({ success: false, message: '출력인원을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/labor — upsert(현장×날짜×공정). 기공/조공/비고 갱신.
+app.post('/api/sites/:id/labor', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    const b = req.body || {};
+    const date = b.work_date && isRealDate(String(b.work_date)) ? String(b.work_date) : null;
+    if (!id || !date) return res.status(400).json({ success: false, message: 'work_date(YYYY-MM-DD)가 필요합니다.' });
+    const process = typeof b.process === 'string' ? b.process.trim() : '';
+    const skilled = Math.max(0, Math.round(Number(b.skilled) || 0));
+    const helper = Math.max(0, Math.round(Number(b.helper) || 0));
+    const memo = typeof b.memo === 'string' ? b.memo : '';
+    let scheduleId = parseId(b.schedule_id) || null;
+    if (scheduleId) {
+      const sc = await pool.query('SELECT id FROM interior_schedule WHERE id=$1 AND site_id=$2', [scheduleId, id]);
+      if (sc.rows.length === 0) scheduleId = null;
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO interior_labor_logs (team_id, site_id, work_date, schedule_id, process, skilled, helper, memo, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (site_id, work_date, process) DO UPDATE
+         SET skilled=EXCLUDED.skilled, helper=EXCLUDED.helper, memo=EXCLUDED.memo,
+             schedule_id=COALESCE(EXCLUDED.schedule_id, interior_labor_logs.schedule_id)
+       RETURNING ${LABOR_COLS}`,
+      [req.teamId, id, date, scheduleId, process, skilled, helper, memo, req.userId]
+    );
+    res.status(201).json(rowToLabor(rows[0]));
+  } catch (err) {
+    console.error('POST /api/sites/:id/labor 오류:', err.message);
+    res.status(500).json({ success: false, message: '출력인원을 저장하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/labor/:id — 행 삭제(팀 검증)
+app.delete('/api/labor/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 출력인원 id 형식입니다.' });
+    const del = await pool.query('DELETE FROM interior_labor_logs WHERE id=$1 AND team_id=$2 RETURNING id', [id, req.teamId]);
+    if (del.rows.length === 0) return res.status(404).json({ success: false, message: '해당 출력인원 기록을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/labor/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '출력인원을 삭제하지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/labor/complete {date} — 그날 기록 done 처리 + 팀원 전체 알림(0건이면 400)
+app.post('/api/sites/:id/labor/complete', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    const b = req.body || {};
+    const date = b.date && isRealDate(String(b.date)) ? String(b.date) : null;
+    if (!id || !date) return res.status(400).json({ success: false, message: 'date(YYYY-MM-DD)가 필요합니다.' });
+    const upd = await pool.query(
+      `UPDATE interior_labor_logs SET done=true, done_at=now()
+       WHERE site_id=$1 AND work_date=$2 RETURNING process, skilled, helper`, [id, date]
+    );
+    if (upd.rows.length === 0) return res.status(400).json({ success: false, message: '해당 날짜에 입력된 출력인원이 없습니다.' });
+    const skilled = upd.rows.reduce((a, r) => a + Number(r.skilled), 0);
+    const helper = upd.rows.reduce((a, r) => a + Number(r.helper), 0);
+    const site = await pool.query('SELECT name FROM interior_sites WHERE id=$1', [id]);
+    const siteName = site.rows.length ? site.rows[0].name : '현장';
+    const [, mm, dd] = date.split('-');
+    const actorName = await currentUserName(req);
+    const everyone = await teamUserIdsByRole(req.teamId, false);
+    await notifyUsers({
+      teamId: req.teamId, userIds: everyone, actorUserId: req.userId, type: 'labor_done',
+      title: `👷 [${siteName}] ${Number(mm)}/${Number(dd)} 출력 완료`,
+      body: `기공 ${skilled} · 조공 ${helper} · 계 ${skilled + helper}명 (공정 ${upd.rows.length}건) — ${actorName || '팀원'} 입력`,
+      siteId: id, refType: 'labor', refId: null,
+    });
+    res.json({ success: true, done: upd.rows.length, skilled, helper });
+  } catch (err) {
+    console.error('POST /api/sites/:id/labor/complete 오류:', err.message);
+    res.status(500).json({ success: false, message: '출력 완료 처리를 하지 못했습니다.' });
+  }
+});
+
+// GET /api/sites/:id/labor/summary — 최근 60일 일자별 합계 + 전체 누적
+app.get('/api/sites/:id/labor/summary', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const [daily, total] = await Promise.all([
+      pool.query(
+        `SELECT to_char(work_date,'YYYY-MM-DD') AS d, SUM(skilled)::int AS skilled, SUM(helper)::int AS helper, COUNT(*)::int AS entries, bool_and(done) AS done
+         FROM interior_labor_logs WHERE site_id=$1 AND work_date >= (CURRENT_DATE - INTERVAL '60 days')
+         GROUP BY work_date ORDER BY work_date DESC`, [id]
+      ),
+      pool.query(
+        `SELECT COALESCE(SUM(skilled),0)::int AS skilled, COALESCE(SUM(helper),0)::int AS helper, COUNT(DISTINCT work_date)::int AS days
+         FROM interior_labor_logs WHERE site_id=$1`, [id]
+      ),
+    ]);
+    res.json({
+      daily: daily.rows.map((r) => ({ date: r.d, skilled: r.skilled, helper: r.helper, entries: r.entries, done: !!r.done })),
+      total: { skilled: total.rows[0].skilled, helper: total.rows[0].helper, days: total.rows[0].days },
+    });
+  } catch (err) {
+    console.error('GET /api/sites/:id/labor/summary 오류:', err.message);
+    res.status(500).json({ success: false, message: '출력인원 요약을 불러오지 못했습니다.' });
+  }
+});
+
+// ── 매뉴얼 ──
+function rowToManual(r, withContent) {
+  const base = {
+    id: String(r.id),
+    title: r.title, trade: r.trade || '', types: r.types || '',
+    status: r.status || '작성 전', notion_url: r.notion_url || '',
+    has_content: !!r.has_content || (typeof r.content === 'string' && r.content.trim() !== ''),
+    sort_order: Number(r.sort_order) || 0,
+    updated_at: new Date(r.updated_at).toISOString(),
+  };
+  if (withContent) base.content = r.content || '';
+  return base;
+}
+
+// GET /api/manuals?q=&trade=&type= — 목록(본문 제외, has_content 플래그)
+app.get('/api/manuals', async (req, res) => {
+  try {
+    const conds = ['team_id=$1'];
+    const params = [req.teamId];
+    if (req.query.q && String(req.query.q).trim()) { params.push(`%${String(req.query.q).trim()}%`); conds.push(`title ILIKE $${params.length}`); }
+    if (req.query.trade && String(req.query.trade).trim()) { params.push(String(req.query.trade).trim()); conds.push(`trade=$${params.length}`); }
+    if (req.query.type && String(req.query.type).trim()) { params.push(`%${String(req.query.type).trim()}%`); conds.push(`types ILIKE $${params.length}`); }
+    const { rows } = await pool.query(
+      `SELECT id, title, trade, types, status, notion_url, (content <> '') AS has_content, sort_order, updated_at
+       FROM interior_manuals WHERE ${conds.join(' AND ')} ORDER BY trade ASC, sort_order ASC, id ASC`, params
+    );
+    res.json(rows.map((r) => rowToManual(r, false)));
+  } catch (err) {
+    console.error('GET /api/manuals 오류:', err.message);
+    res.status(500).json({ success: false, message: '매뉴얼을 불러오지 못했습니다.' });
+  }
+});
+
+// GET /api/manuals/:id — 본문 포함 단건
+app.get('/api/manuals/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 매뉴얼 id 형식입니다.' });
+    const { rows } = await pool.query('SELECT * FROM interior_manuals WHERE id=$1 AND team_id=$2', [id, req.teamId]);
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 매뉴얼을 찾을 수 없습니다.' });
+    res.json(rowToManual(rows[0], true));
+  } catch (err) {
+    console.error('GET /api/manuals/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '매뉴얼을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/manuals — admin 전용 생성
+app.post('/api/manuals', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const title = typeof b.title === 'string' ? b.title.trim() : '';
+    if (!title) return res.status(400).json({ success: false, message: '매뉴얼 제목(항목)을 입력하세요.' });
+    const { rows } = await pool.query(
+      `INSERT INTO interior_manuals (team_id, title, trade, types, status, content, notion_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [req.teamId, title, String(b.trade || '').trim(), String(b.types || '').trim(),
+       String(b.status || '작성 전').trim(), typeof b.content === 'string' ? b.content : '', String(b.notion_url || '').trim()]
+    );
+    res.status(201).json(rowToManual(rows[0], true));
+  } catch (err) {
+    console.error('POST /api/manuals 오류:', err.message);
+    res.status(500).json({ success: false, message: '매뉴얼을 저장하지 못했습니다.' });
+  }
+});
+
+// PATCH /api/manuals/:id — admin 전용 부분 수정
+app.patch('/api/manuals/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 매뉴얼 id 형식입니다.' });
+    const b = req.body || {};
+    const sets = [];
+    const params = [];
+    const push = (frag, v) => { params.push(v); sets.push(`${frag}$${params.length}`); };
+    if (typeof b.title === 'string' && b.title.trim()) push('title=', b.title.trim());
+    if (typeof b.trade === 'string') push('trade=', b.trade.trim());
+    if (typeof b.types === 'string') push('types=', b.types.trim());
+    if (typeof b.status === 'string' && b.status.trim()) push('status=', b.status.trim());
+    if (typeof b.content === 'string') push('content=', b.content);
+    if (typeof b.notion_url === 'string') push('notion_url=', b.notion_url.trim());
+    if (Number.isFinite(Number(b.sort_order))) push('sort_order=', Math.round(Number(b.sort_order)));
+    if (sets.length === 0) return res.status(400).json({ success: false, message: '수정할 내용이 없습니다.' });
+    sets.push('updated_at=now()');
+    params.push(id, req.teamId);
+    const { rows } = await pool.query(
+      `UPDATE interior_manuals SET ${sets.join(', ')} WHERE id=$${params.length - 1} AND team_id=$${params.length} RETURNING *`, params
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 매뉴얼을 찾을 수 없습니다.' });
+    res.json(rowToManual(rows[0], true));
+  } catch (err) {
+    console.error('PATCH /api/manuals/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '매뉴얼을 수정하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/manuals/:id — admin 전용 (site_manuals CASCADE)
+app.delete('/api/manuals/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 매뉴얼 id 형식입니다.' });
+    const del = await pool.query('DELETE FROM interior_manuals WHERE id=$1 AND team_id=$2 RETURNING id', [id, req.teamId]);
+    if (del.rows.length === 0) return res.status(404).json({ success: false, message: '해당 매뉴얼을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/manuals/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '매뉴얼을 삭제하지 못했습니다.' });
+  }
+});
+
+// GET /api/sites/:id/manuals — 이 현장에 선택된 매뉴얼(본문 포함, 열람용)
+app.get('/api/sites/:id/manuals', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query(
+      `SELECT m.*, sm.created_at AS selected_at FROM interior_site_manuals sm
+       JOIN interior_manuals m ON m.id = sm.manual_id
+       WHERE sm.site_id=$1 ORDER BY m.trade ASC, m.sort_order ASC, m.id ASC`, [id]
+    );
+    res.json(rows.map((r) => rowToManual(r, true)));
+  } catch (err) {
+    console.error('GET /api/sites/:id/manuals 오류:', err.message);
+    res.status(500).json({ success: false, message: '현장 매뉴얼을 불러오지 못했습니다.' });
+  }
+});
+
+// PUT /api/sites/:id/manuals {manual_ids[]} — admin 전용, 선택 전체 교체(트랜잭션)
+app.put('/api/sites/:id/manuals', requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const idsRaw = Array.isArray(req.body && req.body.manual_ids) ? req.body.manual_ids : [];
+    const ids = [...new Set(idsRaw.map(parseId).filter(Boolean))];
+    // 우리 팀 매뉴얼만 허용
+    let valid = [];
+    if (ids.length > 0) {
+      const chk = await client.query('SELECT id FROM interior_manuals WHERE team_id=$1 AND id = ANY($2::bigint[])', [req.teamId, ids]);
+      valid = chk.rows.map((r) => Number(r.id));
+    }
+    await client.query('BEGIN');
+    await client.query('DELETE FROM interior_site_manuals WHERE site_id=$1', [id]);
+    for (const mid of valid) {
+      await client.query('INSERT INTO interior_site_manuals (team_id, site_id, manual_id) VALUES ($1,$2,$3)', [req.teamId, id, mid]);
+    }
+    await client.query('COMMIT');
+    res.json({ success: true, count: valid.length });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('PUT /api/sites/:id/manuals 오류:', err.message);
+    res.status(500).json({ success: false, message: '현장 매뉴얼 선택을 저장하지 못했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// ── 알림 ──
+// GET /api/notifications?limit= — 내 알림 최신순 + 미읽음 수
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+    const [items, unread] = await Promise.all([
+      pool.query(
+        `SELECT n.id, n.type, n.title, n.body, n.site_id, n.ref_type, n.ref_id, n.read_at, n.created_at,
+                COALESCE(NULLIF(u.name,''), u.email) AS actor_name
+         FROM interior_notifications n LEFT JOIN interior_users u ON u.id = n.actor_user_id
+         WHERE n.user_id=$1 ORDER BY n.id DESC LIMIT ${limit}`, [req.userId]
+      ),
+      pool.query('SELECT COUNT(*)::int AS n FROM interior_notifications WHERE user_id=$1 AND read_at IS NULL', [req.userId]),
+    ]);
+    res.json({
+      unread: unread.rows[0].n,
+      items: items.rows.map((r) => ({
+        id: String(r.id), type: r.type || '', title: r.title, body: r.body || '',
+        site_id: r.site_id == null ? null : String(r.site_id),
+        ref_type: r.ref_type || '', ref_id: r.ref_id == null ? null : String(r.ref_id),
+        actor_name: r.actor_name || null,
+        read: !!r.read_at,
+        created_at: new Date(r.created_at).toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error('GET /api/notifications 오류:', err.message);
+    res.status(500).json({ success: false, message: '알림을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/notifications/read {ids[]} — 내 알림 읽음 처리
+app.post('/api/notifications/read', async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(parseId).filter(Boolean) : [];
+    if (ids.length === 0) return res.status(400).json({ success: false, message: '읽음 처리할 알림 id가 없습니다.' });
+    await pool.query('UPDATE interior_notifications SET read_at=now() WHERE user_id=$1 AND id = ANY($2::bigint[]) AND read_at IS NULL', [req.userId, ids]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/notifications/read 오류:', err.message);
+    res.status(500).json({ success: false, message: '알림을 읽음 처리하지 못했습니다.' });
+  }
+});
+
+// POST /api/notifications/read-all — 전체 읽음
+app.post('/api/notifications/read-all', async (req, res) => {
+  try {
+    await pool.query('UPDATE interior_notifications SET read_at=now() WHERE user_id=$1 AND read_at IS NULL', [req.userId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/notifications/read-all 오류:', err.message);
+    res.status(500).json({ success: false, message: '알림을 읽음 처리하지 못했습니다.' });
+  }
+});
 
 // ========================================
 // /api/* JSON 404 (SPA 폴백이 삼키지 않도록 API 라우트들 뒤, '*' 폴백 앞)

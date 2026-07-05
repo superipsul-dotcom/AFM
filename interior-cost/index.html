@@ -820,6 +820,34 @@
       async authLogin(body) { return this._tryFetch(`${API_BASE_URL}/auth/login`, { method: 'POST', body: JSON.stringify(body), _skipAuthRedirect: true }); },
       async authSignup(body) { return this._tryFetch(`${API_BASE_URL}/auth/signup`, { method: 'POST', body: JSON.stringify(body), _skipAuthRedirect: true }); },
 
+      // ── v25: 개인 할일 · 출력인원 · 매뉴얼 · 알림 (서버 전용 — 데모(오프라인)는 UI에서 안내) ──
+      async teamUsers() { return this._tryFetch(`${API_BASE_URL}/team/users`); },
+      async listTasks(params) {
+        const q = new URLSearchParams(params || {}).toString();
+        return this._tryFetch(`${API_BASE_URL}/tasks${q ? '?' + q : ''}`);
+      },
+      async createTask(body) { return this._tryFetch(`${API_BASE_URL}/tasks`, { method: 'POST', body: JSON.stringify(body) }); },
+      async updateTask(id, body) { return this._tryFetch(`${API_BASE_URL}/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(body) }); },
+      async deleteTask(id) { return this._tryFetch(`${API_BASE_URL}/tasks/${id}`, { method: 'DELETE' }); },
+      async laborDay(siteId, date) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/labor?date=${encodeURIComponent(date)}`); },
+      async saveLabor(siteId, body) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/labor`, { method: 'POST', body: JSON.stringify(body) }); },
+      async deleteLabor(id) { return this._tryFetch(`${API_BASE_URL}/labor/${id}`, { method: 'DELETE' }); },
+      async completeLabor(siteId, date) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/labor/complete`, { method: 'POST', body: JSON.stringify({ date }) }); },
+      async laborSummary(siteId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/labor/summary`); },
+      async listManuals(params) {
+        const q = new URLSearchParams(params || {}).toString();
+        return this._tryFetch(`${API_BASE_URL}/manuals${q ? '?' + q : ''}`);
+      },
+      async getManual(id) { return this._tryFetch(`${API_BASE_URL}/manuals/${id}`); },
+      async createManual(body) { return this._tryFetch(`${API_BASE_URL}/manuals`, { method: 'POST', body: JSON.stringify(body) }); },
+      async updateManual(id, body) { return this._tryFetch(`${API_BASE_URL}/manuals/${id}`, { method: 'PATCH', body: JSON.stringify(body) }); },
+      async deleteManual(id) { return this._tryFetch(`${API_BASE_URL}/manuals/${id}`, { method: 'DELETE' }); },
+      async siteManuals(siteId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/manuals`); },
+      async setSiteManuals(siteId, manualIds) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/manuals`, { method: 'PUT', body: JSON.stringify({ manual_ids: manualIds }) }); },
+      async listNotifications(limit) { return this._tryFetch(`${API_BASE_URL}/notifications${limit ? '?limit=' + limit : ''}`); },
+      async readNotifications(ids) { return this._tryFetch(`${API_BASE_URL}/notifications/read`, { method: 'POST', body: JSON.stringify({ ids }) }); },
+      async readAllNotifications() { return this._tryFetch(`${API_BASE_URL}/notifications/read-all`, { method: 'POST', body: JSON.stringify({}) }); },
+
       _ensureSeed() {
         if (!localStorage.getItem(SITES_KEY)) seedSites();
         return sitesStore.read();
@@ -3555,14 +3583,17 @@
     // 🧩 탭 네비게이션
     // ========================================
     const TABS = [
+      { id: 'my', label: '내 업무', icon: '🙋' }, // v25: 개인 할일 대시보드 — 로그인 랜딩
       { id: 'projects', label: '프로젝트', icon: '🗂' },
       { id: 'summary', label: '요약', icon: '📊' },
       { id: 'cost', label: '비용', icon: '💸' },
       { id: 'schedule', label: '일정', icon: '📅' },
+      { id: 'labor', label: '출력인원', icon: '👷' }, // v25: 일별 기공/조공 기록
       { id: 'estimate', label: '견적', icon: '📋' },
       { id: 'orders', label: '발주', icon: '🧾' },
       { id: 'meetings_as', label: '미팅·AS', icon: '📒' },
       { id: 'documents', label: '자료', icon: '📁' },
+      { id: 'manuals', label: '매뉴얼', icon: '📖' }, // v25: 현장별 선택 매뉴얼
       { id: 'photos', label: '현장사진', icon: '📷' },
       { id: 'manage', label: '관리', icon: '⚙️' },
     ];
@@ -8469,6 +8500,891 @@
       );
     }
 
+    // ════════════════════════════════════════════════════════════════
+    // v25: 내 업무(개인 할일) · 출력인원(기공/조공) · 매뉴얼 · 🔔 알림
+    //   전부 서버 전용(팀/유저 스코프) — 데모(오프라인) 모드는 안내 카드.
+    // ════════════════════════════════════════════════════════════════
+    const MANUAL_TYPES = ['ALL', '아파트', '사무실', '병원', '빌라'];
+    const MANUAL_STATUSES = ['작성 전', '작성 중', '작성 완료'];
+
+    function ServerNeededCard({ feature }) {
+      return (
+        <Card className="p-10 text-center">
+          <div className="text-4xl mb-2">🔌</div>
+          <p className="text-sm text-slate-500">{feature}은(는) 서버 연결(로그인) 시 사용할 수 있습니다.<br />데모(오프라인) 모드에서는 지원되지 않아요.</p>
+        </Card>
+      );
+    }
+
+    function DdayBadge({ due }) {
+      if (!due) return null;
+      const d = daysBetween(todayStr(), due);
+      if (d == null) return null;
+      const cls = d < 0 ? 'bg-red-500' : d === 0 ? 'bg-amber-500' : d <= 3 ? 'bg-orange-400' : 'bg-slate-400';
+      const label = d < 0 ? `D+${Math.abs(d)} 지남` : d === 0 ? 'D-DAY 오늘' : `D-${d}`;
+      return <Badge color={cls}>{label}</Badge>;
+    }
+
+    // ── 🙋 내 업무: 로그인 랜딩 대시보드 — 내 할일(마감순) + 완료 체크(→매니저 알림) + 팀 전체 뷰 ──
+    function MyTab({ authUser, sites, demoMode }) {
+      const toast = useToast();
+      const [sub, setSub] = useState('mine'); // mine | team | done
+      const [tasks, setTasks] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [users, setUsers] = useState([]);
+      const [title, setTitle] = useState('');
+      const [due, setDue] = useState('');
+      const [taskSite, setTaskSite] = useState('');
+      const [assignee, setAssignee] = useState('');
+      const [saving, setSaving] = useState(false);
+
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try {
+          const params = sub === 'mine' ? { view: 'mine', status: '진행' }
+            : sub === 'team' ? { view: 'team', status: '진행' }
+            : { view: 'team', status: '완료' };
+          setTasks(await api.listTasks(params));
+        } catch (e) { toast('할일을 불러오지 못했습니다.', 'error'); }
+        finally { setLoading(false); }
+      }, [sub]);
+      useEffect(() => { if (!demoMode) reload(); }, [reload, demoMode]);
+      useEffect(() => { if (!demoMode) api.teamUsers().then(setUsers).catch(() => {}); }, [demoMode]);
+
+      // 팀 전체 뷰: 담당자별 그룹 (훅은 조건 return 앞에)
+      const grouped = useMemo(() => {
+        if (sub !== 'team') return null;
+        const map = new Map();
+        tasks.forEach((t) => {
+          const k = t.assignee_name || '(담당자 없음)';
+          if (!map.has(k)) map.set(k, []);
+          map.get(k).push(t);
+        });
+        return [...map.entries()];
+      }, [sub, tasks]);
+
+      if (demoMode) return <ServerNeededCard feature="개인 할일 대시보드" />;
+
+      const handleAdd = async (e) => {
+        e.preventDefault();
+        if (!title.trim()) { toast('할일 제목을 입력하세요.', 'error'); return; }
+        setSaving(true);
+        try {
+          const created = await api.createTask({ title: title.trim(), due_date: due || null, site_id: taskSite || null, assignee_user_id: assignee || null });
+          setTitle(''); setDue('');
+          const toOther = assignee && String(assignee) !== String(authUser && authUser.id);
+          toast(toOther ? `${created.assignee_name || '팀원'}님에게 할일을 배정했습니다 📌 (알림 발송)` : '할일을 추가했습니다.', 'success');
+          await reload();
+        } catch (err) { toast(err.message || '할일을 저장하지 못했습니다.', 'error'); }
+        finally { setSaving(false); }
+      };
+
+      const handleComplete = async (t) => {
+        setTasks((prev) => prev.filter((x) => x.id !== t.id)); // 낙관 제거(체크하면 사라짐)
+        try {
+          await api.updateTask(t.id, { status: '완료' });
+          toast('완료 처리! 매니저에게 알림이 갔어요 ✅', 'success');
+        } catch (err) { toast('완료 처리에 실패했습니다.', 'error'); reload(); }
+      };
+      const handleReopen = async (t) => {
+        try { await api.updateTask(t.id, { status: '진행' }); toast('진행 중으로 되돌렸습니다.', 'success'); reload(); }
+        catch (err) { toast('되돌리기에 실패했습니다.', 'error'); }
+      };
+      const handleDelete = async (t) => {
+        try { await api.deleteTask(t.id); toast('할일을 삭제했습니다.', 'success'); reload(); }
+        catch (err) { toast('삭제에 실패했습니다.', 'error'); }
+      };
+
+      const myOpenCount = sub === 'mine' ? tasks.length : null;
+      const subs = [
+        { id: 'mine', label: '내 할일' },
+        { id: 'team', label: '팀 전체' },
+        { id: 'done', label: '완료됨' },
+      ];
+
+      const TaskRow = ({ t, showAssignee }) => (
+        <div className="flex items-start gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 group">
+          {sub !== 'done' ? (
+            <button onClick={() => handleComplete(t)} title="완료 체크 — 매니저에게 알림"
+              className="mt-0.5 w-5 h-5 rounded-full border-2 border-slate-300 hover:border-green-500 hover:bg-green-50 shrink-0 transition" />
+          ) : (
+            <span className="mt-0.5 w-5 h-5 rounded-full bg-green-500 text-white text-xs flex items-center justify-center shrink-0">✓</span>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={`text-sm font-medium ${sub === 'done' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{t.title}</span>
+              <DdayBadge due={sub === 'done' ? null : t.due_date} />
+              {t.site_name && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">🏗 {t.site_name}</span>}
+              {showAssignee && t.assignee_name && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-600">👤 {t.assignee_name}</span>}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              {t.due_date && <span className="mr-2">마감 {t.due_date}</span>}
+              {sub === 'done' && t.completed_at && <span className="mr-2">완료 {new Date(t.completed_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
+              {t.memo && <span className="text-slate-400">{t.memo}</span>}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shrink-0">
+            {sub === 'done' && <Button variant="ghost" size="sm" onClick={() => handleReopen(t)}>되돌리기</Button>}
+            <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(t)}>✕</Button>
+          </div>
+        </div>
+      );
+
+      return (
+        <div className="space-y-4">
+          {/* 인사 헤더 */}
+          <Card className="p-5 bg-gradient-to-r from-blue-600 to-indigo-600 border-0">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-extrabold text-white">🙋 {(authUser && (authUser.name || authUser.email)) || '팀원'}님의 업무</h2>
+                <p className="text-xs text-blue-100 mt-0.5">{new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</p>
+              </div>
+              {myOpenCount != null && (
+                <div className="text-right">
+                  <p className="text-3xl font-extrabold text-white leading-none">{myOpenCount}</p>
+                  <p className="text-[11px] text-blue-100 mt-1">남은 할일</p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* 할일 추가 */}
+          <Card className="p-4">
+            <form onSubmit={handleAdd} className="flex flex-col sm:flex-row gap-2">
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="할일 제목 (예: 광명 현장 타일 발주 확인)"
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <div className="flex gap-2">
+                <input type="date" value={due} onChange={(e) => setDue(e.target.value)} title="마감일"
+                  className="px-3 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                <select value={taskSite} onChange={(e) => setTaskSite(e.target.value)} title="현장(선택)"
+                  className="px-3 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-600 max-w-[130px] focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="">현장 없음</option>
+                  {sites.map((s) => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                </select>
+                <select value={assignee} onChange={(e) => setAssignee(e.target.value)} title="담당자"
+                  className="px-3 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-600 max-w-[120px] focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="">나에게</option>
+                  {users.filter((u) => !authUser || String(u.id) !== String(authUser.id)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+                <Button type="submit" disabled={saving}>{saving ? '저장 중…' : '+ 추가'}</Button>
+              </div>
+            </form>
+          </Card>
+
+          {/* 서브탭 + 목록 */}
+          <Card className="p-1.5">
+            <div className="flex gap-1">
+              {subs.map((s) => (
+                <button key={s.id} onClick={() => setSub(s.id)}
+                  className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${sub === s.id ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-2">
+            {loading ? (
+              <div className="p-8 text-center text-sm text-slate-400">불러오는 중…</div>
+            ) : tasks.length === 0 ? (
+              <div className="p-10 text-center">
+                <div className="text-4xl mb-2">{sub === 'done' ? '📦' : '🎉'}</div>
+                <p className="text-sm text-slate-400">{sub === 'mine' ? '남은 할일이 없습니다. 위에서 추가하세요!' : sub === 'team' ? '팀에 진행 중인 할일이 없습니다.' : '완료된 할일이 아직 없습니다.'}</p>
+              </div>
+            ) : sub === 'team' && grouped ? (
+              <div className="divide-y divide-slate-100">
+                {grouped.map(([name, list]) => (
+                  <div key={name} className="py-2">
+                    <p className="px-3 py-1 text-xs font-bold text-slate-500">👤 {name} <span className="font-normal text-slate-400">· {list.length}건</span></p>
+                    {list.map((t) => <TaskRow key={t.id} t={t} showAssignee={false} />)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {tasks.map((t) => <TaskRow key={t.id} t={t} showAssignee={sub === 'done'} />)}
+              </div>
+            )}
+          </Card>
+        </div>
+      );
+    }
+
+    // ── 👷 출력인원: 당일 일정(공사) 공정 자동 행 + 기공/조공 기입 → [입력 완료]=팀원 알림 ──
+    function LaborTab({ site, demoMode }) {
+      const toast = useToast();
+      const [date, setDate] = useState(todayStr());
+      const [rows, setRows] = useState([]);
+      const [summary, setSummary] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [completing, setCompleting] = useState(false);
+
+      const load = useCallback(async () => {
+        setLoading(true);
+        try {
+          const d = await api.laborDay(site.id, date);
+          const byProc = {};
+          d.logs.forEach((l) => { byProc[l.process] = l; });
+          const merged = [];
+          const seen = new Set();
+          d.schedules.forEach((s) => {
+            const proc = (s.process || s.title || '').trim();
+            if (!proc || seen.has(proc)) return;
+            seen.add(proc);
+            const log = byProc[proc];
+            merged.push({
+              key: 'sch-' + s.id, schedule_id: s.id, process: proc, label: s.title,
+              skilled: log ? String(log.skilled) : '', helper: log ? String(log.helper) : '',
+              memo: log ? log.memo : '', id: log ? log.id : null, done: log ? log.done : false, custom: false,
+            });
+          });
+          d.logs.forEach((l) => {
+            if (seen.has(l.process)) return;
+            seen.add(l.process);
+            merged.push({
+              key: 'log-' + l.id, schedule_id: l.schedule_id, process: l.process, label: l.process || '(공정 미지정)',
+              skilled: String(l.skilled), helper: String(l.helper), memo: l.memo, id: l.id, done: l.done, custom: false,
+            });
+          });
+          setRows(merged);
+        } catch (e) { toast('출력인원을 불러오지 못했습니다.', 'error'); }
+        finally { setLoading(false); }
+      }, [site.id, date]);
+      const loadSummary = useCallback(async () => {
+        try { setSummary(await api.laborSummary(site.id)); } catch (e) { /* 요약 실패는 조용히 */ }
+      }, [site.id]);
+      useEffect(() => { if (!demoMode) { load(); loadSummary(); } }, [load, loadSummary, demoMode]);
+
+      if (demoMode) return <ServerNeededCard feature="출력인원 기록" />;
+
+      const setRow = (key, patch) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+      const moveDate = (delta) => {
+        const d = new Date(date + 'T00:00:00');
+        d.setDate(d.getDate() + delta);
+        setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      };
+
+      const saveRow = async (r) => {
+        const proc = (r.process || '').trim();
+        if (!proc) { toast('공정명을 입력하세요.', 'error'); return; }
+        try {
+          const saved = await api.saveLabor(site.id, {
+            work_date: date, process: proc, schedule_id: r.schedule_id || null,
+            skilled: Number(r.skilled) || 0, helper: Number(r.helper) || 0, memo: r.memo || '',
+          });
+          setRow(r.key, { id: saved.id, done: saved.done, custom: false, label: r.custom ? proc : r.label });
+          toast(`저장: ${proc} — 기공 ${saved.skilled} · 조공 ${saved.helper}`, 'success');
+        } catch (e) { toast(e.message || '저장에 실패했습니다.', 'error'); }
+      };
+      const removeRow = async (r) => {
+        if (r.id) {
+          try { await api.deleteLabor(r.id); toast('삭제했습니다.', 'success'); } catch (e) { toast('삭제에 실패했습니다.', 'error'); return; }
+        }
+        setRows((prev) => prev.filter((x) => x.key !== r.key));
+      };
+      const addCustomRow = () => setRows((prev) => [...prev, { key: 'new-' + uid(), schedule_id: null, process: '', label: '', skilled: '', helper: '', memo: '', id: null, done: false, custom: true }]);
+
+      const handleComplete = async () => {
+        const unsaved = rows.some((r) => !r.id && ((Number(r.skilled) || 0) + (Number(r.helper) || 0) > 0 || (r.process || '').trim()));
+        if (unsaved && !rows.some((r) => r.id)) { toast('먼저 각 행의 [저장]을 눌러 기록을 저장하세요.', 'error'); return; }
+        setCompleting(true);
+        try {
+          const r = await api.completeLabor(site.id, date);
+          toast(`출력 완료! 팀원들에게 알림을 보냈습니다 👷 (기공 ${r.skilled} · 조공 ${r.helper})`, 'success');
+          await load(); await loadSummary();
+        } catch (e) { toast(e.message || '완료 처리에 실패했습니다.', 'error'); }
+        finally { setCompleting(false); }
+      };
+
+      const totSkilled = rows.reduce((a, r) => a + (Number(r.skilled) || 0), 0);
+      const totHelper = rows.reduce((a, r) => a + (Number(r.helper) || 0), 0);
+      const allDone = rows.length > 0 && rows.every((r) => !r.id || r.done) && rows.some((r) => r.id);
+      const isToday = date === todayStr();
+
+      return (
+        <div className="space-y-4">
+          <Card className="p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-slate-800">👷 출력인원 <span className="text-sm font-normal text-slate-400">· {site.name}</span></h2>
+              <div className="flex items-center gap-1.5">
+                <Button variant="secondary" size="sm" onClick={() => moveDate(-1)}>◀</Button>
+                <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-slate-300 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                <Button variant="secondary" size="sm" onClick={() => moveDate(1)}>▶</Button>
+                {!isToday && <Button variant="ghost" size="sm" onClick={() => setDate(todayStr())}>오늘</Button>}
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">일정표의 당일 공사 공정이 자동으로 표시됩니다. 기공·조공 인원을 입력하고 행별 [저장] 후, [입력 완료]를 누르면 팀원 전체에게 알림이 갑니다.</p>
+          </Card>
+
+          <Card className="p-4">
+            {loading ? (
+              <div className="p-8 text-center text-sm text-slate-400">불러오는 중…</div>
+            ) : (
+              <>
+                {rows.length === 0 && (
+                  <div className="p-6 text-center text-sm text-slate-400">이 날짜에 일정표의 공사 공정이 없습니다. 아래 [+ 공정 추가]로 직접 기록할 수 있어요.</div>
+                )}
+                <div className="space-y-2">
+                  {rows.map((r) => (
+                    <div key={r.key} className={`flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-xl border ${r.done ? 'border-green-200 bg-green-50/50' : r.id ? 'border-slate-200 bg-white' : 'border-dashed border-slate-300 bg-slate-50/50'}`}>
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        {r.custom ? (
+                          <input value={r.process} onChange={(e) => setRow(r.key, { process: e.target.value })} placeholder="공정명 (예: 목공)"
+                            list="v25-proc-list" className="w-36 px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                        ) : (
+                          <span className="text-sm font-semibold text-slate-700 truncate">{r.label || r.process}</span>
+                        )}
+                        {!r.custom && r.process !== r.label && r.process && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{r.process}</span>}
+                        {r.done && <Badge color="bg-green-500">완료됨</Badge>}
+                        {r.id && !r.done && <span className="text-[10px] text-slate-400">저장됨</span>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <label className="flex items-center gap-1 text-xs text-slate-500">기공
+                          <input type="number" min="0" value={r.skilled} onChange={(e) => setRow(r.key, { skilled: e.target.value })}
+                            className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                        </label>
+                        <label className="flex items-center gap-1 text-xs text-slate-500">조공
+                          <input type="number" min="0" value={r.helper} onChange={(e) => setRow(r.key, { helper: e.target.value })}
+                            className="w-16 px-2 py-1.5 rounded-lg border border-slate-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                        </label>
+                        <input value={r.memo} onChange={(e) => setRow(r.key, { memo: e.target.value })} placeholder="비고 (예: 조공 1명 반차)"
+                          className="w-36 sm:w-44 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                        <Button size="sm" variant="secondary" onClick={() => saveRow(r)}>저장</Button>
+                        <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => removeRow(r)}>✕</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <datalist id="v25-proc-list">
+                  {PROCESS_CATEGORIES.map((p) => <option key={p} value={p} />)}
+                </datalist>
+                <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <Button variant="secondary" size="sm" onClick={addCustomRow}>+ 공정 추가</Button>
+                    <span className="text-sm text-slate-600">합계 <b className="text-slate-800">기공 {totSkilled}</b> · <b className="text-slate-800">조공 {totHelper}</b> · 계 <b className="text-blue-600">{totSkilled + totHelper}명</b></span>
+                  </div>
+                  <Button onClick={handleComplete} disabled={completing || rows.length === 0}
+                    className={allDone ? 'bg-green-600 hover:bg-green-700' : ''}>
+                    {completing ? '알림 발송 중…' : allDone ? '✅ 완료됨 — 다시 알림' : '✅ 입력 완료 → 팀원 알림'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card>
+
+          {/* 최근 출력 요약 */}
+          {summary && (summary.daily.length > 0 || summary.total.days > 0) && (
+            <Card className="p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-slate-700">최근 출력 현황</h3>
+                <span className="text-xs text-slate-400">누적 기공 <b className="text-slate-600">{summary.total.skilled}</b> · 조공 <b className="text-slate-600">{summary.total.helper}</b> · 총 {summary.total.days}일</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                      <th className="py-1.5 pr-3 font-medium">날짜</th>
+                      <th className="py-1.5 pr-3 font-medium text-center">기공</th>
+                      <th className="py-1.5 pr-3 font-medium text-center">조공</th>
+                      <th className="py-1.5 pr-3 font-medium text-center">계</th>
+                      <th className="py-1.5 font-medium text-center">완료</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.daily.slice(0, 7).map((d) => (
+                      <tr key={d.date} className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer" onClick={() => setDate(d.date)}>
+                        <td className="py-1.5 pr-3 text-slate-600">{d.date}</td>
+                        <td className="py-1.5 pr-3 text-center text-slate-700">{d.skilled}</td>
+                        <td className="py-1.5 pr-3 text-center text-slate-700">{d.helper}</td>
+                        <td className="py-1.5 pr-3 text-center font-semibold text-slate-800">{d.skilled + d.helper}</td>
+                        <td className="py-1.5 text-center">{d.done ? '✅' : <span className="text-slate-300">—</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </div>
+      );
+    }
+
+    // ── 📖 매뉴얼: 현장 선택본 열람(전원) + 선택/해제(관리자) — 노션 "선정 매뉴얼" UX ──
+    function ManualViewModal({ manual, onClose }) {
+      if (!manual) return null;
+      return (
+        <Modal isOpen={!!manual} onClose={onClose} title={`📖 ${manual.title}`} size="lg">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              {manual.trade && <Badge color="bg-slate-600">{manual.trade}</Badge>}
+              {(manual.types || '').split(',').map((t) => t.trim()).filter(Boolean).map((t) => (
+                <span key={t} className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600">{t}</span>
+              ))}
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{manual.status}</span>
+            </div>
+            {manual.content && manual.content.trim() ? (
+              <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed p-4 rounded-xl bg-slate-50 border border-slate-100 max-h-[50vh] overflow-y-auto">{manual.content}</div>
+            ) : (
+              <p className="text-sm text-slate-400 p-4 rounded-xl bg-slate-50 border border-slate-100">인앱 본문이 아직 없습니다. 아래 노션 링크에서 원문(사진 포함)을 확인하세요.</p>
+            )}
+            <div className="flex justify-end gap-2">
+              {manual.notion_url && (
+                <a href={manual.notion_url} target="_blank" rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-white text-sm font-semibold hover:bg-slate-700 transition">노션에서 열기 ↗</a>
+              )}
+              <Button variant="secondary" onClick={onClose}>닫기</Button>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    function ManualPickerModal({ isOpen, onClose, siteId, siteType, selectedIds, onSaved }) {
+      const toast = useToast();
+      const [all, setAll] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [q, setQ] = useState('');
+      const [typeFilter, setTypeFilter] = useState('전체');
+      const [tradeFilter, setTradeFilter] = useState('');
+      const [checked, setChecked] = useState(new Set());
+      const [saving, setSaving] = useState(false);
+
+      useEffect(() => {
+        if (!isOpen) return;
+        setChecked(new Set((selectedIds || []).map(String)));
+        setQ(''); setTradeFilter('');
+        // 노션 UX: "유형 필터를 프로젝트에 맞게" — 현장 건물유형이 매뉴얼 유형에 있으면 기본 필터로
+        setTypeFilter(MANUAL_TYPES.includes(siteType) ? siteType : '전체');
+        setLoading(true);
+        api.listManuals().then(setAll).catch(() => toast('매뉴얼 목록을 불러오지 못했습니다.', 'error')).finally(() => setLoading(false));
+      }, [isOpen]);
+
+      const trades = useMemo(() => [...new Set(all.map((m) => m.trade).filter(Boolean))], [all]);
+      const filtered = useMemo(() => all.filter((m) => {
+        if (q && !m.title.toLowerCase().includes(q.toLowerCase())) return false;
+        if (tradeFilter && m.trade !== tradeFilter) return false;
+        if (typeFilter !== '전체') {
+          const ts = (m.types || '').split(',').map((t) => t.trim());
+          if (!(ts.includes('ALL') || ts.includes(typeFilter))) return false;
+        }
+        return true;
+      }), [all, q, tradeFilter, typeFilter]);
+
+      const toggle = (id) => setChecked((prev) => {
+        const next = new Set(prev);
+        if (next.has(String(id))) next.delete(String(id)); else next.add(String(id));
+        return next;
+      });
+      const handleSave = async () => {
+        setSaving(true);
+        try {
+          await api.setSiteManuals(siteId, [...checked]);
+          toast(`매뉴얼 ${checked.size}개를 이 현장에 지정했습니다.`, 'success');
+          onSaved();
+          onClose();
+        } catch (e) { toast(e.message || '저장에 실패했습니다.', 'error'); }
+        finally { setSaving(false); }
+      };
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="📖 현장 매뉴얼 선택" size="lg">
+          <div className="space-y-3">
+            <p className="text-xs text-slate-400">유형·공정 필터로 이 현장에 맞는 매뉴얼만 골라 체크하세요. 체크한 항목만 현장 매뉴얼 탭에 표시됩니다.</p>
+            <div className="flex flex-wrap gap-2">
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="검색"
+                className="flex-1 min-w-[140px] px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <select value={tradeFilter} onChange={(e) => setTradeFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-600 focus:outline-none">
+                <option value="">공정 전체</option>
+                {trades.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {['전체', ...MANUAL_TYPES].map((t) => (
+                <button key={t} onClick={() => setTypeFilter(t)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold transition ${typeFilter === t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div className="max-h-[45vh] overflow-y-auto rounded-xl border border-slate-100 divide-y divide-slate-50">
+              {loading ? (
+                <div className="p-6 text-center text-sm text-slate-400">불러오는 중…</div>
+              ) : filtered.length === 0 ? (
+                <div className="p-6 text-center text-sm text-slate-400">조건에 맞는 매뉴얼이 없습니다.</div>
+              ) : filtered.map((m) => (
+                <label key={m.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 cursor-pointer">
+                  <input type="checkbox" checked={checked.has(String(m.id))} onChange={() => toggle(m.id)}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">{m.title}</p>
+                    <p className="text-[11px] text-slate-400">{m.trade || '공정 미지정'}{m.types ? ` · ${m.types}` : ''} · {m.status}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">{checked.size}개 선택됨</span>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={onClose}>취소</Button>
+                <Button onClick={handleSave} disabled={saving}>{saving ? '저장 중…' : `${checked.size}개 저장`}</Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    function ManualsTab({ site, isAdmin, demoMode }) {
+      const toast = useToast();
+      const [selected, setSelected] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [pickerOpen, setPickerOpen] = useState(false);
+      const [viewing, setViewing] = useState(null);
+
+      const load = useCallback(async () => {
+        setLoading(true);
+        try { setSelected(await api.siteManuals(site.id)); }
+        catch (e) { toast('현장 매뉴얼을 불러오지 못했습니다.', 'error'); }
+        finally { setLoading(false); }
+      }, [site.id]);
+      useEffect(() => { if (!demoMode) load(); }, [load, demoMode]);
+
+      const grouped = useMemo(() => {
+        const map = new Map();
+        selected.forEach((m) => {
+          const k = m.trade || '기타';
+          if (!map.has(k)) map.set(k, []);
+          map.get(k).push(m);
+        });
+        return [...map.entries()];
+      }, [selected]);
+
+      if (demoMode) return <ServerNeededCard feature="현장 매뉴얼" />;
+
+      return (
+        <div className="space-y-4">
+          <Card className="p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-800">📖 현장 매뉴얼 <span className="text-sm font-normal text-slate-400">· {site.name}</span></h2>
+                <p className="text-xs text-slate-400 mt-1">관리자가 이 현장에 맞게 선택한 시공 매뉴얼만 표시됩니다. 매뉴얼 원본은 ⚙️ 관리 › 매뉴얼 DB에서 관리해요.</p>
+              </div>
+              {isAdmin && <Button onClick={() => setPickerOpen(true)}>📖 매뉴얼 선택</Button>}
+            </div>
+          </Card>
+
+          {loading ? (
+            <Card className="p-8 text-center text-sm text-slate-400">불러오는 중…</Card>
+          ) : selected.length === 0 ? (
+            <Card className="p-10 text-center">
+              <div className="text-4xl mb-2">📖</div>
+              <p className="text-sm text-slate-400 mb-4">아직 이 현장에 선택된 매뉴얼이 없습니다.{isAdmin ? ' 현장 유형에 맞는 항목을 골라보세요.' : ' 관리자가 선택하면 여기에 표시됩니다.'}</p>
+              {isAdmin && <Button onClick={() => setPickerOpen(true)}>📖 매뉴얼 선택</Button>}
+            </Card>
+          ) : (
+            grouped.map(([trade, list]) => (
+              <Card key={trade} className="p-4 sm:p-5">
+                <h3 className="text-sm font-bold text-slate-700 mb-2">{trade} <span className="text-xs font-normal text-slate-400">· {list.length}건</span></h3>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {list.map((m) => (
+                    <button key={m.id} onClick={() => setViewing(m)}
+                      className="text-left p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition group">
+                      <p className="text-sm font-semibold text-slate-700 group-hover:text-blue-700">{m.title}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {m.types || '유형 미지정'} · {m.status}
+                        {(m.content && m.content.trim()) ? ' · 본문 있음' : m.notion_url ? ' · 노션 링크' : ''}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            ))
+          )}
+
+          <ManualPickerModal isOpen={pickerOpen} onClose={() => setPickerOpen(false)} siteId={site.id}
+            siteType={site.building_type || ''} selectedIds={selected.map((m) => m.id)} onSaved={load} />
+          <ManualViewModal manual={viewing} onClose={() => setViewing(null)} />
+        </div>
+      );
+    }
+
+    // ── ⚙️ 관리 › 매뉴얼 DB — 목록/추가/수정/삭제 (admin 편집, member 열람) ──
+    function ManualManager({ isAdmin = false }) {
+      const toast = useToast();
+      const [list, setList] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [q, setQ] = useState('');
+      const [tradeFilter, setTradeFilter] = useState('');
+      const [editing, setEditing] = useState(null); // null | {} (신규) | manual
+      const [viewing, setViewing] = useState(null);
+      const [deleteTarget, setDeleteTarget] = useState(null);
+
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try { setList(await api.listManuals()); }
+        catch (e) { toast('매뉴얼을 불러오지 못했습니다.', 'error'); }
+        finally { setLoading(false); }
+      }, []);
+      useEffect(() => { reload(); }, [reload]);
+
+      const trades = useMemo(() => [...new Set(list.map((m) => m.trade).filter(Boolean))], [list]);
+      const filtered = useMemo(() => list.filter((m) => {
+        if (q && !m.title.toLowerCase().includes(q.toLowerCase())) return false;
+        if (tradeFilter && m.trade !== tradeFilter) return false;
+        return true;
+      }), [list, q, tradeFilter]);
+
+      const openView = async (m) => {
+        try { setViewing(await api.getManual(m.id)); } catch (e) { toast('본문을 불러오지 못했습니다.', 'error'); }
+      };
+      const handleDelete = async () => {
+        if (!deleteTarget) return;
+        try { await api.deleteManual(deleteTarget.id); toast('매뉴얼을 삭제했습니다.', 'success'); setDeleteTarget(null); reload(); }
+        catch (e) { toast(e.message || '삭제에 실패했습니다.', 'error'); }
+      };
+
+      return (
+        <Card className="p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="text-base font-bold text-slate-800">📖 매뉴얼 DB <span className="text-sm font-normal text-slate-400">· {list.length}건</span></h2>
+            <div className="flex flex-wrap gap-2">
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="검색"
+                className="px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <select value={tradeFilter} onChange={(e) => setTradeFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-600 focus:outline-none">
+                <option value="">공정 전체</option>
+                {trades.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              {isAdmin && <Button size="sm" onClick={() => setEditing({})}>+ 매뉴얼 추가</Button>}
+            </div>
+          </div>
+          {!isAdmin && <p className="text-xs text-slate-400 mb-2">열람 전용 — 추가/수정/삭제는 관리자만 가능합니다.</p>}
+          {loading ? (
+            <div className="p-8 text-center text-sm text-slate-400">불러오는 중…</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                    <th className="py-2 pr-3 font-medium">항목</th>
+                    <th className="py-2 pr-3 font-medium">공정</th>
+                    <th className="py-2 pr-3 font-medium">유형</th>
+                    <th className="py-2 pr-3 font-medium">상태</th>
+                    <th className="py-2 font-medium text-right">동작</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((m) => (
+                    <tr key={m.id} className="border-b border-slate-50 hover:bg-slate-50">
+                      <td className="py-2 pr-3">
+                        <button onClick={() => openView(m)} className="font-medium text-slate-700 hover:text-blue-600 text-left">{m.title}</button>
+                      </td>
+                      <td className="py-2 pr-3 text-slate-500">{m.trade || '-'}</td>
+                      <td className="py-2 pr-3 text-slate-500 text-xs">{m.types || '-'}</td>
+                      <td className="py-2 pr-3">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${m.status === '작성 완료' ? 'bg-green-50 text-green-600' : m.status === '작성 중' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{m.status}</span>
+                      </td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        {m.notion_url && <a href={m.notion_url} target="_blank" rel="noreferrer" className="text-xs text-slate-400 hover:text-slate-600 mr-2">노션↗</a>}
+                        {isAdmin && (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={async () => {
+                              try { setEditing(await api.getManual(m.id)); } catch (e) { toast('불러오기 실패', 'error'); }
+                            }}>수정</Button>
+                            <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => setDeleteTarget(m)}>삭제</Button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan="5" className="py-8 text-center text-sm text-slate-400">매뉴얼이 없습니다.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {editing !== null && (
+            <ManualEditModal manual={editing.id ? editing : null} onClose={() => setEditing(null)}
+              onSaved={() => { setEditing(null); reload(); }} />
+          )}
+          <ManualViewModal manual={viewing} onClose={() => setViewing(null)} />
+          <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="매뉴얼 삭제" size="sm">
+            <p className="text-sm text-slate-600 mb-4">"{deleteTarget && deleteTarget.title}" 매뉴얼을 삭제할까요?<br /><span className="text-xs text-slate-400">현장에 선택된 항목에서도 함께 제거됩니다.</span></p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)}>취소</Button>
+              <Button variant="danger" onClick={handleDelete}>삭제</Button>
+            </div>
+          </Modal>
+        </Card>
+      );
+    }
+
+    function ManualEditModal({ manual, onClose, onSaved }) {
+      const toast = useToast();
+      const [form, setForm] = useState(() => ({
+        title: manual ? manual.title : '',
+        trade: manual ? manual.trade : '',
+        types: manual ? (manual.types || '').split(',').map((t) => t.trim()).filter(Boolean) : ['ALL'],
+        status: manual ? manual.status : '작성 전',
+        notion_url: manual ? manual.notion_url : '',
+        content: manual ? (manual.content || '') : '',
+      }));
+      const [saving, setSaving] = useState(false);
+      const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+      const toggleType = (t) => set('types', form.types.includes(t) ? form.types.filter((x) => x !== t) : [...form.types, t]);
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!form.title.trim()) { toast('항목(제목)을 입력하세요.', 'error'); return; }
+        setSaving(true);
+        try {
+          const body = { title: form.title.trim(), trade: form.trade.trim(), types: form.types.join(','), status: form.status, notion_url: form.notion_url.trim(), content: form.content };
+          if (manual) await api.updateManual(manual.id, body); else await api.createManual(body);
+          toast(manual ? '매뉴얼을 수정했습니다.' : '매뉴얼을 추가했습니다.', 'success');
+          onSaved();
+        } catch (err) { toast(err.message || '저장에 실패했습니다.', 'error'); }
+        finally { setSaving(false); }
+      };
+
+      return (
+        <Modal isOpen onClose={onClose} title={manual ? '매뉴얼 수정' : '매뉴얼 추가'} size="lg">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block mb-1 text-xs font-medium text-slate-500">항목(제목) *</label>
+              <input value={form.title} onChange={(e) => set('title', e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block mb-1 text-xs font-medium text-slate-500">공정</label>
+                <input value={form.trade} onChange={(e) => set('trade', e.target.value)} list="v25-manual-trades" placeholder="예: 목공"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                <datalist id="v25-manual-trades">
+                  {PROCESS_CATEGORIES.map((p) => <option key={p} value={p} />)}
+                  {['가설', '경량', '기계설비', '단열/기밀', '마감검수', '바닥재', '방수', '에어컨', '욕실마감', '현장지원업무'].map((p) => <option key={p} value={p} />)}
+                </datalist>
+              </div>
+              <div>
+                <label className="block mb-1 text-xs font-medium text-slate-500">상태</label>
+                <select value={form.status} onChange={(e) => set('status', e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-slate-600 focus:outline-none">
+                  {MANUAL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block mb-1 text-xs font-medium text-slate-500">유형 (해당 건물 유형에서만 필터에 노출)</label>
+              <div className="flex flex-wrap gap-1.5">
+                {MANUAL_TYPES.map((t) => (
+                  <button type="button" key={t} onClick={() => toggleType(t)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold transition ${form.types.includes(t) ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block mb-1 text-xs font-medium text-slate-500">노션 링크 (원문)</label>
+              <input value={form.notion_url} onChange={(e) => set('notion_url', e.target.value)} placeholder="https://app.notion.com/…"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            </div>
+            <div>
+              <label className="block mb-1 text-xs font-medium text-slate-500">본문 (인앱 열람용 — 비워두면 노션 링크로 안내)</label>
+              <textarea value={form.content} onChange={(e) => set('content', e.target.value)} rows="6" placeholder="시공 기준·주의사항을 적어두면 현장에서 바로 열람할 수 있어요."
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-y" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={onClose}>취소</Button>
+              <Button type="submit" disabled={saving}>{saving ? '저장 중…' : '저장'}</Button>
+            </div>
+          </form>
+        </Modal>
+      );
+    }
+
+    // ── 🔔 알림 벨 (헤더) — 60초 폴링 + 열 때 갱신, 클릭=읽음, 전체 읽음 ──
+    function NotificationBell() {
+      const [open, setOpen] = useState(false);
+      const [data, setData] = useState({ unread: 0, items: [] });
+      const panelRef = useRef(null);
+
+      const refresh = useCallback(async () => {
+        try { setData(await api.listNotifications(30)); } catch (e) { /* 폴링 실패 무시 */ }
+      }, []);
+      useEffect(() => {
+        refresh();
+        const t = setInterval(refresh, 60000);
+        return () => clearInterval(t);
+      }, [refresh]);
+      useEffect(() => {
+        if (!open) return;
+        refresh();
+        const onDoc = (e) => { if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', onDoc);
+        return () => document.removeEventListener('mousedown', onDoc);
+      }, [open, refresh]);
+
+      const timeAgo = (iso) => {
+        const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+        if (s < 60) return '방금';
+        if (s < 3600) return `${Math.floor(s / 60)}분 전`;
+        if (s < 86400) return `${Math.floor(s / 3600)}시간 전`;
+        return `${Math.floor(s / 86400)}일 전`;
+      };
+      const markRead = async (n) => {
+        if (n.read) return;
+        setData((prev) => ({ unread: Math.max(0, prev.unread - 1), items: prev.items.map((x) => (x.id === n.id ? { ...x, read: true } : x)) }));
+        try { await api.readNotifications([n.id]); } catch (e) { /* 무시 */ }
+      };
+      const markAll = async () => {
+        setData((prev) => ({ unread: 0, items: prev.items.map((x) => ({ ...x, read: true })) }));
+        try { await api.readAllNotifications(); } catch (e) { /* 무시 */ }
+      };
+
+      return (
+        <div className="relative" ref={panelRef}>
+          <button onClick={() => setOpen((o) => !o)} title="알림"
+            className="relative w-9 h-9 rounded-xl hover:bg-slate-100 flex items-center justify-center text-lg transition">
+            🔔
+            {data.unread > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {data.unread > 99 ? '99+' : data.unread}
+              </span>
+            )}
+          </button>
+          {open && (
+            <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+                <span className="text-sm font-bold text-slate-700">알림 {data.unread > 0 && <span className="text-red-500">({data.unread})</span>}</span>
+                <button onClick={markAll} className="text-xs text-slate-400 hover:text-slate-600">모두 읽음</button>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {data.items.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-slate-400">알림이 없습니다.</div>
+                ) : data.items.map((n) => (
+                  <button key={n.id} onClick={() => markRead(n)}
+                    className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition ${n.read ? 'opacity-60' : ''}`}>
+                    <div className="flex items-start gap-2">
+                      {!n.read && <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-700 leading-snug">{n.title}</p>
+                        {n.body && <p className="text-xs text-slate-500 mt-0.5 leading-snug">{n.body}</p>}
+                        <p className="text-[10px] text-slate-400 mt-1">{timeAgo(n.created_at)}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     function ManageTab({ sites, onMastersChanged, onSitesChanged, onTemplatesChanged, isAdmin = false }) {
       const [sub, setSub] = useState('staff');
       const [staffAll, setStaffAll] = useState([]);
@@ -8491,6 +9407,7 @@
         { id: 'categories', label: '카테고리', icon: '🏷️' },
         { id: 'catalog', label: '단가 카탈로그', icon: '📚' },
         { id: 'templates', label: '견적 템플릿', icon: '🧩' },
+        { id: 'manuals', label: '매뉴얼 DB', icon: '📖' }, // v25
         { id: 'sites', label: '현장 마스터', icon: '🏗️' },
       ];
       return (
@@ -8514,6 +9431,7 @@
           {sub === 'categories' && <CategoryManager cats={catsAll} onChanged={reloadMasters} />}
           {sub === 'catalog' && <CatalogManager />}
           {sub === 'templates' && <TemplateManager onChanged={onTemplatesChanged} />}
+          {sub === 'manuals' && <ManualManager isAdmin={isAdmin} />}
           {sub === 'sites' && <SiteMaster sites={sites} onChanged={onSitesChanged} staffNames={staffNames} />}
         </div>
       );
@@ -8826,6 +9744,7 @@
                     )}
                     {authUser && (
                       <>
+                        <NotificationBell /> {/* v25: 인앱 알림 */}
                         <div className="text-right leading-tight hidden sm:block">
                           <p className="text-sm font-semibold text-slate-700 truncate max-w-[160px]">{authUser.name || authUser.email}</p>
                           <p className="text-[11px] text-slate-400 truncate max-w-[160px]">{authUser.team_name || '팀'}</p>
@@ -8916,7 +9835,9 @@
             {/* 탭 네비게이션 (항상 표시 — 관리 탭은 현장 없이도 접근 가능) */}
             <TabNav active={activeTab} onChange={setActiveTab} />
 
-            {activeTab === 'projects' ? (
+            {activeTab === 'my' ? (
+              <MyTab authUser={authUser} sites={sites} demoMode={demoMode} /> // v25: 현장 선택 없이 동작
+            ) : activeTab === 'projects' ? (
               <ProjectBoard sites={sites} loading={sitesLoading}
                 onSelect={(id) => { setSelectedId(id); setEditingCost(null); setActiveTab('summary'); }}
                 onNew={() => { setEditingSite(null); setSiteModalOpen(true); }}
@@ -8929,7 +9850,7 @@
                 <div className="text-5xl mb-3">🏗️</div>
                 <h2 className="text-lg font-bold text-slate-700 mb-1">{sites.length === 0 ? '현장을 먼저 등록하세요' : '현장을 선택하세요'}</h2>
                 <p className="text-sm text-slate-400 mb-5">
-                  현장을 {sites.length === 0 ? '등록' : '선택'}하면 요약·비용·일정·견적·발주·미팅·AS·자료·현장사진을 관리할 수 있어요.<br />
+                  현장을 {sites.length === 0 ? '등록' : '선택'}하면 요약·비용·일정·출력인원·견적·발주·미팅·AS·자료·매뉴얼·현장사진을 관리할 수 있어요.<br />
                   담당자·거래처·카테고리 마스터는 <span className="font-semibold text-slate-500">⚙️ 관리</span> 탭에서 현장 없이도 설정할 수 있습니다.
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center">
@@ -8969,6 +9890,12 @@
                 {activeTab === 'schedule' && (
                   <ScheduleTab key={'sch-' + selectedSite.id} site={selectedSite} tasks={schedule} loading={detailLoading}
                     procNames={procCatNames} staffNames={staffNames} vendorNames={vendorNames} onChanged={refreshDetail} onPrintSchedule={handlePrintSchedule} />
+                )}
+                {activeTab === 'labor' && (
+                  <LaborTab key={'lab-' + selectedSite.id} site={selectedSite} demoMode={demoMode} />
+                )}
+                {activeTab === 'manuals' && (
+                  <ManualsTab key={'man-' + selectedSite.id} site={selectedSite} isAdmin={isAdmin} demoMode={demoMode} />
                 )}
                 {activeTab === 'estimate' && (
                   <EstimateTab key={'est-' + selectedSite.id} site={selectedSite} estimates={estimates} loading={detailLoading}
@@ -9754,6 +10681,8 @@
       const handleAuthed = useCallback((u, token) => {
         setToken(token);
         setUser(u || null);
+        // v25: 로그인 직후엔 항상 개인 대시보드(내 업무)로 랜딩
+        try { localStorage.setItem(TAB_KEY, 'my'); } catch (e) {}
         setStatus('authed');
       }, []);
 

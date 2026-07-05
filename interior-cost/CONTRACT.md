@@ -1272,3 +1272,42 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 > 사용자가 codef.io 데모 가입 후 키 공유 → **로컬 .env + Vercel Production env에 CODEF_CLIENT_ID/SECRET/PUBLIC_KEY 등록**(키 자체는 어디에도 커밋 금지). 코드 변경 없음(v24 그대로).
 > 검증(전 구간 실동작): ① oauth.codef.io 토큰 발급 OK — JWT authorities에 CARD 포함(BANK/보험/공공 등도 부여됨) ② RSA(PKCS1) 암호화 OK(2048bit, 콘솔 공개키 base64 본문→PEM 자동래핑) ③ 로컬 `/api/card/config` → `{mode:"live", host:development.codef.io}` ④ Vercel 재배포 후 라이브 동일 확인(임시 스모크 유저 가입→확인→DB삭제) ⑤ **데모 API 관통**: 가짜 ID로 `/v1/account/create` 호출 → KB국민카드 실응답 `CF-12800 아이디 오류`(토큰·상품권한·암호화·카드사 도달 전부 증명).
 > 주의: Vercel env가 sensitive 타입이라 `vercel env pull`은 빈 값 반환(정상 — 런타임엔 주입됨). 데모 환경은 호출량 제한 있음, 정식 전환 시 CODEF_API_HOST=https://api.codef.io + 정식 키로 교체. mock connectedId(`mock-*`) 계정은 키 등록 후에도 mock 데이터 유지 — 실데이터는 카드사 계정 새로 등록.
+
+# v25 — 개인 할일 대시보드 · 출력인원(기공/조공) · 매뉴얼 DB (+인앱 알림 인프라)
+
+> 사용자 요청 3건(2026-07-04): ① 팀원별 로그인 → 개인 대시보드(내 할일+마감일), 완료 체크 → 매니저 알림 ② 현장별 '출력인원' — 일정표에서 당일 공정 자동 표시, 기공/조공 인원 매일 기입, 완료 → 팀원 알림 ③ '매뉴얼' — 매뉴얼 DB에서 매니저/관리자가 현장에 맞는 항목만 선택 → 현장 매뉴얼에 선택본만 표시.
+> ②③은 사용자 노션 참고: 현장 페이지(광명 라 까사 웨딩홀)의 출력인원(공정표DB: 계획일/업무내용/출력인원 수 + 본문에 "기공 3 / 조공 3" 서술)과 매뉴얼(시공매뉴얼 DB를 유형 필터로 노출 — "유형과 프로젝트 DB 필터를 프로젝트에 맞게 선택해주세요"). 시공매뉴얼 DB 스키마 = 항목(제목)·공정(select 18종)·유형(multi: ALL/아파트/사무실/병원/빌라)·상태(작성 전/중/완료) → 43건을 seed/manuals.json 으로 가져옴(본문은 notion_url 링크로 연결, 인앱 content는 이후 작성 가능).
+
+## DB (interior_ 28테이블 = 23 + 5)
+- `interior_tasks`: team_id·site_id(SET NULL)·title·memo·due_date DATE NULL·status '진행'|'완료'·assignee_user_id(users, SET NULL)·created_by(users, SET NULL)·completed_at·created_at. idx(team,assignee,status).
+- `interior_labor_logs`: team_id·site_id(CASCADE)·work_date DATE·schedule_id(schedule, SET NULL)·process TEXT·skilled INT(기공)·helper INT(조공)·memo·done BOOL·done_at·created_by·created_at. **UNIQUE(site_id, work_date, process)** → 같은 날 같은 공정 1행 upsert.
+- `interior_manuals`: team_id·title·trade(공정)·types(콤마 'ALL'|'아파트,빌라'…)·status('작성 전/중/완료')·content(인앱 본문)·notion_url·sort_order·created_at·updated_at.
+- `interior_site_manuals`: team_id·site_id(CASCADE)·manual_id(CASCADE)·created_at. UNIQUE(site_id, manual_id).
+- `interior_notifications`: team_id·user_id(수신자, CASCADE)·actor_user_id(SET NULL)·type('task_assigned'|'task_done'|'labor_done')·title·body·site_id(CASCADE)·ref_type·ref_id·read_at·created_at. idx(user_id, read_at).
+- 시드: `seedManualsIfEmpty()` — interior_manuals 전체 0건일 때만 seed/manuals.json(43) → **가장 오래된 팀**에 삽입(catalog 패턴, 단일팀 전제 문서화).
+
+## 알림 규칙 (서버 헬퍼 notifyUsers — 수신자 dedupe·actor 제외·빈 배열 no-op)
+- 할일 생성/담당자 변경 시 assignee≠actor → assignee에게 `task_assigned`.
+- 할일 status→'완료' → **팀 admin 전원 + created_by** (actor 제외) `task_done`. (역방향 '진행' 복귀는 completed_at만 해제, 알림 없음)
+- 출력 완료(POST labor/complete) → **팀원 전체**(actor 제외) `labor_done` (기공·조공 합계 본문).
+
+## REST (전부 인증 게이트 내, 팀 스코핑)
+- `GET /api/team/users` — 팀 유저(id/name/email/role) 담당자 피커용(전원 열람).
+- 할일: `GET /api/tasks?view=mine|team&status=진행|완료|all&site_id=` (assignee_name·site_name JOIN, due_date ASC NULLS LAST) · `POST /api/tasks` {title, memo?, due_date?, assignee_user_id?(기본 나), site_id?} · `PATCH /api/tasks/:id` (부분수정; status 전환 시 completed_at 관리+알림) · `DELETE /api/tasks/:id`. 권한: 팀 전원 CRUD(할당도 자유 — 실무 단순화).
+- 출력인원: `GET /api/sites/:id/labor?date=` → {date, schedules(당일 겹침·kind='공사'), logs(그날 전체)} · `POST /api/sites/:id/labor` {work_date, process, schedule_id?, skilled, helper, memo?} upsert(ON CONFLICT site,date,process) · `DELETE /api/labor/:id` · `POST /api/sites/:id/labor/complete` {date} → 그날 로그 done=true+팀원 알림(0건이면 400) · `GET /api/sites/:id/labor/summary` → 최근 60일 일자별 합계+누적.
+- 매뉴얼: `GET /api/manuals?q=&trade=&type=` (본문 제외 목록) · `GET /api/manuals/:id`(본문 포함) · `POST/PATCH/DELETE /api/manuals[...]` **admin 전용** · `GET /api/sites/:id/manuals`(선택본, 본문 포함) · `PUT /api/sites/:id/manuals` {manual_ids[]} **admin 전용**(트랜잭션 전체 교체).
+- 알림: `GET /api/notifications?limit=` → {unread, items(최근, actor_name JOIN)} · `POST /api/notifications/read` {ids[]} · `POST /api/notifications/read-all`.
+
+## UI
+- 탭 재편: **[🙋 내 업무]를 맨 앞에 신설 — 로그인 성공 시 랜딩 탭**(handleAuthed에서 TAB_KEY='my' 저장). [👷 출력인원]은 일정 뒤, [📖 매뉴얼]은 자료 뒤(현장 스코프 탭 패턴 key={selectedSite.id}).
+- 내 업무(MyTab): 인사말+오늘 날짜. 서브탭 [내 할일|팀 전체|완료됨]. 내 할일 = 체크박스(완료 시 낙관 제거+toast+PATCH)·제목·현장 뱃지·D-day(지연 red/오늘 amber)·메모. 인라인 추가 폼(제목/마감일/현장/담당자 — 기본 나, 팀원에게 할당 가능). 팀 전체 = 담당자별 그룹(매니저 뷰). demoMode는 서버 필요 안내.
+- 출력인원(LaborTab): 날짜 네비(◀ 오늘 ▶ + date input). 당일 일정(kind=공사) 공정 자동 행 + 기존 로그 병합, 행 = 공정 | 기공 수 | 조공 수 | 비고 | [저장]. "+ 공정 추가"(자유 입력). 합계(기공·조공·계). [✅ 입력 완료 — 팀원 알림] → done 뱃지·재완료 방지 없음(재알림 가능). 하단 최근 7일 요약 + 누적.
+- 매뉴얼(ManualsTab): 선택본 카드 목록(공정 그룹, 유형/상태 뱃지, [노션↗]·본문 모달(whitespace-pre-wrap)). [📖 매뉴얼 선택](admin) 모달 = 검색+유형 칩(ALL/아파트/사무실/병원/빌라)+공정 select+체크박스 → PUT 저장. member 열람 전용.
+- 관리 탭: [📖 매뉴얼 DB] 서브탭 — 목록(공정/유형/상태/링크)+추가/수정 모달+삭제(admin, member 열람).
+- 헤더 🔔(NotificationBell, 로그인 시): 미읽음 뱃지, 60s 폴링+패널 열 때 갱신, 행 클릭=개별 읽음, [모두 읽음]. 알림 타입별 아이콘(✅/👷/📌).
+
+## 검증
+- 백엔드 e2e(임시팀 2·유저 2, 잔존 0): team users/할일 CRUD·할당알림·완료알림(admin+creator)·되돌리기/출력 upsert(중복키 갱신)·complete 알림(팀원 전체)·summary/매뉴얼 admin CRUD·member 403·site 선택 PUT·조회/알림 read·read-all/타팀 격리(빈 목록·404)/현장·팀 삭제 CASCADE.
+- Playwright: 로그인→내 업무 랜딩→할일 추가→완료 체크→🔔 뱃지→출력인원 기입→완료→매뉴얼 선택→현장 매뉴얼 표시.
+
+> ✅ **구현·검증 완료 (2026-07-05)**. 백엔드 e2e **45/45**(임시팀 2·유저 3, 정리 후 잔존 0 — interior_users/sites 의 team_id 는 v13 ALTER 추가라 팀삭제 CASCADE 미적용 → e2e 정리는 sites→users→teams 순서 필수). Playwright 전 플로우: 로그인→**내 업무 자동 랜딩**→할일 추가(D-DAY 뱃지)→완료 체크 즉시 제거→팀원 API 완료→**🔔 뱃지+task_done 알림+모두 읽음**→출력인원(당일 일정 '철거 공사' 자동 행→기공3·조공2 저장→입력 완료→'완료됨' 뱃지+누적 요약 테이블 ✅)→매뉴얼 픽커(유형 칩 기본=현장 building_type, 2건 선택 저장)→공정 그룹 카드→본문 모달→관리›매뉴얼 DB 서브탭(테이블+추가/수정/삭제). 시드: 부팅 시 안도공간(team 1)에 노션 43건 적재 확인. 참고: 장시간 유휴 세션에서 알림 폴링 500 다발은 로컬 서버 DNS(ENOTFOUND pooler) — 코드 무관(맥 절전), 벨은 에러 무시하고 정상 동작 유지.
