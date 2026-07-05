@@ -15,8 +15,12 @@ CREATE TABLE IF NOT EXISTS transactions (
   category TEXT NOT NULL,
   memo TEXT NOT NULL DEFAULT '',
   date DATE NOT NULL,
+  scope TEXT NOT NULL DEFAULT 'personal' CHECK (scope IN ('personal','company')),  -- 개인/회사 사용 분류
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 마이그레이션: 예전 버전으로 만들어진 테이블에 scope 컬럼 추가 (기존 행은 'personal')
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'personal';
 
 -- 목록 정렬(date DESC, created_at DESC) 가속용 인덱스
 CREATE INDEX IF NOT EXISTS idx_transactions_date
@@ -38,12 +42,12 @@ CREATE TABLE IF NOT EXISTS budgets (
 -- (선택) 시드 데이터 — 테이블이 비어 있을 때만 삽입
 -- 오늘(CURRENT_DATE) 기준 날짜로 생성.
 -- ----------------------------------------
-INSERT INTO transactions (type, amount, category, memo, date)
-SELECT v.type, v.amount, v.category, v.memo, v.date
+INSERT INTO transactions (type, amount, category, memo, date, scope)
+SELECT v.type, v.amount, v.category, v.memo, v.date, v.scope
 FROM (VALUES
-  ('income'::text,  3200000::bigint, '급여'::text,   '6월 월급'::text,      CURRENT_DATE),
-  ('expense',       12000,           '식비',         '점심 김치찌개',        CURRENT_DATE),
-  ('expense',       9900,            '구독료',       '넷플릭스',            CURRENT_DATE),
-  ('expense',       55000,           '교통',         '교통카드 충전',        CURRENT_DATE)
-) AS v(type, amount, category, memo, date)
+  ('income'::text,  3200000::bigint, '급여'::text,   '6월 월급'::text,      CURRENT_DATE, 'personal'::text),
+  ('expense',       12000,           '식비',         '점심 김치찌개',        CURRENT_DATE, 'personal'),
+  ('expense',       9900,            '구독료',       '넷플릭스',            CURRENT_DATE, 'personal'),
+  ('expense',       55000,           '교통',         '외근 교통카드 충전',    CURRENT_DATE, 'company')
+) AS v(type, amount, category, memo, date, scope)
 WHERE NOT EXISTS (SELECT 1 FROM transactions);

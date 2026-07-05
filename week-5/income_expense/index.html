@@ -61,6 +61,14 @@
       급여: 'bg-emerald-500', 용돈: 'bg-green-400', 부수입: 'bg-lime-500',
     };
 
+    // 회사/개인 사용 분류 (scope)
+    const SCOPE_META = {
+      personal: { label: '개인', icon: '🏠', chip: 'bg-indigo-100 text-indigo-700', bar: 'bg-indigo-400', chart: 'rgba(99, 102, 241, 0.8)' },
+      company:  { label: '회사', icon: '🏢', chip: 'bg-amber-100 text-amber-700',  bar: 'bg-amber-400',  chart: 'rgba(245, 158, 11, 0.85)' },
+    };
+    // 구버전 데이터(scope 없음)는 개인으로 취급
+    const scopeOf = (t) => (t && t.scope === 'company' ? 'company' : 'personal');
+
     // ========================================
     // 유틸 함수
     // ========================================
@@ -104,10 +112,10 @@
 
     // 시드 데이터 (mock 최초 진입 시)
     const seedData = () => ([
-      { id: uid(), type: 'income',  amount: 3200000, category: '급여',   memo: '6월 월급',     date: todayStr(), created_at: new Date().toISOString() },
-      { id: uid(), type: 'expense', amount: 12000,   category: '식비',   memo: '점심 김치찌개', date: todayStr(), created_at: new Date().toISOString() },
-      { id: uid(), type: 'expense', amount: 9900,    category: '구독료', memo: '넷플릭스',     date: todayStr(), created_at: new Date().toISOString() },
-      { id: uid(), type: 'expense', amount: 55000,   category: '교통',   memo: '교통카드 충전', date: todayStr(), created_at: new Date().toISOString() },
+      { id: uid(), type: 'income',  amount: 3200000, category: '급여',   memo: '6월 월급',        date: todayStr(), scope: 'personal', created_at: new Date().toISOString() },
+      { id: uid(), type: 'expense', amount: 12000,   category: '식비',   memo: '점심 김치찌개',    date: todayStr(), scope: 'personal', created_at: new Date().toISOString() },
+      { id: uid(), type: 'expense', amount: 9900,    category: '구독료', memo: '넷플릭스',        date: todayStr(), scope: 'personal', created_at: new Date().toISOString() },
+      { id: uid(), type: 'expense', amount: 55000,   category: '교통',   memo: '외근 교통카드 충전', date: todayStr(), scope: 'company', created_at: new Date().toISOString() },
     ]);
 
     // ========================================
@@ -136,6 +144,12 @@
           if (a.date !== b.date) return a.date < b.date ? 1 : -1;
           return (a.created_at < b.created_at) ? 1 : -1;
         });
+      },
+
+      // 로컬 폴백용: scope('personal'|'company')로 필터. 'all'/빈값이면 그대로.
+      _filterScope(list, scope) {
+        if (!scope || scope === 'all') return list;
+        return list.filter((t) => scopeOf(t) === scope);
       },
 
       async list() {
@@ -194,27 +208,41 @@
         }
       },
 
-      // ── 월별 집계 ──
-      async monthly() {
+      // ── 월별 집계 (scope: 'all'|'personal'|'company') ──
+      async monthly(scope) {
+        const qs = scope && scope !== 'all' ? `?scope=${scope}` : '';
         try {
-          const data = await this._tryFetch(`${API_BASE_URL}/monthly`);
+          const data = await this._tryFetch(`${API_BASE_URL}/monthly${qs}`);
           this._useMock = false;
           return data;
         } catch {
           this._useMock = true;
-          return computeMonthly(this._sorted(this._ensureSeed()));
+          return computeMonthly(this._filterScope(this._sorted(this._ensureSeed()), scope));
         }
       },
 
-      // ── 주별 집계 ──
-      async weekly() {
+      // ── 주별 집계 (scope: 'all'|'personal'|'company') ──
+      async weekly(scope) {
+        const qs = scope && scope !== 'all' ? `?scope=${scope}` : '';
         try {
-          const data = await this._tryFetch(`${API_BASE_URL}/weekly`);
+          const data = await this._tryFetch(`${API_BASE_URL}/weekly${qs}`);
           this._useMock = false;
           return data;
         } catch {
           this._useMock = true;
-          return computeWeekly(this._sorted(this._ensureSeed()));
+          return computeWeekly(this._filterScope(this._sorted(this._ensureSeed()), scope));
+        }
+      },
+
+      // ── 월간 리포트 (month: 'YYYY-MM') ──
+      async report(month) {
+        try {
+          const data = await this._tryFetch(`${API_BASE_URL}/report?month=${month}`);
+          this._useMock = false;
+          return data;
+        } catch {
+          this._useMock = true;
+          return computeReport(this._ensureSeed(), budgetStore.read(), month);
         }
       },
 
@@ -341,6 +369,70 @@
       });
     }
 
+    // 'YYYY-MM' 에 delta 개월 더하기 (UTC 고정 → 타임존 안전)
+    const shiftMonth = (month, delta) => {
+      const [y, m] = month.split('-').map(Number);
+      const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    };
+
+    // 월간 리포트 (로컬 폴백): 서버 GET /api/report 와 동일한 모양으로 계산
+    function computeReport(transactions, budgets, month) {
+      const prevMonth = shiftMonth(month, -1);
+      const inMonth = (t, mm) => (t.date || '').slice(0, 7) === mm;
+      const cur = transactions.filter((t) => inMonth(t, month));
+      const prev = transactions.filter((t) => inMonth(t, prevMonth));
+
+      let totalIncome = 0, totalExpense = 0;
+      const scopeSplit = { personal: { income: 0, expense: 0 }, company: { income: 0, expense: 0 } };
+      const catMap = {};
+      let topExpense = null;
+      cur.forEach((t) => {
+        const amt = Number(t.amount) || 0;
+        const typeKey = t.type === 'income' ? 'income' : 'expense';
+        if (typeKey === 'income') totalIncome += amt; else totalExpense += amt;
+        scopeSplit[scopeOf(t)][typeKey] += amt;
+        if (typeKey === 'expense') {
+          catMap[t.category] = (catMap[t.category] || 0) + amt;
+          if (!topExpense || amt > topExpense.amount) {
+            topExpense = { amount: amt, category: t.category, memo: t.memo || '', date: t.date, scope: scopeOf(t) };
+          }
+        }
+      });
+
+      let prevIncome = 0, prevExpense = 0;
+      prev.forEach((t) => {
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'income') prevIncome += amt; else prevExpense += amt;
+      });
+
+      const [y, m] = month.split('-').map(Number);
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const daysCounted = month === currentMonth() ? Math.min(new Date().getDate(), daysInMonth) : daysInMonth;
+
+      return {
+        month, prevMonth, txCount: cur.length,
+        totalIncome, totalExpense, balance: totalIncome - totalExpense,
+        savingsRate: totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : null,
+        prevIncome, prevExpense,
+        momExpenseChange: prevExpense > 0 ? Math.round(((totalExpense - prevExpense) / prevExpense) * 100) : null,
+        dailyAvgExpense: daysCounted > 0 ? Math.round(totalExpense / daysCounted) : 0,
+        daysCounted,
+        topCategories: Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 3)
+          .map(([category, total]) => ({
+            category, total,
+            pct: totalExpense > 0 ? Math.round((total / totalExpense) * 100) : 0,
+          })),
+        topExpense,
+        scope: scopeSplit,
+        budgets: budgets.map((b) => {
+          const budget = Number(b.amount) || 0;
+          const spent = catMap[b.category] || 0;
+          return { category: b.category, budget, spent, remaining: budget - spent };
+        }),
+      };
+    }
+
     // ========================================
     // 🎨 Design System Components
     // ========================================
@@ -459,7 +551,8 @@
     // ========================================
     // 🧩 요약 대시보드
     // ========================================
-    function SummaryDashboard({ summary }) {
+    function SummaryDashboard({ summary, scopeFilter }) {
+      const filterMeta = scopeFilter && scopeFilter !== 'all' ? SCOPE_META[scopeFilter] : null;
       const cards = [
         { label: '총수입', value: summary.totalIncome, color: 'text-emerald-600', bg: 'from-emerald-50 to-white', ring: 'border-emerald-100', icon: '↑' },
         { label: '총지출', value: summary.totalExpense, color: 'text-red-600', bg: 'from-red-50 to-white', ring: 'border-red-100', icon: '↓' },
@@ -470,7 +563,14 @@
           {cards.map((c) => (
             <Card key={c.label} className={`p-4 sm:p-5 bg-gradient-to-br ${c.bg} ${c.ring}`}>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-500">{c.label}</span>
+                <span className="text-sm font-medium text-slate-500 flex items-center gap-1.5">
+                  {c.label}
+                  {filterMeta && (
+                    <span className={`text-[10px] font-semibold px-1.5 py-[1px] rounded-md ${filterMeta.chip}`}>
+                      {filterMeta.icon} {filterMeta.label}
+                    </span>
+                  )}
+                </span>
                 <span className={`text-lg ${c.color}`}>{c.icon}</span>
               </div>
               <div className={`mt-2 text-xl sm:text-2xl font-extrabold ${c.color} break-all`}>{fmtWon(c.value)}</div>
@@ -484,7 +584,7 @@
     // 🧩 등록/수정 폼
     // ========================================
     function TransactionForm({ onSubmit, editing, onCancelEdit }) {
-      const blank = { type: 'expense', amount: '', category: '', memo: '', date: todayStr() };
+      const blank = { type: 'expense', amount: '', category: '', memo: '', date: todayStr(), scope: 'personal' };
       const [form, setForm] = useState(blank);
       const [errors, setErrors] = useState({});
       const [submitting, setSubmitting] = useState(false);
@@ -495,6 +595,7 @@
           setForm({
             type: editing.type, amount: String(editing.amount),
             category: editing.category, memo: editing.memo || '', date: editing.date,
+            scope: scopeOf(editing),
           });
           setErrors({});
         }
@@ -525,9 +626,11 @@
         const ok = await onSubmit({
           type: form.type, amount: Math.round(Number(form.amount)),
           category: form.category, memo: form.memo.trim(), date: form.date,
+          scope: form.scope === 'company' ? 'company' : 'personal',
         });
         setSubmitting(false);
-        if (ok && !editing) setForm({ ...blank, date: form.date });
+        // 연속 입력 편의: 날짜와 개인/회사 선택은 유지
+        if (ok && !editing) setForm({ ...blank, date: form.date, scope: form.scope });
       };
 
       const cats = CATEGORIES[form.type];
@@ -550,6 +653,22 @@
                 className={`py-2 rounded-lg text-sm font-semibold transition ${form.type === 'income' ? 'bg-emerald-500 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
                 수입
               </button>
+            </div>
+
+            {/* 개인/회사 사용 분류 토글 */}
+            <div>
+              <span className="block mb-1.5 text-sm font-medium text-slate-700">사용 분류</span>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                <button type="button" onClick={() => setForm({ ...form, scope: 'personal' })}
+                  className={`py-2 rounded-lg text-sm font-semibold transition ${form.scope !== 'company' ? 'bg-indigo-500 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+                  🏠 개인
+                </button>
+                <button type="button" onClick={() => setForm({ ...form, scope: 'company' })}
+                  className={`py-2 rounded-lg text-sm font-semibold transition ${form.scope === 'company' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+                  🏢 회사
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">회사 경비(법인카드·경비 청구 등)는 '회사'로 분류하면 리포트에서 따로 집계돼요.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -637,8 +756,9 @@
     // ========================================
     // 🧩 수입·지출 추이 차트 (Chart.js, 월별/주별 탭)
     // ========================================
-    function TrendCharts({ monthly, weekly, loading }) {
+    function TrendCharts({ monthly, weekly, loading, scopeFilter }) {
       const [tab, setTab] = useState('month'); // 'month' | 'week'
+      const filterMeta = scopeFilter && scopeFilter !== 'all' ? SCOPE_META[scopeFilter] : null;
       const canvasRef = useRef(null);
       const chartRef = useRef(null);
 
@@ -710,7 +830,14 @@
       return (
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-800">수입·지출 추이</h2>
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              수입·지출 추이
+              {filterMeta && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${filterMeta.chip}`}>
+                  {filterMeta.icon} {filterMeta.label}만
+                </span>
+              )}
+            </h2>
             <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
               <TabBtn value="month">월별</TabBtn>
               <TabBtn value="week">주별</TabBtn>
@@ -839,7 +966,8 @@
     // ========================================
     // 🧩 내역 목록
     // ========================================
-    function TransactionList({ transactions, onEdit, onAskDelete, loading }) {
+    function TransactionList({ transactions, onEdit, onAskDelete, loading, scopeFilter }) {
+      const filterMeta = scopeFilter && scopeFilter !== 'all' ? SCOPE_META[scopeFilter] : null;
       if (loading) {
         return (
           <Card className="p-5">
@@ -855,19 +983,31 @@
       return (
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-800">내역</h2>
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              내역
+              {filterMeta && (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${filterMeta.chip}`}>
+                  {filterMeta.icon} {filterMeta.label}만 보는 중
+                </span>
+              )}
+            </h2>
             <span className="text-xs text-slate-400">{transactions.length}건</span>
           </div>
 
           {transactions.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-2">📭</div>
-              <p className="text-sm text-slate-400">등록된 내역이 없습니다.<br />위 폼에서 첫 내역을 추가해보세요.</p>
+              <p className="text-sm text-slate-400">
+                {filterMeta
+                  ? `'${filterMeta.label}' 분류의 내역이 없습니다.`
+                  : '등록된 내역이 없습니다.'}<br />위 폼에서 내역을 추가해보세요.
+              </p>
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
               {transactions.map((t) => {
                 const isIncome = t.type === 'income';
+                const sm = SCOPE_META[scopeOf(t)];
                 return (
                   <li key={t.id} className="py-3 flex items-center gap-3 group">
                     <Badge color={CAT_COLOR[t.category] || 'bg-slate-400'} className="shrink-0">{t.category}</Badge>
@@ -875,7 +1015,12 @@
                       <p className="text-sm font-medium text-slate-800 truncate">
                         {t.memo || <span className="text-slate-400">메모 없음</span>}
                       </p>
-                      <p className="text-xs text-slate-400">{t.date} · {isIncome ? '수입' : '지출'}</p>
+                      <p className="text-xs text-slate-400 flex items-center gap-1.5 flex-wrap">
+                        <span>{t.date} · {isIncome ? '수입' : '지출'}</span>
+                        <span className={`inline-flex items-center px-1.5 py-[1px] rounded-md text-[10px] font-semibold ${sm.chip}`}>
+                          {sm.icon} {sm.label}
+                        </span>
+                      </p>
                     </div>
                     <div className={`text-sm font-bold shrink-0 ${isIncome ? 'text-emerald-600' : 'text-red-600'}`}>
                       {isIncome ? '+' : '-'}{fmtWon(t.amount)}
@@ -890,6 +1035,412 @@
                 );
               })}
             </ul>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🧩 예산 알림 배너 — 이번 달 예산 80% 임박(⏰) / 100% 초과(🚨)
+    //   닫아도 사용량이 바뀌면(signature 변경) 다시 나타난다.
+    // ========================================
+    function BudgetAlertBanner({ usage }) {
+      const [dismissed, setDismissed] = useState('');
+      const alerts = useMemo(() => (
+        (usage || [])
+          .map((u) => ({ ...u, pct: u.budget > 0 ? Math.round((u.spent / u.budget) * 100) : 0 }))
+          .filter((u) => u.pct >= 80)
+          .sort((a, b) => b.pct - a.pct)
+      ), [usage]);
+
+      if (alerts.length === 0) return null;
+      const signature = alerts.map((u) => u.category + ':' + u.pct).join('|');
+      if (dismissed === signature) return null;
+
+      const hasOver = alerts.some((u) => u.pct >= 100);
+      return (
+        <div role="alert"
+          className={`rounded-2xl border p-4 animate-slide-in ${hasOver ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <span className="text-xl leading-none mt-0.5">{hasOver ? '🚨' : '⏰'}</span>
+              <div className="min-w-0">
+                <p className={`text-sm font-bold ${hasOver ? 'text-red-700' : 'text-amber-700'}`}>
+                  {hasOver ? '예산 초과 알림' : '예산 임박 알림'}
+                  <span className="ml-1.5 font-medium text-xs opacity-70">이번 달 ({currentMonth()})</span>
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {alerts.map((u) => (
+                    <span key={u.category}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${u.pct >= 100 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${CAT_COLOR[u.category] || 'bg-slate-400'}`}></span>
+                      {u.category} {u.pct}%
+                      {u.pct >= 100 ? ` · ${fmtWon(u.spent - u.budget)} 초과` : ` · ${fmtWon(u.budget - u.spent)} 남음`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setDismissed(signature)} aria-label="알림 닫기"
+              className="shrink-0 text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 회사/개인 분류 카드 — 전체 지출 도넛 차트 + 분류별 요약
+    // ========================================
+    function ScopeSplitCard({ transactions }) {
+      const canvasRef = useRef(null);
+
+      const stats = useMemo(() => {
+        const s = {
+          personal: { income: 0, expense: 0, cnt: 0 },
+          company: { income: 0, expense: 0, cnt: 0 },
+        };
+        (transactions || []).forEach((t) => {
+          const k = scopeOf(t);
+          s[k][t.type === 'income' ? 'income' : 'expense'] += Number(t.amount) || 0;
+          s[k].cnt += 1;
+        });
+        return s;
+      }, [transactions]);
+
+      const totalExp = stats.personal.expense + stats.company.expense;
+      const hasData = totalExp > 0;
+      const pctOf = (v) => (totalExp > 0 ? Math.round((v / totalExp) * 100) : 0);
+
+      useEffect(() => {
+        if (!hasData || !canvasRef.current || typeof Chart === 'undefined') return;
+        const chart = new Chart(canvasRef.current.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: ['🏠 개인', '🏢 회사'],
+            datasets: [{
+              data: [stats.personal.expense, stats.company.expense],
+              backgroundColor: [SCOPE_META.personal.chart, SCOPE_META.company.chart],
+              borderWidth: 2,
+              borderColor: '#ffffff',
+              hoverOffset: 6,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, font: { size: 12 } } },
+              tooltip: {
+                callbacks: {
+                  label: (c) => `${c.label}: ${fmtWon(c.parsed)} (${pctOf(c.parsed)}%)`,
+                },
+              },
+            },
+          },
+        });
+        // ★ cleanup: 리렌더 시 기존 차트 파괴 (중복·메모리 누수 방지)
+        return () => chart.destroy();
+      }, [hasData, stats.personal.expense, stats.company.expense]);
+
+      const Row = ({ k }) => {
+        const meta = SCOPE_META[k];
+        const s = stats[k];
+        return (
+          <div className="flex items-center justify-between text-sm py-2">
+            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${meta.chip}`}>
+              {meta.icon} {meta.label}
+              <span className="opacity-70 font-medium">{s.cnt}건</span>
+            </span>
+            <div className="text-right">
+              <div className="font-bold text-slate-800">{fmtWon(s.expense)} <span className="text-[11px] font-semibold text-slate-400">지출 {pctOf(s.expense)}%</span></div>
+              <div className="text-[11px] text-emerald-600 font-medium">수입 {fmtWon(s.income)}</div>
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <Card className="p-5">
+          <h2 className="text-base font-bold text-slate-800 mb-1">회사/개인 분류</h2>
+          <p className="text-xs text-slate-400 mb-4">전체 기간 지출 기준 · 등록 폼의 '사용 분류'로 나뉘어요</p>
+
+          {!hasData ? (
+            <div className="text-center py-10">
+              <div className="text-4xl mb-2">🗂️</div>
+              <p className="text-sm text-slate-400">분류할 지출이 아직 없습니다.</p>
+            </div>
+          ) : (
+            <div>
+              <div className="relative h-44">
+                <canvas ref={canvasRef} aria-label="회사/개인 지출 비중 도넛 차트" role="img"></canvas>
+              </div>
+              <div className="mt-3 divide-y divide-slate-100">
+                <Row k="personal" />
+                <Row k="company" />
+              </div>
+              {stats.company.expense > 0 && (
+                <p className="mt-2 text-[11px] text-slate-400 bg-slate-50 rounded-lg px-2.5 py-1.5">
+                  💡 회사 지출 {fmtWon(stats.company.expense)}은 경비 청구/정산 대상인지 확인해보세요.
+                </p>
+              )}
+            </div>
+          )}
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 🐷 월간 머니 브리핑 — 자기만의 개성 리포트
+    //   서버 /api/report 재료 → 소비 등급(S~D) + 코코의 총평 + 인사이트 문장 생성
+    // ========================================
+    const GRADE_META = {
+      S: { grad: 'from-violet-500 to-fuchsia-500', text: 'text-violet-600', label: '소비 마스터', comment: '완벽한 한 달이에요! 저금통이 꽉꽉 찼어요. 이 정도면 제가 배워야 할 판 🐷👑' },
+      A: { grad: 'from-emerald-500 to-teal-500', text: 'text-emerald-600', label: '알뜰살뜰', comment: '훌륭해요! 수입의 30% 이상을 지켜냈어요. 코코가 박수 짝짝 👏' },
+      B: { grad: 'from-sky-500 to-blue-500', text: 'text-sky-600', label: '무난무난', comment: '나쁘지 않아요! 조금만 더 아끼면 A등급이에요 💪' },
+      C: { grad: 'from-amber-400 to-orange-500', text: 'text-amber-600', label: '아슬아슬', comment: '아슬아슬했어요… 다음 달엔 예산부터 정해볼까요? 🤔' },
+      D: { grad: 'from-rose-500 to-red-600', text: 'text-rose-600', label: '적자 경보', comment: '수입보다 지출이 많았어요! 코코 저금통이 텅… 지출 다이어트 시작해요 🥲' },
+    };
+
+    // 리포트 → 소비 등급 ('S'|'A'|'B'|'C'|'D', 기록 없으면 null)
+    //   저축률 기준 + 예산 초과 카테고리가 있으면 한 등급 강등
+    function gradeReport(r) {
+      if (!r || r.txCount === 0) return null;
+      const rate = r.savingsRate === null || r.savingsRate === undefined ? 0 : r.savingsRate;
+      let g;
+      if (r.totalExpense > r.totalIncome) g = 'D';
+      else if (rate >= 50) g = 'S';
+      else if (rate >= 30) g = 'A';
+      else if (rate >= 10) g = 'B';
+      else g = 'C';
+      const hasOver = (r.budgets || []).some((b) => b.budget > 0 && b.spent > b.budget);
+      if (hasOver && g !== 'D') g = 'SABCD'.charAt('SABCD'.indexOf(g) + 1); // 한 등급 강등
+      return g;
+    }
+
+    // 리포트 → 인사이트 문장 목록 (규칙 기반, 코코의 관찰 일기)
+    function buildInsights(r) {
+      if (!r || r.txCount === 0) return [];
+      const list = [];
+
+      if (r.momExpenseChange !== null && r.momExpenseChange !== undefined) {
+        if (r.momExpenseChange >= 10) {
+          const topCat = r.topCategories && r.topCategories[0];
+          list.push(`📈 지난달(${r.prevMonth})보다 지출이 ${r.momExpenseChange}% 늘었어요.${topCat ? ` '${topCat.category}' 지출을 먼저 점검해봐요.` : ''}`);
+        } else if (r.momExpenseChange <= -10) {
+          list.push(`📉 지난달보다 지출을 ${Math.abs(r.momExpenseChange)}% 줄였어요. 이 흐름 그대로 가요!`);
+        } else {
+          list.push(`⚖️ 지출이 지난달과 비슷한 수준이에요 (${r.momExpenseChange >= 0 ? '+' : ''}${r.momExpenseChange}%).`);
+        }
+      }
+
+      if (r.topExpense) {
+        const te = r.topExpense;
+        list.push(`💸 최대 단일 지출: ${te.date} · ${te.category} ${fmtWon(te.amount)}${te.memo ? ` (${te.memo})` : ''} ${SCOPE_META[te.scope === 'company' ? 'company' : 'personal'].icon}`);
+      }
+
+      const compExp = r.scope && r.scope.company ? r.scope.company.expense : 0;
+      if (r.totalExpense > 0 && compExp > 0) {
+        const pct = Math.round((compExp / r.totalExpense) * 100);
+        list.push(`🏢 지출의 ${pct}%(${fmtWon(compExp)})가 회사 용도예요. 경비 처리 잊지 마세요!`);
+      }
+
+      if (r.dailyAvgExpense > 0) {
+        list.push(`☕ 하루 평균 ${fmtWon(r.dailyAvgExpense)}씩 썼어요 (${r.daysCounted}일 기준).`);
+      }
+
+      const overs = (r.budgets || []).filter((b) => b.budget > 0 && b.spent > b.budget);
+      if (overs.length > 0) {
+        list.push(`🚨 예산 초과: ${overs.map((b) => `${b.category} +${fmtWon(b.spent - b.budget)}`).join(', ')}`);
+      }
+
+      return list;
+    }
+
+    // 리포트 → 클립보드 공유용 텍스트 (노션/메모장에 붙여넣기)
+    function reportToText(r, grade) {
+      const gm = grade ? GRADE_META[grade] : null;
+      const lines = [
+        `🐷 월간 머니 브리핑 — ${r.month}`,
+        gm ? `소비 등급: ${grade} (${gm.label})` : '기록 없음',
+        `수입 ${fmtWon(r.totalIncome)} · 지출 ${fmtWon(r.totalExpense)} · 잔액 ${fmtWon(r.balance)}`,
+        r.savingsRate !== null && r.savingsRate !== undefined ? `저축률 ${r.savingsRate}%` : null,
+        `개인 지출 ${fmtWon(r.scope.personal.expense)} / 회사 지출 ${fmtWon(r.scope.company.expense)}`,
+      ].filter(Boolean);
+      buildInsights(r).forEach((s) => lines.push('- ' + s));
+      return lines.join('\n');
+    }
+
+    function MonthlyReport({ report, loading, month, onPrev, onNext, canNext }) {
+      const toast = useToast();
+      const grade = gradeReport(report);
+      const gm = grade ? GRADE_META[grade] : null;
+      const insights = buildInsights(report);
+      const empty = !loading && (!report || report.txCount === 0);
+
+      const handleCopy = async () => {
+        if (!report) return;
+        const text = reportToText(report, grade);
+        try {
+          await navigator.clipboard.writeText(text);
+          toast('리포트가 클립보드에 복사되었습니다. 📋', 'success');
+        } catch {
+          // 클립보드 API 실패(비보안 컨텍스트 등) 시 폴백
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          toast('리포트가 클립보드에 복사되었습니다. 📋', 'success');
+        }
+      };
+
+      // 지출 분류 스택 바 (개인 vs 회사)
+      const ScopeBar = () => {
+        if (!report || report.totalExpense <= 0) return null;
+        const p = report.scope.personal.expense;
+        const c = report.scope.company.expense;
+        const pPct = Math.round((p / report.totalExpense) * 100);
+        const cPct = 100 - pPct;
+        return (
+          <div>
+            <h3 className="text-xs font-bold text-slate-500 mb-2">회사/개인 지출 분류</h3>
+            <div className="flex h-3 rounded-full overflow-hidden bg-slate-100">
+              {p > 0 && <div className={`${SCOPE_META.personal.bar} bar-grow`} style={{ width: pPct + '%' }}></div>}
+              {c > 0 && <div className={`${SCOPE_META.company.bar} bar-grow`} style={{ width: (p > 0 ? cPct : 100) + '%' }}></div>}
+            </div>
+            <div className="flex justify-between mt-1.5 text-[11px] font-medium">
+              <span className="text-indigo-600">🏠 개인 {fmtWon(p)} ({pPct}%)</span>
+              <span className="text-amber-600">🏢 회사 {fmtWon(c)} ({cPct}%)</span>
+            </div>
+          </div>
+        );
+      };
+
+      const medals = ['🥇', '🥈', '🥉'];
+
+      return (
+        <Card className="p-5">
+          {/* 헤더: 타이틀 + 월 이동 + 복사 */}
+          <div className="flex items-start justify-between gap-2 flex-wrap mb-1">
+            <div>
+              <h2 className="text-base font-bold text-slate-800">🐷 월간 머니 브리핑</h2>
+              <p className="text-xs text-slate-400 mt-0.5">저금통 요정 '코코'가 매달 소비를 분석해드려요</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={onPrev} aria-label="이전 달"
+                className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-100 font-bold">◀</button>
+              <span className="text-sm font-bold text-slate-700 tabular-nums w-[4.5rem] text-center">{month}</span>
+              <button onClick={onNext} disabled={!canNext} aria-label="다음 달"
+                className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-100 font-bold disabled:opacity-30 disabled:hover:bg-transparent">▶</button>
+              <Button variant="ghost" size="sm" onClick={handleCopy} disabled={!report || empty} className="ml-1">📋 복사</Button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="mt-4 space-y-3">
+              <div className="h-20 bg-slate-100 rounded-2xl animate-pulse"></div>
+              <div className="h-14 bg-slate-100 rounded-2xl animate-pulse"></div>
+              <div className="h-14 bg-slate-100 rounded-2xl animate-pulse"></div>
+            </div>
+          ) : empty ? (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-3">🐷</div>
+              <p className="text-sm text-slate-500 font-medium">{month}에는 기록이 없어요.</p>
+              <p className="text-xs text-slate-400 mt-1">코코: "첫 내역을 등록하면 브리핑을 시작할게요! ✏️"</p>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-5">
+              {/* 소비 등급 스탬프 + 코코 총평 */}
+              <div className="flex items-center gap-4">
+                <div className={`w-20 h-20 shrink-0 rounded-2xl bg-gradient-to-br ${gm.grad} flex flex-col items-center justify-center text-white shadow-lg`}>
+                  <span className="text-3xl font-black leading-none">{grade}</span>
+                  <span className="text-[10px] font-semibold mt-1 opacity-90">{gm.label}</span>
+                </div>
+                <div className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-3.5">
+                  <p className="text-sm text-slate-700 leading-relaxed">
+                    <span className="font-bold">코코 🐷</span> “{gm.comment}”
+                  </p>
+                </div>
+              </div>
+
+              {/* 핵심 지표 */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {[
+                  { label: '수입', value: fmtWon(report.totalIncome), color: 'text-emerald-600' },
+                  { label: '지출', value: fmtWon(report.totalExpense), color: 'text-red-600' },
+                  { label: '잔액', value: fmtWon(report.balance), color: report.balance >= 0 ? 'text-blue-600' : 'text-red-600' },
+                  { label: '저축률', value: report.savingsRate !== null && report.savingsRate !== undefined ? report.savingsRate + '%' : '—', color: 'text-violet-600' },
+                ].map((t) => (
+                  <div key={t.label} className="bg-slate-50 rounded-xl p-3 text-center">
+                    <div className="text-[11px] font-medium text-slate-400">{t.label}</div>
+                    <div className={`mt-0.5 text-sm font-extrabold break-all ${t.color}`}>{t.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <ScopeBar />
+
+              {/* 지출 TOP 3 */}
+              {report.topCategories.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-500 mb-2">지출 TOP {report.topCategories.length}</h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {report.topCategories.map((c, i) => (
+                      <span key={c.category} className="inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-xs">
+                        <span>{medals[i]}</span>
+                        <span className={`w-2 h-2 rounded-full ${CAT_COLOR[c.category] || 'bg-slate-400'}`}></span>
+                        <span className="font-semibold text-slate-700">{c.category}</span>
+                        <span className="text-slate-500">{fmtWon(c.total)}</span>
+                        <span className="text-slate-400">{c.pct}%</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 코코의 인사이트 */}
+              {insights.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-500 mb-2">코코의 관찰 일기</h3>
+                  <ul className="space-y-1.5">
+                    {insights.map((s, i) => (
+                      <li key={i} className="text-[13px] text-slate-600 leading-relaxed bg-slate-50 rounded-lg px-3 py-2">{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* 해당 월 예산 현황 */}
+              {report.budgets.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-500 mb-2">예산 현황 ({report.month})</h3>
+                  <ul className="space-y-2.5">
+                    {report.budgets.map((b) => {
+                      const pct = b.budget > 0 ? Math.round((b.spent / b.budget) * 100) : 0;
+                      const barColor = pct > 100 ? 'bg-red-500' : pct >= 80 ? 'bg-orange-400' : 'bg-emerald-500';
+                      return (
+                        <li key={b.category}>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${CAT_COLOR[b.category] || 'bg-slate-400'}`}></span>
+                              <span className="font-semibold text-slate-600">{b.category}</span>
+                            </span>
+                            <span className={`font-semibold ${pct > 100 ? 'text-red-600' : 'text-slate-500'}`}>
+                              {fmtWon(b.spent)} / {fmtWon(b.budget)} · {pct}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full bar-grow ${barColor}`} style={{ width: Math.min(pct, 100) + '%' }}></div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </Card>
       );
@@ -916,7 +1467,21 @@
       const [analyticsLoading, setAnalyticsLoading] = useState(true);
       const [budgetDeleteTarget, setBudgetDeleteTarget] = useState(null);
 
-      const summary = useMemo(() => computeSummary(transactions), [transactions]);
+      // 회사/개인 보기 필터 ('all' | 'personal' | 'company') — 요약/차트/내역에 적용
+      const [scopeFilter, setScopeFilter] = useState('all');
+
+      // 🐷 월간 머니 브리핑 상태
+      const [reportMonth, setReportMonth] = useState(currentMonth());
+      const [report, setReport] = useState(null);
+      const [reportLoading, setReportLoading] = useState(true);
+
+      // 필터 적용된 내역 (요약 카드/카테고리 합계/목록이 이걸 사용)
+      const filteredTransactions = useMemo(
+        () => (scopeFilter === 'all' ? transactions : transactions.filter((t) => scopeOf(t) === scopeFilter)),
+        [transactions, scopeFilter]
+      );
+
+      const summary = useMemo(() => computeSummary(filteredTransactions), [filteredTransactions]);
 
       const load = useCallback(async () => {
         setLoading(true);
@@ -932,31 +1497,44 @@
         }
       }, []);
 
-      // 차트(월별/주별) 새로고침
+      // 차트(월별/주별) 새로고침 — 회사/개인 필터를 서버 쿼리로 전달
       const loadCharts = useCallback(async () => {
         try {
-          const [m, w] = await Promise.all([api.monthly(), api.weekly()]);
+          const [m, w] = await Promise.all([api.monthly(scopeFilter), api.weekly(scopeFilter)]);
           setMonthly(m);
           setWeekly(w);
           setUsingMock(api._useMock);
         } catch (e) { /* 무시: 빈 상태로 표시 */ }
-      }, []);
+      }, [scopeFilter]);
 
-      // 예산 + 사용량 새로고침
+      // 예산 + 사용량 새로고침 (최신 usage 를 반환해 등록 직후 알림 판정에도 사용)
       const loadBudgets = useCallback(async () => {
         try {
           const [b, u] = await Promise.all([api.budgets(), api.budgetUsage()]);
           setBudgets(b);
           setUsage(u);
           setUsingMock(api._useMock);
-        } catch (e) { /* 무시 */ }
+          return u;
+        } catch (e) { return []; }
       }, []);
+
+      // 월간 리포트 새로고침
+      const loadReport = useCallback(async () => {
+        setReportLoading(true);
+        try {
+          const r = await api.report(reportMonth);
+          setReport(r);
+          setUsingMock(api._useMock);
+        } catch (e) { /* 무시 */ }
+        finally { setReportLoading(false); }
+      }, [reportMonth]);
 
       const loadAnalytics = useCallback(async () => {
         setAnalyticsLoading(true);
-        await Promise.all([loadCharts(), loadBudgets()]);
+        const results = await Promise.all([loadCharts(), loadBudgets(), loadReport()]);
         setAnalyticsLoading(false);
-      }, [loadCharts, loadBudgets]);
+        return results[1]; // 최신 usage
+      }, [loadCharts, loadBudgets, loadReport]);
 
       useEffect(() => { load(); }, [load]);
       useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
@@ -976,7 +1554,18 @@
             toast('내역이 등록되었습니다.', 'success');
           }
           setUsingMock(api._useMock);
-          loadAnalytics(); // 차트/예산 사용량 갱신
+          // 차트/예산/리포트 갱신 → 지출이면 최신 사용량으로 예산 임계(80%/100%) 알림
+          loadAnalytics().then((freshUsage) => {
+            if (body.type !== 'expense') return;
+            const hit = (freshUsage || []).find((u) => u.category === body.category && u.budget > 0);
+            if (!hit) return;
+            const pct = Math.round((hit.spent / hit.budget) * 100);
+            if (pct >= 100) {
+              toast(`🚨 '${body.category}' 예산 ${pct}% — ${fmtWon(hit.spent - hit.budget)} 초과했어요!`, 'error');
+            } else if (pct >= 80) {
+              toast(`⏰ '${body.category}' 예산의 ${pct}%를 썼어요. 조금만 아껴봐요!`, 'info');
+            }
+          });
           return true;
         } catch (e) {
           toast('저장에 실패했습니다.', 'error');
@@ -1037,16 +1626,32 @@
       return (
         <div className="min-h-screen">
           <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-            <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2 flex-wrap">
               <h1 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
                 <span>💰</span> 나만의 가계부
               </h1>
-              {usingMock && (
-                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700"
-                  title="서버 연결 없이 브라우저(localStorage) 데이터로 동작 중입니다.">
-                  오프라인 데모 모드
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {usingMock && (
+                  <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-amber-100 text-amber-700"
+                    title="서버 연결 없이 브라우저(localStorage) 데이터로 동작 중입니다.">
+                    오프라인 데모 모드
+                  </span>
+                )}
+                {/* 회사/개인 보기 필터 — 요약·차트·카테고리 합계·내역에 적용 */}
+                <div className="flex gap-0.5 p-0.5 bg-slate-100 rounded-lg" role="tablist" aria-label="회사/개인 보기 필터">
+                  {[
+                    { value: 'all', label: '전체' },
+                    { value: 'personal', label: '🏠 개인' },
+                    { value: 'company', label: '🏢 회사' },
+                  ].map((f) => (
+                    <button key={f.value} type="button" role="tab" aria-selected={scopeFilter === f.value}
+                      onClick={() => setScopeFilter(f.value)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${scopeFilter === f.value ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'}`}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </header>
 
@@ -1060,9 +1665,29 @@
               </Card>
             )}
 
-            <SummaryDashboard summary={summary} />
+            {/* 🔔 예산 대비 알림 배너 (80% 임박 / 100% 초과) */}
+            <BudgetAlertBanner usage={usage} />
 
-            <TrendCharts monthly={monthly} weekly={weekly} loading={analyticsLoading} />
+            <SummaryDashboard summary={summary} scopeFilter={scopeFilter} />
+
+            {/* 🐷 월간 머니 브리핑 + 회사/개인 분류 도넛 */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+              <div className="lg:col-span-3">
+                <MonthlyReport
+                  report={report}
+                  loading={reportLoading}
+                  month={reportMonth}
+                  onPrev={() => setReportMonth((m) => shiftMonth(m, -1))}
+                  onNext={() => setReportMonth((m) => shiftMonth(m, 1))}
+                  canNext={reportMonth < currentMonth()}
+                />
+              </div>
+              <div className="lg:col-span-2">
+                <ScopeSplitCard transactions={transactions} />
+              </div>
+            </div>
+
+            <TrendCharts monthly={monthly} weekly={weekly} loading={analyticsLoading} scopeFilter={scopeFilter} />
 
             <div ref={formRef}>
               <TransactionForm onSubmit={handleSubmit} editing={editing} onCancelEdit={() => setEditing(null)} />
@@ -1080,10 +1705,11 @@
             </div>
 
             <TransactionList
-              transactions={transactions}
+              transactions={filteredTransactions}
               loading={loading}
               onEdit={handleEdit}
               onAskDelete={setDeleteTarget}
+              scopeFilter={scopeFilter}
             />
 
             <footer className="text-center text-xs text-slate-400 py-4">
@@ -1100,7 +1726,12 @@
                 </p>
                 <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 text-sm">
                   <div className="flex items-center justify-between">
-                    <Badge color={CAT_COLOR[deleteTarget.category] || 'bg-slate-400'}>{deleteTarget.category}</Badge>
+                    <span className="flex items-center gap-1.5">
+                      <Badge color={CAT_COLOR[deleteTarget.category] || 'bg-slate-400'}>{deleteTarget.category}</Badge>
+                      <span className={`inline-flex items-center px-1.5 py-[1px] rounded-md text-[10px] font-semibold ${SCOPE_META[scopeOf(deleteTarget)].chip}`}>
+                        {SCOPE_META[scopeOf(deleteTarget)].icon} {SCOPE_META[scopeOf(deleteTarget)].label}
+                      </span>
+                    </span>
                     <span className={`font-bold ${deleteTarget.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
                       {deleteTarget.type === 'income' ? '+' : '-'}{fmtWon(deleteTarget.amount)}
                     </span>
