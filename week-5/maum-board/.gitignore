@@ -1,0 +1,11 @@
+# 자격증명 (DATABASE_URL, JWT_SECRET) — 절대 커밋 금지
+.env
+
+# 의존성
+node_modules/
+
+# Vercel 로컬 링크 정보
+.vercel
+
+# OS
+.DS_Store

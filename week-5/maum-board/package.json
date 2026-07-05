@@ -1,0 +1,16 @@
+{
+  "name": "maum-board-auth",
+  "version": "2.0.0",
+  "description": "마음 한 조각 v2 — week-4 익명 고민·칭찬 게시판의 Auth 업그레이드 (Express + pg + JWT, Supabase PostgreSQL). 이제 이름과 함께 마음을 남기고, 내 글만 수정/삭제, 1인 1공감.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}

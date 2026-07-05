@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마음 한 조각 💌 이름과 함께 남기는 고민·칭찬·응원</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ 중요: 최신 @babel/standalone 은 JSX 를 automatic runtime 으로 변환하면서
+    //    `import { jsx } from "react/jsx-runtime"` 를 코드 맨 위에 삽입한다.
+    //    이 앱은 React 를 UMD(전역 변수)로 불러오므로, 그 import 때문에
+    //    "Cannot use import statement outside a module" 오류가 나고 화면이 하얗게 멈춘다.
+    //    → JSX 를 classic runtime(React.createElement)으로 변환하도록 강제한다.
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+  <style>
+    /* Tailwind으로 표현하기 어려운 애니메이션만 커스텀 처리 (week-4 익명판에서 계승) */
+
+    /* 카드가 아래에서 부드럽게 떠오르며 나타나는 효과 */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up { animation: fadeInUp 0.32s ease-out both; }
+
+    /* 모달이 살짝 커지며 등장 */
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.96); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .animate-modal-pop { animation: modalPop 0.18s ease-out both; }
+
+    /* 공감 버튼을 누를 때 숫자가 통! 하고 튀어오르는 효과 */
+    @keyframes countPop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.5); }
+      100% { transform: scale(1); }
+    }
+    .animate-count-pop { animation: countPop 0.4s cubic-bezier(.34,1.56,.64,1) both; }
+
+    /* 하트가 살짝 뛰는 효과 */
+    @keyframes heartBeat {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(1.35) rotate(-8deg); }
+      60%  { transform: scale(0.92); }
+      100% { transform: scale(1); }
+    }
+    .animate-heart-beat { animation: heartBeat 0.45s ease-out both; }
+
+    /* 빈 입력으로 제출했을 때 흔들리는 효과 */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-7px); }
+      40% { transform: translateX(7px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+    .animate-shake { animation: shake 0.4s ease-in-out both; }
+
+    /* 토스트가 위에서 슬라이드되어 내려오는 효과 */
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-toast-in { animation: toastIn 0.25s ease-out both; }
+
+    /* 본문 줄바꿈 보존 */
+    .preserve-lines { white-space: pre-wrap; word-break: break-word; }
+
+    /* 목록 카드에서 본문을 2줄로 자르기 (CDN Tailwind 버전과 무관하게 동작하도록 커스텀) */
+    .clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // ========================================
+    // 🔌 백엔드 연결 (week-4 와 달라진 점!)
+    // ========================================
+    // 익명판(week-4)은 브라우저에서 Supabase 에 "직접" 읽고 썼다.
+    // 이번판(week-5)은 우리가 만든 Node 서버(server.js)의 REST API 를 호출한다.
+    //   - 비밀번호 해시·JWT 발급·"본인 글만 수정/삭제" 같은 규칙은
+    //     브라우저가 아니라 서버가 강제해야 안전하기 때문.
+    //   - 로그인하면 서버가 JWT 토큰을 주고, 이후 요청마다
+    //     Authorization: Bearer <token> 헤더로 "내가 누구인지" 증명한다.
+    const TOKEN_KEY = 'maum_token'; // localStorage 키 (새로고침해도 로그인 유지)
+
+    const getToken = () => {
+      try { return localStorage.getItem(TOKEN_KEY); } catch (_e) { return null; }
+    };
+    const setToken = (t) => {
+      try {
+        if (t) localStorage.setItem(TOKEN_KEY, t);
+        else localStorage.removeItem(TOKEN_KEY);
+      } catch (_e) {}
+    };
+
+    // 공통 fetch 래퍼: JSON 봉투 { success, data, message } 를 해석하고,
+    // 실패면 message 를 담은 Error(+status) 를 던진다.
+    async function api(path, { method = 'GET', body } = {}) {
+      const headers = {};
+      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      const token = getToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`/api${path}`, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+
+      let json = null;
+      try { json = await res.json(); } catch (_e) { /* JSON 이 아니면 아래에서 처리 */ }
+
+      if (!res.ok || !json || json.success !== true) {
+        const err = new Error((json && json.message) || `요청에 실패했습니다. (${res.status})`);
+        err.status = res.status;
+        throw err;
+      }
+      return json; // { success:true, data, message }
+    }
+
+    // ========================================
+    // 🗂️ 카테고리 정의 (week-4 익명판과 동일한 3종 — 색/이모지를 한 곳에서 관리)
+    // ========================================
+    const CATEGORIES = [
+      {
+        value: '고민',
+        emoji: '💭',
+        label: '고민',
+        hint: '털어놓고 싶은 마음',
+        badge: 'bg-indigo-100 text-indigo-700 ring-indigo-200',
+        chip: 'bg-indigo-600 text-white ring-indigo-600',
+        accent: 'border-l-indigo-400',
+      },
+      {
+        value: '칭찬',
+        emoji: '👏',
+        label: '칭찬',
+        hint: '고마움을 전해요',
+        badge: 'bg-amber-100 text-amber-700 ring-amber-200',
+        chip: 'bg-amber-500 text-white ring-amber-500',
+        accent: 'border-l-amber-400',
+      },
+      {
+        value: '응원',
+        emoji: '💪',
+        label: '응원',
+        hint: '힘이 되는 한마디',
+        badge: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+        chip: 'bg-emerald-600 text-white ring-emerald-600',
+        accent: 'border-l-emerald-400',
+      },
+    ];
+    const CATEGORY_MAP = CATEGORIES.reduce((acc, c) => {
+      acc[c.value] = c;
+      return acc;
+    }, {});
+
+    const TITLE_MAX = 100;
+    const CONTENT_MAX = 2000;
+
+    // ========================================
+    // 🛠️ 유틸리티
+    // ========================================
+
+    // 상대 시간 ("방금 전", "3분 전", "2시간 전", "어제", "3일 전", 그 외 날짜)
+    function timeAgo(isoString) {
+      if (!isoString) return '';
+      const then = new Date(isoString).getTime();
+      if (Number.isNaN(then)) return '';
+      const diffSec = Math.floor((Date.now() - then) / 1000);
+
+      if (diffSec < 60) return '방금 전';
+      const min = Math.floor(diffSec / 60);
+      if (min < 60) return `${min}분 전`;
+      const hour = Math.floor(min / 60);
+      if (hour < 24) return `${hour}시간 전`;
+      const day = Math.floor(hour / 24);
+      if (day === 1) return '어제';
+      if (day < 7) return `${day}일 전`;
+
+      const d = new Date(then);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+    }
+
+    // 정확한 작성 시각 (툴팁/상세 화면용)
+    function fullDate(isoString) {
+      const d = new Date(isoString);
+      if (Number.isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // 글이 수정된 적 있는지 (updatedAt 이 createdAt 보다 뒤인지 — 2초 오차 허용)
+    function wasEdited(post) {
+      if (!post || !post.createdAt || !post.updatedAt) return false;
+      return new Date(post.updatedAt).getTime() - new Date(post.createdAt).getTime() > 2000;
+    }
+
+    // ========================================
+    // 🎨 Design System Components (week-4 계승)
+    // ========================================
+
+    // --- Button ---
+    function Button({
+      children,
+      variant = 'primary',
+      size = 'md',
+      type = 'button',
+      disabled = false,
+      onClick,
+      className = '',
+      ...rest
+    }) {
+      const base =
+        'inline-flex items-center justify-center gap-1.5 font-medium rounded-xl transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none';
+
+      const variants = {
+        primary: 'bg-rose-500 text-white hover:bg-rose-600 focus-visible:ring-rose-400',
+        secondary: 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 focus-visible:ring-slate-400',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+        ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:ring-slate-400',
+      };
+
+      const sizes = {
+        sm: 'text-sm px-3 py-1.5',
+        md: 'text-sm px-4 py-2.5',
+        lg: 'text-base px-5 py-3',
+      };
+
+      return (
+        <button
+          type={type}
+          disabled={disabled}
+          onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // --- Input (한 줄 입력: 이메일/비밀번호/닉네임/제목) ---
+    function Input({
+      label,
+      value,
+      onChange,
+      type = 'text',
+      placeholder = '',
+      error = '',
+      maxLength,
+      autoComplete,
+      className = '',
+      shake = false,
+      ...rest
+    }) {
+      return (
+        <div className={className}>
+          {label && (
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+          )}
+          <input
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            maxLength={maxLength}
+            autoComplete={autoComplete}
+            aria-invalid={!!error}
+            className={`w-full rounded-xl border bg-white px-4 py-2.5 text-slate-800 placeholder-slate-400 transition-colors focus:outline-none focus:ring-2 ${
+              shake ? 'animate-shake' : ''
+            } ${
+              error
+                ? 'border-red-400 focus:ring-red-300'
+                : 'border-slate-300 focus:border-rose-400 focus:ring-rose-200'
+            }`}
+            {...rest}
+          />
+          {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        </div>
+      );
+    }
+
+    // --- Textarea ---
+    function Textarea({
+      label,
+      value,
+      onChange,
+      placeholder = '',
+      rows = 4,
+      error = '',
+      maxLength,
+      className = '',
+      shake = false,
+      ...rest
+    }) {
+      return (
+        <div className={className}>
+          {label && (
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{label}</label>
+          )}
+          <textarea
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            rows={rows}
+            maxLength={maxLength}
+            aria-invalid={!!error}
+            className={`w-full resize-y rounded-xl border bg-white px-4 py-3 text-slate-800 placeholder-slate-400 transition-colors focus:outline-none focus:ring-2 ${
+              shake ? 'animate-shake' : ''
+            } ${
+              error
+                ? 'border-red-400 focus:ring-red-300'
+                : 'border-slate-300 focus:border-rose-400 focus:ring-rose-200'
+            }`}
+            {...rest}
+          />
+          {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+        </div>
+      );
+    }
+
+    // --- Card ---
+    function Card({ children, className = '', ...rest }) {
+      return (
+        <div
+          className={`rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 ${className}`}
+          {...rest}
+        >
+          {children}
+        </div>
+      );
+    }
+
+    // --- CategoryBadge ---
+    function CategoryBadge({ category, className = '' }) {
+      const c = CATEGORY_MAP[category] || {
+        emoji: '📝',
+        label: category || '기타',
+        badge: 'bg-slate-100 text-slate-600 ring-slate-200',
+      };
+      return (
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${c.badge} ${className}`}
+        >
+          <span aria-hidden="true">{c.emoji}</span>
+          {c.label}
+        </span>
+      );
+    }
+
+    // --- 작성자 표시 (아바타 + 닉네임) — Auth 업그레이드의 상징! ---
+    function AuthorChip({ name, isMine, className = '' }) {
+      const initial = (name || '?').trim().charAt(0).toUpperCase();
+      return (
+        <span className={`inline-flex items-center gap-1.5 ${className}`}>
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 to-pink-500 text-[11px] font-bold text-white">
+            {initial}
+          </span>
+          <span className="text-sm font-medium text-slate-600">{name}</span>
+          {isMine && (
+            <span className="rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-600 ring-1 ring-rose-200">
+              내 글
+            </span>
+          )}
+        </span>
+      );
+    }
+
+    // --- 카테고리 선택 칩 (글쓰기/수정 공용) ---
+    function CategoryPicker({ value, onChange, disabled }) {
+      const active = CATEGORY_MAP[value];
+      return (
+        <div>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="카테고리 선택">
+            {CATEGORIES.map((c) => {
+              const selected = value === c.value;
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  disabled={disabled}
+                  onClick={() => onChange(c.value)}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold ring-1 transition-all ${
+                    selected
+                      ? `${c.chip} shadow-sm`
+                      : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <span aria-hidden="true">{c.emoji}</span>
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+          {active && <p className="mt-1.5 text-xs text-slate-400">{active.hint}</p>}
+        </div>
+      );
+    }
+
+    // --- Modal ---
+    function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => {
+          if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => {
+          window.removeEventListener('keydown', onKey);
+          document.body.style.overflow = '';
+        };
+      }, [isOpen, onClose]);
+
+      if (!isOpen) return null;
+
+      const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl' };
+
+      return (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+        >
+          <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} aria-hidden="true" />
+          <Card className={`relative z-10 w-full ${sizes[size]} p-6 animate-modal-pop`}>
+            {title && <h2 className="mb-3 text-lg font-semibold text-slate-800">{title}</h2>}
+            {children}
+          </Card>
+        </div>
+      );
+    }
+
+    // --- Toast 컨테이너 (성공/실패 피드백) ---
+    function ToastContainer({ toasts, onDismiss }) {
+      const styles = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-red-600 text-white',
+        info: 'bg-slate-800 text-white',
+      };
+      const icons = { success: '✓', error: '!', info: '💬' };
+      return (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-[60] flex flex-col items-center gap-2 px-4">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              role="status"
+              aria-live="polite"
+              onClick={() => onDismiss(t.id)}
+              className={`animate-toast-in pointer-events-auto flex max-w-sm cursor-pointer items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium shadow-lg ${styles[t.type] || styles.info}`}
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/25 text-xs font-bold">
+                {icons[t.type] || icons.info}
+              </span>
+              <span className="leading-snug">{t.message}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // --- 아이콘 (간단한 인라인 SVG) ---
+    const Icon = {
+      Heart: (p) => (
+        <svg viewBox="0 0 24 24" fill={p.filled ? 'currentColor' : 'none'} stroke="currentColor"
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+        </svg>
+      ),
+      Send: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+        </svg>
+      ),
+      Clock: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+        </svg>
+      ),
+      Sort: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 4v16" />
+        </svg>
+      ),
+      Mail: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <rect x="2" y="4" width="20" height="16" rx="2" />
+          <path d="m22 7-10 6L2 7" />
+        </svg>
+      ),
+      Lock: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      ),
+      User: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+      Edit: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+      ),
+      Trash: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        </svg>
+      ),
+      ArrowLeft: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" />
+        </svg>
+      ),
+      Logout: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      ),
+      Sparkle: (p) => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          strokeLinecap="round" strokeLinejoin="round" className={p.className || 'w-4 h-4'}>
+          <path d="M12 3l1.9 5.7L19.6 10l-5.7 1.9L12 17.6l-1.9-5.7L4.4 10l5.7-1.9L12 3z" />
+        </svg>
+      ),
+    };
+
+    // ========================================
+    // 🧩 공통 / 레이아웃 컴포넌트
+    // ========================================
+
+    // --- 헤더 (로고 + 로그인 상태) ---
+    function Header({ user, onOpenAuth, onLogout, count }) {
+      return (
+        <header className="mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 text-2xl text-white shadow-sm">
+                💌
+              </span>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">
+                  마음 한 조각
+                  <span className="ml-2 align-middle rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-600 ring-1 ring-rose-200">
+                    v2 · 이제 이름과 함께
+                  </span>
+                </h1>
+                <p className="text-sm text-slate-500">
+                  이름과 함께 남기는 고민·칭찬·응원
+                  {count > 0 ? ` · 지금까지 ${count}개의 마음` : ''}
+                </p>
+              </div>
+            </div>
+
+            {/* 우측: 로그인 상태 표시 */}
+            {user ? (
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 ring-1 ring-slate-200">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 to-pink-500 text-[11px] font-bold text-white">
+                    {(user.nickname || '?').charAt(0).toUpperCase()}
+                  </span>
+                  <span className="text-sm font-semibold text-slate-700">{user.nickname}</span>
+                  <span className="hidden text-xs text-slate-400 sm:inline">{user.email}</span>
+                </span>
+                <Button variant="ghost" size="sm" onClick={onLogout}>
+                  <Icon.Logout className="h-4 w-4" /> 로그아웃
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" onClick={onOpenAuth} className="self-start sm:self-auto">
+                <Icon.User className="h-4 w-4" /> 로그인 / 회원가입
+              </Button>
+            )}
+          </div>
+        </header>
+      );
+    }
+
+    // --- "무엇이 달라졌나" 안내 배너 (닫기 가능) ---
+    function UpgradeBanner({ onDismiss }) {
+      return (
+        <div className="mb-5 flex items-start gap-3 rounded-2xl bg-white/70 p-4 ring-1 ring-rose-200/70">
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-base">
+            ✨
+          </span>
+          <div className="flex-1 text-sm leading-relaxed text-slate-600">
+            <b className="text-slate-800">익명판(4주차)과 달라진 점</b> — 이제 글마다{' '}
+            <b className="text-rose-600">누가 썼는지</b>가 남고, <b>내 글만</b> 수정/삭제할 수
+            있어요. 공감도 <b>한 사람당 1개</b>(다시 누르면 취소)랍니다.
+          </div>
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="안내 닫기"
+            className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+          >
+            ✕
+          </button>
+        </div>
+      );
+    }
+
+    // --- 로딩 스피너 ---
+    function Spinner({ label = '불러오는 중...' }) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
+          <span className="mb-3 h-8 w-8 animate-spin rounded-full border-[3px] border-rose-200 border-t-rose-500" />
+          <p className="text-sm text-slate-500">{label}</p>
+        </div>
+      );
+    }
+
+    // --- 빈 상태 ---
+    function EmptyState({ filtered }) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
+          <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-3xl">
+            💌
+          </span>
+          {filtered ? (
+            <>
+              <p className="text-base font-medium text-slate-700">이 카테고리에는 아직 글이 없어요</p>
+              <p className="mt-1 text-sm text-slate-500">다른 카테고리를 살펴보거나 첫 글을 남겨보세요.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-base font-medium text-slate-700">아직 남겨진 마음이 없어요</p>
+              <p className="mt-1 text-sm text-slate-500">첫 번째 마음을 남겨보세요!</p>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // --- 오류 상태 (다시 시도 버튼) ---
+    function ErrorState({ message, onRetry }) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-red-200 bg-red-50/60 px-6 py-14 text-center">
+          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl">⚠️</span>
+          <p className="text-base font-medium text-slate-700">글을 불러오지 못했어요</p>
+          <p className="mt-1 mb-4 text-sm text-slate-500">{message}</p>
+          <Button variant="secondary" onClick={onRetry}>다시 시도</Button>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🔑 로그인 / 회원가입 모달 (Part 1)
+    // ========================================
+    function AuthModal({ isOpen, mode: initialMode, onClose, onAuthed }) {
+      const [mode, setMode] = useState(initialMode || 'login'); // 'login' | 'signup'
+      const [nickname, setNickname] = useState('');
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState('');
+      const [busy, setBusy] = useState(false);
+      const [shakeKey, setShakeKey] = useState(0);
+
+      // 모달이 열릴 때마다 폼 초기화 + 요청 모드로 리셋
+      useEffect(() => {
+        if (isOpen) {
+          setMode(initialMode || 'login');
+          setNickname('');
+          setEmail('');
+          setPassword('');
+          setError('');
+          setBusy(false);
+        }
+      }, [isOpen, initialMode]);
+
+      const isSignup = mode === 'signup';
+
+      const submit = async (e) => {
+        if (e) e.preventDefault();
+        if (busy) return;
+        setError('');
+
+        // 프런트 1차 검증 (서버도 같은 규칙으로 다시 검증한다)
+        if (isSignup && !nickname.trim()) {
+          setError('닉네임을 입력해 주세요.');
+          setShakeKey((k) => k + 1);
+          return;
+        }
+        if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+          setError('올바른 이메일을 입력해 주세요.');
+          setShakeKey((k) => k + 1);
+          return;
+        }
+        if (password.length < 6) {
+          setError('비밀번호는 6자 이상이어야 해요.');
+          setShakeKey((k) => k + 1);
+          return;
+        }
+
+        setBusy(true);
+        try {
+          const path = isSignup ? '/auth/signup' : '/auth/login';
+          const body = isSignup
+            ? { nickname: nickname.trim(), email: email.trim(), password }
+            : { email: email.trim(), password };
+          const res = await api(path, { method: 'POST', body });
+          onAuthed(res.data.token, res.data.user, res.message);
+        } catch (err) {
+          setError(err.message);
+          setShakeKey((k) => k + 1);
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} size="sm">
+          {/* 모달 헤더 */}
+          <div className="mb-5 text-center">
+            <span className="mb-2 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 text-2xl text-white shadow-sm">
+              💌
+            </span>
+            <h2 className="text-lg font-bold text-slate-800">
+              {isSignup ? '마음 한 조각에 가입하기' : '다시 만나 반가워요'}
+            </h2>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {isSignup
+                ? '가입하면 내 이름으로 마음을 남길 수 있어요'
+                : '로그인하고 마음을 이어가요'}
+            </p>
+          </div>
+
+          {/* 로그인/회원가입 탭 */}
+          <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-sm font-medium">
+            {[
+              { value: 'login', label: '로그인' },
+              { value: 'signup', label: '회원가입' },
+            ].map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => { setMode(t.value); setError(''); }}
+                aria-pressed={mode === t.value}
+                className={`rounded-lg px-3 py-2 transition-colors ${
+                  mode === t.value
+                    ? 'bg-white text-rose-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={submit} className="space-y-3" key={`form-${shakeKey}`}>
+            {isSignup && (
+              <Input
+                label="닉네임"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="글에 표시될 이름 (예: 코코)"
+                maxLength={20}
+                autoComplete="nickname"
+                shake={!!error && !nickname.trim()}
+              />
+            )}
+            <Input
+              label="이메일"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              shake={!!error && !email.trim()}
+            />
+            <Input
+              label={isSignup ? '비밀번호 (6자 이상)' : '비밀번호'}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••"
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+              shake={!!error && password.length < 6}
+            />
+
+            {error && (
+              <p className="flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 ring-1 ring-red-200">
+                <span aria-hidden="true">⚠️</span> {error}
+              </p>
+            )}
+
+            <Button type="submit" size="lg" disabled={busy} className="w-full">
+              {busy ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              ) : isSignup ? (
+                <>
+                  <Icon.Sparkle className="h-4 w-4" /> 가입하고 시작하기
+                </>
+              ) : (
+                <>
+                  <Icon.Lock className="h-4 w-4" /> 로그인
+                </>
+              )}
+            </Button>
+          </form>
+
+          <p className="mt-3 text-center text-xs text-slate-400">
+            비밀번호는 서버에서 bcrypt 로 해시되어 안전하게 저장돼요.
+          </p>
+        </Modal>
+      );
+    }
+
+    // ========================================
+    // ✍️ 글쓰기 폼 (Part 2 — 로그인한 사람만, 제목 + 내용)
+    // ========================================
+    function WriteForm({ user, onSubmit, onOpenAuth, submitting }) {
+      const [category, setCategory] = useState('고민');
+      const [title, setTitle] = useState('');
+      const [content, setContent] = useState('');
+      const [error, setError] = useState('');
+      const [shakeKey, setShakeKey] = useState(0);
+
+      // 비로그인: 글쓰기 대신 로그인 안내 카드 (조회는 누구나, 글쓰기는 회원만!)
+      if (!user) {
+        return (
+          <Card className="mb-6 p-5">
+            <div className="flex flex-col items-center gap-3 py-4 text-center sm:flex-row sm:justify-between sm:py-1 sm:text-left">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-xl">
+                  🔒
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">
+                    로그인하면 이름과 함께 마음을 남길 수 있어요
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    글 읽기는 누구나 · 글쓰기와 공감은 회원만
+                  </p>
+                </div>
+              </div>
+              <Button onClick={onOpenAuth} size="md" className="shrink-0">
+                <Icon.User className="h-4 w-4" /> 로그인 / 회원가입
+              </Button>
+            </div>
+          </Card>
+        );
+      }
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (submitting) return;
+        setError('');
+
+        const t = title.trim();
+        const c = content.trim();
+        if (!t) {
+          setError('제목을 입력해 주세요.');
+          setShakeKey((k) => k + 1);
+          return;
+        }
+        if (!c) {
+          setError('내용을 입력해 주세요.');
+          setShakeKey((k) => k + 1);
+          return;
+        }
+
+        const done = await onSubmit({ category, title: t, content: c });
+        if (done) {
+          setTitle('');
+          setContent('');
+          // 카테고리는 유지 (연속 작성 편의)
+        }
+      };
+
+      return (
+        <Card className="mb-6 p-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 작성자 안내 — "이 글은 OO님이 썼다"가 기록된다는 것을 보여준다 */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-800">마음 남기기</h2>
+              <span className="text-xs text-slate-400">
+                <b className="font-semibold text-rose-500">{user.nickname}</b>님의 이름으로 남겨져요
+              </span>
+            </div>
+
+            <CategoryPicker value={category} onChange={setCategory} disabled={submitting} />
+
+            <Input
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); if (error) setError(''); }}
+              placeholder="제목 (한 줄로 요약해 보세요)"
+              maxLength={TITLE_MAX}
+              shake={shakeKey > 0 && !title.trim()}
+              key={`title-${shakeKey}`}
+              aria-label="제목"
+            />
+
+            <div>
+              <Textarea
+                value={content}
+                onChange={(e) => { setContent(e.target.value); if (error) setError(''); }}
+                placeholder={`${CATEGORY_MAP[category].hint}을 남겨보세요...`}
+                rows={4}
+                maxLength={CONTENT_MAX}
+                shake={shakeKey > 0 && !content.trim()}
+                key={`content-${shakeKey}`}
+                aria-label="내용"
+              />
+              <div className="mt-1 flex items-center justify-between">
+                {error ? (
+                  <p className="text-sm text-red-600">{error}</p>
+                ) : (
+                  <span className="text-xs text-slate-400">따뜻한 마음은 길이와 상관없어요</span>
+                )}
+                <span className="text-xs tabular-nums text-slate-400">
+                  {content.length}/{CONTENT_MAX}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={submitting}>
+                {submitting ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                ) : (
+                  <Icon.Send className="h-4 w-4" />
+                )}
+                마음 남기기
+              </Button>
+            </div>
+          </form>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 📄 컨트롤 바 (정렬 토글 + 카테고리 필터)
+    // ========================================
+    function ControlBar({ sort, onSortChange, filter, onFilterChange, total }) {
+      const filterOptions = [
+        { value: 'all', label: '전체', emoji: '🗂️' },
+        ...CATEGORIES.map((c) => ({ value: c.value, label: c.label, emoji: c.emoji })),
+      ];
+
+      return (
+        <div className="mb-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex items-center rounded-xl border border-slate-300 bg-white p-0.5 text-sm">
+              <span className="flex items-center gap-1 px-2 text-xs text-slate-400">
+                <Icon.Sort className="h-3.5 w-3.5" /> 정렬
+              </span>
+              <button
+                type="button"
+                onClick={() => onSortChange('latest')}
+                aria-pressed={sort === 'latest'}
+                className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                  sort === 'latest' ? 'bg-rose-500 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                최신순
+              </button>
+              <button
+                type="button"
+                onClick={() => onSortChange('popular')}
+                aria-pressed={sort === 'popular'}
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                  sort === 'popular' ? 'bg-rose-500 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <Icon.Heart filled className="h-3 w-3" /> 공감순
+              </button>
+            </div>
+            {total > 0 && <p className="text-sm text-slate-500">{total}개의 글</p>}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((opt) => {
+              const selected = filter === opt.value;
+              const catStyle = CATEGORY_MAP[opt.value];
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => onFilterChange(opt.value)}
+                  aria-pressed={selected}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition-colors ${
+                    selected
+                      ? catStyle
+                        ? `${catStyle.chip} shadow-sm`
+                        : 'bg-slate-800 text-white ring-slate-800 shadow-sm'
+                      : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <span aria-hidden="true">{opt.emoji}</span>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 💗 공감 토글 버튼 (목록/상세 공용)
+    //   likedByMe 에 따라 채워진 하트 ↔ 빈 하트. 숫자가 바뀌면 pop 애니메이션.
+    // ========================================
+    function LikeButton({ post, onLike, liking, size = 'sm' }) {
+      const [popKey, setPopKey] = useState(0);
+      const prevCount = useRef(post.likeCount);
+
+      useEffect(() => {
+        if (post.likeCount !== prevCount.current) {
+          prevCount.current = post.likeCount;
+          setPopKey((k) => k + 1);
+        }
+      }, [post.likeCount]);
+
+      const active = post.likedByMe;
+      const pad = size === 'lg' ? 'px-4 py-2 text-sm' : 'px-3.5 py-1.5 text-sm';
+
+      return (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onLike(post); }}
+          disabled={liking}
+          aria-pressed={active}
+          aria-label={active ? `공감 취소. 현재 공감 ${post.likeCount}개` : `공감하기. 현재 공감 ${post.likeCount}개`}
+          className={`group inline-flex items-center gap-2 rounded-full border font-semibold transition-colors disabled:opacity-60 ${pad} ${
+            active
+              ? 'border-rose-300 bg-rose-500 text-white hover:bg-rose-600'
+              : 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+          }`}
+        >
+          <span key={`heart-${popKey}`} className={popKey ? 'animate-heart-beat' : ''}>
+            <Icon.Heart filled={active} className="h-4 w-4" />
+          </span>
+          <span>공감</span>
+          <span
+            key={`count-${popKey}`}
+            className={`min-w-[1.25rem] rounded-full px-1.5 text-center text-xs font-bold ${
+              active ? 'bg-white/25 text-white' : 'bg-white text-rose-600'
+            } ${popKey ? 'animate-count-pop' : ''}`}
+          >
+            {post.likeCount}
+          </span>
+        </button>
+      );
+    }
+
+    // ========================================
+    // 📄 글 카드 (Part 3 — 목록 항목: 제목·작성자·시간, 클릭 → 상세)
+    // ========================================
+    function PostCard({ post, onOpen, onLike, liking }) {
+      const cat = CATEGORY_MAP[post.category] || { accent: 'border-l-slate-300' };
+
+      return (
+        <Card
+          className={`animate-fade-in-up flex cursor-pointer flex-col border-l-4 p-5 transition-shadow hover:shadow-md ${cat.accent}`}
+          onClick={() => onOpen(post)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(post); } }}
+          aria-label={`게시글 열기: ${post.title}`}
+        >
+          {/* 상단: 카테고리 배지 + 작성 시간 */}
+          <div className="mb-2.5 flex items-center justify-between gap-2">
+            <CategoryBadge category={post.category} />
+            <span
+              className="inline-flex items-center gap-1 text-xs text-slate-400"
+              title={fullDate(post.createdAt)}
+            >
+              <Icon.Clock className="h-3.5 w-3.5" />
+              {timeAgo(post.createdAt)}
+              {wasEdited(post) && <span className="text-slate-300">· 수정됨</span>}
+            </span>
+          </div>
+
+          {/* 제목 (클릭하면 상세) */}
+          <h3 className="mb-1 text-base font-bold leading-snug text-slate-800 transition-colors group-hover:text-rose-600">
+            {post.title}
+          </h3>
+
+          {/* 본문 미리보기 (2줄) */}
+          <p className="clamp-2 flex-1 text-sm leading-relaxed text-slate-500">{post.content}</p>
+
+          {/* 하단: 작성자(Auth 업그레이드의 핵심!) + 공감 */}
+          <div className="mt-3.5 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+            <AuthorChip name={post.authorName} isMine={post.isMine} />
+            <LikeButton post={post} onLike={onLike} liking={liking} />
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // 📖 상세 화면 (Part 3 — 클릭하면 상세 내용, 본인 글이면 수정/삭제)
+    // ========================================
+    function DetailView({ post, user, onBack, onLike, liking, onSave, onDelete, saving }) {
+      const [editing, setEditing] = useState(false);
+      const [category, setCategory] = useState(post.category);
+      const [title, setTitle] = useState(post.title);
+      const [content, setContent] = useState(post.content);
+      const [error, setError] = useState('');
+      const [confirmDelete, setConfirmDelete] = useState(false);
+
+      // 다른 글로 바뀌면 편집 상태 초기화
+      useEffect(() => {
+        setEditing(false);
+        setCategory(post.category);
+        setTitle(post.title);
+        setContent(post.content);
+        setError('');
+      }, [post.id]);
+
+      const cat = CATEGORY_MAP[post.category] || { accent: 'border-l-slate-300' };
+
+      const startEdit = () => {
+        setCategory(post.category);
+        setTitle(post.title);
+        setContent(post.content);
+        setError('');
+        setEditing(true);
+      };
+
+      const submitEdit = async (e) => {
+        e.preventDefault();
+        if (saving) return;
+        const t = title.trim();
+        const c = content.trim();
+        if (!t) { setError('제목을 입력해 주세요.'); return; }
+        if (!c) { setError('내용을 입력해 주세요.'); return; }
+        const done = await onSave(post.id, { category, title: t, content: c });
+        if (done) setEditing(false);
+      };
+
+      return (
+        <div className="animate-fade-in-up">
+          {/* 뒤로가기 */}
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-4 inline-flex items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-700"
+          >
+            <Icon.ArrowLeft className="h-4 w-4" /> 목록으로
+          </button>
+
+          <Card className={`border-l-4 p-6 ${cat.accent}`}>
+            {editing ? (
+              /* ---------- 수정 모드 (본인 글만 여기 진입 가능) ---------- */
+              <form onSubmit={submitEdit} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-slate-800">글 수정하기</h2>
+                  <span className="text-xs text-slate-400">내 글이라서 수정할 수 있어요</span>
+                </div>
+                <CategoryPicker value={category} onChange={setCategory} disabled={saving} />
+                <Input
+                  value={title}
+                  onChange={(e) => { setTitle(e.target.value); if (error) setError(''); }}
+                  maxLength={TITLE_MAX}
+                  aria-label="제목"
+                />
+                <Textarea
+                  value={content}
+                  onChange={(e) => { setContent(e.target.value); if (error) setError(''); }}
+                  rows={7}
+                  maxLength={CONTENT_MAX}
+                  aria-label="내용"
+                />
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setEditing(false)} disabled={saving}>
+                    취소
+                  </Button>
+                  <Button type="submit" disabled={saving}>
+                    {saving ? (
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    ) : (
+                      '저장하기'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              /* ---------- 읽기 모드 ---------- */
+              <>
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <CategoryBadge category={post.category} />
+                  <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                    <Icon.Clock className="h-3.5 w-3.5" />
+                    {fullDate(post.createdAt)}
+                    {wasEdited(post) && <span className="text-slate-300"> · 수정됨</span>}
+                  </span>
+                </div>
+
+                <h1 className="mb-3 text-xl font-bold leading-snug text-slate-800">{post.title}</h1>
+
+                <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+                  <AuthorChip name={post.authorName} isMine={post.isMine} />
+                  {/* 본인 글에만 수정/삭제 버튼 노출 (서버도 본인 여부를 다시 검사한다) */}
+                  {post.isMine && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={startEdit}>
+                        <Icon.Edit className="h-3.5 w-3.5" /> 수정
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:bg-red-50"
+                        onClick={() => setConfirmDelete(true)}
+                      >
+                        <Icon.Trash className="h-3.5 w-3.5" /> 삭제
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <p className="preserve-lines min-h-[4rem] text-[15px] leading-relaxed text-slate-700">
+                  {post.content}
+                </p>
+
+                <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                  <LikeButton post={post} onLike={onLike} liking={liking} size="lg" />
+                  <span className="text-xs text-slate-400">
+                    {user ? '공감은 1인 1개 · 다시 누르면 취소' : '로그인하면 공감할 수 있어요'}
+                  </span>
+                </div>
+              </>
+            )}
+          </Card>
+
+          {/* 삭제 확인 모달 */}
+          <Modal isOpen={confirmDelete} onClose={() => setConfirmDelete(false)} title="글을 삭제할까요?" size="sm">
+            <p className="mb-5 text-sm leading-relaxed text-slate-500">
+              "<b className="text-slate-700">{post.title}</b>" 글이 완전히 삭제되며 되돌릴 수 없어요.
+              공감 기록도 함께 사라져요.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setConfirmDelete(false)}>취소</Button>
+              <Button
+                variant="danger"
+                onClick={() => { setConfirmDelete(false); onDelete(post.id); }}
+              >
+                <Icon.Trash className="h-4 w-4" /> 삭제하기
+              </Button>
+            </div>
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🏠 앱 루트 — 상태와 API 호출이 모두 모이는 곳
+    // ========================================
+    function App() {
+      // ---- 인증 상태 ----
+      const [user, setUser] = useState(null);       // { id, email, nickname } | null
+      const [authReady, setAuthReady] = useState(false); // 첫 세션 복원이 끝났는지
+      const [authModal, setAuthModal] = useState(null);  // null | 'login' | 'signup'
+
+      // ---- 게시글 상태 ----
+      const [posts, setPosts] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [loadError, setLoadError] = useState('');
+      const [sort, setSort] = useState('latest');   // 'latest' | 'popular'
+      const [filter, setFilter] = useState('all');  // 'all' | '고민' | '칭찬' | '응원'
+      const [submitting, setSubmitting] = useState(false);
+      const [saving, setSaving] = useState(false);
+      const [likingId, setLikingId] = useState(null);
+
+      // ---- 화면 상태 ----
+      const [detail, setDetail] = useState(null); // null(목록) | post 객체(상세)
+      const [showBanner, setShowBanner] = useState(() => {
+        try { return localStorage.getItem('maum_banner_dismissed') !== '1'; } catch (_e) { return true; }
+      });
+
+      // ---- 토스트 ----
+      const [toasts, setToasts] = useState([]);
+      const toast = useCallback((type, message) => {
+        const id = Date.now() + Math.random();
+        setToasts((ts) => [...ts, { id, type, message }]);
+        setTimeout(() => setToasts((ts) => ts.filter((t) => t.id !== id)), 3200);
+      }, []);
+      const dismissToast = (id) => setToasts((ts) => ts.filter((t) => t.id !== id));
+
+      // ---- 목록 불러오기 (조회는 로그인 없이도 가능 — 전체 공개) ----
+      const loadPosts = useCallback(async (opts = {}) => {
+        const s = opts.sort || sort;
+        const f = opts.filter || filter;
+        if (!opts.silent) setLoading(true);
+        setLoadError('');
+        try {
+          const params = new URLSearchParams();
+          if (f !== 'all') params.set('category', f);
+          if (s === 'popular') params.set('sort', 'popular');
+          const qs = params.toString();
+          const res = await api(`/posts${qs ? `?${qs}` : ''}`);
+          setPosts(res.data);
+        } catch (err) {
+          setLoadError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, [sort, filter]);
+
+      // ---- 부팅: 토큰이 있으면 세션 복원 → 목록 로드 ----
+      useEffect(() => {
+        (async () => {
+          if (getToken()) {
+            try {
+              const res = await api('/auth/me');
+              setUser(res.data.user);
+            } catch (_err) {
+              setToken(null); // 만료/무효 토큰 정리 (목록은 익명으로도 보인다)
+            }
+          }
+          setAuthReady(true);
+          loadPosts();
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
+
+      // ---- 정렬/필터가 바뀌면 다시 조회 (서버의 ORDER BY / WHERE 를 그대로 활용) ----
+      const changeSort = (s) => { setSort(s); loadPosts({ sort: s }); };
+      const changeFilter = (f) => { setFilter(f); loadPosts({ filter: f }); };
+
+      // ---- 만료된 세션 공통 처리 ----
+      const handleExpired = useCallback(() => {
+        setToken(null);
+        setUser(null);
+        setAuthModal('login');
+        toast('error', '세션이 만료되었어요. 다시 로그인해 주세요.');
+        loadPosts({ silent: true }); // isMine/likedByMe 를 익명 기준으로 갱신
+      }, [toast, loadPosts]);
+
+      // ---- 인증 성공 (로그인/회원가입 공통) ----
+      const handleAuthed = (token, u, message) => {
+        setToken(token);
+        setUser(u);
+        setAuthModal(null);
+        toast('success', message || `${u.nickname}님, 환영해요!`);
+        loadPosts({ silent: true }); // isMine/likedByMe 반영
+      };
+
+      // ---- 로그아웃 ----
+      const handleLogout = () => {
+        setToken(null);
+        setUser(null);
+        setDetail(null);
+        toast('info', '로그아웃했어요. 글 구경은 계속할 수 있어요!');
+        loadPosts({ silent: true });
+      };
+
+      // ---- 글 작성 ----
+      const handleCreate = async ({ category, title, content }) => {
+        setSubmitting(true);
+        try {
+          const res = await api('/posts', { method: 'POST', body: { category, title, content } });
+          toast('success', res.message || '마음을 남겼어요. 💌');
+          // 서버 정렬/필터와 일치하도록 목록을 다시 불러온다 (필터가 다른 카테고리면 안 보이는 게 맞다)
+          await loadPosts({ silent: true });
+          return true;
+        } catch (err) {
+          if (err.status === 401) handleExpired();
+          else toast('error', err.message);
+          return false;
+        } finally {
+          setSubmitting(false);
+        }
+      };
+
+      // ---- 글 수정 (본인 글만 — 서버가 404 로 강제) ----
+      const handleSave = async (id, body) => {
+        setSaving(true);
+        try {
+          const res = await api(`/posts/${id}`, { method: 'PUT', body });
+          const updated = res.data;
+          setPosts((ps) => ps.map((p) => (p.id === id ? updated : p)));
+          setDetail((d) => (d && d.id === id ? updated : d));
+          toast('success', res.message || '게시글을 수정했어요.');
+          return true;
+        } catch (err) {
+          if (err.status === 401) handleExpired();
+          else toast('error', err.message);
+          return false;
+        } finally {
+          setSaving(false);
+        }
+      };
+
+      // ---- 글 삭제 (본인 글만) ----
+      const handleDelete = async (id) => {
+        try {
+          await api(`/posts/${id}`, { method: 'DELETE' });
+          setPosts((ps) => ps.filter((p) => p.id !== id));
+          setDetail(null);
+          toast('success', '게시글을 삭제했어요.');
+        } catch (err) {
+          if (err.status === 401) handleExpired();
+          else toast('error', err.message);
+        }
+      };
+
+      // ---- 공감 토글 (로그인 필요 · 1인 1공감) ----
+      const handleLike = async (post) => {
+        if (!user) {
+          setAuthModal('login');
+          toast('info', '공감하려면 로그인이 필요해요.');
+          return;
+        }
+        if (likingId) return;
+        setLikingId(post.id);
+        try {
+          const res = await api(`/posts/${post.id}/like`, { method: 'POST' });
+          const updated = res.data;
+          setPosts((ps) => ps.map((p) => (p.id === updated.id ? updated : p)));
+          setDetail((d) => (d && d.id === updated.id ? updated : d));
+        } catch (err) {
+          if (err.status === 401) handleExpired();
+          else toast('error', err.message);
+        } finally {
+          setLikingId(null);
+        }
+      };
+
+      // ---- 상세 열기: 목록의 데이터로 즉시 열고, 백그라운드에서 최신본으로 갱신 ----
+      const openDetail = async (post) => {
+        setDetail(post);
+        try {
+          const res = await api(`/posts/${post.id}`);
+          setDetail((d) => (d && d.id === post.id ? res.data : d));
+          setPosts((ps) => ps.map((p) => (p.id === post.id ? res.data : p)));
+        } catch (err) {
+          if (err.status === 404) {
+            toast('error', '이 글은 방금 삭제되었어요.');
+            setDetail(null);
+            loadPosts({ silent: true });
+          }
+        }
+      };
+
+      const dismissBanner = () => {
+        setShowBanner(false);
+        try { localStorage.setItem('maum_banner_dismissed', '1'); } catch (_e) {}
+      };
+
+      // ---- 렌더 ----
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-rose-50 via-orange-50 to-amber-50">
+          <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+          <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
+            <Header
+              user={user}
+              onOpenAuth={() => setAuthModal('login')}
+              onLogout={handleLogout}
+              count={posts.length}
+            />
+
+            {detail ? (
+              /* ---------- 상세 화면 ---------- */
+              <DetailView
+                post={detail}
+                user={user}
+                onBack={() => setDetail(null)}
+                onLike={handleLike}
+                liking={likingId === detail.id}
+                onSave={handleSave}
+                onDelete={handleDelete}
+                saving={saving}
+              />
+            ) : (
+              /* ---------- 목록 화면 ---------- */
+              <>
+                {showBanner && <UpgradeBanner onDismiss={dismissBanner} />}
+
+                {/* 글쓰기 (로그인 필요) — authReady 전엔 로그인 카드가 깜빡이지 않게 숨김 */}
+                {authReady && (
+                  <WriteForm
+                    user={user}
+                    onSubmit={handleCreate}
+                    onOpenAuth={() => setAuthModal('signup')}
+                    submitting={submitting}
+                  />
+                )}
+
+                <ControlBar
+                  sort={sort}
+                  onSortChange={changeSort}
+                  filter={filter}
+                  onFilterChange={changeFilter}
+                  total={posts.length}
+                />
+
+                {loading ? (
+                  <Spinner label="마음들을 불러오는 중..." />
+                ) : loadError ? (
+                  <ErrorState message={loadError} onRetry={() => loadPosts()} />
+                ) : posts.length === 0 ? (
+                  <EmptyState filtered={filter !== 'all'} />
+                ) : (
+                  <div className="space-y-3.5">
+                    {posts.map((post) => (
+                      <PostCard
+                        key={post.id}
+                        post={post}
+                        onOpen={openDetail}
+                        onLike={handleLike}
+                        liking={likingId === post.id}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* 푸터 */}
+            <footer className="mt-10 border-t border-rose-100 pt-5 text-center text-xs leading-relaxed text-slate-400">
+              <p>
+                💌 <b className="font-semibold text-slate-500">마음 한 조각 v2</b> — 4주차 익명
+                게시판에 <b className="font-semibold text-rose-400">Auth</b> 를 붙인 업그레이드
+              </p>
+              <p className="mt-0.5">
+                이제 "이 글은 누가 썼는지"가 남고, 내 글만 고칠 수 있어요 · Express + Supabase
+                PostgreSQL + JWT
+              </p>
+            </footer>
+          </div>
+
+          {/* 로그인/회원가입 모달 */}
+          <AuthModal
+            isOpen={authModal !== null}
+            mode={authModal || 'login'}
+            onClose={() => setAuthModal(null)}
+            onAuthed={handleAuthed}
+          />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
