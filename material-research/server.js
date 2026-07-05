@@ -1572,6 +1572,197 @@ app.delete('/api/groups/:id/items/:materialId', (req, res) => {
 });
 
 /* =====================================================================
+ *  머티리얼 스튜디오 — 컬러 라이브러리 + 시멀리스 텍스처 저장 + SKM/Ruby 내보내기
+ *  - data/colors/*.json  : 페인트 컬러/우드 프리셋 라이브러리 (hex는 화면용 근사값)
+ *  - data/textures/      : 스튜디오에서 저장한 텍스처 PNG(+128px 썸네일)
+ *  - data/textures.json  : 텍스처 레지스트리 { id, name, mode, size_mm, avg, params }
+ *  - SKM = zip(document.xml + documentProperties.xml + references.xml + doc_thumbnail.png + ref/{name}_1.png)
+ *    (포맷: jeadland/image-to-skm(MIT) 역공학 스펙, SketchUp 2017+ 호환. xScale/yScale=인치)
+ * ===================================================================== */
+const { execFile } = require('child_process');
+const os = require('os');
+const COLORS_DIR = path.join(DATA_DIR, 'colors');
+const TEXTURES_DIR = path.join(DATA_DIR, 'textures');
+const TEXTURES_FILE = path.join(DATA_DIR, 'textures.json');
+const tdb = { textures: [] };
+
+function loadTextures() {
+  try {
+    if (fs.existsSync(TEXTURES_FILE)) {
+      const p = JSON.parse(fs.readFileSync(TEXTURES_FILE, 'utf8'));
+      if (Array.isArray(p.textures)) tdb.textures = p.textures;
+    }
+  } catch (e) { console.error('[textures] load 실패', e.message); }
+}
+function saveTextures() { atomicWriteJSON(TEXTURES_FILE, { textures: tdb.textures }); }
+
+app.get('/api/colors', (_req, res) => {
+  try {
+    const libs = [];
+    if (fs.existsSync(COLORS_DIR)) {
+      for (const f of fs.readdirSync(COLORS_DIR).filter(x => x.endsWith('.json')).sort()) {
+        try { libs.push(JSON.parse(fs.readFileSync(path.join(COLORS_DIR, f), 'utf8'))); }
+        catch (e) { console.error('[colors]', f, e.message); }
+      }
+    }
+    return ok(res, 200, libs);
+  } catch (e) { return fail(res, 500, '컬러 라이브러리를 불러오지 못했습니다.'); }
+});
+
+function b64ToBuf(s) {
+  const m = String(s || '').replace(/^data:image\/\w+;base64,/, '');
+  return Buffer.from(m, 'base64');
+}
+
+app.get('/api/textures', (_req, res) => ok(res, 200, tdb.textures));
+
+app.post('/api/textures', (req, res) => {
+  try {
+    const b = req.body || {};
+    const name = String(b.name || '').trim();
+    if (!name) return fail(res, 400, '머티리얼 이름이 필요합니다.');
+    const png = b64ToBuf(b.png), thumb = b64ToBuf(b.thumb);
+    if (png.length < 100) return fail(res, 400, 'png(base64)가 필요합니다.');
+    const w = Number((b.size_mm || {}).w), h = Number((b.size_mm || {}).h);
+    if (!(w > 0 && h > 0)) return fail(res, 400, 'size_mm {w,h} (실측 mm)가 필요합니다.');
+    const id = 'tx-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    fs.mkdirSync(TEXTURES_DIR, { recursive: true });
+    fs.writeFileSync(path.join(TEXTURES_DIR, id + '.png'), png);
+    if (thumb.length >= 100) fs.writeFileSync(path.join(TEXTURES_DIR, id + '.thumb.png'), thumb);
+    const avg = b.avg && Number.isFinite(b.avg.r) ? { r: b.avg.r | 0, g: b.avg.g | 0, b: b.avg.b | 0 } : { r: 128, g: 128, b: 128 };
+    const rec = {
+      id, name, mode: String(b.mode || 'custom'), size_mm: { w, h }, avg,
+      params: (b.params && typeof b.params === 'object') ? b.params : {},
+      png_url: '/data/textures/' + id + '.png',
+      thumb_url: (thumb.length >= 100 ? '/data/textures/' + id + '.thumb.png' : null),
+      created_at: new Date().toISOString()
+    };
+    tdb.textures.unshift(rec);
+    saveTextures();
+    return ok(res, 201, rec, `"${name}" 저장`);
+  } catch (e) { console.error('[textures] save', e); return fail(res, 500, '텍스처 저장 중 오류'); }
+});
+
+app.delete('/api/textures/:id', (req, res) => {
+  const i = tdb.textures.findIndex(t => t.id === req.params.id);
+  if (i < 0) return fail(res, 404, '텍스처를 찾을 수 없습니다.');
+  const [t] = tdb.textures.splice(i, 1);
+  for (const f of [t.id + '.png', t.id + '.thumb.png']) {
+    try { fs.unlinkSync(path.join(TEXTURES_DIR, f)); } catch (_) {}
+  }
+  saveTextures();
+  return ok(res, 200, { id: t.id, deleted: true }, '삭제되었습니다.');
+});
+
+function xmlEsc(s) { return String(s).replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c])); }
+
+function skmDocumentXml(name, filename, r, g, b, avg, xs, ys) {
+  const internal = filename.replace(/(\.\w+)$/, '_1$1');
+  return '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
+    + '<materialDocument xmlns="http://sketchup.google.com/schemas/sketchup/1.0/material"'
+    + ' xmlns:mat="http://sketchup.google.com/schemas/sketchup/1.0/material"'
+    + ' xmlns:r="http://sketchup.google.com/schemas/1.0/references"'
+    + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+    + ' xsi:schemaLocation="http://sketchup.google.com/schemas/sketchup/1.0/material http://sketchup.google.com/schemas/sketchup/1.0/material.xsd">\n'
+    + `  <mat:material name="${xmlEsc(name)}" type="1" workflow="0" colorRed="${r}" colorGreen="${g}" colorBlue="${b}" colorizeType="0" trans="0" useTrans="0" hasTexture="1">\n`
+    + `    <mat:texture textureFilename="${xmlEsc(filename)}" xScale="${xs.toFixed(6)}" yScale="${ys.toFixed(6)}" avgColor="${avg}">\n`
+    + '      <mat:images>\n'
+    + `        <mat:image id="1" path="${xmlEsc(internal)}" file_name="${xmlEsc(filename)}" />\n`
+    + '      </mat:images>\n'
+    + '    </mat:texture>\n'
+    + '  </mat:material>\n'
+    + '</materialDocument>\n';
+}
+function skmPropertiesXml(name) {
+  const now = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  return '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
+    + '<documentProperties xmlns="http://sketchup.google.com/schemas/1.0/documentproperties"'
+    + ' xmlns:dp="http://sketchup.google.com/schemas/1.0/documentproperties"'
+    + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+    + ' xsi:schemaLocation="http://sketchup.google.com/schemas/1.0/documentproperties http://sketchup.google.com/schemas/1.0/documentproperties.xsd">\n'
+    + `  <dp:title>${xmlEsc(name)}</dp:title>\n`
+    + '  <dp:description></dp:description>\n  <dp:creator></dp:creator>\n  <dp:keywords></dp:keywords>\n'
+    + '  <dp:lastModifiedBy></dp:lastModifiedBy>\n  <dp:revision>0</dp:revision>\n'
+    + `  <dp:created>${now}</dp:created>\n  <dp:modified>${now}</dp:modified>\n`
+    + '  <dp:thumbnail>doc_thumbnail.png</dp:thumbnail>\n'
+    + '  <dp:generator dp:name="Material" dp:version="1" />\n'
+    + '</documentProperties>\n';
+}
+const SKM_REFERENCES_XML = '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n'
+  + '<references xmlns="http://sketchup.google.com/schemas/1.0/references"'
+  + ' xmlns:r="http://sketchup.google.com/schemas/1.0/references"'
+  + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+  + ' xsi:schemaLocation="http://sketchup.google.com/schemas/1.0/references http://sketchup.google.com/schemas/1.0/references.xsd" />\n';
+
+app.get('/api/textures/:id/skm', (req, res) => {
+  const t = tdb.textures.find(x => x.id === req.params.id);
+  if (!t) return fail(res, 404, '텍스처를 찾을 수 없습니다.');
+  const pngPath = path.join(TEXTURES_DIR, t.id + '.png');
+  if (!fs.existsSync(pngPath)) return fail(res, 404, '텍스처 파일이 없습니다.');
+  try {
+    const safe = t.name.replace(/[\\/:*?"<>|]/g, '_');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'skm-'));
+    const texName = 'texture.png'; // zip 내부는 ASCII 고정 (한글 zip 엔트리 → Windows SketchUp 호환 이슈 회피)
+    const xs = t.size_mm.w / 25.4, ys = t.size_mm.h / 25.4; // mm → inch
+    const { r, g, b } = t.avg;
+    const avgPacked = (b << 16) | (g << 8) | r; // BGR
+    fs.writeFileSync(path.join(tmp, 'document.xml'), skmDocumentXml(t.name, texName, r, g, b, avgPacked, xs, ys));
+    fs.writeFileSync(path.join(tmp, 'documentProperties.xml'), skmPropertiesXml(t.name));
+    fs.writeFileSync(path.join(tmp, 'references.xml'), SKM_REFERENCES_XML);
+    const thumbPath = path.join(TEXTURES_DIR, t.id + '.thumb.png');
+    fs.copyFileSync(fs.existsSync(thumbPath) ? thumbPath : pngPath, path.join(tmp, 'doc_thumbnail.png'));
+    fs.mkdirSync(path.join(tmp, 'ref'));
+    fs.copyFileSync(pngPath, path.join(tmp, 'ref', 'texture_1.png'));
+    const out = path.join(tmp, safe + '.skm');
+    execFile('zip', ['-r', '-X', '-q', out, 'document.xml', 'documentProperties.xml', 'references.xml', 'doc_thumbnail.png', 'ref'], { cwd: tmp }, (err) => {
+      if (err) { console.error('[skm] zip', err); return fail(res, 500, 'SKM 패키징 실패'); }
+      res.download(out, safe + '.skm', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) {} });
+    });
+  } catch (e) { console.error('[skm]', e); return fail(res, 500, 'SKM 생성 중 오류'); }
+});
+
+// Ruby 로더: 붙여넣기 한 번으로 컬러(무텍스처 솔리드) + 저장 텍스처(실측 mm 스케일)를 SketchUp 머티리얼로 등록
+app.get('/api/textures/ruby-loader', (req, res) => {
+  try {
+    const libsParam = String(req.query.libs || 'benjamin-moore,dunn-edwards,korea-standard');
+    const wantLibs = new Set(libsParam.split(',').map(s => s.trim()).filter(Boolean));
+    const includeTex = String(req.query.textures || '1') !== '0';
+    const lines = [];
+    lines.push('# 자재DB 머티리얼 로더 — SketchUp Ruby Console에 전체 붙여넣기');
+    lines.push('# 컬러 hex는 화면용 근사값: 실제 도장 전 공식 컬러칩 대조');
+    lines.push('model = Sketchup.active_model');
+    lines.push('mats = model.materials');
+    lines.push('made = 0');
+    if (fs.existsSync(COLORS_DIR)) {
+      for (const f of fs.readdirSync(COLORS_DIR).filter(x => x.endsWith('.json')).sort()) {
+        let lib; try { lib = JSON.parse(fs.readFileSync(path.join(COLORS_DIR, f), 'utf8')); } catch (_) { continue; }
+        if (!lib || !Array.isArray(lib.colors) || !wantLibs.has(lib.key)) continue;
+        lines.push(`# --- ${lib.brand} (${lib.colors.length}) ---`);
+        const rows = lib.colors.map(c => {
+          const hex = String(c.hex || '#CCCCCC').replace('#', '');
+          const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+          const nm = `${lib.brand} ${c.name} ${c.code}`.replace(/"/g, '');
+          return `["${nm}",${r},${g},${b}]`;
+        });
+        lines.push(`[${rows.join(',')}].each { |n,r,g,b| m = mats[n] || mats.add(n); m.color = Sketchup::Color.new(r,g,b); made += 1 }`);
+      }
+    }
+    if (includeTex && tdb.textures.length) {
+      lines.push(`# --- 스튜디오 텍스처 (${tdb.textures.length}) — 실측 mm 스케일 ---`);
+      for (const t of tdb.textures) {
+        const p = path.join(TEXTURES_DIR, t.id + '.png');
+        if (!fs.existsSync(p)) continue;
+        const nm = t.name.replace(/"/g, '');
+        lines.push(`begin; m = mats["${nm}"] || mats.add("${nm}"); m.texture = "${p}"; m.texture.size = [${t.size_mm.w}.mm, ${t.size_mm.h}.mm]; made += 1; rescue => e; puts "skip ${nm}: #{e}"; end`);
+      }
+    }
+    lines.push('puts "머티리얼 #{made}개 등록/갱신 완료"');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    return res.send(lines.join('\n'));
+  } catch (e) { console.error('[ruby-loader]', e); return fail(res, 500, 'Ruby 로더 생성 중 오류'); }
+});
+
+/* =====================================================================
  *  /api 404 (JSON) → SPA fallback → 에러 핸들러
  * ===================================================================== */
 app.use('/api', (_req, res) => fail(res, 404, '존재하지 않는 API 경로입니다.'));
@@ -1590,6 +1781,7 @@ app.use((err, _req, res, _next) => {
  * ===================================================================== */
 loadStore();
 loadFavGroups();
+loadTextures();
 ingestIncomingDir(); // 부팅 시 data/incoming/ 의 주간 업데이트(클라우드 트리거가 레포에 커밋한 파일) 자동 반영
 
 if (require.main === module) {

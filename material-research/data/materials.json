@@ -2,7 +2,7 @@
   "meta": {
     "version": 1,
     "seededAt": "2026-06-30T14:32:54.335Z",
-    "lastImportAt": "2026-07-03T15:00:52.531Z"
+    "lastImportAt": "2026-07-05T09:55:33.523Z"
   },
   "materials": [
     {
@@ -11147,6 +11147,126 @@
       "source": "seed",
       "collected_date": "2026-07-03",
       "updated_at": "2026-07-03T15:00:52.553Z"
+    },
+    {
+      "id": "바닥공사-바닥재-지복득마루-baram-15-12t-x-165-x-1200",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "name": "지복득마루 BARAM 15",
+      "spec": "12T x 165 x 1200",
+      "unit": "M2",
+      "brands": [
+        "지복득마루"
+      ],
+      "price": {
+        "min": 85000,
+        "max": 150000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실·침실 원목마루",
+      "notes": "BARAM 콤팩트 시리즈, 공식 규격 12T×165×1200",
+      "source": "seed",
+      "collected_date": "2026-07-05",
+      "updated_at": "2026-07-05T09:55:33.530Z"
+    },
+    {
+      "id": "바닥공사-바닥재-지복득마루-baram-16-14t-x-190-x-1900",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "name": "지복득마루 BARAM 16",
+      "spec": "14T x 190 x 1900",
+      "unit": "M2",
+      "brands": [
+        "지복득마루"
+      ],
+      "price": {
+        "min": 110000,
+        "max": 190000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 광폭 원목마루",
+      "notes": "BARAM 광폭·롱보드, 공식 규격 14T×190×1900",
+      "source": "seed",
+      "collected_date": "2026-07-05",
+      "updated_at": "2026-07-05T09:55:33.554Z"
+    },
+    {
+      "id": "바닥공사-바닥재-지복득마루-baram-17-14t-x-190-x-1900",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "name": "지복득마루 BARAM 17",
+      "spec": "14T x 190 x 1900",
+      "unit": "M2",
+      "brands": [
+        "지복득마루"
+      ],
+      "price": {
+        "min": 115000,
+        "max": 195000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 광폭 원목마루",
+      "notes": "BARAM 17 컬렉션, 공식 규격 14T×190×1900",
+      "source": "seed",
+      "collected_date": "2026-07-05",
+      "updated_at": "2026-07-05T09:55:33.554Z"
+    },
+    {
+      "id": "바닥공사-바닥재-지복득마루-baram-18-14t-x-190-x-1900",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "name": "지복득마루 BARAM 18",
+      "spec": "14T x 190 x 1900",
+      "unit": "M2",
+      "brands": [
+        "지복득마루"
+      ],
+      "price": {
+        "min": 120000,
+        "max": 200000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 광폭 원목마루",
+      "notes": "BARAM 18 컬렉션, 공식 규격 14T×190×1900",
+      "source": "seed",
+      "collected_date": "2026-07-05",
+      "updated_at": "2026-07-05T09:55:33.554Z"
+    },
+    {
+      "id": "바닥공사-바닥재-지복득마루-baram-19-15t-x-240-x-2200",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "name": "지복득마루 BARAM 19",
+      "spec": "15T x 240 x 2200",
+      "unit": "M2",
+      "brands": [
+        "지복득마루"
+      ],
+      "price": {
+        "min": 140000,
+        "max": 230000,
+        "unit": "M2",
+        "note": "기준선/추정 시세(범위) — 정밀 견적 아님"
+      },
+      "grade": "고급",
+      "use": "거실 초광폭 원목마루",
+      "notes": "BARAM 플래그십 초광폭·롱보드, 공식 규격 15T×240×2200",
+      "source": "seed",
+      "collected_date": "2026-07-05",
+      "updated_at": "2026-07-05T09:55:33.554Z"
     }
   ]
 }

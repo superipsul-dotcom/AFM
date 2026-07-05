@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>머티리얼 스튜디오 — 스케치업 시멀리스 텍스처</title>
+<style>
+  :root{--bg:#0d1017;--panel:#161a23;--panel2:#1e2430;--line:#262c3a;--txt:#e8eaf0;--mut:#8b93a5;--mut2:#6b7383;--accent:#4f8cff;--accent2:#8fb3ff;--chip:#222839}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;font-size:14px}
+  a{color:inherit;text-decoration:none}
+  header{position:sticky;top:0;z-index:20;background:rgba(13,16,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .wrap{max-width:1480px;margin:0 auto;padding:0 20px}
+  .hrow{display:flex;align-items:center;gap:14px;padding:14px 0}
+  .logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#4f8cff33,#8fb3ff22);display:flex;align-items:center;justify-content:center;font-size:19px;border:1px solid var(--line)}
+  h1{font-size:17px;letter-spacing:-.3px}
+  .sub{font-size:12px;color:var(--mut);margin-top:2px}
+  .hbtn{margin-left:auto;display:flex;gap:8px}
+  .btn{padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);cursor:pointer;font-size:13px;font-weight:600}
+  .btn:hover{border-color:#7a8699}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.pri:hover{filter:brightness(1.1)}
+  .btn:disabled{opacity:.5;cursor:default}
+  main{padding:18px 0 60px}
+  .layout{display:grid;grid-template-columns:290px 1fr 320px;gap:16px;align-items:start}
+  @media(max-width:1100px){.layout{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px}
+  .ph{padding:12px 15px;border-bottom:1px solid var(--line);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .pb{padding:14px 15px}
+  .modes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+  .mode{padding:9px 4px;text-align:center;border:1px solid var(--line);border-radius:9px;cursor:pointer;font-size:12.5px;color:var(--mut);background:var(--panel2)}
+  .mode.on{color:#fff;border-color:var(--accent);background:rgba(79,140,255,.15)}
+  .fld{margin-bottom:12px}
+  .fld label{display:block;font-size:11.5px;color:var(--mut);margin-bottom:5px;font-weight:600}
+  .fld input[type=text],.fld input[type=number],.fld select{width:100%;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-size:13px}
+  .fld input[type=range]{width:100%}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .crow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .crow label{flex:1;font-size:12px;color:var(--mut)}
+  .crow input[type=color]{width:34px;height:26px;border:1px solid var(--line);border-radius:6px;background:none;padding:0 2px;cursor:pointer}
+  .crow input.hex{width:84px;padding:5px 7px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--txt);font-size:12px;font-family:ui-monospace,monospace}
+  .rv{font-size:11px;color:var(--mut2);margin-left:4px;min-width:30px;text-align:right}
+  /* preview */
+  .prevwrap{display:flex;flex-direction:column;gap:10px}
+  .canvasbox{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:center;min-height:420px}
+  #tiled{width:100%;height:520px;border-radius:8px;border:1px solid var(--line);background-repeat:repeat;image-rendering:auto}
+  canvas#cv{max-width:100%;max-height:520px;border-radius:8px;border:1px solid var(--line)}
+  .pmeta{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--mut);flex-wrap:wrap}
+  .pmeta b{color:var(--txt)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg span{padding:6px 12px;cursor:pointer;font-size:12px;color:var(--mut);background:var(--panel2)}
+  .seg span.on{color:#fff;background:rgba(79,140,255,.2)}
+  .savebar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .savebar input{flex:1;min-width:220px;padding:9px 11px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--txt);font-size:13px}
+  /* library */
+  .libtabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px}
+  .ltab{padding:5px 10px;border-radius:20px;border:1px solid var(--line);font-size:11.5px;color:var(--mut);cursor:pointer}
+  .ltab.on{color:#fff;border-color:var(--accent);background:rgba(79,140,255,.15)}
+  .libnote{font-size:11px;color:var(--mut2);margin-bottom:10px;line-height:1.5}
+  .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:7px;max-height:300px;overflow:auto;padding-right:4px}
+  .cchip{cursor:pointer;border-radius:8px;border:1px solid var(--line);overflow:hidden}
+  .cchip .sw{height:34px}
+  .cchip .cn{font-size:9.5px;color:var(--mut);padding:3px 4px;line-height:1.25;height:34px;overflow:hidden}
+  .cchip:hover{border-color:#7a8699}
+  .cchip.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .wpre{display:flex;flex-direction:column;gap:7px;max-height:300px;overflow:auto}
+  .wp{display:flex;gap:9px;align-items:center;padding:7px;border:1px solid var(--line);border-radius:9px;cursor:pointer}
+  .wp:hover{border-color:#7a8699}
+  .wp.sel{border-color:var(--accent)}
+  .wp .sw{width:52px;height:34px;border-radius:6px;flex-shrink:0}
+  .wp .nm{font-size:12px;line-height:1.35}
+  .wp .mt{font-size:10.5px;color:var(--mut2)}
+  /* saved */
+  .saved{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto}
+  .sv{display:flex;gap:10px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:9px}
+  .sv img{width:46px;height:46px;border-radius:7px;object-fit:cover;border:1px solid var(--line)}
+  .sv .nm{font-size:12.5px;font-weight:600;line-height:1.3;flex:1}
+  .sv .mt{font-size:10.5px;color:var(--mut2);font-weight:400;margin-top:2px}
+  .sv .act{display:flex;gap:5px}
+  .sv .sb{padding:5px 8px;font-size:11px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--mut);cursor:pointer}
+  .sv .sb:hover{color:#fff}
+  .empty{padding:18px;text-align:center;color:var(--mut2);font-size:12.5px}
+  /* modal */
+  .ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50}
+  .ov.show{display:flex}
+  .modal{width:min(760px,92vw);max-height:84vh;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column}
+  .mh{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-weight:700}
+  .mb{padding:14px 16px;overflow:auto}
+  .mb textarea{width:100%;height:46vh;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:#cdd6e4;font-family:ui-monospace,monospace;font-size:11.5px;padding:10px;white-space:pre}
+  .close{background:none;border:none;color:var(--mut);font-size:16px;cursor:pointer}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2a3f;border:1px solid var(--accent);color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:60;display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap hrow">
+    <a href="/" class="logo">🎨</a>
+    <div>
+      <h1>머티리얼 스튜디오</h1>
+      <div class="sub">시멀리스 텍스처 → SketchUp (실측 mm 스케일 · SKM/Ruby) — Architextures 방식</div>
+    </div>
+    <div class="hbtn">
+      <a class="btn" href="/">🧱 자재 DB</a>
+      <button class="btn" id="btnRuby">📋 Ruby 로더</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap layout">
+
+    <!-- LEFT: 파라미터 -->
+    <div class="panel">
+      <div class="ph"><span>텍스처 설정</span><span id="modeLabel" style="color:var(--mut);font-weight:600;font-size:12px"></span></div>
+      <div class="pb">
+        <div class="modes">
+          <div class="mode on" data-m="paint">🖌️ 페인트</div>
+          <div class="mode" data-m="wallpaper">🧻 벽지</div>
+          <div class="mode" data-m="wood">🪵 마루</div>
+          <div class="mode" data-m="tile">🧊 타일</div>
+        </div>
+
+        <!-- 공통 색 -->
+        <div class="crow"><label id="baseLabel">기본색</label><input type="color" id="cBase" value="#EFEEE5"><input class="hex" id="hBase" value="#EFEEE5"></div>
+
+        <!-- paint -->
+        <div class="mset" id="set-paint">
+          <div class="fld"><label>마감 질감</label>
+            <select id="pFinish"><option value="0">매트(민무늬)</option><option value="1" selected>무광(미세 입자)</option><option value="2">에그쉘(입자+음영)</option><option value="3">롤러 자국(약)</option></select>
+          </div>
+        </div>
+
+        <!-- wallpaper -->
+        <div class="mset" id="set-wallpaper" style="display:none">
+          <div class="fld"><label>벽지 질감</label>
+            <select id="wpWeave"><option value="plain">플레인(미세 입자)</option><option value="silk" selected>실크 위브(직조)</option><option value="fabric">패브릭(세로결)</option></select>
+          </div>
+          <div class="fld"><label>질감 강도 <span class="rv" id="wpIntV">1.2</span></label><input type="range" id="wpInt" min="0.3" max="3" step="0.1" value="1.2"></div>
+        </div>
+
+        <!-- wood -->
+        <div class="mset" id="set-wood" style="display:none">
+          <div class="row2">
+            <div class="fld"><label>플랭크 폭 (mm)</label><input type="number" id="wdW" value="190" min="60" max="400"></div>
+            <div class="fld"><label>플랭크 길이 (mm)</label><input type="number" id="wdL" value="1900" min="300" max="2400"></div>
+          </div>
+          <div class="fld"><label>시공 패턴</label>
+            <select id="wdPat"><option value="random" selected>랜덤 스태거(일자)</option><option value="brick">1/2 브릭(일자)</option><option value="herring">헤링본 (2:1 컷)</option></select>
+          </div>
+          <div class="crow"><label>보조톤</label><input type="color" id="cTone2" value="#B8946C"><input class="hex" id="hTone2" value="#B8946C"></div>
+          <div class="crow"><label>나뭇결</label><input type="color" id="cGrain" value="#8A6A4A"><input class="hex" id="hGrain" value="#8A6A4A"></div>
+          <div class="crow"><label>줄눈(V홈)</label><input type="color" id="cGap" value="#6E5238"><input class="hex" id="hGap" value="#6E5238"></div>
+          <div class="fld"><label>플랭크 톤 편차 <span class="rv" id="wdVarV">10%</span></label><input type="range" id="wdVar" min="0" max="25" step="1" value="10"></div>
+          <div class="fld"><label>나뭇결 강도 <span class="rv" id="wdGrV">45</span></label><input type="range" id="wdGr" min="0" max="100" step="5" value="45"></div>
+        </div>
+
+        <!-- tile -->
+        <div class="mset" id="set-tile" style="display:none">
+          <div class="row2">
+            <div class="fld"><label>타일 폭 (mm)</label><input type="number" id="tlW" value="600" min="50" max="1200"></div>
+            <div class="fld"><label>타일 높이 (mm)</label><input type="number" id="tlH" value="600" min="50" max="1200"></div>
+          </div>
+          <div class="row2">
+            <div class="fld"><label>줄눈 폭 (mm)</label><input type="number" id="tlG" value="3" min="1" max="15"></div>
+            <div class="fld"><label>패턴</label><select id="tlPat"><option value="grid" selected>그리드</option><option value="brick">1/2 브릭</option></select></div>
+          </div>
+          <div class="crow"><label>줄눈 색</label><input type="color" id="cGrout" value="#B9B4AC"><input class="hex" id="hGrout" value="#B9B4AC"></div>
+          <div class="fld"><label>표면 얼룩(포세린) <span class="rv" id="tlVarV">12</span></label><input type="range" id="tlVar" min="0" max="40" step="2" value="12"></div>
+        </div>
+
+        <div class="fld"><label>랜덤 시드</label>
+          <div style="display:flex;gap:8px"><input type="number" id="seed" value="7" style="flex:1"><button class="btn" id="reroll" title="새 시드">🎲</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: 미리보기 + 저장 -->
+    <div class="prevwrap">
+      <div class="panel">
+        <div class="ph"><span>미리보기</span>
+          <div class="seg"><span class="on" id="vTile">타일 반복 보기</span><span id="vOne">원본 1장</span></div>
+        </div>
+        <div class="pb">
+          <div class="canvasbox"><div id="tiled"></div><canvas id="cv" style="display:none"></canvas></div>
+          <div class="pmeta" style="margin-top:10px">
+            <span>실측 타일: <b id="mSize">–</b></span>
+            <span>해상도: <b id="mPx">–</b></span>
+            <span>모드: <b id="mMode">페인트</b></span>
+            <span style="color:var(--mut2)">시멀리스 — 상하좌우 이음매 없음</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="pb savebar">
+          <input id="matName" placeholder="머티리얼 이름 (예: BM White Dove OC-17 무광)" />
+          <button class="btn pri" id="btnSave">💾 저장</button>
+          <button class="btn" id="btnSaveSkm">💾 저장 + SKM ⬇</button>
+          <button class="btn" id="btnPng">PNG ⬇</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: 라이브러리 -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="panel">
+        <div class="ph"><span id="libTitle">컬러 라이브러리</span></div>
+        <div class="pb">
+          <div class="libtabs" id="libtabs"></div>
+          <div class="libnote" id="libnote"></div>
+          <div class="chips" id="chips"></div>
+          <div class="wpre" id="wpre" style="display:none"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span>저장된 머티리얼</span><span class="rv" id="svCount"></span></div>
+        <div class="pb saved" id="saved"><div class="empty">로딩…</div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="ov" id="ov">
+  <div class="modal">
+    <div class="mh"><span>📋 SketchUp Ruby 로더 — Ruby Console에 전체 붙여넣기</span><button class="close" id="mClose">✕</button></div>
+    <div class="mb">
+      <div style="font-size:12px;color:var(--mut);margin-bottom:9px">벤자민무어 44 + 던에드워드 20 + 국내 26 컬러(솔리드) + 저장된 텍스처(실측 mm)를 한 번에 머티리얼로 등록합니다. <b>창 &gt; Ruby Console</b> 에 붙여넣고 Enter.</div>
+      <textarea id="rubyTa" readonly>로딩…</textarea>
+      <div style="margin-top:10px;display:flex;gap:8px"><button class="btn pri" id="btnCopy">복사</button></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var API=(location.protocol==="http:"||location.protocol==="https:")?"/api":"http://localhost:3011/api";
+function $(id){return document.getElementById(id);}
+function api(p){return fetch(API+p).then(function(r){return r.json().then(function(j){if(!r.ok||j.success===false)throw new Error(j.message||("HTTP "+r.status));return j;});});}
+function apiSend(p,m,b){return fetch(API+p,{method:m,headers:{"Content-Type":"application/json"},body:b?JSON.stringify(b):undefined}).then(function(r){return r.json().then(function(j){if(!r.ok||j.success===false)throw new Error(j.message||("HTTP "+r.status));return j;});});}
+function toast(s){var t=$("toast");t.textContent=s;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(function(){t.style.display="none";},2200);}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+
+/* ---------- 상태 ---------- */
+var st={mode:"paint",libs:[],libKey:"benjamin-moore",selChip:null,selWood:null,saved:[],autoName:""};
+
+/* ---------- 시드 RNG ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+/* ---------- 색 유틸 ---------- */
+function hex2rgb(h){h=h.replace("#","");return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function mix(a,b,t){return[Math.round(a[0]+(b[0]-a[0])*t),Math.round(a[1]+(b[1]-a[1])*t),Math.round(a[2]+(b[2]-a[2])*t)];}
+function shade(c,f){return[Math.max(0,Math.min(255,Math.round(c[0]*f))),Math.max(0,Math.min(255,Math.round(c[1]*f))),Math.max(0,Math.min(255,Math.round(c[2]*f)))];}
+function rgbs(c){return"rgb("+c[0]+","+c[1]+","+c[2]+")";}
+
+/* ---------- 캔버스 엔진 ---------- */
+var cv=$("cv"),ctx=cv.getContext("2d");
+var real={w:600,h:600}; // 현재 텍스처의 실측 mm
+
+function wrapRect(x,y,w,h,fill){ // 9오프셋 랩 — 어떤 도형도 시멀리스 보장
+  ctx.fillStyle=fill;
+  for(var dx=-1;dx<=1;dx++)for(var dy=-1;dy<=1;dy++){
+    var rx=x+dx*cv.width,ry=y+dy*cv.height;
+    if(rx+w<0||rx>cv.width||ry+h<0||ry>cv.height)continue;
+    ctx.fillRect(rx,ry,w,h);
+  }
+}
+function wrapLine(x1,y1,x2,y2,wpx,stroke,alpha){
+  ctx.strokeStyle=stroke;ctx.lineWidth=wpx;ctx.globalAlpha=alpha;
+  for(var dx=-1;dx<=1;dx++)for(var dy=-1;dy<=1;dy++){
+    ctx.beginPath();ctx.moveTo(x1+dx*cv.width,y1+dy*cv.height);ctx.lineTo(x2+dx*cv.width,y2+dy*cv.height);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+/* 화이트노이즈(픽셀 독립 → 시멀리스) + 주기적 저주파 얼룩(sin 조합 → 시멀리스) */
+function grainPass(amp,mottle,rnd){
+  if(amp<=0&&mottle<=0)return;
+  var img=ctx.getImageData(0,0,cv.width,cv.height),d=img.data,W=cv.width,H=cv.height;
+  var p1=rnd()*6.28,p2=rnd()*6.28,p3=rnd()*6.28;
+  for(var y=0;y<H;y++){
+    for(var x=0;x<W;x++){
+      var i=(y*W+x)*4;
+      var n=(rnd()-0.5)*2*amp;
+      if(mottle>0){
+        n+=mottle*(Math.sin(6.283*3*x/W+p1)*Math.sin(6.283*2*y/H+p2)*0.6+Math.sin(6.283*5*(x/W+y/H)+p3)*0.4);
+      }
+      d[i]=Math.max(0,Math.min(255,d[i]+n));d[i+1]=Math.max(0,Math.min(255,d[i+1]+n));d[i+2]=Math.max(0,Math.min(255,d[i+2]+n));
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function renderPaint(){
+  real={w:600,h:600};setCanvas(512,512);
+  var base=hex2rgb($("hBase").value),fin=+$("pFinish").value,rnd=mulberry32(+$("seed").value);
+  ctx.fillStyle=rgbs(base);ctx.fillRect(0,0,cv.width,cv.height);
+  if(fin===1)grainPass(2.2,0,rnd);
+  if(fin===2)grainPass(3.2,2.2,rnd);
+  if(fin===3){grainPass(2.0,1.2,rnd);
+    // 롤러 자국: 주기적 세로 밝기 밴드(sin → 시멀리스)
+    var img=ctx.getImageData(0,0,cv.width,cv.height),d=img.data,ph=rnd()*6.28;
+    for(var x=0;x<cv.width;x++){var v=Math.sin(6.283*6*x/cv.width+ph)*1.8;
+      for(var y=0;y<cv.height;y++){var i=(y*cv.width+x)*4;d[i]+=v;d[i+1]+=v;d[i+2]+=v;}}
+    ctx.putImageData(img,0,0);}
+}
+
+function renderWallpaper(){
+  real={w:530,h:530};setCanvas(512,512);
+  var base=hex2rgb($("hBase").value),wv=$("wpWeave").value,k=+$("wpInt").value,rnd=mulberry32(+$("seed").value);
+  ctx.fillStyle=rgbs(base);ctx.fillRect(0,0,cv.width,cv.height);
+  var img=ctx.getImageData(0,0,cv.width,cv.height),d=img.data,W=cv.width,H=cv.height;
+  var p1=rnd()*6.28,p2=rnd()*6.28;
+  // 직조 주기: 실크 위브 ≈ 1.2mm 격자 (530mm/512px 기준 환산)
+  var cell=Math.max(2,Math.round(1.2/(real.w/W)));
+  var vcell=Math.max(2,Math.round(2.0/(real.w/W)));
+  for(var y=0;y<H;y++){
+    for(var x=0;x<W;x++){
+      var i=(y*W+x)*4,n=(rnd()-0.5)*2*(1.4*k);
+      if(wv==="silk"){
+        var wx=Math.sin(6.283*x/cell)+Math.sin(6.283*y/cell);
+        n+=wx*0.9*k+Math.sin(6.283*2*y/H+p1)*0.6*k;
+      }else if(wv==="fabric"){
+        n+=Math.sin(6.283*x/vcell+Math.sin(6.283*y/(vcell*7)+p2)*1.5)*1.3*k;
+      }
+      d[i]=Math.max(0,Math.min(255,d[i]+n));d[i+1]=Math.max(0,Math.min(255,d[i+1]+n));d[i+2]=Math.max(0,Math.min(255,d[i+2]+n));
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+/* 마루: 플랭크 1장(랩 지원) — 홈/결/톤편차 */
+function drawPlank(x,y,w,h,base,tone2,grain,gap,horiz,rnd,grInt,tvar){
+  var t=(rnd()*2-1)*tvar/100;
+  var col=shade(mix(base,tone2,rnd()),1+t);
+  var gpx=Math.max(1,pxPerMm()*1.4); // V홈 1.4mm
+  wrapRect(x,y,w,h,rgbs(hex2rgb($("hGap").value)));
+  wrapRect(x+gpx/2,y+gpx/2,w-gpx,h-gpx,rgbs(col));
+  // 나뭇결: 길이 방향 스트릭
+  if(grInt>0){
+    var n=Math.round((horiz?h:w)/Math.max(3,pxPerMm()*14))+2;
+    var gcol=rgbs(hex2rgb($("hGrain").value));
+    for(var s=0;s<n;s++){
+      var off=(s+0.5)/n,amp=(rnd()*0.35+0.1)*(horiz?h:w)*0.1,ph=rnd()*6.28,al=(0.05+rnd()*0.11)*(grInt/100)*2;
+      var segs=14;
+      for(var q=0;q<segs;q++){
+        var t0=q/segs,t1=(q+1)/segs,x1,y1,x2,y2;
+        if(horiz){x1=x+t0*w;x2=x+t1*w;y1=y+off*h+Math.sin(t0*4+ph)*amp;y2=y+off*h+Math.sin(t1*4+ph)*amp;}
+        else{y1=y+t0*h;y2=y+t1*h;x1=x+off*w+Math.sin(t0*4+ph)*amp;x2=x+off*w+Math.sin(t1*4+ph)*amp;}
+        wrapLine(x1,y1,x2,y2,Math.max(1,pxPerMm()*0.8),gcol,al);
+      }
+    }
+  }
+  // 상단 모서리 하이라이트(V홈 입체감)
+  ctx.globalAlpha=0.10;ctx.fillStyle="#fff";
+  for(var dx=-1;dx<=1;dx++)for(var dy=-1;dy<=1;dy++)ctx.fillRect(x+dx*cv.width+gpx/2,y+dy*cv.height+gpx/2,w-gpx,Math.max(1,gpx*0.6));
+  ctx.globalAlpha=1;
+}
+var _ppm=1;function pxPerMm(){return _ppm;}
+function setCanvas(w,h){cv.width=w;cv.height=h;}
+
+function renderWood(){
+  var W=+$("wdW").value||190,L=+$("wdL").value||1900,pat=$("wdPat").value;
+  var base=hex2rgb($("hBase").value),tone2=hex2rgb($("hTone2").value),grain=hex2rgb($("hGrain").value),gap=hex2rgb($("hGap").value);
+  var grInt=+$("wdGr").value,tvar=+$("wdVar").value,rnd=mulberry32(+$("seed").value);
+  if(pat==="herring"){
+    L=2*W;$("wdL").value=L; // 2:1 컷 스냅 (격자 검증된 표준 헤링본)
+    real={w:4*W,h:4*W};
+    var px=Math.min(1200,Math.max(760,Math.round(real.w*0.5)));_ppm=px/real.w;setCanvas(px,px);
+    ctx.fillStyle=rgbs(gap);ctx.fillRect(0,0,cv.width,cv.height);
+    var Wp=W*_ppm,Lp=L*_ppm;
+    // 격자: H플랭크 = a*v1+b*v2, V플랭크 = H+(L,-W) / v1=(3W,-W), v2=(W,W) — 4W×4W 주기
+    for(var a=-3;a<=3;a++)for(var b=-3;b<=6;b++){
+      var hx=(3*a+b)*Wp,hy=(-a+b)*Wp;
+      if(hx>-Lp-Wp&&hx<cv.width+Lp&&hy>-Lp-Wp&&hy<cv.height+Lp){
+        drawPlank(hx,hy,Lp,Wp,base,tone2,grain,gap,true,rnd,grInt,tvar);
+        drawPlank(hx+Lp,hy-Wp,Wp,Lp,base,tone2,grain,gap,false,rnd,grInt,tvar);
+      }
+    }
+  }else{
+    var rows=Math.max(4,Math.round(1000/W));
+    real={w:L,h:W*rows};
+    var pxw=Math.min(1600,Math.max(900,Math.round(L*0.6)));_ppm=pxw/L;
+    setCanvas(pxw,Math.round(W*rows*_ppm));
+    ctx.fillStyle=rgbs(gap);ctx.fillRect(0,0,cv.width,cv.height);
+    var Wp2=W*_ppm,Lp2=L*_ppm;
+    for(var r=0;r<rows;r++){
+      var off=pat==="brick"?(r%2)*(Lp2/2):Math.floor(rnd()*10)/10*Lp2;
+      for(var c=-1;c<=Math.ceil(cv.width/Lp2);c++){
+        drawPlank(c*Lp2-off,r*Wp2,Lp2,Wp2,base,tone2,grain,gap,true,rnd,grInt,tvar);
+      }
+    }
+  }
+  grainPass(1.5,0,rnd);
+}
+
+function renderTile(){
+  var W=+$("tlW").value||600,H=+$("tlH").value||600,g=+$("tlG").value||3,pat=$("tlPat").value;
+  var base=hex2rgb($("hBase").value),grout=hex2rgb($("hGrout").value),vv=+$("tlVar").value,rnd=mulberry32(+$("seed").value);
+  var nx=W>=400?2:Math.max(2,Math.round(900/(W+g))),ny=H>=400?2:Math.max(2,Math.round(900/(H+g)));
+  real={w:nx*(W+g),h:ny*(H+g)};
+  var pxw=Math.min(1400,Math.max(800,Math.round(real.w*0.7)));_ppm=pxw/real.w;
+  setCanvas(pxw,Math.round(real.h*_ppm));
+  ctx.fillStyle=rgbs(grout);ctx.fillRect(0,0,cv.width,cv.height);
+  var Wp=(W+g)*_ppm,Hp=(H+g)*_ppm,gp=Math.max(1,g*_ppm);
+  for(var r=0;r<ny;r++){
+    var off=pat==="brick"?(r%2)*(Wp/2):0;
+    for(var c=-1;c<=nx;c++){
+      var t=(rnd()*2-1)*0.04;
+      wrapRect(c*Wp-off+gp/2,r*Hp+gp/2,Wp-gp,Hp-gp,rgbs(shade(base,1+t)));
+    }
+  }
+  grainPass(vv*0.18,vv*0.12,rnd);
+}
+
+/* ---------- 렌더 트리거 ---------- */
+var rT;
+function render(){
+  clearTimeout(rT);
+  rT=setTimeout(function(){
+    if(st.mode==="paint")renderPaint();
+    else if(st.mode==="wallpaper")renderWallpaper();
+    else if(st.mode==="wood")renderWood();
+    else renderTile();
+    $("mSize").textContent=real.w+" × "+real.h+" mm";
+    $("mPx").textContent=cv.width+" × "+cv.height+" px";
+    $("mMode").textContent={paint:"페인트",wallpaper:"벽지",wood:"마루",tile:"타일"}[st.mode];
+    updateTiled();
+  },60);
+}
+function updateTiled(){
+  var url=cv.toDataURL("image/png");
+  var t=$("tiled");
+  t.style.backgroundImage="url("+url+")";
+  var scale=Math.min(1,340/Math.max(cv.width,cv.height)); // 타일 반복이 보이도록 축소
+  t.style.backgroundSize=(cv.width*scale)+"px "+(cv.height*scale)+"px";
+}
+
+/* ---------- 모드/입력 바인딩 ---------- */
+document.querySelectorAll(".mode").forEach(function(m){
+  m.addEventListener("click",function(){
+    document.querySelectorAll(".mode").forEach(function(x){x.classList.remove("on");});
+    m.classList.add("on");st.mode=m.getAttribute("data-m");
+    document.querySelectorAll(".mset").forEach(function(s){s.style.display="none";});
+    var set=$("set-"+st.mode);if(set)set.style.display="";
+    $("baseLabel").textContent=st.mode==="wood"?"바닥 기본톤":st.mode==="tile"?"타일 색":"기본색";
+    if(st.mode==="wood")st.libKey="wood-presets"; // 마루 모드는 프리셋 탭 기본
+    renderLib();autoName();render();
+  });
+});
+function bindColor(cid,hid){
+  $(cid).addEventListener("input",function(){$(hid).value=$(cid).value.toUpperCase();render();});
+  $(hid).addEventListener("change",function(){var v=$(hid).value.trim();if(!/^#?[0-9a-fA-F]{6}$/.test(v))return;if(v[0]!=="#")v="#"+v;$(hid).value=v.toUpperCase();$(cid).value=v;render();});
+}
+bindColor("cBase","hBase");bindColor("cTone2","hTone2");bindColor("cGrain","hGrain");bindColor("cGap","hGap");bindColor("cGrout","hGrout");
+["pFinish","wpWeave","wdPat","tlPat"].forEach(function(id){$(id).addEventListener("change",function(){autoName();render();});});
+["wdW","wdL","tlW","tlH","tlG","seed"].forEach(function(id){$(id).addEventListener("change",function(){autoName();render();});});
+[["wpInt","wpIntV",""],["wdVar","wdVarV","%"],["wdGr","wdGrV",""],["tlVar","tlVarV",""]].forEach(function(x){
+  $(x[0]).addEventListener("input",function(){$(x[1]).textContent=$(x[0]).value+x[2];render();});
+});
+$("reroll").addEventListener("click",function(){$("seed").value=Math.floor(Math.random()*10000);render();});
+$("vTile").addEventListener("click",function(){$("vTile").classList.add("on");$("vOne").classList.remove("on");$("tiled").style.display="";cv.style.display="none";});
+$("vOne").addEventListener("click",function(){$("vOne").classList.add("on");$("vTile").classList.remove("on");$("tiled").style.display="none";cv.style.display="";});
+
+/* ---------- 라이브러리 ---------- */
+function renderLibTabs(){
+  var keys=st.libs.filter(function(l){return l.colors;}).map(function(l){return{k:l.key,n:l.brand};});
+  if(st.mode==="wood")keys.unshift({k:"wood-presets",n:"🪵 마루 프리셋"});
+  var html="";keys.forEach(function(t){html+='<span class="ltab'+(st.libKey===t.k?" on":"")+'" data-k="'+esc(t.k)+'">'+esc(t.n)+'</span>';});
+  $("libtabs").innerHTML=html;
+  $("libtabs").querySelectorAll(".ltab").forEach(function(t){t.addEventListener("click",function(){st.libKey=t.getAttribute("data-k");renderLib();});});
+}
+function renderLib(){
+  if(st.mode==="wood"&&st.libKey!=="wood-presets"&&!st.libs.some(function(l){return l.key===st.libKey&&l.colors;}))st.libKey="wood-presets";
+  if(st.mode!=="wood"&&st.libKey==="wood-presets")st.libKey="benjamin-moore";
+  renderLibTabs();
+  var lib=st.libs.find(function(l){return l.key===st.libKey;});
+  if(st.libKey==="wood-presets"){
+    $("chips").style.display="none";$("wpre").style.display="";
+    $("libnote").textContent=lib?lib.note:"";
+    var html="";
+    (lib?lib.presets:[]).forEach(function(p,i){
+      html+='<div class="wp'+(st.selWood===i?" sel":"")+'" data-i="'+i+'">'
+        +'<div class="sw" style="background:linear-gradient(90deg,'+p.base+' 60%,'+p.tone2+')"></div>'
+        +'<div><div class="nm">'+esc(p.name)+'</div><div class="mt">'+esc(p.brand)+' · '+p.plankW+'×'+p.plankL+'</div></div></div>';
+    });
+    $("wpre").innerHTML=html||'<div class="empty">프리셋 없음</div>';
+    $("wpre").querySelectorAll(".wp").forEach(function(n){
+      n.addEventListener("click",function(){
+        var p=lib.presets[+n.getAttribute("data-i")];st.selWood=+n.getAttribute("data-i");
+        $("hBase").value=p.base;$("cBase").value=p.base;
+        $("hTone2").value=p.tone2;$("cTone2").value=p.tone2;
+        $("hGrain").value=p.grain;$("cGrain").value=p.grain;
+        $("hGap").value=p.gap;$("cGap").value=p.gap;
+        $("wdW").value=p.plankW;$("wdL").value=p.plankL;
+        st.autoName=p.name;$("matName").value=p.name+" ("+p.plankW+"×"+p.plankL+")";
+        renderLib();render();
+      });
+    });
+  }else{
+    $("chips").style.display="";$("wpre").style.display="none";
+    $("libnote").textContent=lib?lib.note:"";
+    var html2="";
+    (lib?lib.colors:[]).forEach(function(c,i){
+      html2+='<div class="cchip'+(st.selChip===lib.key+i?" sel":"")+'" data-i="'+i+'" title="'+esc(c.name+" "+c.code+" "+c.hex)+'">'
+        +'<div class="sw" style="background:'+c.hex+'"></div><div class="cn">'+esc(c.name)+'</div></div>';
+    });
+    $("chips").innerHTML=html2||'<div class="empty">컬러 없음</div>';
+    $("chips").querySelectorAll(".cchip").forEach(function(n){
+      n.addEventListener("click",function(){
+        var c=lib.colors[+n.getAttribute("data-i")];st.selChip=lib.key+n.getAttribute("data-i");
+        $("hBase").value=c.hex.toUpperCase();$("cBase").value=c.hex;
+        st.autoName=lib.brand+" "+c.name+" "+c.code;autoName(true);
+        renderLib();render();
+      });
+    });
+  }
+}
+function autoName(force){
+  var suffix={paint:{0:"매트",1:"무광",2:"에그쉘",3:"롤러"}[$("pFinish").value],
+    wallpaper:{plain:"플레인",silk:"실크위브",fabric:"패브릭"}[$("wpWeave").value]+" 벽지",
+    wood:"마루 "+$("wdW").value+"×"+$("wdL").value+($("wdPat").value==="herring"?" 헤링본":""),
+    tile:"타일 "+$("tlW").value+"×"+$("tlH").value}[st.mode];
+  var base=st.autoName||("커스텀 "+$("hBase").value);
+  if(force||!$("matName").value||$("matName").dataset.auto==="1"){
+    $("matName").value=base+" · "+suffix;$("matName").dataset.auto="1";
+  }
+}
+$("matName").addEventListener("input",function(){$("matName").dataset.auto="0";});
+
+/* ---------- 저장/내보내기 ---------- */
+function makeThumb(){
+  var t=document.createElement("canvas");t.width=128;t.height=128;
+  t.getContext("2d").drawImage(cv,0,0,128,128);
+  return t.toDataURL("image/png");
+}
+function avgColor(){
+  var d=ctx.getImageData(0,0,cv.width,cv.height).data,r=0,g=0,b=0,n=0;
+  for(var i=0;i<d.length;i+=32){r+=d[i];g+=d[i+1];b+=d[i+2];n++;}
+  return{r:Math.round(r/n),g:Math.round(g/n),b:Math.round(b/n)};
+}
+function saveMat(){
+  var name=$("matName").value.trim()||"머티리얼";
+  return apiSend("/textures","POST",{
+    name:name,mode:st.mode,size_mm:{w:real.w,h:real.h},avg:avgColor(),
+    params:{seed:+$("seed").value},
+    png:cv.toDataURL("image/png"),thumb:makeThumb()
+  }).then(function(j){toast('"'+name+'" 저장됨');loadSaved();return j.data;});
+}
+$("btnSave").addEventListener("click",function(){saveMat().catch(function(e){toast("실패: "+e.message);});});
+$("btnSaveSkm").addEventListener("click",function(){
+  saveMat().then(function(t){location.href=API+"/textures/"+encodeURIComponent(t.id)+"/skm";})
+    .catch(function(e){toast("실패: "+e.message);});
+});
+$("btnPng").addEventListener("click",function(){
+  var a=document.createElement("a");a.download=($("matName").value.trim()||"texture")+".png";a.href=cv.toDataURL("image/png");a.click();
+});
+
+/* ---------- 저장 목록 ---------- */
+function loadSaved(){
+  api("/textures").then(function(j){
+    st.saved=j.data;$("svCount").textContent=st.saved.length+"개";
+    if(!st.saved.length){$("saved").innerHTML='<div class="empty">저장된 머티리얼이 없습니다.<br>텍스처를 만들고 💾 저장을 누르세요.</div>';return;}
+    var html="";
+    st.saved.forEach(function(t){
+      html+='<div class="sv"><img src="'+esc(t.thumb_url||t.png_url)+'" alt="">'
+        +'<div class="nm">'+esc(t.name)+'<div class="mt">'+esc(t.size_mm.w+"×"+t.size_mm.h+"mm · "+({paint:"페인트",wallpaper:"벽지",wood:"마루",tile:"타일"}[t.mode]||t.mode))+'</div></div>'
+        +'<div class="act"><button class="sb" data-skm="'+esc(t.id)+'">SKM</button><button class="sb" data-del="'+esc(t.id)+'">✕</button></div></div>';
+    });
+    $("saved").innerHTML=html;
+    $("saved").querySelectorAll("[data-skm]").forEach(function(b){b.addEventListener("click",function(){location.href=API+"/textures/"+encodeURIComponent(b.getAttribute("data-skm"))+"/skm";});});
+    $("saved").querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(){
+      if(!confirm("삭제할까요?"))return;
+      apiSend("/textures/"+encodeURIComponent(b.getAttribute("data-del")),"DELETE").then(loadSaved).catch(function(e){toast(e.message);});
+    });});
+  }).catch(function(e){$("saved").innerHTML='<div class="empty">'+esc(e.message)+'</div>';});
+}
+
+/* ---------- Ruby 로더 ---------- */
+$("btnRuby").addEventListener("click",function(){
+  $("ov").classList.add("show");$("rubyTa").value="로딩…";
+  fetch(API+"/textures/ruby-loader").then(function(r){return r.text();}).then(function(t){$("rubyTa").value=t;})
+    .catch(function(e){$("rubyTa").value="로딩 실패: "+e.message;});
+});
+$("mClose").addEventListener("click",function(){$("ov").classList.remove("show");});
+$("ov").addEventListener("click",function(e){if(e.target===$("ov"))$("ov").classList.remove("show");});
+$("btnCopy").addEventListener("click",function(){
+  $("rubyTa").select();document.execCommand("copy");toast("복사됨 — SketchUp Ruby Console에 붙여넣으세요");
+});
+
+/* ---------- 초기화 ---------- */
+api("/colors").then(function(j){st.libs=j.data;renderLib();}).catch(function(e){$("libnote").textContent="컬러 로딩 실패: "+e.message;});
+loadSaved();autoName(true);render();
+})();
+</script>
+</body>
+</html>

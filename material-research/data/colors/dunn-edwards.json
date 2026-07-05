@@ -1,0 +1,128 @@
+{
+  "key": "dunn-edwards",
+  "brand": "Dunn-Edwards",
+  "name": "던 에드워드 (인기색 20)",
+  "note": "hex는 화면 표시용 근사값 — Whisper/Swiss Coffee는 공식값 확인, 나머지는 근사",
+  "colors": [
+    {
+      "name": "Whisper",
+      "code": "DEW340",
+      "hex": "#FDFAF1",
+      "group": "화이트"
+    },
+    {
+      "name": "Swiss Coffee",
+      "code": "DEW341",
+      "hex": "#F8F5E9",
+      "group": "화이트"
+    },
+    {
+      "name": "Milk Glass",
+      "code": "DEW358",
+      "hex": "#F4F2E6",
+      "group": "화이트"
+    },
+    {
+      "name": "White",
+      "code": "DEW380",
+      "hex": "#F7F6EF",
+      "group": "화이트"
+    },
+    {
+      "name": "Droplets",
+      "code": "DEW381",
+      "hex": "#F0EFEA",
+      "group": "화이트"
+    },
+    {
+      "name": "Cool December",
+      "code": "DEW383",
+      "hex": "#F5F6F1",
+      "group": "화이트"
+    },
+    {
+      "name": "Warm White",
+      "code": "DEW382",
+      "hex": "#F3EFE3",
+      "group": "화이트"
+    },
+    {
+      "name": "Crisp Muslin",
+      "code": "DE6212",
+      "hex": "#E9E0CE",
+      "group": "웜뉴트럴"
+    },
+    {
+      "name": "Stucco Tan",
+      "code": "DE6205",
+      "hex": "#E5D9BF",
+      "group": "웜뉴트럴"
+    },
+    {
+      "name": "Fine Grain",
+      "code": "DE6213",
+      "hex": "#DACFB8",
+      "group": "웜뉴트럴"
+    },
+    {
+      "name": "Birchwood",
+      "code": "DEC752",
+      "hex": "#C9BCA5",
+      "group": "웜뉴트럴"
+    },
+    {
+      "name": "Miller's Cottage",
+      "code": "DE6210",
+      "hex": "#E3DAC5",
+      "group": "웜뉴트럴"
+    },
+    {
+      "name": "Pigeon Gray",
+      "code": "DE6214",
+      "hex": "#C9C2B2",
+      "group": "그레이"
+    },
+    {
+      "name": "Fossil",
+      "code": "DE6225",
+      "hex": "#B5AC99",
+      "group": "그레이"
+    },
+    {
+      "name": "Foggy Day",
+      "code": "DE6226",
+      "hex": "#A29A88",
+      "group": "그레이"
+    },
+    {
+      "name": "Porpoise",
+      "code": "DE6373",
+      "hex": "#8E8378",
+      "group": "그레이"
+    },
+    {
+      "name": "Bay of Hope",
+      "code": "DE6331",
+      "hex": "#7D93A0",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Old Mill",
+      "code": "DEA185",
+      "hex": "#41505E",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Midnight Garden",
+      "code": "DE5657",
+      "hex": "#31423B",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Black Bean",
+      "code": "DEA187",
+      "hex": "#3B3634",
+      "group": "딥·악센트"
+    }
+  ]
+}

@@ -2,6 +2,106 @@
   "version": 1,
   "entries": [
     {
+      "id": "cl-2026-07-05T09-55-33-523Z-1",
+      "ts": "2026-07-05T09:55:33.523Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-바닥재-지복득마루-baram-15-12t-x-165-x-1200",
+      "name": "지복득마루 BARAM 15",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "spec": "12T x 165 x 1200",
+      "detail": "신규 등록 (12T x 165 x 1200) · 시세 85,000~150,000원",
+      "source": "seed",
+      "price": {
+        "min": 85000,
+        "max": 150000,
+        "unit": "M2"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-05T09-55-33-523Z-2",
+      "ts": "2026-07-05T09:55:33.523Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-바닥재-지복득마루-baram-16-14t-x-190-x-1900",
+      "name": "지복득마루 BARAM 16",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "spec": "14T x 190 x 1900",
+      "detail": "신규 등록 (14T x 190 x 1900) · 시세 110,000~190,000원",
+      "source": "seed",
+      "price": {
+        "min": 110000,
+        "max": 190000,
+        "unit": "M2"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-05T09-55-33-523Z-3",
+      "ts": "2026-07-05T09:55:33.523Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-바닥재-지복득마루-baram-17-14t-x-190-x-1900",
+      "name": "지복득마루 BARAM 17",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "spec": "14T x 190 x 1900",
+      "detail": "신규 등록 (14T x 190 x 1900) · 시세 115,000~195,000원",
+      "source": "seed",
+      "price": {
+        "min": 115000,
+        "max": 195000,
+        "unit": "M2"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-05T09-55-33-523Z-4",
+      "ts": "2026-07-05T09:55:33.523Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-바닥재-지복득마루-baram-18-14t-x-190-x-1900",
+      "name": "지복득마루 BARAM 18",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "spec": "14T x 190 x 1900",
+      "detail": "신규 등록 (14T x 190 x 1900) · 시세 120,000~200,000원",
+      "source": "seed",
+      "price": {
+        "min": 120000,
+        "max": 200000,
+        "unit": "M2"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-05T09-55-33-523Z-5",
+      "ts": "2026-07-05T09:55:33.523Z",
+      "week": "2026-W27",
+      "type": "new",
+      "materialId": "바닥공사-바닥재-지복득마루-baram-19-15t-x-240-x-2200",
+      "name": "지복득마루 BARAM 19",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "원목마루",
+      "spec": "15T x 240 x 2200",
+      "detail": "신규 등록 (15T x 240 x 2200) · 시세 140,000~230,000원",
+      "source": "seed",
+      "price": {
+        "min": 140000,
+        "max": 230000,
+        "unit": "M2"
+      },
+      "before": null
+    },
+    {
       "id": "cl-2026-07-03T15-00-52-531Z-1",
       "ts": "2026-07-03T15:00:52.531Z",
       "week": "2026-W27",

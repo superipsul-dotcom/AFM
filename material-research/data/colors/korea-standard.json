@@ -1,0 +1,164 @@
+{
+  "key": "korea-standard",
+  "brand": "국내 표준",
+  "name": "국내 실전톤 (노루·KCC 계열 근사 26)",
+  "note": "국내 아파트·상업 인테리어에서 실제 많이 쓰는 톤 — 노루/KCC 조색 시 근사 기준값",
+  "colors": [
+    {
+      "name": "순백",
+      "code": "KR-W01",
+      "hex": "#FFFFFF",
+      "group": "화이트"
+    },
+    {
+      "name": "오프화이트(RAL9016급)",
+      "code": "KR-W02",
+      "hex": "#F4F5F2",
+      "group": "화이트"
+    },
+    {
+      "name": "웜화이트(RAL9010급)",
+      "code": "KR-W03",
+      "hex": "#F1EFE6",
+      "group": "화이트"
+    },
+    {
+      "name": "우유빛 화이트",
+      "code": "KR-W04",
+      "hex": "#F7F5EF",
+      "group": "화이트"
+    },
+    {
+      "name": "아이보리 화이트",
+      "code": "KR-W05",
+      "hex": "#F3EEE2",
+      "group": "화이트"
+    },
+    {
+      "name": "웜 아이보리",
+      "code": "KR-W06",
+      "hex": "#EFE8D8",
+      "group": "화이트"
+    },
+    {
+      "name": "크림 베이지",
+      "code": "KR-B01",
+      "hex": "#E9DFC9",
+      "group": "베이지"
+    },
+    {
+      "name": "라이트 베이지",
+      "code": "KR-B02",
+      "hex": "#E0D5BF",
+      "group": "베이지"
+    },
+    {
+      "name": "베이지핑크",
+      "code": "KR-B03",
+      "hex": "#E3CDC2",
+      "group": "베이지"
+    },
+    {
+      "name": "그레이지 라이트",
+      "code": "KR-G01",
+      "hex": "#DDD8CC",
+      "group": "그레이지"
+    },
+    {
+      "name": "그레이지",
+      "code": "KR-G02",
+      "hex": "#CFC9BB",
+      "group": "그레이지"
+    },
+    {
+      "name": "웜그레이",
+      "code": "KR-G03",
+      "hex": "#BEB9AF",
+      "group": "그레이지"
+    },
+    {
+      "name": "라이트그레이",
+      "code": "KR-G04",
+      "hex": "#D9D9D6",
+      "group": "그레이"
+    },
+    {
+      "name": "실버그레이",
+      "code": "KR-G05",
+      "hex": "#C4C6C6",
+      "group": "그레이"
+    },
+    {
+      "name": "미드그레이",
+      "code": "KR-G06",
+      "hex": "#ABABA8",
+      "group": "그레이"
+    },
+    {
+      "name": "슬레이트 블루그레이",
+      "code": "KR-G07",
+      "hex": "#6E7B8A",
+      "group": "그레이"
+    },
+    {
+      "name": "차콜",
+      "code": "KR-D01",
+      "hex": "#4A4C4E",
+      "group": "다크"
+    },
+    {
+      "name": "딥차콜",
+      "code": "KR-D02",
+      "hex": "#37393B",
+      "group": "다크"
+    },
+    {
+      "name": "블랙",
+      "code": "KR-D03",
+      "hex": "#212325",
+      "group": "다크"
+    },
+    {
+      "name": "네이비",
+      "code": "KR-D04",
+      "hex": "#33415C",
+      "group": "다크"
+    },
+    {
+      "name": "세이지그린",
+      "code": "KR-C01",
+      "hex": "#AEB5A2",
+      "group": "컬러"
+    },
+    {
+      "name": "딥그린",
+      "code": "KR-C02",
+      "hex": "#4E5B4E",
+      "group": "컬러"
+    },
+    {
+      "name": "더스티블루",
+      "code": "KR-C03",
+      "hex": "#93A6B2",
+      "group": "컬러"
+    },
+    {
+      "name": "테라코타",
+      "code": "KR-C04",
+      "hex": "#C67B5C",
+      "group": "컬러"
+    },
+    {
+      "name": "브릭",
+      "code": "KR-C05",
+      "hex": "#9E5B44",
+      "group": "컬러"
+    },
+    {
+      "name": "머스터드",
+      "code": "KR-C06",
+      "hex": "#C99E52",
+      "group": "컬러"
+    }
+  ]
+}

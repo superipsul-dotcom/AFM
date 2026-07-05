@@ -1,0 +1,64 @@
+{
+  "textures": [
+    {
+      "id": "tx-mr7mi1tfxudl",
+      "name": "BARAM 16 내추럴 오크 헤링본",
+      "mode": "wood",
+      "size_mm": {
+        "w": 760,
+        "h": 760
+      },
+      "avg": {
+        "r": 191,
+        "g": 157,
+        "b": 118
+      },
+      "params": {
+        "seed": 7
+      },
+      "png_url": "/data/textures/tx-mr7mi1tfxudl.png",
+      "thumb_url": "/data/textures/tx-mr7mi1tfxudl.thumb.png",
+      "created_at": "2026-07-05T10:03:10.131Z"
+    },
+    {
+      "id": "tx-mr7mi0h19f95",
+      "name": "BARAM 16 내추럴 오크 (190×1900)",
+      "mode": "wood",
+      "size_mm": {
+        "w": 1900,
+        "h": 950
+      },
+      "avg": {
+        "r": 202,
+        "g": 165,
+        "b": 123
+      },
+      "params": {
+        "seed": 7
+      },
+      "png_url": "/data/textures/tx-mr7mi0h19f95.png",
+      "thumb_url": "/data/textures/tx-mr7mi0h19f95.thumb.png",
+      "created_at": "2026-07-05T10:03:08.391Z"
+    },
+    {
+      "id": "tx-mr7mgp9g0mf4",
+      "name": "Benjamin Moore White Dove OC-17 · 무광",
+      "mode": "paint",
+      "size_mm": {
+        "w": 600,
+        "h": 600
+      },
+      "avg": {
+        "r": 239,
+        "g": 238,
+        "b": 229
+      },
+      "params": {
+        "seed": 7
+      },
+      "png_url": "/data/textures/tx-mr7mgp9g0mf4.png",
+      "thumb_url": "/data/textures/tx-mr7mgp9g0mf4.thumb.png",
+      "created_at": "2026-07-05T10:02:07.204Z"
+    }
+  ]
+}

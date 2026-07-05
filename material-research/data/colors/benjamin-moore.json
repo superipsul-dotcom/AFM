@@ -1,0 +1,272 @@
+{
+  "key": "benjamin-moore",
+  "brand": "Benjamin Moore",
+  "name": "벤자민무어 (인기색 44)",
+  "note": "hex는 화면 표시용 근사값 — 실제 도장 전 공식 컬러칩(팬덱) 대조 필수",
+  "colors": [
+    {
+      "name": "White Dove",
+      "code": "OC-17",
+      "hex": "#EFEEE5",
+      "group": "화이트"
+    },
+    {
+      "name": "Chantilly Lace",
+      "code": "OC-65",
+      "hex": "#F4F6F1",
+      "group": "화이트"
+    },
+    {
+      "name": "Simply White",
+      "code": "OC-117",
+      "hex": "#F5F5EB",
+      "group": "화이트"
+    },
+    {
+      "name": "Cloud White",
+      "code": "OC-130",
+      "hex": "#F0EDE2",
+      "group": "화이트"
+    },
+    {
+      "name": "Swiss Coffee",
+      "code": "OC-45",
+      "hex": "#EDEBDD",
+      "group": "화이트"
+    },
+    {
+      "name": "Acadia White",
+      "code": "OC-38",
+      "hex": "#F2EFDF",
+      "group": "화이트"
+    },
+    {
+      "name": "Albescent",
+      "code": "OC-40",
+      "hex": "#EBE3CF",
+      "group": "화이트"
+    },
+    {
+      "name": "Alpine White",
+      "code": "2147-70",
+      "hex": "#F5F5E4",
+      "group": "화이트"
+    },
+    {
+      "name": "Navajo White",
+      "code": "OC-95",
+      "hex": "#EFE5CD",
+      "group": "화이트"
+    },
+    {
+      "name": "Ballet White",
+      "code": "OC-9",
+      "hex": "#EBE3D2",
+      "group": "화이트"
+    },
+    {
+      "name": "Linen White",
+      "code": "912",
+      "hex": "#F2E9D4",
+      "group": "화이트"
+    },
+    {
+      "name": "Paper White",
+      "code": "OC-55",
+      "hex": "#E7E6DE",
+      "group": "화이트"
+    },
+    {
+      "name": "Decorator's White",
+      "code": "OC-149",
+      "hex": "#EDEEEA",
+      "group": "화이트"
+    },
+    {
+      "name": "Revere Pewter",
+      "code": "HC-172",
+      "hex": "#CCC6B5",
+      "group": "그레이지"
+    },
+    {
+      "name": "Edgecomb Gray",
+      "code": "HC-173",
+      "hex": "#DAD4C4",
+      "group": "그레이지"
+    },
+    {
+      "name": "Pale Oak",
+      "code": "OC-20",
+      "hex": "#E4DFD3",
+      "group": "그레이지"
+    },
+    {
+      "name": "Balboa Mist",
+      "code": "OC-27",
+      "hex": "#DCD6C9",
+      "group": "그레이지"
+    },
+    {
+      "name": "Classic Gray",
+      "code": "OC-23",
+      "hex": "#E3E0D6",
+      "group": "그레이지"
+    },
+    {
+      "name": "Collingwood",
+      "code": "OC-28",
+      "hex": "#D5CFC2",
+      "group": "그레이지"
+    },
+    {
+      "name": "Manchester Tan",
+      "code": "HC-81",
+      "hex": "#DACEB2",
+      "group": "그레이지"
+    },
+    {
+      "name": "Shaker Beige",
+      "code": "HC-45",
+      "hex": "#D8C6A6",
+      "group": "그레이지"
+    },
+    {
+      "name": "Grant Beige",
+      "code": "HC-83",
+      "hex": "#CBBFA8",
+      "group": "그레이지"
+    },
+    {
+      "name": "Alexandria Beige",
+      "code": "HC-77",
+      "hex": "#A4937D",
+      "group": "그레이지"
+    },
+    {
+      "name": "Gray Owl",
+      "code": "OC-52",
+      "hex": "#D3D5CC",
+      "group": "그레이"
+    },
+    {
+      "name": "Stonington Gray",
+      "code": "HC-170",
+      "hex": "#C6C8C1",
+      "group": "그레이"
+    },
+    {
+      "name": "Coventry Gray",
+      "code": "HC-169",
+      "hex": "#AEB0AB",
+      "group": "그레이"
+    },
+    {
+      "name": "Chelsea Gray",
+      "code": "HC-168",
+      "hex": "#848780",
+      "group": "그레이"
+    },
+    {
+      "name": "Kendall Charcoal",
+      "code": "HC-166",
+      "hex": "#696A64",
+      "group": "그레이"
+    },
+    {
+      "name": "Silver Satin",
+      "code": "OC-26",
+      "hex": "#E0DED4",
+      "group": "그레이"
+    },
+    {
+      "name": "Moonshine",
+      "code": "2140-60",
+      "hex": "#DCDED4",
+      "group": "그레이"
+    },
+    {
+      "name": "Palladian Blue",
+      "code": "HC-144",
+      "hex": "#C0D0C6",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Wythe Blue",
+      "code": "HC-143",
+      "hex": "#B5C7BE",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Aegean Teal",
+      "code": "2136-40",
+      "hex": "#708A8C",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Saybrook Sage",
+      "code": "HC-114",
+      "hex": "#AEAE8F",
+      "group": "블루·그린"
+    },
+    {
+      "name": "October Mist",
+      "code": "1495",
+      "hex": "#B4B7A2",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Hale Navy",
+      "code": "HC-154",
+      "hex": "#434D56",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Newburyport Blue",
+      "code": "HC-155",
+      "hex": "#50606C",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Van Deusen Blue",
+      "code": "HC-156",
+      "hex": "#464F5C",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Admiral Blue",
+      "code": "2065-10",
+      "hex": "#2C3863",
+      "group": "블루·그린"
+    },
+    {
+      "name": "Wrought Iron",
+      "code": "2124-10",
+      "hex": "#444549",
+      "group": "딥·악센트"
+    },
+    {
+      "name": "Abyss",
+      "code": "2128-20",
+      "hex": "#43454C",
+      "group": "딥·악센트"
+    },
+    {
+      "name": "Almost Black",
+      "code": "2130-30",
+      "hex": "#504F54",
+      "group": "딥·악센트"
+    },
+    {
+      "name": "Caliente",
+      "code": "AF-290",
+      "hex": "#953B36",
+      "group": "딥·악센트"
+    },
+    {
+      "name": "Adobe Dust",
+      "code": "2175-40",
+      "hex": "#D58E6D",
+      "group": "딥·악센트"
+    }
+  ]
+}

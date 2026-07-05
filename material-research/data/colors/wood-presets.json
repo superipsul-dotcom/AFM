@@ -1,0 +1,108 @@
+{
+  "key": "wood-presets",
+  "brand": "마루 프리셋",
+  "name": "마루 톤 프리셋 (지복득 BARAM 규격 반영)",
+  "note": "BARAM 규격은 공식 사이트 실측(15:12T×165×1200 / 16·17·18:14T×190×1900 / 19:15T×240×2200), 색상 팔레트는 렌더용 추정",
+  "presets": [
+    {
+      "name": "BARAM 16 내추럴 오크",
+      "brand": "지복득마루",
+      "plankW": 190,
+      "plankL": 1900,
+      "base": "#C8A67E",
+      "tone2": "#B8946C",
+      "grain": "#8A6A4A",
+      "gap": "#6E5238"
+    },
+    {
+      "name": "BARAM 16 라이트 오크(화이트워시)",
+      "brand": "지복득마루",
+      "plankW": 190,
+      "plankL": 1900,
+      "base": "#D9C3A5",
+      "tone2": "#CDB593",
+      "grain": "#A78A68",
+      "gap": "#8A7156"
+    },
+    {
+      "name": "BARAM 17 스모크 오크",
+      "brand": "지복득마루",
+      "plankW": 190,
+      "plankL": 1900,
+      "base": "#A98A66",
+      "tone2": "#94764F",
+      "grain": "#6B5137",
+      "gap": "#523E2A"
+    },
+    {
+      "name": "BARAM 18 딥브라운(월넛톤)",
+      "brand": "지복득마루",
+      "plankW": 190,
+      "plankL": 1900,
+      "base": "#7C5B41",
+      "tone2": "#6A4C36",
+      "grain": "#4A3325",
+      "gap": "#3A2A1E"
+    },
+    {
+      "name": "BARAM 19 와이드 그레이워시",
+      "brand": "지복득마루",
+      "plankW": 240,
+      "plankL": 2200,
+      "base": "#B8AA98",
+      "tone2": "#A2947F",
+      "grain": "#7A6C5A",
+      "gap": "#5F5445"
+    },
+    {
+      "name": "BARAM 15 콤팩트 오크",
+      "brand": "지복득마루",
+      "plankW": 165,
+      "plankL": 1200,
+      "base": "#C29F76",
+      "tone2": "#B08D62",
+      "grain": "#836344",
+      "gap": "#664E35"
+    },
+    {
+      "name": "동화 내추럴 강마루",
+      "brand": "동화자연마루",
+      "plankW": 192,
+      "plankL": 1200,
+      "base": "#C9A87D",
+      "tone2": "#BB9668",
+      "grain": "#8E6E4C",
+      "gap": "#71583C"
+    },
+    {
+      "name": "구정 브러시드 오크",
+      "brand": "구정마루",
+      "plankW": 190,
+      "plankL": 1900,
+      "base": "#BE9C74",
+      "tone2": "#AA8760",
+      "grain": "#7E5F41",
+      "gap": "#634B34"
+    },
+    {
+      "name": "티크 클래식",
+      "brand": "범용",
+      "plankW": 150,
+      "plankL": 1200,
+      "base": "#8E6B4A",
+      "tone2": "#7C5A3C",
+      "grain": "#57402B",
+      "gap": "#443221"
+    },
+    {
+      "name": "애쉬 라이트",
+      "brand": "범용",
+      "plankW": 190,
+      "plankL": 1900,
+      "base": "#D6C2A4",
+      "tone2": "#C9B392",
+      "grain": "#A08762",
+      "gap": "#83704F"
+    }
+  ]
+}
