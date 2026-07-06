@@ -1,0 +1,12 @@
+{
+  "name": "my-cafe",
+  "version": "1.0.0",
+  "description": "카페 안도 브랜드 허브 — my_cafe.md 를 읽고 쓰는 Express 서버 (PORT 3013)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

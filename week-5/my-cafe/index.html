@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>카페 안도 · 브랜드 허브</title>
+
+  <!-- ===== Tailwind (Play CDN) + 브랜드 컬러 설정 ===== -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind CDN 로드 직후 브랜드 팔레트/폰트 확장 (크림·월넛·세이지)
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:  '#F5F0E8',
+            paper:  '#FFFDF9',
+            walnut: { DEFAULT: '#5C4633', dark: '#43331F', light: '#7A6350' },
+            sage:   { DEFAULT: '#8A9A7B', dark: '#6F7F60', light: '#A9B79C' },
+            ink:    '#4A3B2E',
+          },
+          fontFamily: {
+            serif: ['"Nanum Myeongjo"', '"Noto Serif KR"', 'Georgia', 'serif'],
+            sans:  ['system-ui', '"Apple SD Gothic Neo"', '"Malgun Gothic"', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- ===== React 18 + ReactDOM (UMD dev) ===== -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- ===== Babel Standalone ===== -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ 백지(blank white) 방지: Babel standalone 의 기본 preset-react 가 automatic JSX
+    // 런타임을 쓰면 react/jsx-runtime(UMD 미제공)을 찾다가 렌더가 통째로 죽는다.
+    // classic 런타임을 강제하는 커스텀 프리셋을 등록하고 앱 스크립트에서 data-presets 로 지정한다.
+    if (window.Babel && Babel.availablePresets && Babel.availablePresets.react) {
+      Babel.registerPreset('classic-react', {
+        presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+      });
+    }
+  </script>
+
+  <!-- ===== Markdown 렌더러 (전역 변수명 marked — 재선언 금지) ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- ===== 세리프 타이틀용 웹폰트 (실패 시 시스템 serif 로 폴백) ===== -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --cream: #F5F0E8;
+      --paper: #FFFDF9;
+      --walnut: #5C4633;
+      --walnut-dark: #43331F;
+      --walnut-light: #7A6350;
+      --sage: #8A9A7B;
+      --sage-dark: #6F7F60;
+      --ink: #4A3B2E;
+    }
+
+    html, body { background: var(--cream); }
+    body {
+      /* 아주 옅은 원두빛 결 */
+      background-image:
+        radial-gradient(1200px 600px at 100% -10%, rgba(138,154,123,.10), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(92,70,51,.08), transparent 60%);
+      background-attachment: fixed;
+    }
+
+    /* 커스텀 스크롤바 (편집기·모달) */
+    .thin-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+    .thin-scroll::-webkit-scrollbar-thumb { background: rgba(92,70,51,.28); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+    .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+
+    /* ===== 애니메이션 ===== */
+    @keyframes toastIn { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+    @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modalPop { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .anim-toast   { animation: toastIn .28s cubic-bezier(.2,.9,.3,1.2) both; }
+    .anim-overlay { animation: overlayIn .2s ease both; }
+    .anim-modal   { animation: modalPop .32s cubic-bezier(.2,.9,.3,1.2) both; }
+    .anim-fade    { animation: fadeUp .4s ease both; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .anim-toast, .anim-overlay, .anim-modal, .anim-fade { animation: none !important; }
+    }
+
+    /* ============================================================
+       마크다운 본문 스타일링 (.cafe-prose) — Tailwind preflight 위에 덮어씀
+       ============================================================ */
+    .cafe-prose { color: var(--ink); font-size: 1.02rem; line-height: 1.85; word-break: keep-all; }
+    .cafe-prose > *:first-child { margin-top: 0; }
+
+    .cafe-prose h1 {
+      font-family: var(--serif, serif);
+      color: var(--walnut); font-weight: 800; font-size: 1.9rem;
+      margin: 2rem 0 1rem;
+    }
+    .cafe-prose h2 {
+      font-family: 'Nanum Myeongjo', Georgia, serif;
+      color: var(--walnut); font-weight: 800; font-size: 1.5rem;
+      margin: 2.4rem 0 1rem; padding-bottom: .55rem;
+      border-bottom: 2px solid rgba(138,154,123,.45);
+      display: flex; align-items: center; gap: .55rem;
+    }
+    .cafe-prose h2::before {
+      content: ""; flex: 0 0 auto; width: .42rem; height: 1.35rem;
+      background: var(--sage); border-radius: 3px;
+    }
+    .cafe-prose h3 {
+      font-family: 'Nanum Myeongjo', Georgia, serif;
+      color: var(--walnut-light); font-weight: 700; font-size: 1.2rem;
+      margin: 1.7rem 0 .6rem;
+    }
+    .cafe-prose h4 { color: var(--walnut-light); font-weight: 700; font-size: 1.05rem; margin: 1.3rem 0 .5rem; }
+
+    .cafe-prose p { margin: .85rem 0; }
+    .cafe-prose a { color: #8A6D3B; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+    .cafe-prose a:hover { color: var(--walnut); }
+    .cafe-prose strong { color: var(--walnut); font-weight: 800; }
+    .cafe-prose em { color: var(--walnut-light); }
+
+    /* 불릿 리스트 — 세이지 원두 점 */
+    .cafe-prose ul { margin: .85rem 0; padding-left: 0; list-style: none; }
+    .cafe-prose ul > li { position: relative; padding-left: 1.5rem; margin: .45rem 0; }
+    .cafe-prose ul > li::before {
+      content: ""; position: absolute; left: .25rem; top: .72rem;
+      width: .5rem; height: .5rem; border-radius: 50%;
+      background: var(--sage);
+    }
+    /* 중첩 리스트 */
+    .cafe-prose ul ul { margin: .35rem 0; }
+    .cafe-prose ul ul > li::before { background: var(--walnut-light); }
+
+    /* 순서 리스트 — 월넛 토큰 번호 */
+    .cafe-prose ol { margin: .85rem 0; padding-left: 0; list-style: none; counter-reset: cafe-ol; }
+    .cafe-prose ol > li { counter-increment: cafe-ol; position: relative; padding-left: 2.3rem; margin: .55rem 0; }
+    .cafe-prose ol > li::before {
+      content: counter(cafe-ol); position: absolute; left: 0; top: .1rem;
+      width: 1.55rem; height: 1.55rem; border-radius: 50%;
+      background: var(--walnut); color: var(--cream);
+      font-size: .82rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* 체크리스트 (GFM task list) */
+    .cafe-prose li.task-list-item,
+    .cafe-prose li:has(> input[type="checkbox"]) { list-style: none; padding-left: .2rem; }
+    .cafe-prose li.task-list-item::before,
+    .cafe-prose li:has(> input[type="checkbox"])::before { content: none; }
+    .cafe-prose input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none;
+      width: 1.15rem; height: 1.15rem; margin-right: .6rem; vertical-align: -3px;
+      border: 2px solid var(--sage); border-radius: 5px; background: var(--paper);
+      position: relative; cursor: default;
+    }
+    .cafe-prose input[type="checkbox"]:checked { background: var(--sage); border-color: var(--sage-dark); }
+    .cafe-prose input[type="checkbox"]:checked::after {
+      content: "✓"; color: #fff; font-size: .8rem; font-weight: 800;
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -52%);
+    }
+
+    /* 표 — 카페 메뉴판 감성 (라운드·줄무늬·보더) */
+    .table-wrap {
+      overflow-x: auto; margin: 1.3rem 0; border-radius: 14px;
+      border: 1px solid rgba(92,70,51,.14);
+      box-shadow: 0 4px 16px rgba(92,70,51,.08);
+      background: var(--paper);
+    }
+    .cafe-prose table { border-collapse: collapse; width: 100%; min-width: 460px; font-size: .96rem; }
+    .cafe-prose thead th {
+      background: linear-gradient(180deg, var(--walnut), var(--walnut-dark));
+      color: var(--cream); font-family: 'Nanum Myeongjo', serif; font-weight: 700;
+      text-align: left; padding: .8rem 1rem; white-space: nowrap; letter-spacing: .01em;
+    }
+    .cafe-prose thead th:first-child { border-top-left-radius: 13px; }
+    .cafe-prose thead th:last-child { border-top-right-radius: 13px; }
+    .cafe-prose tbody td { padding: .72rem 1rem; border-top: 1px solid rgba(92,70,51,.10); vertical-align: top; }
+    .cafe-prose tbody tr:nth-child(even) { background: rgba(138,154,123,.09); }
+    .cafe-prose tbody tr:hover { background: rgba(138,154,123,.18); transition: background .15s; }
+
+    /* 인용문 */
+    .cafe-prose blockquote {
+      border-left: 4px solid var(--sage); background: rgba(138,154,123,.12);
+      padding: .8rem 1.2rem; border-radius: 0 12px 12px 0; margin: 1.3rem 0;
+      color: var(--walnut); font-style: italic;
+    }
+    .cafe-prose blockquote p { margin: .3rem 0; }
+
+    /* 구분선 — ☕ 로 장식 */
+    .cafe-prose hr {
+      border: none; height: 1px; margin: 2.2rem 0; position: relative;
+      background: linear-gradient(90deg, transparent, rgba(92,70,51,.32), transparent);
+    }
+    .cafe-prose hr::after {
+      content: "☕"; position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%); background: var(--paper);
+      padding: 0 .8rem; font-size: .95rem; opacity: .8;
+    }
+
+    .cafe-prose code {
+      background: rgba(92,70,51,.09); color: var(--walnut);
+      padding: .12rem .42rem; border-radius: 6px; font-size: .9em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .cafe-prose pre {
+      background: #2E241B; color: #F0E9DE; padding: 1rem 1.2rem;
+      border-radius: 12px; overflow-x: auto; margin: 1.2rem 0;
+    }
+    .cafe-prose pre code { background: transparent; color: inherit; padding: 0; }
+    .cafe-prose img { max-width: 100%; border-radius: 12px; margin: 1rem 0; }
+
+    /* 히어로 슬로건 안의 인라인 마크다운 */
+    .hero-slogan strong { color: var(--walnut-dark); font-weight: 800; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- 평범한 text/babel + 위에서 등록한 classic-react 프리셋 (automatic 런타임 미사용) -->
+  <script type="text/babel" data-presets="classic-react">
+    // ============================================================
+    // React Hooks
+    // ============================================================
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // ============================================================
+    // 상수 · API 레이어 (상대경로 — localhost 하드코딩 금지)
+    // ============================================================
+    const API_BASE_URL = '/api';
+
+    async function getCafe() {
+      const res = await fetch(`${API_BASE_URL}/cafe`);
+      if (!res.ok) throw new Error(`불러오기에 실패했어요 (HTTP ${res.status})`);
+      return res.json(); // { markdown, updatedAt }
+    }
+
+    async function putCafe(markdown) {
+      const res = await fetch(`${API_BASE_URL}/cafe`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markdown }),
+      });
+      let data = {};
+      try { data = await res.json(); } catch (_) { /* 무시 */ }
+      if (!res.ok) throw new Error(data.error || `저장에 실패했어요 (HTTP ${res.status})`);
+      return data; // { ok, updatedAt }
+    }
+
+    // marked 전역 옵션 (재선언 금지 — 전역 marked 그대로 사용)
+    if (window.marked && marked.setOptions) {
+      marked.setOptions({ gfm: true, breaks: false });
+    }
+
+    // ============================================================
+    // 유틸
+    // ============================================================
+    // ISO → "2026년 7월 6일 오후 2:30"
+    function formatDate(iso) {
+      if (!iso) return '저장 기록 없음';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '저장 기록 없음';
+      try {
+        return d.toLocaleString('ko-KR', {
+          year: 'numeric', month: 'long', day: 'numeric',
+          hour: 'numeric', minute: '2-digit',
+        });
+      } catch (_) {
+        return d.toISOString();
+      }
+    }
+
+    // 마크다운에서 첫 H1 + 첫 blockquote 를 히어로로 분리하고 나머지를 본문으로.
+    function splitHero(md) {
+      const src = md || '';
+      const lines = src.split('\n');
+      let title = null, titleIdx = -1;
+      let bqStart = -1, bqEnd = -1;
+      const sloganLines = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(/^#\s+(.+?)\s*$/);
+        if (m) { title = m[1]; titleIdx = i; break; }
+      }
+      for (let i = 0; i < lines.length; i++) {
+        if (/^>\s?/.test(lines[i])) {
+          bqStart = i; let j = i;
+          while (j < lines.length && /^>\s?/.test(lines[j])) {
+            sloganLines.push(lines[j].replace(/^>\s?/, ''));
+            j++;
+          }
+          bqEnd = j - 1; break;
+        }
+      }
+
+      const remove = new Set();
+      if (titleIdx >= 0) remove.add(titleIdx);
+      if (bqStart >= 0) for (let k = bqStart; k <= bqEnd; k++) remove.add(k);
+
+      let body = lines.filter((_, i) => !remove.has(i)).join('\n');
+      // 히어로 아래 남는 선행 --- 구분선/빈 줄 정리
+      body = body.replace(/^\s*(?:[-*_]{3,}\s*)?\n?/, '').replace(/^\s+/, '');
+
+      const rawTitle = title || '';
+      // 로고를 따로 보여주므로 타이틀 앞 이모지는 떼어낸다
+      let cleanTitle = rawTitle.replace(/^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}←-⇿⬀-⯿️‍\s]+/u, '').trim();
+      if (!cleanTitle) cleanTitle = rawTitle;
+
+      return {
+        title: rawTitle,
+        cleanTitle,
+        slogan: sloganLines.join(' ').trim(),
+        body,
+      };
+    }
+
+    // 본문 마크다운 → HTML (표는 가로 스크롤 래퍼로 감싸 반응형 처리)
+    function mdToHtml(body) {
+      if (!window.marked) return body || '';
+      let html = marked.parse(body || '');
+      html = html
+        .replace(/<table>/g, '<div class="table-wrap"><table>')
+        .replace(/<\/table>/g, '</table></div>');
+      return html;
+    }
+
+    // 가격 정규화: 숫자면 천단위 콤마 + '원', 아니면 입력 그대로
+    function fmtPrice(p) {
+      const t = (p || '').trim();
+      if (!t) return '';
+      const digits = t.replace(/[,\s]/g, '');
+      if (/^\d+$/.test(digits)) return Number(digits).toLocaleString('ko-KR') + '원';
+      return t;
+    }
+
+    // 인터뷰 답 → 마크다운 템플릿 (H1 + blockquote 포함 → 홈 히어로가 그대로 인식)
+    function buildMarkdown(a) {
+      const name = (a.name || '').trim() || '우리 카페';
+      const slogan = (a.slogan || '').trim() || '한 줄 슬로건을 적어주세요';
+      const sect = (v) => ((v || '').trim() || '_(작성 필요)_');
+      const menus = (a.menus || []).filter((m) => (m.name || '').trim());
+
+      let menuTable;
+      if (menus.length) {
+        menuTable =
+          '| 메뉴 | 가격 |\n|------|------|\n' +
+          menus.map((m) => `| ${m.name.trim()} | ${fmtPrice(m.price) || '-'} |`).join('\n');
+      } else {
+        menuTable = '| 메뉴 | 가격 |\n|------|------|\n| _(작성 필요)_ | - |';
+      }
+
+      return [
+        `# ☕ ${name}`, ``,
+        `> **"${slogan}"**`, ``,
+        `---`, ``,
+        `## ☕ 컨셉`, ``, sect(a.concept), ``,
+        `## 📍 위치 · 규모`, ``, sect(a.location), ``,
+        `## 🍰 시그니처 메뉴`, ``, menuTable, ``,
+        `## 🎯 타깃 손님`, ``, sect(a.target), ``,
+        `## ⚔️ 경쟁 카페`, ``, sect(a.competitor), ``,
+        `## 🚀 3개월 목표`, ``, sect(a.goal), ``,
+        `---`, ``,
+        `*🪄 인터뷰로 만든 초안입니다. 자유롭게 다듬은 뒤 💾 저장을 눌러 브랜드 홈에 반영하세요.*`, ``,
+      ].join('\n');
+    }
+
+    // 인터뷰 스텝 정의
+    const STEPS = [
+      { key: 'name', title: '카페 이름', emoji: '🏷️', type: 'text', help: '브랜드의 정식 이름을 적어주세요.', placeholder: '예: 카페 안도 (Cafe Ando)' },
+      { key: 'slogan', title: '한 줄 슬로건', emoji: '✨', type: 'text', help: '손님이 기억할 한 문장이에요.', placeholder: '예: 잠시 숨 고르며 안도하는 공간' },
+      { key: 'concept', title: '컨셉 설명', emoji: '☕', type: 'textarea', help: '어떤 공간인지 2~3문장으로 소개해 주세요.', placeholder: '예: 인테리어 회사가 운영하는 자재 쇼룸 겸 카페. 커피를 마시며 마감재·가구·조명을 직접 만져볼 수 있어요.' },
+      { key: 'location', title: '위치 · 평수', emoji: '📍', type: 'text', help: '어디에 있고 규모는 어느 정도인가요?', placeholder: '예: 서울 성수동 골목 2층, 12평 (14석)' },
+      { key: 'menus', title: '시그니처 메뉴', emoji: '🍰', type: 'menus', help: '대표 메뉴 2~3개를 이름과 가격으로 적어주세요.' },
+      { key: 'target', title: '타깃 손님', emoji: '🎯', type: 'textarea', help: '누구를 위한 카페인가요?', placeholder: '예: 성수 직장인, 공간·디자인에 관심 많은 20~30대, 동네 프리랜서' },
+      { key: 'competitor', title: '경쟁 카페', emoji: '⚔️', type: 'text', help: '주변에서 신경 쓰이는 카페가 있나요?', placeholder: '예: 메종 드 성수, 컴포즈커피 연무장점, 로우키 성수' },
+      { key: 'goal', title: '3개월 목표', emoji: '🚀', type: 'textarea', help: '가까운 목표를 구체적으로 적어주세요.', placeholder: '예: 일 평균 손님 40명, 인스타 팔로워 3,000명, 월 손익 흑자 전환' },
+    ];
+
+    function emptyAnswers() {
+      return {
+        name: '', slogan: '', concept: '', location: '',
+        menus: [{ name: '', price: '' }, { name: '', price: '' }],
+        target: '', competitor: '', goal: '',
+      };
+    }
+
+    // ============================================================
+    // 🎨 Design System
+    // ============================================================
+    function Button({ variant = 'primary', size = 'md', className = '', disabled, children, ...rest }) {
+      const base = 'inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sage disabled:opacity-50 disabled:cursor-not-allowed select-none';
+      const sizes = {
+        sm: 'text-sm px-3 py-1.5',
+        md: 'text-sm px-4 py-2.5',
+        lg: 'text-base px-6 py-3',
+      };
+      const variants = {
+        primary: 'bg-walnut text-cream hover:bg-walnut-dark shadow-sm hover:shadow active:translate-y-px',
+        secondary: 'bg-sage text-white hover:bg-sage-dark shadow-sm hover:shadow active:translate-y-px',
+        outline: 'border border-walnut/30 text-walnut bg-paper hover:bg-walnut/5 active:translate-y-px',
+        ghost: 'text-walnut hover:bg-walnut/10',
+        danger: 'bg-red-700 text-white hover:bg-red-800 shadow-sm active:translate-y-px',
+      };
+      return (
+        <button
+          className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}
+          disabled={disabled}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Spinner({ className = 'h-6 w-6' }) {
+      return (
+        <svg className={`animate-spin text-walnut ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+        </svg>
+      );
+    }
+
+    function ProgressBar({ value }) {
+      return (
+        <div className="h-2 w-full rounded-full bg-walnut/10 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-sage to-sage-dark transition-all duration-300 ease-out"
+            style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+          />
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 🍞 Toast
+    // ============================================================
+    function ToastHost({ toasts, onDismiss }) {
+      return (
+        <div className="fixed z-[60] bottom-4 inset-x-4 sm:inset-x-auto sm:right-6 flex flex-col items-stretch sm:items-end gap-2 pointer-events-none">
+          {toasts.map((t) => (
+            <div
+              key={t.id}
+              role="status"
+              className={`anim-toast pointer-events-auto max-w-sm w-full sm:w-auto flex items-start gap-3 rounded-xl px-4 py-3 shadow-lg border-l-4 bg-paper ${
+                t.type === 'success' ? 'border-sage' : t.type === 'error' ? 'border-red-600' : 'border-walnut'
+              }`}
+            >
+              <span className="text-lg leading-none mt-0.5">
+                {t.type === 'success' ? '✅' : t.type === 'error' ? '⚠️' : '☕'}
+              </span>
+              <p className="text-sm text-ink leading-snug flex-1">{t.msg}</p>
+              <button
+                onClick={() => onDismiss(t.id)}
+                className="text-walnut/40 hover:text-walnut text-lg leading-none"
+                aria-label="알림 닫기"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 🏠 Home: 로고 (이미지 시도 → ☕ 폴백)
+    // ============================================================
+    function CafeLogo({ className = '', imgClass = '', emojiClass = '' }) {
+      const [failed, setFailed] = useState(false);
+      if (failed) {
+        return (
+          <div
+            className={`flex items-center justify-center bg-gradient-to-br from-walnut to-walnut-dark text-cream ${className} ${emojiClass}`}
+            aria-hidden="true"
+          >
+            ☕
+          </div>
+        );
+      }
+      return (
+        <img
+          src="/logo.png"
+          alt="카페 안도 로고"
+          onError={() => setFailed(true)}
+          className={`object-cover bg-paper ${className} ${imgClass}`}
+        />
+      );
+    }
+
+    // ============================================================
+    // 🏠 Home: 상태 화면들
+    // ============================================================
+    function LoadingState() {
+      return (
+        <div className="flex flex-col items-center justify-center py-24 gap-4 text-walnut/70">
+          <Spinner className="h-9 w-9" />
+          <p className="text-sm">브랜드 스토리를 내리는 중…</p>
+        </div>
+      );
+    }
+
+    function ErrorState({ message, onRetry }) {
+      return (
+        <div className="max-w-md mx-auto text-center py-20 anim-fade">
+          <div className="text-5xl mb-4">🫖</div>
+          <h3 className="font-serif text-xl text-walnut mb-2">내용을 불러오지 못했어요</h3>
+          <p className="text-sm text-ink/70 mb-6">{message}</p>
+          <Button onClick={onRetry}>↻ 다시 시도</Button>
+        </div>
+      );
+    }
+
+    function EmptyState({ onStart }) {
+      return (
+        <div className="max-w-md mx-auto text-center py-20 anim-fade">
+          <div className="text-5xl mb-4">📖</div>
+          <h3 className="font-serif text-xl text-walnut mb-2">아직 브랜드 스토리가 비어 있어요</h3>
+          <p className="text-sm text-ink/70 mb-6">인터뷰로 초안을 만들거나 편집 탭에서 직접 작성해 보세요.</p>
+          <Button variant="secondary" onClick={onStart}>🪄 인터뷰로 시작하기</Button>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 🏠 Home 본문
+    // ============================================================
+    function HomeView({ loadState, markdown, onRetry, onStartInterview }) {
+      const hero = useMemo(() => splitHero(markdown), [markdown]);
+      const bodyHtml = useMemo(() => mdToHtml(hero.body), [hero.body]);
+      const sloganHtml = useMemo(
+        () => (window.marked && hero.slogan ? marked.parseInline(hero.slogan) : hero.slogan),
+        [hero.slogan]
+      );
+
+      if (loadState.loading) return <LoadingState />;
+      if (loadState.error) return <ErrorState message={loadState.error} onRetry={onRetry} />;
+      if (!markdown || !markdown.trim()) return <EmptyState onStart={onStartInterview} />;
+
+      return (
+        <div className="anim-fade">
+          {/* ===== 히어로 ===== */}
+          <section className="relative overflow-hidden rounded-3xl border border-walnut/10 shadow-sm bg-gradient-to-br from-paper via-cream to-[#EBE3D4] mb-8">
+            <div className="absolute -right-16 -top-16 h-52 w-52 rounded-full bg-sage/15 blur-2xl" aria-hidden="true" />
+            <div className="absolute -left-12 -bottom-16 h-52 w-52 rounded-full bg-walnut/10 blur-2xl" aria-hidden="true" />
+            <div className="relative px-6 py-12 sm:px-12 sm:py-16 text-center flex flex-col items-center">
+              <CafeLogo
+                className="h-20 w-20 sm:h-24 sm:w-24 rounded-3xl shadow-md ring-1 ring-walnut/10 mb-6"
+                emojiClass="text-4xl sm:text-5xl"
+              />
+              <h1 className="font-serif font-extrabold text-walnut text-3xl sm:text-5xl leading-tight tracking-tight">
+                {hero.cleanTitle || '카페 안도'}
+              </h1>
+              {hero.slogan && (
+                <p
+                  className="hero-slogan mt-5 max-w-2xl text-base sm:text-lg text-walnut-light leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: sloganHtml }}
+                />
+              )}
+              <div className="mt-7 flex items-center gap-2 text-sage-dark" aria-hidden="true">
+                <span className="h-px w-8 bg-sage/50" />
+                <span className="text-sm">☕</span>
+                <span className="h-px w-8 bg-sage/50" />
+              </div>
+            </div>
+          </section>
+
+          {/* ===== 본문 (종이 카드) ===== */}
+          <article className="rounded-3xl border border-walnut/10 bg-paper shadow-sm px-6 py-8 sm:px-12 sm:py-10">
+            <div className="cafe-prose" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+          </article>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // ✏️ Edit: 인터뷰 위저드 내부 — 메뉴 입력기
+    // ============================================================
+    function MenuEditor({ menus, onChange }) {
+      const update = (i, field, val) => {
+        const next = menus.map((m, idx) => (idx === i ? { ...m, [field]: val } : m));
+        onChange(next);
+      };
+      const addRow = () => { if (menus.length < 3) onChange([...menus, { name: '', price: '' }]); };
+      const removeRow = (i) => { if (menus.length > 1) onChange(menus.filter((_, idx) => idx !== i)); };
+
+      return (
+        <div className="space-y-3">
+          {menus.map((m, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="text-xs font-bold text-walnut/50 w-5 text-center">{i + 1}</span>
+              <input
+                type="text"
+                value={m.name}
+                onChange={(e) => update(i, 'name', e.target.value)}
+                placeholder="메뉴 이름 (예: 흑임자 크림라떼)"
+                className="flex-1 min-w-0 rounded-lg border border-walnut/20 bg-paper px-3 py-2 text-sm text-ink placeholder:text-walnut/35 focus:outline-none focus:ring-2 focus:ring-sage"
+              />
+              <input
+                type="text"
+                value={m.price}
+                onChange={(e) => update(i, 'price', e.target.value)}
+                placeholder="가격 (예: 6500)"
+                inputMode="numeric"
+                className="w-28 rounded-lg border border-walnut/20 bg-paper px-3 py-2 text-sm text-ink placeholder:text-walnut/35 focus:outline-none focus:ring-2 focus:ring-sage"
+              />
+              <button
+                type="button"
+                onClick={() => removeRow(i)}
+                disabled={menus.length <= 1}
+                className="text-walnut/40 hover:text-red-600 disabled:opacity-30 disabled:hover:text-walnut/40 text-lg w-7 h-9 flex items-center justify-center"
+                aria-label={`${i + 1}번 메뉴 삭제`}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {menus.length < 3 && (
+            <button
+              type="button"
+              onClick={addRow}
+              className="text-sm text-sage-dark hover:text-sage font-semibold inline-flex items-center gap-1"
+            >
+              ＋ 메뉴 추가 ({menus.length}/3)
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // ============================================================
+    // ✏️ Edit: 인터뷰 위저드 모달
+    // ============================================================
+    function WizardModal({ open, initial, onClose, onComplete }) {
+      const [step, setStep] = useState(0);
+      const [answers, setAnswers] = useState(emptyAnswers);
+      const firstFieldRef = useRef(null);
+
+      // 열릴 때마다 초기화 (+ 현재 문서에서 이름/슬로건 프리필)
+      useEffect(() => {
+        if (open) {
+          setStep(0);
+          setAnswers({ ...emptyAnswers(), ...(initial || {}) });
+        }
+      }, [open]);
+
+      // ESC 로 닫기
+      useEffect(() => {
+        if (!open) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [open, onClose]);
+
+      // 스텝 이동 시 첫 입력 포커스
+      useEffect(() => {
+        if (open && firstFieldRef.current) {
+          const t = setTimeout(() => firstFieldRef.current && firstFieldRef.current.focus(), 60);
+          return () => clearTimeout(t);
+        }
+      }, [step, open]);
+
+      if (!open) return null;
+
+      const cur = STEPS[step];
+      const isLast = step === STEPS.length - 1;
+      const setField = (key, val) => setAnswers((a) => ({ ...a, [key]: val }));
+      const next = () => (isLast ? onComplete(answers) : setStep((s) => Math.min(STEPS.length - 1, s + 1)));
+      const prev = () => setStep((s) => Math.max(0, s - 1));
+      const onKeyDown = (e) => {
+        if (e.key === 'Enter' && cur.type === 'text') { e.preventDefault(); next(); }
+      };
+
+      return (
+        <div
+          className="anim-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-walnut-dark/50 backdrop-blur-sm"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="wizard-title"
+        >
+          <div className="anim-modal thin-scroll w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-cream shadow-2xl border border-walnut/10">
+            {/* 헤더 */}
+            <div className="sticky top-0 bg-cream/95 backdrop-blur px-6 pt-6 pb-4 border-b border-walnut/10 z-10">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 id="wizard-title" className="font-serif text-xl font-extrabold text-walnut">
+                    🪄 인터뷰로 브랜드 만들기
+                  </h2>
+                  <p className="text-xs text-walnut/60 mt-1">8개 질문에 답하면 마크다운 초안을 만들어 드려요.</p>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="text-walnut/40 hover:text-walnut text-2xl leading-none -mt-1"
+                  aria-label="인터뷰 닫기"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <ProgressBar value={((step + 1) / STEPS.length) * 100} />
+                <span className="text-xs font-bold text-walnut/60 whitespace-nowrap tabular-nums">
+                  {step + 1} / {STEPS.length}
+                </span>
+              </div>
+            </div>
+
+            {/* 본문 */}
+            <div className="px-6 py-6 min-h-[220px]">
+              <div key={step} className="anim-fade">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl">{cur.emoji}</span>
+                  <h3 className="font-serif text-lg font-bold text-walnut">
+                    {cur.title}
+                    {(cur.key === 'menus') && <span className="text-walnut/40 text-sm font-sans font-normal"> (2~3개)</span>}
+                  </h3>
+                </div>
+                <p className="text-sm text-walnut/60 mb-4">{cur.help}</p>
+
+                {cur.type === 'text' && (
+                  <input
+                    ref={firstFieldRef}
+                    type="text"
+                    value={answers[cur.key]}
+                    onChange={(e) => setField(cur.key, e.target.value)}
+                    onKeyDown={onKeyDown}
+                    placeholder={cur.placeholder}
+                    className="w-full rounded-xl border border-walnut/20 bg-paper px-4 py-3 text-ink placeholder:text-walnut/35 focus:outline-none focus:ring-2 focus:ring-sage"
+                  />
+                )}
+
+                {cur.type === 'textarea' && (
+                  <textarea
+                    ref={firstFieldRef}
+                    value={answers[cur.key]}
+                    onChange={(e) => setField(cur.key, e.target.value)}
+                    placeholder={cur.placeholder}
+                    rows={5}
+                    className="thin-scroll w-full resize-none rounded-xl border border-walnut/20 bg-paper px-4 py-3 text-ink placeholder:text-walnut/35 focus:outline-none focus:ring-2 focus:ring-sage leading-relaxed"
+                  />
+                )}
+
+                {cur.type === 'menus' && (
+                  <MenuEditor menus={answers.menus} onChange={(m) => setField('menus', m)} />
+                )}
+              </div>
+            </div>
+
+            {/* 푸터 */}
+            <div className="sticky bottom-0 bg-cream/95 backdrop-blur px-6 py-4 border-t border-walnut/10 flex items-center justify-between">
+              <Button variant="ghost" size="md" onClick={prev} disabled={step === 0}>← 이전</Button>
+              <div className="flex items-center gap-2">
+                {!isLast && (
+                  <button onClick={onClose} className="text-sm text-walnut/50 hover:text-walnut px-2">취소</button>
+                )}
+                <Button variant={isLast ? 'secondary' : 'primary'} size="md" onClick={next}>
+                  {isLast ? '✓ 초안 만들기' : '다음 →'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // ✏️ Edit 본문
+    // ============================================================
+    function EditView({ draft, dirty, saving, onChange, onSave, onReset, onOpenWizard }) {
+      const charCount = draft ? draft.length : 0;
+      return (
+        <div className="anim-fade">
+          {/* 툴바 */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <h2 className="font-serif text-xl font-bold text-walnut">✏️ 마크다운 편집</h2>
+              {dirty && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  저장되지 않은 변경
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="md" onClick={onOpenWizard}>🪄 인터뷰로 다시 만들기</Button>
+              {dirty && (
+                <Button variant="ghost" size="md" onClick={onReset}>↩︎ 되돌리기</Button>
+              )}
+              <Button variant="primary" size="md" onClick={onSave} disabled={saving}>
+                {saving ? <><Spinner className="h-4 w-4" /> 저장 중…</> : '💾 저장'}
+              </Button>
+            </div>
+          </div>
+
+          {/* 안내 */}
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-sage/10 border border-sage/25 px-4 py-2.5 text-sm text-walnut">
+            <span aria-hidden="true">💡</span>
+            <p>이 편집 내용은 <strong>💾 저장</strong>을 눌러야 <strong>🏠 브랜드 홈</strong>에 반영됩니다. 인터뷰로 만든 초안도 자동 저장되지 않아요.</p>
+          </div>
+
+          {/* 에디터 (고정폭) */}
+          <div className="relative rounded-2xl border border-walnut/15 bg-paper shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-sage">
+            <textarea
+              value={draft}
+              onChange={(e) => onChange(e.target.value)}
+              spellCheck={false}
+              placeholder="# ☕ 카페 이름&#10;&#10;> 슬로건&#10;&#10;마크다운으로 자유롭게 작성하세요…"
+              className="thin-scroll block w-full h-[58vh] min-h-[360px] resize-y bg-transparent px-4 py-4 font-mono text-[13.5px] leading-relaxed text-ink placeholder:text-walnut/30 focus:outline-none"
+            />
+          </div>
+
+          <div className="mt-2 flex items-center justify-between text-xs text-walnut/50">
+            <span>Markdown · 표 · 체크리스트 지원</span>
+            <span className="tabular-nums">{charCount.toLocaleString('ko-KR')}자</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ============================================================
+    // 🧭 헤더 + 탭 내비게이션
+    // ============================================================
+    function Header({ activeTab, onTab, dirty, updatedAt }) {
+      const tabs = [
+        { key: 'home', label: '브랜드 홈', emoji: '🏠' },
+        { key: 'edit', label: '편집', emoji: '✏️' },
+      ];
+      return (
+        <header className="sticky top-0 z-40 bg-cream/85 backdrop-blur-md border-b border-walnut/10">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            {/* 브랜드 바 */}
+            <div className="flex items-center justify-between py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <CafeLogo
+                  className="h-10 w-10 rounded-xl shadow-sm ring-1 ring-walnut/10 shrink-0"
+                  emojiClass="text-xl"
+                />
+                <div className="min-w-0">
+                  <p className="font-serif font-extrabold text-walnut leading-tight truncate">카페 안도</p>
+                  <p className="text-[11px] text-walnut/55 leading-tight">브랜드 허브</p>
+                </div>
+              </div>
+              <div className="text-right hidden sm:block">
+                <p className="text-[11px] text-walnut/45 leading-tight">마지막 저장</p>
+                <p className="text-xs text-walnut/70 leading-tight">{formatDate(updatedAt)}</p>
+              </div>
+            </div>
+
+            {/* 탭 */}
+            <nav className="flex gap-1 -mb-px" role="tablist" aria-label="화면 전환">
+              {tabs.map((t) => {
+                const active = activeTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => onTab(t.key)}
+                    className={`relative inline-flex items-center gap-1.5 px-4 sm:px-5 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition-colors ${
+                      active
+                        ? 'text-walnut border-walnut bg-paper/60'
+                        : 'text-walnut/55 border-transparent hover:text-walnut hover:bg-walnut/5'
+                    }`}
+                  >
+                    <span aria-hidden="true">{t.emoji}</span>
+                    {t.label}
+                    {/* 저장 안 한 변경 배지 */}
+                    {t.key === 'edit' && dirty && (
+                      <span
+                        className="ml-0.5 h-2 w-2 rounded-full bg-amber-500 animate-pulse"
+                        title="저장되지 않은 변경이 있어요"
+                        aria-label="저장되지 않은 변경 있음"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </header>
+      );
+    }
+
+    // ============================================================
+    // 🚀 App
+    // ============================================================
+    function App() {
+      const [activeTab, setActiveTab] = useState('home');
+      const [serverMarkdown, setServerMarkdown] = useState(''); // 저장된(홈에 반영된) 내용
+      const [draft, setDraft] = useState('');                    // 편집 중 내용
+      const [updatedAt, setUpdatedAt] = useState(null);
+      const [loadState, setLoadState] = useState({ loading: true, error: null });
+      const [saving, setSaving] = useState(false);
+      const [wizardOpen, setWizardOpen] = useState(false);
+      const [toasts, setToasts] = useState([]);
+      const draftInit = useRef(false);
+      const toastSeq = useRef(0);
+
+      const dirty = draft !== serverMarkdown;
+
+      // ---- Toast ----
+      const dismissToast = useCallback((id) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
+      const pushToast = useCallback((type, msg) => {
+        const id = ++toastSeq.current;
+        setToasts((ts) => [...ts, { id, type, msg }]);
+        setTimeout(() => setToasts((ts) => ts.filter((t) => t.id !== id)), 3600);
+      }, []);
+
+      // ---- GET /api/cafe ----
+      const load = useCallback(async () => {
+        setLoadState({ loading: true, error: null });
+        try {
+          const { markdown, updatedAt: ua } = await getCafe();
+          setServerMarkdown(markdown || '');
+          setUpdatedAt(ua || null);
+          if (!draftInit.current) {
+            setDraft(markdown || '');
+            draftInit.current = true;
+          }
+          setLoadState({ loading: false, error: null });
+        } catch (e) {
+          setLoadState({ loading: false, error: e.message || '알 수 없는 오류' });
+        }
+      }, []);
+
+      useEffect(() => { load(); }, [load]);
+
+      // ---- 저장 안 한 변경이 있으면 창 닫기 경고 ----
+      useEffect(() => {
+        const handler = (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+      }, [dirty]);
+
+      // ---- PUT /api/cafe ----
+      const handleSave = useCallback(async () => {
+        if (!draft.trim()) {
+          pushToast('error', '내용이 비어 있어요. 최소 한 글자 이상 입력해 주세요.');
+          return;
+        }
+        setSaving(true);
+        try {
+          const { updatedAt: ua } = await putCafe(draft);
+          setServerMarkdown(draft);
+          setUpdatedAt(ua || new Date().toISOString());
+          pushToast('success', '저장했어요! 🏠 브랜드 홈에 반영됐습니다.');
+        } catch (e) {
+          pushToast('error', e.message || '저장에 실패했어요.');
+        } finally {
+          setSaving(false);
+        }
+      }, [draft, pushToast]);
+
+      const handleReset = useCallback(() => {
+        setDraft(serverMarkdown);
+        pushToast('info', '저장된 내용으로 되돌렸어요.');
+      }, [serverMarkdown, pushToast]);
+
+      // ---- 인터뷰 ----
+      const openWizard = useCallback(() => {
+        if (activeTab !== 'edit') setActiveTab('edit');
+        setWizardOpen(true);
+      }, [activeTab]);
+
+      // 현재 편집 중 내용에서 이름/슬로건만 프리필 (다시 만들기 = 이어서 다듬기 느낌)
+      const wizardInitial = useMemo(() => {
+        const h = splitHero(draft);
+        return { name: h.cleanTitle || '', slogan: h.slogan || '' };
+      }, [wizardOpen]); // 열릴 때 계산
+
+      const completeWizard = useCallback((answers) => {
+        const md = buildMarkdown(answers);
+        setDraft(md);
+        setWizardOpen(false);
+        setActiveTab('edit');
+        pushToast('info', '인터뷰 내용을 편집기에 반영했어요. 검토 후 💾 저장을 눌러주세요.');
+      }, [pushToast]);
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          <Header activeTab={activeTab} onTab={setActiveTab} dirty={dirty} updatedAt={updatedAt} />
+
+          <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+            {activeTab === 'home' ? (
+              <HomeView
+                loadState={loadState}
+                markdown={serverMarkdown}
+                onRetry={load}
+                onStartInterview={openWizard}
+              />
+            ) : (
+              <EditView
+                draft={draft}
+                dirty={dirty}
+                saving={saving}
+                onChange={setDraft}
+                onSave={handleSave}
+                onReset={handleReset}
+                onOpenWizard={() => setWizardOpen(true)}
+              />
+            )}
+          </main>
+
+          <footer className="text-center py-6 text-xs text-walnut/40">
+            ☕ 카페 안도 브랜드 허브 · <span className="font-mono">my_cafe.md</span> 를 편집하는 작은 도구
+          </footer>
+
+          <WizardModal
+            open={wizardOpen}
+            initial={wizardInitial}
+            onClose={() => setWizardOpen(false)}
+            onComplete={completeWizard}
+          />
+
+          <ToastHost toasts={toasts} onDismiss={dismissToast} />
+        </div>
+      );
+    }
+
+    // ============================================================
+    // Render
+    // ============================================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
