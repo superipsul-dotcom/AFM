@@ -2,6 +2,317 @@
   "version": 1,
   "entries": [
     {
+      "id": "cl-2026-07-05T14-53-37-087Z-1",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_up",
+      "materialId": "가설공사-부자재-플라베니아-보양판-2-5t-900x1800",
+      "name": "플라베니아(보양판)",
+      "trade": "가설공사",
+      "category": "부자재",
+      "subcategory": "보양",
+      "spec": "2.5T 900x1800",
+      "detail": "가격 3,000~5,500 → 5,570~9,570원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 5570,
+        "max": 9570,
+        "unit": "장"
+      },
+      "before": {
+        "price": {
+          "min": 3000,
+          "max": 5500
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "2.5T 900x1800",
+        "grade": "보급",
+        "unit": "장"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-2",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_up",
+      "materialId": "가설공사-부자재-보양-테이프-면테이프-48mm",
+      "name": "보양 테이프(면테이프)",
+      "trade": "가설공사",
+      "category": "부자재",
+      "subcategory": "보양",
+      "spec": "48mm",
+      "detail": "가격 1,500~3,000 → 2,100~3,470원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 2100,
+        "max": 3470,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 1500,
+          "max": 3000
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "48mm",
+        "grade": "보급",
+        "unit": "EA"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-3",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_down",
+      "materialId": "가설공사-가설재-안전망-추락방지-수직-수평",
+      "name": "안전망(추락방지)",
+      "trade": "가설공사",
+      "category": "가설재",
+      "subcategory": "비계·안전",
+      "spec": "수직/수평",
+      "detail": "가격 1,000~3,000 → 1,120~1,160원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 1120,
+        "max": 1160,
+        "unit": "M2"
+      },
+      "before": {
+        "price": {
+          "min": 1000,
+          "max": 3000
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "수직/수평",
+        "grade": "보급",
+        "unit": "M2"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-4",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_up",
+      "materialId": "철거공사-부자재-톤백-1톤-마대-ea",
+      "name": "톤백(1톤 마대)",
+      "trade": "철거공사",
+      "category": "부자재",
+      "subcategory": "폐기",
+      "spec": "EA",
+      "detail": "가격 3,000~7,000 → 11,250~19,530원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 11250,
+        "max": 19530,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 3000,
+          "max": 7000
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "EA",
+        "grade": "보급",
+        "unit": "EA"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-5",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_up",
+      "materialId": "철거공사-철거부자재-톤백-1톤",
+      "name": "톤백",
+      "trade": "철거공사",
+      "category": "철거부자재",
+      "subcategory": "폐기·보양",
+      "spec": "1톤",
+      "detail": "가격 2,000~5,000 → 11,250~19,530원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 11250,
+        "max": 19530,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 2000,
+          "max": 5000
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "1톤",
+        "grade": "보급",
+        "unit": "EA"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-6",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_up",
+      "materialId": "철거공사-부자재-pp-마대-대형-ea",
+      "name": "PP 마대(대형)",
+      "trade": "철거공사",
+      "category": "부자재",
+      "subcategory": "폐기",
+      "spec": "EA",
+      "detail": "가격 300~800 → 590~1,090원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 590,
+        "max": 1090,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 300,
+          "max": 800
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "EA",
+        "grade": "보급",
+        "unit": "EA"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-7",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_down",
+      "materialId": "철거공사-철거부자재-폐기물-마대-pp-대형",
+      "name": "폐기물 마대(PP)",
+      "trade": "철거공사",
+      "category": "철거부자재",
+      "subcategory": "폐기·보양",
+      "spec": "대형",
+      "detail": "가격 500~1,500 → 590~1,090원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 590,
+        "max": 1090,
+        "unit": "장"
+      },
+      "before": {
+        "price": {
+          "min": 500,
+          "max": 1500
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "대형",
+        "grade": "보급",
+        "unit": "장"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-8",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_up",
+      "materialId": "창호공사-도어-창호-도어-경첩-4인치-스테인리스",
+      "name": "도어 경첩",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "도어하드웨어",
+      "spec": "4인치 스테인리스",
+      "detail": "가격 2,000~6,000 → 3,000~5,700원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 3000,
+        "max": 5700,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 2000,
+          "max": 6000
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "4인치 스테인리스",
+        "grade": "보급",
+        "unit": "EA"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-9",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_up",
+      "materialId": "창호공사-도어-창호-모티스-도어록-방문용-레버",
+      "name": "모티스 도어록",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "도어하드웨어",
+      "spec": "방문용 레버",
+      "detail": "가격 15,000~40,000 → 27,400~65,070원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 27400,
+        "max": 65070,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 15000,
+          "max": 40000
+        },
+        "brands": [
+          "국산"
+        ],
+        "spec": "방문용 레버",
+        "grade": "보급",
+        "unit": "EA"
+      }
+    },
+    {
+      "id": "cl-2026-07-05T14-53-37-087Z-10",
+      "ts": "2026-07-05T14:53:37.087Z",
+      "week": "2026-W27",
+      "type": "price_down",
+      "materialId": "창호공사-도어-창호-디지털-도어록-푸시풀-현관용",
+      "name": "디지털 도어록(푸시풀)",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "도어하드웨어",
+      "spec": "현관용",
+      "detail": "가격 120,000~300,000 → 99,000~297,000원 / 메모 변경",
+      "source": "research",
+      "price": {
+        "min": 99000,
+        "max": 297000,
+        "unit": "EA"
+      },
+      "before": {
+        "price": {
+          "min": 120000,
+          "max": 300000
+        },
+        "brands": [
+          "삼성SHP",
+          "게이트맨"
+        ],
+        "spec": "현관용",
+        "grade": "중급",
+        "unit": "EA"
+      }
+    },
+    {
       "id": "cl-2026-07-05T09-55-33-523Z-1",
       "ts": "2026-07-05T09:55:33.523Z",
       "week": "2026-W27",
