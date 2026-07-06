@@ -28,3 +28,6 @@ yarn-error.log*
 .vscode/
 .idea/
 *.swp
+
+# Playwright MCP 브라우저 검증 세션 아티팩트 (자동 생성)
+.playwright-mcp/
