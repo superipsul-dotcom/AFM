@@ -1724,8 +1724,9 @@ app.get('/api/textures/:id/skm', (req, res) => {
 // Ruby 로더: 붙여넣기 한 번으로 컬러(무텍스처 솔리드) + 저장 텍스처(실측 mm 스케일)를 SketchUp 머티리얼로 등록
 app.get('/api/textures/ruby-loader', (req, res) => {
   try {
-    const libsParam = String(req.query.libs || 'benjamin-moore,dunn-edwards,korea-standard');
-    const wantLibs = new Set(libsParam.split(',').map(s => s.trim()).filter(Boolean));
+    // libs 파라미터 없으면 colors 있는 라이브러리 전부 포함 (예: ?libs=benjamin-moore,samhwa-ncs950 으로 선택 가능)
+    const libsParam = String(req.query.libs || '').trim();
+    const wantLibs = libsParam ? new Set(libsParam.split(',').map(s => s.trim()).filter(Boolean)) : null;
     const includeTex = String(req.query.textures || '1') !== '0';
     const lines = [];
     lines.push('# 자재DB 머티리얼 로더 — SketchUp Ruby Console에 전체 붙여넣기');
@@ -1736,7 +1737,7 @@ app.get('/api/textures/ruby-loader', (req, res) => {
     if (fs.existsSync(COLORS_DIR)) {
       for (const f of fs.readdirSync(COLORS_DIR).filter(x => x.endsWith('.json')).sort()) {
         let lib; try { lib = JSON.parse(fs.readFileSync(path.join(COLORS_DIR, f), 'utf8')); } catch (_) { continue; }
-        if (!lib || !Array.isArray(lib.colors) || !wantLibs.has(lib.key)) continue;
+        if (!lib || !Array.isArray(lib.colors) || (wantLibs && !wantLibs.has(lib.key))) continue;
         lines.push(`# --- ${lib.brand} (${lib.colors.length}) ---`);
         const rows = lib.colors.map(c => {
           const hex = String(c.hex || '#CCCCCC').replace('#', '');
