@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "sketchup": {
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "/Users/pyounghwahong/Library/Application Support/SketchUp 2025/SketchUp/Plugins/DLPDevBridge/mcp_server.mjs"
+      ]
+    }
+  }
+}

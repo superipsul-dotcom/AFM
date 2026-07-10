@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>안도 빈즈 · ANDO BEANS — 싱글 오리진 스페셜티 커피</title>
+  <meta name="description" content="산지에서 골라 담은 싱글 오리진 스페셜티 원두 셀렉트숍, 안도 빈즈." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%E2%98%95%3C/text%3E%3C/svg%3E" />
+
+  <!-- Korean web fonts (optional; system fallback if blocked) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind theme extension (must run AFTER the tailwind CDN script)
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:   '#FBF7F0',
+            cream2:  '#F4ECDF',
+            paper:   '#FFFFFF',
+            sand:    '#EDE4D6',
+            sand2:   '#E1D4C1',
+            espresso:'#2A211B',
+            espresso2:'#3B2E24',
+            mocha:   '#6B4E3D',
+            mocha2:  '#8A6A52',
+            forest:  '#3C4A3B',
+            forest2: '#4E6047',
+            gold:    '#B4894E',
+            gold2:   '#C9A25E',
+          },
+          fontFamily: {
+            sans:  ['"Noto Sans KR"', 'Pretendard', 'system-ui', '-apple-system', 'sans-serif'],
+            serif: ['"Noto Serif KR"', 'serif'],
+          },
+          boxShadow: {
+            soft: '0 14px 40px -18px rgba(42,33,27,0.32)',
+            card: '0 6px 20px -10px rgba(42,33,27,0.28)',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- React 18 + ReactDOM (UMD, development builds) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Babel Standalone + CLASSIC-runtime preset (fixes the automatic-runtime blank-screen gotcha) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+
+  <!-- 토스페이먼츠 결제위젯 v2 (global `TossPayments`) -->
+  <script src="https://js.tosspayments.com/v2/standard"></script>
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body { background: #FBF7F0; }
+    /* Fade / rise-in */
+    @keyframes riseIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .rise-in { animation: riseIn .5s cubic-bezier(.22,.61,.36,1) both; }
+    /* Toast */
+    @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    .toast-in { animation: toastIn .28s ease both; }
+    /* Steam for hero cup */
+    @keyframes steam { 0% { opacity: 0; transform: translateY(4px) scaleX(1); } 30% { opacity: .55; } 100% { opacity: 0; transform: translateY(-22px) scaleX(1.5); } }
+    .steam span { animation: steam 3.4s ease-in-out infinite; }
+    .steam span:nth-child(2){ animation-delay: 1.1s; }
+    .steam span:nth-child(3){ animation-delay: 2.2s; }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 11px; height: 11px; }
+    ::-webkit-scrollbar-thumb { background: #D8C7B2; border-radius: 999px; border: 3px solid #FBF7F0; }
+    ::-webkit-scrollbar-thumb:hover { background: #C2AC90; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="font-sans text-espresso bg-cream antialiased">
+  <div id="root"></div>
+  <noscript>이 페이지를 보려면 자바스크립트를 켜주세요.</noscript>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useRef, useMemo, useCallback, useContext, createContext } = React;
+
+    // ========================================
+    // 상수 & Mock 데이터 (상품은 UI 전용 mock · 인증은 server.js /api/auth 연동)
+    // ========================================
+    const CART_KEY = 'ando_beans_cart_v1';
+    const TOKEN_KEY = 'ando_beans_token_v1';
+    const API_BASE_URL = '/api';   // server.js가 정적 파일과 API를 같은 오리진에서 서빙
+    const FREE_SHIPPING = 30000;   // 3만원 이상 무료배송
+    const SHIPPING_FEE = 3000;
+
+    // 토스페이먼츠 클라이언트 키 — 공개용(프론트 노출 OK). 시크릿 키는 서버(.env)에만 존재.
+    const TOSS_CLIENT_KEY = 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm';
+
+    const CONTINENTS = ['전체', '아프리카', '중미', '남미', '아시아', '중동'];
+    const ROASTS = ['전체', '라이트', '미디엄', '다크'];
+    const PROCESSES = ['전체', '워시드', '내추럴', '허니', '세미워시드'];
+    const SORTS = ['추천순', '낮은가격', '높은가격'];
+
+    const GRINDS = [
+      { value: '홀빈',        label: '홀빈 (분쇄 안 함)', hint: '개봉 후 직접 그라인딩' },
+      { value: '에스프레소',   label: '에스프레소',        hint: '가늘게' },
+      { value: '모카포트',     label: '모카포트',          hint: '가늘게~중간' },
+      { value: '핸드드립',     label: '핸드드립 · V60',    hint: '중간' },
+      { value: '프렌치프레스', label: '프렌치프레스',      hint: '굵게' },
+      { value: '콜드브루',     label: '콜드브루',          hint: '매우 굵게' },
+    ];
+
+    // 200g 기준 · 산지별 그라데이션(c1→c2) + 국기 이모지로 카드 비주얼
+    const PRODUCTS = [
+      {
+        id: 1, name: '에티오피아 예가체프 코체레', en: 'Ethiopia Yirgacheffe Kochere',
+        continent: '아프리카', country: '에티오피아', origin: '예가체프, 코체레', flag: '🇪🇹',
+        farm: '코체레 워싱스테이션', process: '워시드', roast: '라이트', roastLevel: 2,
+        altitude: '1,900 – 2,100m', variety: '에티오피아 재래종(Heirloom)',
+        cupNotes: ['자스민', '베르가못', '레몬', '홍차'], price: 19000, badge: 'BEST',
+        acidity: 5, body: 2, sweetness: 4, c1: '#F0C86A', c2: '#C97B45',
+        desc: '에티오피아 예가체프의 정수. 화사한 자스민 향과 홍차 같은 여운이 깔끔하게 이어지는 클래식 워시드입니다.',
+      },
+      {
+        id: 2, name: '에티오피아 시다모 구지', en: 'Ethiopia Sidamo Guji',
+        continent: '아프리카', country: '에티오피아', origin: '시다모, 구지', flag: '🇪🇹',
+        farm: '구지 소농 조합', process: '내추럴', roast: '라이트', roastLevel: 2,
+        altitude: '1,950m', variety: '에티오피아 재래종(Heirloom)',
+        cupNotes: ['블루베리', '딸기잼', '다크초콜릿', '레드와인'], price: 21000, badge: 'NEW',
+        acidity: 4, body: 3, sweetness: 5, c1: '#D98A9E', c2: '#8E4A5E',
+        desc: '잘 익은 베리를 한가득 담은 내추럴. 딸기잼과 다크초콜릿의 달콤함이 인상적입니다.',
+      },
+      {
+        id: 3, name: '콜롬비아 우일라 수프리모', en: 'Colombia Huila Supremo',
+        continent: '남미', country: '콜롬비아', origin: '우일라', flag: '🇨🇴',
+        farm: '우일라 지역 농가', process: '워시드', roast: '미디엄', roastLevel: 3,
+        altitude: '1,700m', variety: '카투라, 카스티요',
+        cupNotes: ['밀크초콜릿', '카라멜', '오렌지', '견과'], price: 16000, badge: null,
+        acidity: 3, body: 3, sweetness: 4, c1: '#C98A54', c2: '#7A4A2E',
+        desc: '밸런스가 좋은 데일리 원두. 밀크초콜릿과 카라멜의 부드러운 단맛으로 누구에게나 편안합니다.',
+      },
+      {
+        id: 4, name: '케냐 AA 니에리', en: 'Kenya AA Nyeri',
+        continent: '아프리카', country: '케냐', origin: '니에리', flag: '🇰🇪',
+        farm: '니에리 팩토리', process: '워시드', roast: '미디엄', roastLevel: 3,
+        altitude: '1,800m', variety: 'SL28, SL34',
+        cupNotes: ['블랙커런트', '자몽', '토마토', '브라운슈가'], price: 23000, badge: 'BEST',
+        acidity: 5, body: 3, sweetness: 3, c1: '#B5544E', c2: '#5E2A2E',
+        desc: '블랙커런트의 강렬한 산미와 브라운슈가의 단맛. 케냐 특유의 묵직한 존재감이 살아있습니다.',
+      },
+      {
+        id: 5, name: '과테말라 안티구아', en: 'Guatemala Antigua',
+        continent: '중미', country: '과테말라', origin: '안티구아', flag: '🇬🇹',
+        farm: '안티구아 화산지대 농장', process: '워시드', roast: '미디엄', roastLevel: 3,
+        altitude: '1,600m', variety: '부르봉',
+        cupNotes: ['다크초콜릿', '카라멜', '스모키', '오렌지'], price: 18000, badge: null,
+        acidity: 3, body: 4, sweetness: 3, c1: '#8A6A4A', c2: '#4A3524',
+        desc: '초콜릿과 은은한 스모키함. 깊고 안정적인 바디로 에스프레소에 특히 잘 어울립니다.',
+      },
+      {
+        id: 6, name: '브라질 세하도', en: 'Brazil Cerrado',
+        continent: '남미', country: '브라질', origin: '세하도, 미나스제라이스', flag: '🇧🇷',
+        farm: '세하도 대농장', process: '내추럴', roast: '다크', roastLevel: 4,
+        altitude: '1,100m', variety: '문도노보, 카투아이',
+        cupNotes: ['땅콩', '다크초콜릿', '카라멜', '부드러운 바디'], price: 13000, badge: null,
+        acidity: 2, body: 4, sweetness: 4, c1: '#7A5A3E', c2: '#3E2A1C',
+        desc: '고소한 견과와 다크초콜릿. 산미가 낮고 바디가 좋아 블렌드와 우유에 잘 어울립니다.',
+      },
+      {
+        id: 7, name: '파나마 게이샤 에스메랄다', en: 'Panama Geisha Esmeralda',
+        continent: '중미', country: '파나마', origin: '보케테, 에스메랄다', flag: '🇵🇦',
+        farm: '아시엔다 라 에스메랄다', process: '워시드', roast: '라이트', roastLevel: 2,
+        altitude: '1,600 – 1,800m', variety: '게이샤(Geisha)',
+        cupNotes: ['자스민', '열대과일', '복숭아', '꿀'], price: 45000, badge: 'BEST',
+        acidity: 5, body: 2, sweetness: 5, c1: '#E7C77A', c2: '#4E6B4A',
+        desc: '스페셜티의 정점. 자스민과 열대과일, 복숭아가 겹겹이 피어나는 화려한 컵. 특별한 날을 위한 한 잔.',
+      },
+      {
+        id: 8, name: '코스타리카 따라주', en: 'Costa Rica Tarrazú',
+        continent: '중미', country: '코스타리카', origin: '따라주', flag: '🇨🇷',
+        farm: '따라주 마이크로밀', process: '허니', roast: '미디엄', roastLevel: 3,
+        altitude: '1,600m', variety: '카투아이',
+        cupNotes: ['꿀', '사과', '카라멜', '시트러스'], price: 19000, badge: 'NEW',
+        acidity: 4, body: 3, sweetness: 4, c1: '#E0A85A', c2: '#A05E34',
+        desc: '허니 프로세스 특유의 꿀 같은 단맛과 사과의 상큼함. 균형 잡힌 미디엄 로스팅입니다.',
+      },
+      {
+        id: 9, name: '인도네시아 만델링', en: 'Indonesia Mandheling',
+        continent: '아시아', country: '인도네시아', origin: '수마트라, 만델링', flag: '🇮🇩',
+        farm: '수마트라 소농', process: '세미워시드', roast: '다크', roastLevel: 5,
+        altitude: '1,300m', variety: '티피카, 카티모르',
+        cupNotes: ['흙내음', '허브', '다크초콜릿', '스파이스'], price: 17000, badge: null,
+        acidity: 1, body: 5, sweetness: 3, c1: '#6E6A4E', c2: '#33301F',
+        desc: '흙내음과 허브, 진한 다크초콜릿. 묵직하고 스파이시한 아시아의 개성을 담았습니다.',
+      },
+      {
+        id: 10, name: '르완다 키부', en: 'Rwanda Kivu',
+        continent: '아프리카', country: '르완다', origin: '키부 호수 인근', flag: '🇷🇼',
+        farm: '키부 협동조합', process: '워시드', roast: '미디엄', roastLevel: 3,
+        altitude: '1,900m', variety: '부르봉',
+        cupNotes: ['오렌지', '홍차', '자두', '꿀'], price: 18000, badge: 'NEW',
+        acidity: 4, body: 3, sweetness: 4, c1: '#D98F4E', c2: '#6E3A2E',
+        desc: '오렌지와 홍차, 잘 익은 자두. 깔끔하면서도 우아한 아프리카 워시드입니다.',
+      },
+      {
+        id: 11, name: '온두라스 마르칼라', en: 'Honduras Marcala',
+        continent: '중미', country: '온두라스', origin: '마르칼라', flag: '🇭🇳',
+        farm: '마르칼라 소농 조합', process: '워시드', roast: '미디엄', roastLevel: 3,
+        altitude: '1,500m', variety: '카투라, 렘피라',
+        cupNotes: ['초콜릿', '카라멜', '헤이즐넛', '사과'], price: 15000, badge: null,
+        acidity: 3, body: 3, sweetness: 4, c1: '#B58A5E', c2: '#5E3E28',
+        desc: '부드러운 초콜릿과 헤이즐넛. 부담 없이 즐기는 데일리 스페셜티입니다.',
+      },
+      {
+        id: 12, name: '예멘 모카 마타리', en: 'Yemen Mokha Mattari',
+        continent: '중동', country: '예멘', origin: '바니 마타르', flag: '🇾🇪',
+        farm: '바니 마타르 고산 농가', process: '내추럴', roast: '다크', roastLevel: 4,
+        altitude: '2,000m+', variety: '예멘 재래종',
+        cupNotes: ['레드와인', '건포도', '다크초콜릿', '스파이스'], price: 38000, badge: null,
+        acidity: 3, body: 4, sweetness: 3, c1: '#7A4A5E', c2: '#3A2230',
+        desc: '와인과 건포도, 스파이스가 어우러진 고전. 커피의 원류를 담은 희소한 한 잔입니다.',
+      },
+    ];
+
+    // fal.ai(FLUX dev)로 생성한 실사 제품 사진 — images/p{id}.jpg. 파일이 없으면 그라데이션 폴백
+    PRODUCTS.forEach((p) => { p.img = `images/p${p.id}.jpg`; });
+
+    // 유틸
+    const getProduct = (id) => PRODUCTS.find((p) => String(p.id) === String(id));
+    const formatKRW = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
+    const cx = (...c) => c.filter(Boolean).join(' ');
+
+    // ========================================
+    // 🎨 디자인 시스템 (순수 프레젠테이션 · 비즈니스 로직 없음)
+    // ========================================
+    function Button({ variant = 'primary', size = 'md', className = '', disabled, children, ...rest }) {
+      const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-forest/40 disabled:opacity-50 disabled:cursor-not-allowed select-none';
+      const sizes = { sm: 'text-sm px-4 py-2', md: 'text-[15px] px-5 py-2.5', lg: 'text-base px-7 py-3.5' };
+      const variants = {
+        primary: 'bg-forest text-cream hover:bg-forest2 shadow-card hover:shadow-soft active:scale-[.98]',
+        secondary: 'bg-transparent text-espresso border border-sand2 hover:border-mocha hover:bg-cream2 active:scale-[.98]',
+        gold: 'bg-gold text-white hover:bg-gold2 shadow-card active:scale-[.98]',
+        danger: 'bg-transparent text-red-700 border border-red-200 hover:bg-red-50 active:scale-[.98]',
+        ghost: 'bg-transparent text-mocha hover:text-espresso hover:bg-cream2',
+      };
+      return (
+        <button disabled={disabled} className={cx(base, sizes[size], variants[variant], className)} {...rest}>
+          {children}
+        </button>
+      );
+    }
+
+    function Badge({ children, tone = 'best', className = '' }) {
+      const tones = {
+        best: 'bg-forest text-cream',
+        new: 'bg-gold text-white',
+        soft: 'bg-cream2 text-mocha border border-sand2',
+        dark: 'bg-espresso text-cream',
+      };
+      return (
+        <span className={cx('inline-flex items-center text-[11px] font-bold tracking-wide px-2.5 py-1 rounded-full', tones[tone], className)}>
+          {children}
+        </span>
+      );
+    }
+
+    function Chip({ children, className = '' }) {
+      return (
+        <span className={cx('inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full bg-cream2 text-mocha border border-sand', className)}>
+          {children}
+        </span>
+      );
+    }
+
+    function Card({ children, className = '', ...rest }) {
+      return (
+        <div className={cx('bg-paper rounded-2xl border border-sand shadow-card', className)} {...rest}>
+          {children}
+        </div>
+      );
+    }
+
+    function Input({ label, type = 'text', value, onChange, placeholder, error, disabled, className = '', ...rest }) {
+      return (
+        <label className={cx('block', className)}>
+          {label && <span className="block text-sm font-medium text-mocha mb-1.5">{label}</span>}
+          <input
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            className={cx(
+              'w-full bg-paper border rounded-xl px-4 py-3 text-[15px] text-espresso placeholder:text-mocha2/70',
+              'focus:outline-none focus-visible:ring-2 disabled:opacity-60',
+              error ? 'border-red-300 focus-visible:ring-red-300/40' : 'border-sand2 focus-visible:ring-forest/30'
+            )}
+            {...rest}
+          />
+          {error && <span className="block text-xs text-red-600 mt-1.5">{error}</span>}
+        </label>
+      );
+    }
+
+    // 필터/정렬 등에 쓰는 선택 칩 그룹
+    function ChipToggleGroup({ label, options, value, onChange }) {
+      return (
+        <div className="flex flex-col gap-2">
+          {label && <span className="text-xs font-semibold text-mocha2 tracking-wide">{label}</span>}
+          <div className="flex flex-wrap gap-2">
+            {options.map((opt) => {
+              const active = value === opt;
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => onChange(opt)}
+                  aria-pressed={active}
+                  className={cx(
+                    'text-sm px-3.5 py-1.5 rounded-full border transition-colors',
+                    active
+                      ? 'bg-espresso text-cream border-espresso'
+                      : 'bg-paper text-mocha border-sand2 hover:border-mocha hover:text-espresso'
+                  )}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    function Select({ label, value, onChange, options, className = '' }) {
+      return (
+        <label className={cx('inline-flex items-center gap-2 text-sm', className)}>
+          {label && <span className="text-mocha2 whitespace-nowrap">{label}</span>}
+          <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="bg-paper border border-sand2 rounded-full px-4 py-2 text-espresso focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/30 cursor-pointer"
+          >
+            {options.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+        </label>
+      );
+    }
+
+    function QtyStepper({ value, onChange, min = 1, max = 99, size = 'md' }) {
+      const s = size === 'sm'
+        ? { btn: 'w-8 h-8 text-base', box: 'w-9 text-sm' }
+        : { btn: 'w-10 h-10 text-lg', box: 'w-11 text-base' };
+      return (
+        <div className="inline-flex items-center rounded-full border border-sand2 bg-paper overflow-hidden">
+          <button
+            type="button"
+            aria-label="수량 줄이기"
+            onClick={() => onChange(Math.max(min, value - 1))}
+            disabled={value <= min}
+            className={cx('grid place-items-center text-mocha hover:bg-cream2 disabled:opacity-40 disabled:hover:bg-transparent', s.btn)}
+          >−</button>
+          <span className={cx('grid place-items-center font-semibold tabular-nums', s.box)} aria-live="polite">{value}</span>
+          <button
+            type="button"
+            aria-label="수량 늘리기"
+            onClick={() => onChange(Math.min(max, value + 1))}
+            disabled={value >= max}
+            className={cx('grid place-items-center text-mocha hover:bg-cream2 disabled:opacity-40 disabled:hover:bg-transparent', s.btn)}
+          >+</button>
+        </div>
+      );
+    }
+
+    // 산미/바디/단맛 5단계 게이지
+    function RatingBar({ label, value, max = 5 }) {
+      return (
+        <div className="flex items-center gap-3">
+          <span className="w-12 shrink-0 text-sm text-mocha2">{label}</span>
+          <div className="flex gap-1.5 flex-1">
+            {Array.from({ length: max }).map((_, i) => (
+              <span
+                key={i}
+                className={cx('h-2 flex-1 rounded-full', i < value ? 'bg-mocha' : 'bg-sand')}
+              />
+            ))}
+          </div>
+          <span className="w-8 text-right text-xs text-mocha2 tabular-nums">{value}/{max}</span>
+        </div>
+      );
+    }
+
+    // 로스팅 정도 미터
+    function RoastMeter({ level }) {
+      const pct = Math.max(8, Math.min(96, (level / 5) * 100));
+      return (
+        <div className="w-full">
+          <div className="relative h-2.5 rounded-full" style={{ background: 'linear-gradient(90deg,#E7CFA8,#B48A5A,#6B4A32,#332017)' }}>
+            <span
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-paper border-2 border-espresso shadow"
+              style={{ left: pct + '%' }}
+            />
+          </div>
+          <div className="flex justify-between text-[11px] text-mocha2 mt-1.5">
+            <span>라이트</span><span>미디엄</span><span>다크</span>
+          </div>
+        </div>
+      );
+    }
+
+    function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+      useEffect(() => {
+        if (!isOpen) return;
+        const onKey = (e) => { if (e.key === 'Escape') onClose && onClose(); };
+        window.addEventListener('keydown', onKey);
+        document.body.style.overflow = 'hidden';
+        return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+      }, [isOpen, onClose]);
+      if (!isOpen) return null;
+      const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg' };
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={title || '대화상자'}>
+          <div className="absolute inset-0 bg-espresso/50 backdrop-blur-sm" onClick={onClose} />
+          <div className={cx('relative w-full bg-paper rounded-3xl shadow-soft p-6 sm:p-8 rise-in', sizes[size])}>
+            {title && <h3 className="font-serif text-xl text-espresso mb-4">{title}</h3>}
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    function Toast({ msg }) {
+      return (
+        <div className="fixed left-1/2 bottom-8 z-[60] toast-in" role="status" aria-live="polite">
+          <div className="bg-espresso text-cream text-sm px-5 py-3 rounded-full shadow-soft flex items-center gap-2">
+            <span>☕</span><span>{msg}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🔀 해시 라우터
+    // ========================================
+    const RouterContext = createContext({ path: '/', navigate: () => {} });
+    const useRouter = () => useContext(RouterContext);
+
+    function getPath() {
+      let h = window.location.hash.replace(/^#/, '');
+      // 해시 안의 query( #/payment/success?paymentType=NORMAL )는 라우트 매칭에서 분리
+      const qi = h.indexOf('?');
+      if (qi !== -1) h = h.slice(0, qi);
+      return h || '/';
+    }
+
+    // ⚠️ 해시 라우팅 successUrl 함정 대응 — 결제 리다이렉트 복귀 시
+    // 토스는 paymentKey/orderId/amount를 hash '앞' location.search 에 붙이고,
+    // SDK는 paymentType 등을 hash '안' query string 에 붙인다.
+    // 두 곳을 모두 파싱해 병합해야 핵심 파라미터를 놓치지 않는다.
+    function parseHashQuery() {
+      const params = new URLSearchParams();
+      // 1) location.search (토스가 부여한 paymentKey/orderId/amount)
+      const search = new URLSearchParams(window.location.search);
+      search.forEach((value, key) => params.set(key, value));
+      // 2) hash 내부 query (SDK가 부여한 paymentType 등)
+      const hash = window.location.hash;
+      const qi = hash.indexOf('?');
+      if (qi !== -1) {
+        const hashSearch = new URLSearchParams(hash.slice(qi + 1));
+        hashSearch.forEach((value, key) => params.set(key, value));
+      }
+      return params;
+    }
+
+    function Router({ children }) {
+      const [path, setPath] = useState(getPath());
+      useEffect(() => {
+        const onHash = () => setPath(getPath());
+        window.addEventListener('hashchange', onHash);
+        if (!window.location.hash) window.location.replace('#/');
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+      // 라우트 변경 시 상단으로
+      useEffect(() => { window.scrollTo({ top: 0, behavior: 'auto' }); }, [path]);
+      const navigate = useCallback((to) => { window.location.hash = to; }, []);
+      return <RouterContext.Provider value={{ path, navigate }}>{children}</RouterContext.Provider>;
+    }
+
+    function matchRoute(pattern, path) {
+      const pp = pattern.split('/').filter(Boolean);
+      const ph = path.split('/').filter(Boolean);
+      if (pp.length !== ph.length) return null;
+      const params = {};
+      for (let i = 0; i < pp.length; i++) {
+        if (pp[i][0] === ':') params[pp[i].slice(1)] = decodeURIComponent(ph[i]);
+        else if (pp[i] !== ph[i]) return null;
+      }
+      return params;
+    }
+
+    function Routes({ children }) {
+      const { path } = useRouter();
+      let matched = null;
+      React.Children.forEach(children, (child) => {
+        if (matched || !child) return;
+        const params = matchRoute(child.props.path, path);
+        if (params) matched = React.cloneElement(child.props.element, { params });
+      });
+      return matched || <NotFoundPage />;
+    }
+    function Route() { return null; }
+
+    function Link({ to, className = '', children, ...rest }) {
+      const { navigate } = useRouter();
+      const onClick = (e) => { e.preventDefault(); navigate(to); };
+      return (
+        <a href={'#' + to} onClick={onClick} className={className} {...rest}>{children}</a>
+      );
+    }
+
+    // ========================================
+    // 🛒 전역 상태 (장바구니 · 검색 · 토스트) — localStorage 영속화
+    // ========================================
+    const AppContext = createContext(null);
+    const useApp = () => useContext(AppContext);
+
+    function AppProvider({ children }) {
+      const [items, setItems] = useState(() => {
+        try { return JSON.parse(localStorage.getItem(CART_KEY)) || []; } catch (e) { return []; }
+      });
+      const [query, setQuery] = useState('');
+      const [toastMsg, setToastMsg] = useState(null);
+      const toastTimer = useRef(null);
+
+      useEffect(() => {
+        try { localStorage.setItem(CART_KEY, JSON.stringify(items)); } catch (e) {}
+      }, [items]);
+      useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+
+      const toast = useCallback((msg) => {
+        setToastMsg(msg);
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToastMsg(null), 2200);
+      }, []);
+
+      const addItem = useCallback((id, grind, qty) => {
+        setItems((prev) => {
+          const idx = prev.findIndex((it) => it.id === id && it.grind === grind);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = { ...next[idx], qty: Math.min(99, next[idx].qty + qty) };
+            return next;
+          }
+          return [...prev, { id, grind, qty }];
+        });
+      }, []);
+
+      const updateQty = useCallback((id, grind, qty) => {
+        setItems((prev) => prev.map((it) =>
+          (it.id === id && it.grind === grind) ? { ...it, qty: Math.max(1, Math.min(99, qty)) } : it
+        ));
+      }, []);
+
+      const removeItem = useCallback((id, grind) => {
+        setItems((prev) => prev.filter((it) => !(it.id === id && it.grind === grind)));
+      }, []);
+
+      const clearCart = useCallback(() => setItems([]), []);
+
+      const count = useMemo(() => items.reduce((s, it) => s + it.qty, 0), [items]);
+      const detailedItems = useMemo(
+        () => items.map((it) => ({ ...it, product: getProduct(it.id) })).filter((it) => it.product),
+        [items]
+      );
+      const subtotal = useMemo(
+        () => detailedItems.reduce((s, it) => s + it.product.price * it.qty, 0),
+        [detailedItems]
+      );
+
+      const value = {
+        items, detailedItems, addItem, updateQty, removeItem, clearCart,
+        count, subtotal, query, setQuery, toast,
+      };
+
+      return (
+        <AppContext.Provider value={value}>
+          {children}
+          {toastMsg && <Toast msg={toastMsg} />}
+        </AppContext.Provider>
+      );
+    }
+
+    // ========================================
+    // 🔐 인증 (server.js /api/auth 연동 · JWT는 localStorage)
+    // ========================================
+    async function apiFetch(endpoint, { method = 'GET', body, token } = {}) {
+      const headers = {};
+      if (body) headers['Content-Type'] = 'application/json';
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      let res;
+      try {
+        res = await fetch(API_BASE_URL + endpoint, {
+          method, headers, body: body ? JSON.stringify(body) : undefined,
+        });
+      } catch (e) {
+        throw new Error('서버에 연결할 수 없어요. 잠시 후 다시 시도해 주세요.');
+      }
+      let json = null;
+      try { json = await res.json(); } catch (e) {}
+      // 서버 봉투 계약: { success, data, message }
+      if (!res.ok || !json || json.success !== true) {
+        throw new Error((json && json.message) || '요청에 실패했습니다 (' + res.status + ')');
+      }
+      return json.data;
+    }
+
+    const AuthContext = createContext(null);
+    const useAuth = () => useContext(AuthContext);
+
+    function AuthProvider({ children }) {
+      const [token, setToken] = useState(() => {
+        try { return localStorage.getItem(TOKEN_KEY) || null; } catch (e) { return null; }
+      });
+      const [user, setUser] = useState(null);
+      const [restoring, setRestoring] = useState(() => {
+        try { return !!localStorage.getItem(TOKEN_KEY); } catch (e) { return false; }
+      });
+      const [authOpen, setAuthOpen] = useState(false);
+
+      useEffect(() => {
+        try {
+          if (token) localStorage.setItem(TOKEN_KEY, token);
+          else localStorage.removeItem(TOKEN_KEY);
+        } catch (e) {}
+      }, [token]);
+
+      // 새로고침 시 저장된 토큰으로 세션 복원 (마운트 1회 · 무효 토큰이면 조용히 로그아웃)
+      useEffect(() => {
+        if (!token) return;
+        let cancelled = false;
+        apiFetch('/auth/me', { token })
+          .then((data) => { if (!cancelled) setUser(data.user); })
+          .catch(() => { if (!cancelled) { setToken(null); setUser(null); } })
+          .finally(() => { if (!cancelled) setRestoring(false); });
+        return () => { cancelled = true; };
+      }, []);
+
+      const signup = useCallback(async (email, password) => {
+        const data = await apiFetch('/auth/signup', { method: 'POST', body: { email, password } });
+        setToken(data.token); setUser(data.user);
+        return data.user;
+      }, []);
+
+      const login = useCallback(async (email, password) => {
+        const data = await apiFetch('/auth/login', { method: 'POST', body: { email, password } });
+        setToken(data.token); setUser(data.user);
+        return data.user;
+      }, []);
+
+      const logout = useCallback(() => { setToken(null); setUser(null); }, []);
+
+      // 프로필(아바타 등) 변경 후 서버가 돌려준 최신 user로 갱신
+      const updateUser = useCallback((u) => setUser(u), []);
+
+      const value = { user, token, restoring, authOpen, setAuthOpen, signup, login, logout, updateUser };
+      return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    }
+
+    // 프로필 아바타 — ImageKit 이미지(URL 변환으로 리사이즈) 또는 이니셜 폴백
+    function Avatar({ user, className = '' }) {
+      const avatarUrl = user && user.avatarUrl;
+      const [failed, setFailed] = useState(false);
+      useEffect(() => { setFailed(false); }, [avatarUrl]);
+      if (avatarUrl && !failed) {
+        const src = avatarUrl + (avatarUrl.includes('?') ? '&' : '?') + 'tr=w-160,h-160,fo-auto';
+        return (
+          <img
+            src={src}
+            alt="프로필 사진"
+            onError={() => setFailed(true)}
+            className={cx('rounded-full object-cover bg-sand shrink-0', className)}
+          />
+        );
+      }
+      return (
+        <span className={cx('rounded-full grid place-items-center bg-forest text-cream font-bold uppercase select-none shrink-0', className)} aria-hidden="true">
+          {user && user.email ? user.email[0] : '?'}
+        </span>
+      );
+    }
+
+    // 프로필 모달 — ImageKit 직접 업로드(서버 서명) → 아바타 URL 저장
+    function ProfileModal({ isOpen, onClose }) {
+      const { user, token, updateUser } = useAuth();
+      const { toast } = useApp();
+      const [uploading, setUploading] = useState(false);
+      const fileRef = useRef(null);
+
+      if (!user) return null;
+
+      const pick = () => { if (!uploading && fileRef.current) fileRef.current.click(); };
+
+      const onFile = async (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = ''; // 같은 파일 재선택 허용
+        if (!file) return;
+        if (!file.type || !file.type.startsWith('image/')) { toast('이미지 파일만 업로드할 수 있어요'); return; }
+        if (file.size > 5 * 1024 * 1024) { toast('5MB 이하 이미지만 업로드할 수 있어요'); return; }
+        setUploading(true);
+        try {
+          // 1) 서버에서 업로드 서명 발급 (private key는 서버에만 있음)
+          const auth = await apiFetch('/imagekit/auth', { token });
+          // 2) ImageKit V1 업로드 API로 브라우저에서 직접 업로드
+          const fd = new FormData();
+          fd.append('file', file);
+          fd.append('fileName', 'avatar_' + user.id.slice(0, 8) + '_' + Date.now());
+          fd.append('publicKey', auth.publicKey);
+          fd.append('signature', auth.signature);
+          fd.append('expire', String(auth.expire));
+          fd.append('token', auth.token);
+          fd.append('folder', '/bean-shop/avatars');
+          fd.append('useUniqueFileName', 'true');
+          const res = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: fd });
+          let data = null;
+          try { data = await res.json(); } catch (err) {}
+          if (!res.ok || !data || !data.url) {
+            throw new Error((data && data.message) || 'ImageKit 업로드에 실패했어요');
+          }
+          // 3) 우리 서버에 아바타 URL 저장 → 최신 user 반영
+          const saved = await apiFetch('/auth/avatar', { method: 'PUT', token, body: { url: data.url, fileId: data.fileId } });
+          updateUser(saved.user);
+          toast('프로필 사진이 변경되었어요 ☕');
+        } catch (err) {
+          toast((err && err.message) || '업로드에 실패했어요');
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      return (
+        <Modal isOpen={isOpen} onClose={uploading ? () => {} : onClose} title="프로필" size="sm">
+          <div className="flex flex-col items-center text-center">
+            <div className="relative">
+              <Avatar user={user} className="w-28 h-28 text-4xl border-4 border-cream2 shadow-card" />
+              {uploading && (
+                <span className="absolute inset-0 rounded-full bg-espresso/50 grid place-items-center">
+                  <span className="inline-block w-8 h-8 border-2 border-cream/40 border-t-cream rounded-full animate-spin" />
+                </span>
+              )}
+            </div>
+            <p className="mt-4 font-medium text-espresso">{user.email}</p>
+            <p className="text-xs text-mocha2 mt-1">JPG·PNG 등 5MB 이하 · ImageKit에 저장돼요</p>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} aria-label="프로필 사진 선택" />
+            <div className="flex gap-3 mt-6 w-full">
+              <Button size="md" className="flex-1" onClick={pick} disabled={uploading}>
+                {uploading ? '업로드 중…' : '📷 사진 변경'}
+              </Button>
+              <Button size="md" variant="secondary" className="flex-1" onClick={onClose} disabled={uploading}>닫기</Button>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    function AuthModal() {
+      const { authOpen, setAuthOpen, login, signup } = useAuth();
+      const { toast } = useApp();
+      const [mode, setMode] = useState('login');
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [password2, setPassword2] = useState('');
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(false);
+
+      // 열릴 때마다 초기화
+      useEffect(() => {
+        if (authOpen) {
+          setMode('login'); setEmail(''); setPassword(''); setPassword2('');
+          setError(null); setLoading(false);
+        }
+      }, [authOpen]);
+
+      const switchMode = (m) => { setMode(m); setError(null); setPassword(''); setPassword2(''); };
+      const close = () => { if (!loading) setAuthOpen(false); };
+
+      const submit = async (e) => {
+        e.preventDefault();
+        if (loading) return;
+        const em = email.trim();
+        if (!em || !password) return setError('이메일과 비밀번호를 모두 입력해 주세요');
+        if (mode === 'signup') {
+          if (password.length < 8) return setError('비밀번호는 8자 이상이어야 합니다');
+          if (password !== password2) return setError('비밀번호 확인이 일치하지 않습니다');
+        }
+        setError(null); setLoading(true);
+        try {
+          const user = mode === 'login' ? await login(em, password) : await signup(em, password);
+          toast(mode === 'login' ? `어서 오세요, ${user.email}님 ☕` : `가입 완료! ${user.email}님, 환영해요 🎉`);
+          setAuthOpen(false);
+        } catch (err) {
+          setError(err.message || '요청에 실패했습니다');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <Modal isOpen={authOpen} onClose={close} size="sm">
+          <div className="flex rounded-full bg-cream2 border border-sand p-1 mb-6" role="tablist" aria-label="로그인 / 회원가입">
+            {[['login', '로그인'], ['signup', '회원가입']].map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                onClick={() => switchMode(m)}
+                className={cx(
+                  'flex-1 text-sm font-medium py-2 rounded-full transition-colors',
+                  mode === m ? 'bg-espresso text-cream shadow-card' : 'text-mocha hover:text-espresso'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <h3 className="font-serif text-2xl text-espresso text-center">
+            {mode === 'login' ? '다시 만나 반가워요' : '안도 빈즈에 어서 오세요'}
+          </h3>
+          <p className="text-sm text-mocha2 text-center mt-1.5 mb-6">
+            {mode === 'login' ? '로그인하고 주문을 이어가세요' : '가입 즉시 로그인되어 바로 주문할 수 있어요'}
+          </p>
+          <form onSubmit={submit} className="space-y-4">
+            <Input label="이메일" type="email" name="email" autoComplete="email" value={email}
+              onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" disabled={loading} />
+            <Input label="비밀번호" type="password" name="password"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password}
+              onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'signup' ? '8자 이상' : '비밀번호'} disabled={loading} />
+            {mode === 'signup' && (
+              <Input label="비밀번호 확인" type="password" name="password2" autoComplete="new-password" value={password2}
+                onChange={(e) => setPassword2(e.target.value)} placeholder="비밀번호를 한 번 더" disabled={loading} />
+            )}
+            {error && (
+              <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3" role="alert">{error}</p>
+            )}
+            <Button type="submit" size="lg" className="w-full" disabled={loading}>
+              {loading ? '처리 중…' : (mode === 'login' ? '로그인' : '회원가입')}
+            </Button>
+          </form>
+        </Modal>
+      );
+    }
+
+    // ========================================
+    // 🧩 공통 레이아웃 (헤더 · 푸터)
+    // ========================================
+    function AnnouncementBar() {
+      return (
+        <div className="bg-espresso text-cream text-center text-[13px] py-2 px-4">
+          🚚 <strong className="font-semibold">3만원 이상</strong> 주문 시 무료배송 · 매주 목요일 <strong className="font-semibold">신선 로스팅</strong> 발송
+        </div>
+      );
+    }
+
+    function Header() {
+      const { count, query, setQuery, toast } = useApp();
+      const { user, restoring, logout, setAuthOpen } = useAuth();
+      const { navigate, path } = useRouter();
+      const [term, setTerm] = useState(query);
+      const [profileOpen, setProfileOpen] = useState(false);
+      useEffect(() => { setTerm(query); }, [query]);
+      useEffect(() => { if (!user) setProfileOpen(false); }, [user]);
+
+      const submitSearch = (e) => {
+        e.preventDefault();
+        setQuery(term);
+        navigate('/');
+      };
+      const navClass = (active) => cx(
+        'text-sm font-medium transition-colors',
+        active ? 'text-espresso' : 'text-mocha hover:text-espresso'
+      );
+
+      return (
+        <React.Fragment>
+        {/* ⚠️ ProfileModal은 header 밖에 렌더 — header의 backdrop-blur(backdrop-filter)가
+            fixed 포지션의 containing block이 되어 모달이 헤더 기준으로 잘리는 문제 방지 */}
+        <ProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} />
+        <header className="sticky top-0 z-40 bg-cream/85 backdrop-blur-md border-b border-sand">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="h-16 flex items-center justify-between gap-4">
+              {/* 브랜드 */}
+              <Link to="/" className="flex items-center gap-2 shrink-0">
+                <span className="grid place-items-center w-9 h-9 rounded-full bg-forest text-cream text-lg">☕</span>
+                <span className="leading-none">
+                  <span className="block font-serif text-lg text-espresso">안도 빈즈</span>
+                  <span className="block text-[10px] tracking-[0.25em] text-mocha2">ANDO BEANS</span>
+                </span>
+              </Link>
+
+              {/* 데스크톱 검색 */}
+              <form onSubmit={submitSearch} className="hidden md:flex flex-1 max-w-md items-center">
+                <div className="relative w-full">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-mocha2">🔍</span>
+                  <input
+                    type="search"
+                    value={term}
+                    onChange={(e) => setTerm(e.target.value)}
+                    placeholder="원두 이름 · 컵노트로 검색 (예: 자스민, 케냐)"
+                    aria-label="원두 검색"
+                    className="w-full bg-paper border border-sand2 rounded-full pl-11 pr-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/30"
+                  />
+                </div>
+              </form>
+
+              {/* 우측 액션 */}
+              <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+                <Link to="/" className={cx('hidden sm:inline', navClass(path === '/'))}>홈</Link>
+                <Link to="/cart" aria-label="장바구니" className="relative grid place-items-center w-11 h-11 rounded-full hover:bg-cream2 transition-colors">
+                  <span className="text-xl">🛒</span>
+                  {count > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1 grid place-items-center text-[11px] font-bold text-cream bg-forest rounded-full border-2 border-cream">
+                      {count}
+                    </span>
+                  )}
+                </Link>
+                {/* 인증 상태 */}
+                {restoring ? (
+                  <span className="text-xs text-mocha2 px-2" aria-label="세션 확인 중">…</span>
+                ) : user ? (
+                  <div className="flex items-center gap-1.5">
+                    {/* 데스크톱: 아바타+이메일 칩 · 모바일: 아바타만 — 클릭 시 프로필 모달 */}
+                    <button
+                      type="button"
+                      onClick={() => setProfileOpen(true)}
+                      className="hidden md:inline-flex items-center gap-2 text-xs text-mocha bg-cream2 border border-sand rounded-full pl-1.5 pr-3 py-1 max-w-[200px] hover:border-mocha transition-colors"
+                      title="프로필 설정"
+                    >
+                      <Avatar user={user} className="w-6 h-6 text-[10px]" />
+                      <span className="truncate">{user.email}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProfileOpen(true)}
+                      className="md:hidden grid place-items-center rounded-full"
+                      aria-label="프로필 설정"
+                    >
+                      <Avatar user={user} className="w-8 h-8 text-xs" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { logout(); toast('로그아웃되었습니다'); }}
+                      className="text-sm font-medium text-mocha hover:text-espresso px-2 py-1 rounded-full hover:bg-cream2 transition-colors"
+                    >
+                      로그아웃
+                    </button>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="secondary" onClick={() => setAuthOpen(true)}>로그인</Button>
+                )}
+              </div>
+            </div>
+
+            {/* 모바일 검색 */}
+            <form onSubmit={submitSearch} className="md:hidden pb-3">
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-mocha2">🔍</span>
+                <input
+                  type="search"
+                  value={term}
+                  onChange={(e) => setTerm(e.target.value)}
+                  placeholder="원두 · 컵노트 검색"
+                  aria-label="원두 검색"
+                  className="w-full bg-paper border border-sand2 rounded-full pl-11 pr-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/30"
+                />
+              </div>
+            </form>
+          </div>
+        </header>
+        </React.Fragment>
+      );
+    }
+
+    function Footer() {
+      return (
+        <footer className="mt-20 bg-espresso text-cream/80">
+          <div className="max-w-6xl mx-auto px-6 py-14 grid gap-10 sm:grid-cols-3">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="grid place-items-center w-9 h-9 rounded-full bg-cream text-espresso text-lg">☕</span>
+                <span className="font-serif text-lg text-cream">안도 빈즈</span>
+              </div>
+              <p className="text-sm leading-relaxed text-cream/70">
+                산지에서 골라 담은 싱글 오리진 스페셜티 커피.<br />
+                카페 안도가 제안하는 정제된 한 잔.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-cream font-semibold mb-3 text-sm">고객 안내</h4>
+              <ul className="space-y-2 text-sm text-cream/70">
+                <li>배송 · 3만원 이상 무료배송</li>
+                <li>로스팅 · 매주 목요일 발송</li>
+                <li>교환/반품 · 개봉 전 7일 이내</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-cream font-semibold mb-3 text-sm">문의</h4>
+              <ul className="space-y-2 text-sm text-cream/70">
+                <li>평일 10:00 – 18:00</li>
+                <li>hello@andobeans.coffee</li>
+                <li>@ando.beans</li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-cream/10">
+            <p className="max-w-6xl mx-auto px-6 py-5 text-xs text-cream/50">
+              © 2026 ANDO BEANS. UI 데모 · 실제 결제/배송은 제공되지 않습니다.
+            </p>
+          </div>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // 📄 페이지 조각 — 상품 카드 & 비주얼
+    // ========================================
+    function BeanVisual({ product, className = '', big = false, showLabel = true }) {
+      const [imgFailed, setImgFailed] = useState(false);
+      const showImg = product.img && !imgFailed;
+      return (
+        <div
+          className={cx('relative overflow-hidden grid place-items-center', className)}
+          style={{ background: `linear-gradient(140deg, ${product.c1}, ${product.c2})` }}
+          aria-hidden="true"
+        >
+          {showImg && (
+            <img
+              src={product.img}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={() => setImgFailed(true)}
+            />
+          )}
+          {!showImg && (
+            <React.Fragment>
+              {/* 은은한 하이라이트 (그라데이션 폴백) */}
+              <div className="absolute -top-8 -left-8 w-32 h-32 rounded-full bg-white/20 blur-2xl" />
+              <div className="absolute -bottom-10 -right-6 w-36 h-36 rounded-full bg-black/15 blur-2xl" />
+              <div className="relative text-center text-white drop-shadow">
+                <div className={cx(big ? 'text-7xl' : 'text-5xl', 'leading-none')}>{product.flag}</div>
+                <div className={cx('mt-2 font-serif tracking-wide', big ? 'text-lg' : 'text-xs', 'text-white/90')}>{product.country}</div>
+              </div>
+              <span className="absolute top-3 left-3 text-white/80 text-lg">☕</span>
+            </React.Fragment>
+          )}
+          {showImg && showLabel && (
+            <span
+              className={cx(
+                'absolute bottom-2.5 left-3 max-w-[85%] truncate inline-flex items-center gap-1.5',
+                'bg-black/35 text-white/95 backdrop-blur-sm rounded-full',
+                big ? 'px-3 py-1.5 text-sm' : 'px-2.5 py-1 text-[11px]'
+              )}
+            >
+              {product.flag} {product.country}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    function ProductCard({ product }) {
+      return (
+        <Link
+          to={`/product/${product.id}`}
+          className="group block bg-paper rounded-2xl border border-sand overflow-hidden shadow-card hover:shadow-soft hover:-translate-y-1 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-forest/40"
+        >
+          <div className="relative">
+            <BeanVisual product={product} className="aspect-[4/3] w-full" />
+            {product.badge && (
+              <span className="absolute top-3 right-3">
+                <Badge tone={product.badge === 'BEST' ? 'best' : 'new'}>{product.badge}</Badge>
+              </span>
+            )}
+          </div>
+          <div className="p-4">
+            <div className="flex items-center gap-1.5 text-[11px] text-mocha2 mb-1.5">
+              <span>{product.origin}</span>
+              <span className="text-sand2">·</span>
+              <span>{product.process}</span>
+              <span className="text-sand2">·</span>
+              <span>{product.roast}</span>
+            </div>
+            <h3 className="font-serif text-[17px] text-espresso leading-snug group-hover:text-forest transition-colors line-clamp-1">
+              {product.name}
+            </h3>
+            <div className="flex flex-wrap gap-1.5 mt-2.5 min-h-[26px]">
+              {product.cupNotes.slice(0, 3).map((n) => (
+                <Chip key={n}>{n}</Chip>
+              ))}
+            </div>
+            <div className="flex items-end justify-between mt-4">
+              <div>
+                <span className="text-lg font-bold text-espresso">{formatKRW(product.price)}</span>
+                <span className="text-xs text-mocha2 ml-1">/ 200g</span>
+              </div>
+              <span className="text-sm text-forest font-medium opacity-0 group-hover:opacity-100 transition-opacity">담기 →</span>
+            </div>
+          </div>
+        </Link>
+      );
+    }
+
+    // ========================================
+    // 📄 홈 + 상품목록
+    // ========================================
+    function Hero() {
+      return (
+        <section className="relative overflow-hidden">
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(120% 120% at 15% 0%, #F4ECDF 0%, #FBF7F0 45%, #F0E7D8 100%)' }} />
+          <div className="relative max-w-6xl mx-auto px-6 py-16 sm:py-24 grid lg:grid-cols-2 gap-12 items-center">
+            <div className="rise-in">
+              <span className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-mocha bg-paper/70 border border-sand rounded-full px-3 py-1.5">
+                ● 싱글 오리진 스페셜티 셀렉트숍
+              </span>
+              <h1 className="font-serif text-4xl sm:text-5xl leading-[1.15] text-espresso mt-5">
+                산지의 개성을<br />한 잔에 담다
+              </h1>
+              <p className="text-mocha mt-5 text-[15px] sm:text-base leading-relaxed max-w-md">
+                에티오피아부터 파나마 게이샤까지. 안도 빈즈가 직접 커핑하고 골라 담은
+                싱글 오리진 원두를, 가장 신선한 상태로 보내드립니다.
+              </p>
+              <div className="flex flex-wrap gap-3 mt-8">
+                {/* href="#lineup"은 해시 라우터가 경로로 해석해 404가 되므로 scrollIntoView 사용 */}
+                <Button size="lg" onClick={() => document.getElementById('lineup')?.scrollIntoView({ behavior: 'smooth' })}>원두 둘러보기</Button>
+                <Link to="/cart"><Button size="lg" variant="secondary">🛒 장바구니</Button></Link>
+              </div>
+              <div className="flex gap-8 mt-10">
+                {[['12+', '엄선한 산지'], ['85+', '스페셜티 등급'], ['목요일', '신선 로스팅']].map(([a, b]) => (
+                  <div key={b}>
+                    <div className="font-serif text-2xl text-espresso">{a}</div>
+                    <div className="text-xs text-mocha2 mt-0.5">{b}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 데코 · 핸드드립 실사진 (fal.ai 생성) */}
+            <div className="hidden lg:flex justify-center rise-in">
+              <div className="relative w-full max-w-lg">
+                <img
+                  src="images/hero.jpg"
+                  alt="핸드드립 커피를 내리는 모습"
+                  className="w-full aspect-[5/4] object-cover rounded-[2rem] shadow-soft border border-sand"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+                <div className="absolute -bottom-4 -right-2 bg-paper rounded-2xl shadow-card border border-sand px-4 py-3">
+                  <div className="text-xs text-mocha2">오늘의 추천</div>
+                  <div className="font-serif text-espresso">파나마 게이샤</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    function FeatureStrip() {
+      const feats = [
+        ['🌱', '산지 직거래', '믿을 수 있는 농장·조합과 직접 거래한 생두만 사용합니다.'],
+        ['🔥', '주문 후 로스팅', '매주 목요일, 발송 직전에 신선하게 로스팅합니다.'],
+        ['📦', '무료배송', '3만원 이상 주문 시 배송비 무료로 보내드립니다.'],
+      ];
+      return (
+        <section className="max-w-6xl mx-auto px-6 -mt-6 relative z-10">
+          <div className="grid sm:grid-cols-3 gap-4">
+            {feats.map(([icon, t, d]) => (
+              <Card key={t} className="p-5 flex items-start gap-3">
+                <span className="text-2xl">{icon}</span>
+                <div>
+                  <div className="font-semibold text-espresso text-[15px]">{t}</div>
+                  <p className="text-sm text-mocha mt-1 leading-relaxed">{d}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    function EmptyResult({ onReset }) {
+      return (
+        <div className="col-span-full text-center py-20">
+          <div className="text-5xl mb-4">🔍</div>
+          <p className="font-serif text-xl text-espresso">조건에 맞는 원두가 없어요</p>
+          <p className="text-mocha mt-2 text-sm">검색어나 필터를 바꿔서 다시 찾아보세요.</p>
+          <div className="mt-6"><Button variant="secondary" onClick={onReset}>필터 초기화</Button></div>
+        </div>
+      );
+    }
+
+    function HomePage() {
+      const { query, setQuery } = useApp();
+      const [continent, setContinent] = useState('전체');
+      const [roast, setRoast] = useState('전체');
+      const [process, setProcess] = useState('전체');
+      const [sort, setSort] = useState('추천순');
+
+      const filtered = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        let list = PRODUCTS.filter((p) => {
+          if (continent !== '전체' && p.continent !== continent) return false;
+          if (roast !== '전체' && p.roast !== roast) return false;
+          if (process !== '전체' && p.process !== process) return false;
+          if (q) {
+            const hay = (p.name + ' ' + p.en + ' ' + p.origin + ' ' + p.country + ' ' + p.cupNotes.join(' ')).toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+        if (sort === '낮은가격') list = [...list].sort((a, b) => a.price - b.price);
+        else if (sort === '높은가격') list = [...list].sort((a, b) => b.price - a.price);
+        return list;
+      }, [continent, roast, process, query, sort]);
+
+      const resetFilters = () => {
+        setContinent('전체'); setRoast('전체'); setProcess('전체'); setQuery('');
+      };
+      const hasFilter = continent !== '전체' || roast !== '전체' || process !== '전체' || query.trim();
+
+      return (
+        <div>
+          <Hero />
+          <FeatureStrip />
+
+          {/* 라인업 */}
+          <section id="lineup" className="max-w-6xl mx-auto px-6 pt-16 scroll-mt-20">
+            <div className="flex items-end justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="font-serif text-3xl text-espresso">원두 라인업</h2>
+                <p className="text-mocha mt-2 text-sm">지금 만나볼 수 있는 싱글 오리진 {PRODUCTS.length}종</p>
+              </div>
+              <Select label="정렬" value={sort} onChange={setSort} options={SORTS} />
+            </div>
+
+            {/* 필터 */}
+            <div className="mt-8 grid gap-5 p-5 sm:p-6 bg-cream2/60 border border-sand rounded-2xl">
+              <ChipToggleGroup label="산지" options={CONTINENTS} value={continent} onChange={setContinent} />
+              <div className="grid sm:grid-cols-2 gap-5">
+                <ChipToggleGroup label="로스팅" options={ROASTS} value={roast} onChange={setRoast} />
+                <ChipToggleGroup label="가공방식" options={PROCESSES} value={process} onChange={setProcess} />
+              </div>
+              {query.trim() && (
+                <div className="flex items-center gap-2 text-sm text-mocha">
+                  <span>검색어</span>
+                  <span className="inline-flex items-center gap-2 bg-paper border border-sand2 rounded-full pl-3 pr-2 py-1">
+                    <strong className="text-espresso font-medium">{query}</strong>
+                    <button onClick={() => setQuery('')} aria-label="검색어 지우기" className="text-mocha2 hover:text-espresso">✕</button>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 결과 수 */}
+            <div className="flex items-center justify-between mt-6 mb-4">
+              <p className="text-sm text-mocha2">총 <strong className="text-espresso">{filtered.length}</strong>개</p>
+              {hasFilter && (
+                <button onClick={resetFilters} className="text-sm text-mocha hover:text-espresso underline underline-offset-4">필터 초기화</button>
+              )}
+            </div>
+
+            {/* 그리드 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {filtered.length === 0
+                ? <EmptyResult onReset={resetFilters} />
+                : filtered.map((p) => <ProductCard key={p.id} product={p} />)}
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 상품 상세
+    // ========================================
+    function InfoRow({ label, value }) {
+      return (
+        <div className="flex justify-between gap-4 py-3 border-b border-sand last:border-0">
+          <dt className="text-sm text-mocha2 shrink-0">{label}</dt>
+          <dd className="text-sm text-espresso font-medium text-right">{value}</dd>
+        </div>
+      );
+    }
+
+    function ProductDetailPage({ params }) {
+      const product = getProduct(params.id);
+      const { addItem, toast } = useApp();
+      const { navigate } = useRouter();
+      const [grind, setGrind] = useState(GRINDS[0].value);
+      const [qty, setQty] = useState(1);
+
+      if (!product) {
+        return (
+          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+            <div className="text-5xl mb-4">🫙</div>
+            <h2 className="font-serif text-2xl text-espresso">원두를 찾을 수 없어요</h2>
+            <p className="text-mocha mt-2">주소가 올바른지 확인해 주세요.</p>
+            <div className="mt-6"><Link to="/"><Button>홈으로 돌아가기</Button></Link></div>
+          </div>
+        );
+      }
+
+      const handleAdd = () => {
+        addItem(product.id, grind, qty);
+        toast(`장바구니에 담았어요 · ${grind} ${qty}개`);
+      };
+      const related = PRODUCTS.filter((p) => p.id !== product.id && p.continent === product.continent).slice(0, 4);
+      const relatedFill = related.length >= 3 ? related : PRODUCTS.filter((p) => p.id !== product.id).slice(0, 4);
+
+      return (
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          {/* 브레드크럼 */}
+          <nav className="text-sm text-mocha2 mb-6 flex items-center gap-2" aria-label="경로">
+            <Link to="/" className="hover:text-espresso">홈</Link>
+            <span>›</span>
+            <span className="text-mocha">{product.continent}</span>
+            <span>›</span>
+            <span className="text-espresso font-medium truncate">{product.name}</span>
+          </nav>
+
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+            {/* 좌: 비주얼 */}
+            <div>
+              <div className="relative rounded-3xl overflow-hidden shadow-card">
+                <BeanVisual product={product} className="aspect-square w-full" big />
+                {product.badge && (
+                  <span className="absolute top-4 right-4">
+                    <Badge tone={product.badge === 'BEST' ? 'best' : 'new'}>{product.badge}</Badge>
+                  </span>
+                )}
+              </div>
+              {/* 플레이버 프로파일 */}
+              <Card className="p-5 mt-5">
+                <h3 className="font-serif text-lg text-espresso mb-4">플레이버 프로파일</h3>
+                <div className="space-y-3">
+                  <RatingBar label="산미" value={product.acidity} />
+                  <RatingBar label="바디" value={product.body} />
+                  <RatingBar label="단맛" value={product.sweetness} />
+                </div>
+                <div className="mt-5">
+                  <div className="text-sm text-mocha2 mb-2">로스팅 정도 · {product.roast}</div>
+                  <RoastMeter level={product.roastLevel} />
+                </div>
+              </Card>
+            </div>
+
+            {/* 우: 정보 + 구매 */}
+            <div>
+              <div className="flex items-center gap-2 text-sm text-mocha2">
+                <span>{product.flag} {product.country}</span>
+                <span className="text-sand2">·</span>
+                <span>{product.origin}</span>
+              </div>
+              <h1 className="font-serif text-3xl sm:text-4xl text-espresso leading-tight mt-2">{product.name}</h1>
+              <p className="text-xs tracking-[0.15em] text-mocha2 mt-1">{product.en.toUpperCase()}</p>
+              <p className="text-mocha leading-relaxed mt-4">{product.desc}</p>
+
+              <div className="flex flex-wrap gap-2 mt-5">
+                {product.cupNotes.map((n) => <Chip key={n} className="text-[13px]">{n}</Chip>)}
+              </div>
+
+              <div className="mt-6 flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-espresso">{formatKRW(product.price)}</span>
+                <span className="text-sm text-mocha2">/ 200g</span>
+              </div>
+
+              {/* 분쇄도 */}
+              <div className="mt-7">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-espresso">분쇄도 선택</span>
+                  <span className="text-xs text-mocha2">{GRINDS.find((g) => g.value === grind)?.hint}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {GRINDS.map((g) => {
+                    const active = grind === g.value;
+                    return (
+                      <button
+                        key={g.value}
+                        type="button"
+                        onClick={() => setGrind(g.value)}
+                        aria-pressed={active}
+                        className={cx(
+                          'text-sm px-3 py-2.5 rounded-xl border text-left transition-colors',
+                          active ? 'bg-espresso text-cream border-espresso' : 'bg-paper text-mocha border-sand2 hover:border-mocha'
+                        )}
+                      >
+                        {g.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 수량 + 담기 */}
+              <div className="mt-7 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-espresso">수량</span>
+                  <QtyStepper value={qty} onChange={setQty} />
+                </div>
+                <div className="ml-auto text-right">
+                  <div className="text-xs text-mocha2">합계</div>
+                  <div className="text-xl font-bold text-espresso">{formatKRW(product.price * qty)}</div>
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                <Button size="lg" className="flex-1" onClick={handleAdd}>🛒 장바구니 담기</Button>
+                <Button size="lg" variant="secondary" onClick={() => { addItem(product.id, grind, qty); navigate('/cart'); }}>
+                  바로 구매
+                </Button>
+              </div>
+
+              {/* 상세 정보 */}
+              <Card className="p-5 mt-7">
+                <h3 className="font-serif text-lg text-espresso mb-2">원두 정보</h3>
+                <dl>
+                  <InfoRow label="원산지" value={`${product.country} · ${product.origin}`} />
+                  <InfoRow label="농장 / 조합" value={product.farm} />
+                  <InfoRow label="가공방식" value={product.process} />
+                  <InfoRow label="로스팅" value={product.roast} />
+                  <InfoRow label="재배 고도" value={product.altitude} />
+                  <InfoRow label="품종" value={product.variety} />
+                  <InfoRow label="용량" value="200g (원두)" />
+                </dl>
+              </Card>
+            </div>
+          </div>
+
+          {/* 연관 상품 */}
+          <section className="mt-16">
+            <h2 className="font-serif text-2xl text-espresso mb-5">이런 원두는 어때요</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+              {relatedFill.map((p) => <ProductCard key={p.id} product={p} />)}
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 장바구니
+    // ========================================
+    function CartLine({ item }) {
+      const { updateQty, removeItem } = useApp();
+      const { product, grind, qty, id } = item;
+      return (
+        <div className="flex gap-4 py-5 border-b border-sand last:border-0">
+          <Link to={`/product/${id}`} className="shrink-0">
+            <BeanVisual product={product} className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl" showLabel={false} />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Link to={`/product/${id}`} className="font-serif text-espresso hover:text-forest transition-colors line-clamp-1">{product.name}</Link>
+                <div className="text-xs text-mocha2 mt-1">{product.origin} · {product.roast}</div>
+                <div className="mt-1.5"><Chip>{grind}</Chip></div>
+              </div>
+              <button onClick={() => removeItem(id, grind)} aria-label="삭제" className="text-mocha2 hover:text-red-600 transition-colors text-sm">삭제</button>
+            </div>
+            <div className="flex items-center justify-between mt-3">
+              <QtyStepper size="sm" value={qty} onChange={(v) => updateQty(id, grind, v)} />
+              <div className="text-right">
+                <div className="font-bold text-espresso">{formatKRW(product.price * qty)}</div>
+                <div className="text-[11px] text-mocha2">{formatKRW(product.price)} × {qty}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function CartPage() {
+      const { detailedItems, subtotal, count, clearCart, toast } = useApp();
+      const { user, setAuthOpen } = useAuth();
+      const { navigate } = useRouter();
+
+      const handleOrder = () => {
+        if (!user) {
+          toast('주문하려면 로그인이 필요해요 ☕');
+          setAuthOpen(true);
+          return;
+        }
+        navigate('/checkout');   // 실결제 플로우(CheckoutPage)로 이동
+      };
+
+      const shipping = subtotal === 0 ? 0 : (subtotal >= FREE_SHIPPING ? 0 : SHIPPING_FEE);
+      const total = subtotal + shipping;
+      const remain = Math.max(0, FREE_SHIPPING - subtotal);
+      const progress = Math.min(100, (subtotal / FREE_SHIPPING) * 100);
+
+      if (detailedItems.length === 0) {
+        return (
+          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+            <div className="text-6xl mb-5">🧺</div>
+            <h2 className="font-serif text-2xl text-espresso">장바구니가 비어 있어요</h2>
+            <p className="text-mocha mt-2">마음에 드는 싱글 오리진 원두를 담아보세요.</p>
+            <div className="mt-7"><Link to="/"><Button size="lg">원두 둘러보기</Button></Link></div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <h1 className="font-serif text-3xl text-espresso mb-1">장바구니</h1>
+          <p className="text-mocha2 text-sm mb-8">담은 상품 {count}개</p>
+
+          <div className="grid lg:grid-cols-[1fr_360px] gap-8 items-start">
+            {/* 목록 */}
+            <Card className="p-5 sm:p-6">
+              {/* 무료배송 진행 */}
+              <div className="mb-4 p-4 rounded-xl bg-cream2/70 border border-sand">
+                {remain > 0 ? (
+                  <p className="text-sm text-mocha">
+                    <strong className="text-espresso">{formatKRW(remain)}</strong> 더 담으면 <strong className="text-forest">무료배송</strong>!
+                  </p>
+                ) : (
+                  <p className="text-sm text-forest2 font-medium">🎉 무료배송이 적용되었어요</p>
+                )}
+                <div className="h-2 rounded-full bg-sand mt-2.5 overflow-hidden">
+                  <div className="h-full bg-forest rounded-full transition-all duration-500" style={{ width: progress + '%' }} />
+                </div>
+              </div>
+
+              {detailedItems.map((it) => <CartLine key={it.id + '__' + it.grind} item={it} />)}
+
+              <div className="flex justify-between items-center mt-5">
+                <button onClick={clearCart} className="text-sm text-mocha2 hover:text-red-600 underline underline-offset-4">전체 비우기</button>
+                <Link to="/" className="text-sm text-forest hover:text-forest2 font-medium">＋ 계속 쇼핑하기</Link>
+              </div>
+            </Card>
+
+            {/* 주문 요약 */}
+            <Card className="p-6 lg:sticky lg:top-24">
+              <h2 className="font-serif text-xl text-espresso mb-5">주문 요약</h2>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-mocha">상품 금액</span>
+                  <span className="text-espresso font-medium">{formatKRW(subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-mocha">배송비</span>
+                  <span className={cx('font-medium', shipping === 0 ? 'text-forest' : 'text-espresso')}>
+                    {shipping === 0 ? '무료' : formatKRW(shipping)}
+                  </span>
+                </div>
+              </div>
+              <div className="border-t border-sand my-4" />
+              <div className="flex justify-between items-baseline">
+                <span className="text-espresso font-semibold">결제 예정 금액</span>
+                <span className="text-2xl font-bold text-espresso">{formatKRW(total)}</span>
+              </div>
+              <Button size="lg" className="w-full mt-6" onClick={handleOrder}>주문하기</Button>
+              <p className="text-[11px] text-mocha2 text-center mt-3 leading-relaxed">
+                {!user && <span className="block text-mocha">🔒 로그인 후 주문할 수 있어요</span>}
+                🔒 토스페이먼츠 테스트 결제 · 실제 금액은 청구되지 않아요
+              </p>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // ISO 승인시각 → 한국어 표기
+    function formatApprovedAt(iso) {
+      if (!iso) return '';
+      try {
+        return new Date(iso).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' });
+      } catch (e) { return iso; }
+    }
+
+    // ========================================
+    // 📄 결제 (CheckoutPage) — 토스페이먼츠 결제위젯 v2
+    // ========================================
+    function CheckoutPage() {
+      const { detailedItems, subtotal, toast } = useApp();
+      const { user, token, restoring, setAuthOpen } = useAuth();
+
+      // 위젯 인스턴스 / 렌더 여부는 ref로 (재렌더에도 유지 · 중복 렌더 방지)
+      const widgetsRef = useRef(null);
+      const isRenderedRef = useRef(false);
+      const [widgetReady, setWidgetReady] = useState(false);
+      const [widgetError, setWidgetError] = useState(null);
+      const [paying, setPaying] = useState(false);
+
+      const shipping = subtotal === 0 ? 0 : (subtotal >= FREE_SHIPPING ? 0 : SHIPPING_FEE);
+      const total = subtotal + shipping;
+      const canRender = !!user && detailedItems.length > 0;
+
+      // 비로그인으로 진입하면 로그인 모달 유도 (세션 복원 중에는 대기 — 깜빡임 방지)
+      useEffect(() => {
+        if (!restoring && !user) setAuthOpen(true);
+      }, [restoring, user, setAuthOpen]);
+
+      // 1) 위젯 인스턴스 1회 생성 (로그인 + 장바구니가 있을 때만)
+      useEffect(() => {
+        if (!canRender || widgetsRef.current) return;
+        if (typeof window.TossPayments !== 'function') {
+          setWidgetError('결제 모듈을 불러오지 못했어요. 새로고침 후 다시 시도해 주세요.');
+          return;
+        }
+        try {
+          const tossPayments = window.TossPayments(TOSS_CLIENT_KEY);
+          // customerKey = 로그인 사용자 UUID (비회원이면 TossPayments.ANONYMOUS)
+          widgetsRef.current = tossPayments.widgets({ customerKey: user.id });
+        } catch (e) {
+          setWidgetError('결제 위젯 초기화에 실패했어요: ' + (e.message || e));
+        }
+      }, [canRender, user]);
+
+      // 2) 금액 설정 + 위젯 렌더 (최초 1회) / 이후 금액 변경 시 setAmount만 재호출
+      useEffect(() => {
+        if (!canRender || !widgetsRef.current) return;
+        let cancelled = false;
+        (async () => {
+          try {
+            await widgetsRef.current.setAmount({ currency: 'KRW', value: total });
+            if (!isRenderedRef.current) {
+              await widgetsRef.current.renderPaymentMethods({ selector: '#payment-method', variantKey: 'DEFAULT' });
+              await widgetsRef.current.renderAgreement({ selector: '#agreement', variantKey: 'AGREEMENT' });
+              isRenderedRef.current = true;
+              if (!cancelled) setWidgetReady(true);
+            }
+          } catch (e) {
+            if (!cancelled) setWidgetError('결제 수단을 불러오지 못했어요: ' + (e.message || e));
+          }
+        })();
+        return () => { cancelled = true; };
+      }, [canRender, total]);
+
+      const handlePay = async () => {
+        if (paying) return;
+        if (!widgetsRef.current || !isRenderedRef.current) {
+          toast('결제 수단을 불러오는 중이에요. 잠시만요 ☕');
+          return;
+        }
+        setPaying(true);
+        try {
+          // 1) 서버에 주문 생성 → 유니크 orderId / orderName 확보 (amount는 서버 저장 = 검증 기준)
+          const items = detailedItems.map((it) => ({
+            id: it.product.id,
+            name: it.product.name,
+            grind: it.grind,
+            qty: it.qty,
+            price: it.product.price,
+          }));
+          const order = await apiFetch('/orders', {
+            method: 'POST',
+            token,
+            body: { items, amount: total },
+          });
+
+          // 2) 결제창 호출 — 성공 시 successUrl로 리다이렉트(이하 코드 미실행)
+          const customerName = (user.email || '').split('@')[0] || '고객';
+          await widgetsRef.current.requestPayment({
+            orderId: order.orderId,
+            orderName: order.orderName,
+            successUrl: window.location.origin + '/#/payment/success',
+            failUrl: window.location.origin + '/#/payment/fail',
+            customerEmail: user.email,
+            customerName,
+          });
+        } catch (error) {
+          const code = error && error.code;
+          if (code === 'USER_CANCEL' || code === 'PAY_PROCESS_CANCELED' || code === 'PAY_PROCESS_ABORTED') {
+            toast('결제를 취소했어요');
+          } else {
+            toast((error && error.message) || '결제 요청 중 문제가 발생했어요');
+          }
+          setPaying(false);
+        }
+      };
+
+      // 세션 복원 중 — 잠깐 로딩 (checkout 직접 새로고침 시 로그인 게이트 깜빡임 방지)
+      if (restoring) {
+        return (
+          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+            <span className="inline-block w-10 h-10 border-2 border-sand2 border-t-forest rounded-full animate-spin" />
+            <p className="mt-4 text-mocha2 text-sm">불러오는 중…</p>
+          </div>
+        );
+      }
+
+      // 비로그인 게이트
+      if (!user) {
+        return (
+          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+            <div className="text-6xl mb-5">🔒</div>
+            <h2 className="font-serif text-2xl text-espresso">로그인이 필요해요</h2>
+            <p className="text-mocha mt-2">주문과 결제를 진행하려면 먼저 로그인해 주세요.</p>
+            <div className="mt-7 flex flex-wrap gap-3 justify-center">
+              <Button size="lg" onClick={() => setAuthOpen(true)}>로그인 / 회원가입</Button>
+              <Link to="/cart"><Button size="lg" variant="secondary">장바구니로</Button></Link>
+            </div>
+          </div>
+        );
+      }
+
+      // 빈 장바구니 게이트
+      if (detailedItems.length === 0) {
+        return (
+          <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+            <div className="text-6xl mb-5">🧺</div>
+            <h2 className="font-serif text-2xl text-espresso">장바구니가 비어 있어요</h2>
+            <p className="text-mocha mt-2">담긴 상품이 없어 결제를 진행할 수 없어요.</p>
+            <div className="mt-7"><Link to="/"><Button size="lg">원두 둘러보기</Button></Link></div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="max-w-6xl mx-auto px-6 py-8">
+          <nav className="text-sm text-mocha2 mb-6 flex items-center gap-2" aria-label="경로">
+            <Link to="/cart" className="hover:text-espresso">장바구니</Link>
+            <span>›</span>
+            <span className="text-espresso font-medium">주문 / 결제</span>
+          </nav>
+          <h1 className="font-serif text-3xl text-espresso mb-8">주문 / 결제</h1>
+
+          <div className="grid lg:grid-cols-[1fr_380px] gap-8 items-start">
+            {/* 좌: 결제수단 + 약관 위젯 */}
+            <Card className="p-2 sm:p-4 overflow-hidden">
+              {widgetError ? (
+                <div className="p-8 text-center">
+                  <div className="text-4xl mb-3">⚠️</div>
+                  <p className="text-espresso font-medium">{widgetError}</p>
+                  <p className="text-mocha2 text-sm mt-1">잠시 후 새로고침해 다시 시도해 주세요.</p>
+                </div>
+              ) : (
+                <React.Fragment>
+                  {!widgetReady && (
+                    <div className="p-12 text-center text-mocha2">
+                      <span className="inline-block w-8 h-8 border-2 border-sand2 border-t-forest rounded-full animate-spin" />
+                      <p className="mt-3 text-sm">결제 수단을 불러오는 중…</p>
+                    </div>
+                  )}
+                  {/* 토스 위젯이 렌더되는 컨테이너 (반드시 1회만 렌더) */}
+                  <div id="payment-method" />
+                  <div id="agreement" />
+                </React.Fragment>
+              )}
+            </Card>
+
+            {/* 우: 주문 요약 */}
+            <Card className="p-6 lg:sticky lg:top-24">
+              <h2 className="font-serif text-xl text-espresso mb-5">주문 요약</h2>
+              <div className="space-y-2.5 max-h-56 overflow-auto pr-1 no-scrollbar">
+                {detailedItems.map((it) => (
+                  <div key={it.id + '__' + it.grind} className="flex gap-2 text-sm">
+                    <span className="text-mocha2 tabular-nums shrink-0">{it.qty}×</span>
+                    <span className="flex-1 text-espresso truncate">
+                      {it.product.name}<span className="text-mocha2"> · {it.grind}</span>
+                    </span>
+                    <span className="text-espresso font-medium whitespace-nowrap">{formatKRW(it.product.price * it.qty)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-sand my-4" />
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-mocha">상품 금액</span>
+                  <span className="text-espresso font-medium">{formatKRW(subtotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-mocha">배송비</span>
+                  <span className={cx('font-medium', shipping === 0 ? 'text-forest' : 'text-espresso')}>
+                    {shipping === 0 ? '무료' : formatKRW(shipping)}
+                  </span>
+                </div>
+              </div>
+              <div className="border-t border-sand my-4" />
+              <div className="flex justify-between items-baseline">
+                <span className="text-espresso font-semibold">결제 금액</span>
+                <span className="text-2xl font-bold text-espresso">{formatKRW(total)}</span>
+              </div>
+              <Button size="lg" className="w-full mt-6" onClick={handlePay} disabled={paying || !widgetReady}>
+                {paying ? '결제 진행 중…' : formatKRW(total) + ' 결제하기'}
+              </Button>
+              <p className="text-[11px] text-mocha2 text-center mt-3 leading-relaxed">
+                🔒 토스페이먼츠 안전 결제 · 테스트 모드(실제 청구 없음)
+              </p>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 결제 성공 — successUrl 복귀 → 서버 confirm
+    // ========================================
+    function PaymentSuccessPage() {
+      const { clearCart } = useApp();
+      const [status, setStatus] = useState('confirming'); // confirming | success | error | invalid
+      const [message, setMessage] = useState('');
+      const [result, setResult] = useState(null);         // { order, payment }
+      const confirmedRef = useRef(false);                 // 더블 confirm 방지
+
+      useEffect(() => {
+        if (confirmedRef.current) return;
+        confirmedRef.current = true;
+
+        // ⚠️ 해시 라우팅: paymentKey/orderId/amount는 location.search 에 있으므로 병합 파서 사용
+        const q = parseHashQuery();
+        const paymentKey = q.get('paymentKey');
+        const orderId = q.get('orderId');
+        const amount = q.get('amount');
+
+        if (!paymentKey || !orderId || !amount) {
+          setStatus('invalid');
+          return;
+        }
+
+        (async () => {
+          try {
+            const data = await apiFetch('/payments/confirm', {
+              method: 'POST',
+              body: { paymentKey, orderId, amount: Number(amount) },
+            });
+            setResult(data);
+            setStatus('success');
+            clearCart(); // 승인 성공 시에만 장바구니 비우기
+            // 새로고침 시 재confirm/민감정보 노출 방지 → search 제거(hash는 유지)
+            const cleanUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, '', cleanUrl);
+          } catch (err) {
+            setMessage((err && err.message) || '결제 승인에 실패했어요');
+            setStatus('error');
+          }
+        })();
+      }, []); // 마운트 1회 — confirm은 결제당 한 번만 (confirmedRef로 이중 실행 차단)
+
+      if (status === 'confirming') {
+        return (
+          <div className="max-w-lg mx-auto px-6 py-24 text-center">
+            <span className="inline-block w-10 h-10 border-2 border-sand2 border-t-forest rounded-full animate-spin" />
+            <h1 className="font-serif text-2xl text-espresso mt-6">결제를 확인하고 있어요</h1>
+            <p className="text-mocha mt-2 text-sm">잠시만 기다려 주세요…</p>
+          </div>
+        );
+      }
+
+      if (status === 'invalid') {
+        return (
+          <div className="max-w-lg mx-auto px-6 py-24 text-center">
+            <div className="text-5xl mb-4">🧾</div>
+            <h1 className="font-serif text-2xl text-espresso">결제 정보를 찾을 수 없어요</h1>
+            <p className="text-mocha mt-2 text-sm">
+              결제 정보가 없거나 이미 처리된 주문이에요.<br />주문 내역은 이메일로 안내드려요.
+            </p>
+            <div className="mt-7"><Link to="/"><Button size="lg">홈으로</Button></Link></div>
+          </div>
+        );
+      }
+
+      if (status === 'error') {
+        return (
+          <div className="max-w-lg mx-auto px-6 py-24 text-center">
+            <div className="text-5xl mb-4">😢</div>
+            <h1 className="font-serif text-2xl text-espresso">결제 승인에 실패했어요</h1>
+            <p className="text-mocha mt-2 text-sm">{message}</p>
+            <p className="text-mocha2 text-xs mt-2">장바구니는 그대로 있어요. 다시 시도해 주세요.</p>
+            <div className="mt-7 flex flex-wrap gap-3 justify-center">
+              <Link to="/cart"><Button size="lg">장바구니로</Button></Link>
+              <Link to="/"><Button size="lg" variant="secondary">홈으로</Button></Link>
+            </div>
+          </div>
+        );
+      }
+
+      // success
+      const { order, payment } = result;
+      const paidAmount = (payment && payment.totalAmount != null) ? payment.totalAmount : order.amount;
+      return (
+        <div className="max-w-lg mx-auto px-6 py-16">
+          <Card className="p-8 text-center rise-in">
+            <div className="w-16 h-16 mx-auto rounded-full grid place-items-center text-3xl mb-4" style={{ background: 'linear-gradient(140deg,#4E6047,#3C4A3B)' }}>
+              <span className="text-cream">✓</span>
+            </div>
+            <h1 className="font-serif text-2xl text-espresso">결제가 완료되었어요</h1>
+            <p className="text-mocha mt-2 text-sm">가장 신선하게 로스팅해 보내드릴게요 ☕</p>
+
+            <div className="mt-6 text-left bg-cream2/60 border border-sand rounded-2xl p-5 space-y-3">
+              <div className="flex justify-between gap-4">
+                <span className="text-sm text-mocha2 shrink-0">주문명</span>
+                <span className="text-sm text-espresso font-medium text-right">{(payment && payment.orderName) || order.orderName}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-sm text-mocha2 shrink-0">결제 금액</span>
+                <span className="text-sm text-espresso font-bold text-right">{formatKRW(paidAmount)}</span>
+              </div>
+              {payment && payment.method && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-sm text-mocha2 shrink-0">결제 수단</span>
+                  <span className="text-sm text-espresso font-medium text-right">{payment.method}</span>
+                </div>
+              )}
+              {payment && payment.approvedAt && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-sm text-mocha2 shrink-0">승인 시각</span>
+                  <span className="text-sm text-espresso font-medium text-right">{formatApprovedAt(payment.approvedAt)}</span>
+                </div>
+              )}
+              <div className="flex justify-between gap-4">
+                <span className="text-sm text-mocha2 shrink-0">주문번호</span>
+                <span className="text-xs text-mocha text-right break-all">{order.orderId}</span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+              {payment && payment.receiptUrl && (
+                <a href={payment.receiptUrl} target="_blank" rel="noopener noreferrer" className="sm:flex-1">
+                  <Button size="lg" variant="secondary" className="w-full">🧾 영수증 보기</Button>
+                </a>
+              )}
+              <Link to="/" className="sm:flex-1"><Button size="lg" className="w-full">홈으로</Button></Link>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 결제 실패 — failUrl 복귀
+    // ========================================
+    function PaymentFailPage() {
+      const [info, setInfo] = useState({ code: '', message: '결제가 완료되지 않았어요' });
+      useEffect(() => {
+        // ⚠️ failUrl도 동일 — code/message가 location.search 에 붙으므로 병합 파서 사용
+        const q = parseHashQuery();
+        setInfo({
+          code: q.get('code') || '',
+          message: q.get('message') || '결제가 완료되지 않았어요',
+        });
+      }, []);
+      return (
+        <div className="max-w-lg mx-auto px-6 py-16">
+          <Card className="p-8 text-center">
+            <div className="text-5xl mb-4">😢</div>
+            <h1 className="font-serif text-2xl text-espresso">결제에 실패했어요</h1>
+            <p className="text-mocha mt-2 text-sm">{info.message}</p>
+            {info.code && <p className="text-xs text-mocha2 mt-2">오류 코드: {info.code}</p>}
+            <div className="mt-7 flex flex-wrap gap-3 justify-center">
+              <Link to="/cart"><Button size="lg">장바구니로 돌아가기</Button></Link>
+              <Link to="/"><Button size="lg" variant="secondary">홈으로</Button></Link>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 404
+    // ========================================
+    function NotFoundPage() {
+      return (
+        <div className="max-w-3xl mx-auto px-6 py-24 text-center">
+          <div className="text-6xl mb-4">☕</div>
+          <h2 className="font-serif text-3xl text-espresso">페이지를 찾을 수 없어요</h2>
+          <p className="text-mocha mt-2">요청하신 페이지가 존재하지 않습니다.</p>
+          <div className="mt-7"><Link to="/"><Button size="lg">홈으로 돌아가기</Button></Link></div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+    function App() {
+      return (
+        <AppProvider>
+          <AuthProvider>
+            <Router>
+              <div className="min-h-screen flex flex-col">
+                <AnnouncementBar />
+                <Header />
+                <main className="flex-1">
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/product/:id" element={<ProductDetailPage />} />
+                    <Route path="/cart" element={<CartPage />} />
+                    <Route path="/checkout" element={<CheckoutPage />} />
+                    <Route path="/payment/success" element={<PaymentSuccessPage />} />
+                    <Route path="/payment/fail" element={<PaymentFailPage />} />
+                  </Routes>
+                </main>
+                <Footer />
+              </div>
+              <AuthModal />
+            </Router>
+          </AuthProvider>
+        </AppProvider>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
