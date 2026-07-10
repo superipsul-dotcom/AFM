@@ -2,6 +2,526 @@
   "version": 1,
   "entries": [
     {
+      "id": "cl-2026-07-07T15-42-41-745Z-1",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "바닥-바닥재-강마루-보급형-6t-시공포함-평",
+      "name": "강마루 보급형",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "spec": "6T, 시공포함/평",
+      "detail": "신규 등록 (6T, 시공포함/평) · 시세 80,000~105,000원",
+      "source": "research",
+      "price": {
+        "min": 80000,
+        "max": 105000,
+        "unit": "평"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-2",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "바닥-바닥재-강마루-중급형-동화-포레-6t-시공포함-평",
+      "name": "강마루 중급형 (동화 포레)",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "spec": "6T, 시공포함/평",
+      "detail": "신규 등록 (6T, 시공포함/평) · 시세 105,000~120,000원",
+      "source": "research",
+      "price": {
+        "min": 105000,
+        "max": 120000,
+        "unit": "평"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-3",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "바닥-바닥재-강마루-고급형-헤링본-6t-시공포함-평",
+      "name": "강마루 고급형 (헤링본)",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "spec": "6T, 시공포함/평",
+      "detail": "신규 등록 (6T, 시공포함/평) · 시세 153,000~160,000원",
+      "source": "research",
+      "price": {
+        "min": 153000,
+        "max": 160000,
+        "unit": "평"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-4",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "바닥-바닥재-spc-lvt-바닥재-시공포함-평",
+      "name": "SPC/LVT 바닥재",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "SPC/LVT",
+      "spec": "시공포함/평",
+      "detail": "신규 등록 (시공포함/평) · 시세 65,000~70,000원",
+      "source": "research",
+      "price": {
+        "min": 65000,
+        "max": 70000,
+        "unit": "평"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-5",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "타일-바닥재-포세린타일-600각-600-600mm-장",
+      "name": "포세린타일 600각",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "포세린타일",
+      "spec": "600×600mm/장",
+      "detail": "신규 등록 (600×600mm/장) · 시세 7,500~14,750원",
+      "source": "research",
+      "price": {
+        "min": 7500,
+        "max": 14750,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-6",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "도배-벽지-합지벽지-시공-시공포함-평",
+      "name": "합지벽지 시공",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "합지벽지",
+      "spec": "시공포함/평",
+      "detail": "신규 등록 (시공포함/평) · 시세 18,000~18,000원",
+      "source": "research",
+      "price": {
+        "min": 18000,
+        "max": 18000,
+        "unit": "평"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-7",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "도배-벽지-실크벽지-신한벽지-1롤-약-5평-롤",
+      "name": "실크벽지 (신한벽지)",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "spec": "1롤(약 5평)/롤",
+      "detail": "신규 등록 (1롤(약 5평)/롤) · 시세 64,600~72,200원",
+      "source": "research",
+      "price": {
+        "min": 64600,
+        "max": 72200,
+        "unit": "롤"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-8",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "도장-도장재-노루페인트-순앤수-친환경-수성페인트-18l-통-내부용",
+      "name": "노루페인트 순앤수 친환경 수성페인트",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "수성페인트",
+      "spec": "18L/통, 내부용",
+      "detail": "신규 등록 (18L/통, 내부용) · 시세 20,990~46,000원",
+      "source": "research",
+      "price": {
+        "min": 20990,
+        "max": 46000,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-9",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "도장-도장재-삼화페인트-아이생각-아크로-18l-통-내부용",
+      "name": "삼화페인트 아이생각 아크로",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "수성페인트",
+      "spec": "18L/통, 내부용",
+      "detail": "신규 등록 (18L/통, 내부용) · 시세 24,990~24,990원",
+      "source": "research",
+      "price": {
+        "min": 24990,
+        "max": 24990,
+        "unit": "통"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-10",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "목공-보드-목재-석고보드-일반-12-5t-900-1800mm-장",
+      "name": "석고보드 일반 12.5T",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "spec": "900×1800mm/장",
+      "detail": "신규 등록 (900×1800mm/장) · 시세 3,500~3,600원",
+      "source": "research",
+      "price": {
+        "min": 3500,
+        "max": 3600,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-11",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "목공-보드-목재-석고보드-방화-12-5t-kcc-900-1800mm-장",
+      "name": "석고보드 방화 12.5T (KCC)",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "spec": "900×1800mm/장",
+      "detail": "신규 등록 (900×1800mm/장) · 시세 6,170~6,300원",
+      "source": "research",
+      "price": {
+        "min": 6170,
+        "max": 6300,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-12",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "목공-천장재-kcc-석고텍스-9t-300-600mm-박스-18장",
+      "name": "KCC 석고텍스",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "석고텍스",
+      "spec": "9T×300×600mm/박스(18장)",
+      "detail": "신규 등록 (9T×300×600mm/박스(18장)) · 시세 16,200~16,200원",
+      "source": "research",
+      "price": {
+        "min": 16200,
+        "max": 16200,
+        "unit": "박스"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-13",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "목공-천장재-smc-천장판-600-600mm-장",
+      "name": "SMC 천장판",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "SMC천장판",
+      "spec": "600×600mm/장",
+      "detail": "신규 등록 (600×600mm/장) · 시세 9,800~9,800원",
+      "source": "research",
+      "price": {
+        "min": 9800,
+        "max": 9800,
+        "unit": "장"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-14",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "목공-몰딩-천장몰딩-mdf-폭-60mm-폭-60mm-개",
+      "name": "천장몰딩 MDF (폭 60mm)",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "천장몰딩",
+      "spec": "폭 60mm/개",
+      "detail": "신규 등록 (폭 60mm/개) · 시세 9,000~9,000원",
+      "source": "research",
+      "price": {
+        "min": 9000,
+        "max": 9000,
+        "unit": "개"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-15",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "목공-몰딩-문선몰딩-라왕-집성목-45mm-45mm-개",
+      "name": "문선몰딩 (라왕 집성목 45mm)",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "문선몰딩",
+      "spec": "45mm/개",
+      "detail": "신규 등록 (45mm/개) · 시세 8,500~8,500원",
+      "source": "research",
+      "price": {
+        "min": 8500,
+        "max": 8500,
+        "unit": "개"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-16",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "목공-몰딩-걸레받이-mdf-80-15a-개",
+      "name": "걸레받이 MDF",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "걸레받이",
+      "spec": "80×15A/개",
+      "detail": "신규 등록 (80×15A/개) · 시세 7,545~7,545원",
+      "source": "research",
+      "price": {
+        "min": 7545,
+        "max": 7545,
+        "unit": "개"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-17",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "도어-창호-도어-창호-abs도어-보급형-짝",
+      "name": "ABS도어 보급형",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "ABS도어",
+      "spec": "짝",
+      "detail": "신규 등록 (짝) · 시세 94,000~119,000원",
+      "source": "research",
+      "price": {
+        "min": 94000,
+        "max": 119000,
+        "unit": "짝"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-18",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "도어-창호-도어-창호-abs도어-중급형-짝",
+      "name": "ABS도어 중급형",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "ABS도어",
+      "spec": "짝",
+      "detail": "신규 등록 (짝) · 시세 128,000~160,000원",
+      "source": "research",
+      "price": {
+        "min": 128000,
+        "max": 160000,
+        "unit": "짝"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-19",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "도어-창호-도어-창호-시스템창호-24평-시공포함-24평-세트",
+      "name": "시스템창호 (24평 시공포함)",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "시스템창호",
+      "spec": "24평 세트",
+      "detail": "신규 등록 (24평 세트) · 시세 6,500,000~6,500,000원",
+      "source": "research",
+      "price": {
+        "min": 6500000,
+        "max": 6500000,
+        "unit": "세트"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-20",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "주방-주방-가구-인조대리석-주방상판-m당",
+      "name": "인조대리석 주방상판",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "인조대리석상판",
+      "spec": "m당",
+      "detail": "신규 등록 (m당) · 시세 400,000~400,000원",
+      "source": "research",
+      "price": {
+        "min": 400000,
+        "max": 400000,
+        "unit": "m"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-21",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "주방-주방-가구-칸스톤-엔지니어드스톤-주방상판-m당",
+      "name": "칸스톤 (엔지니어드스톤) 주방상판",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "엔지니어드스톤상판",
+      "spec": "m당",
+      "detail": "신규 등록 (m당) · 시세 700,000~700,000원",
+      "source": "research",
+      "price": {
+        "min": 700000,
+        "max": 700000,
+        "unit": "m"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-22",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "화장실셋팅-욕실-위생도기-양변기-대림바스-cc-764h-개",
+      "name": "양변기 대림바스 CC-764H",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "양변기",
+      "spec": "개",
+      "detail": "신규 등록 (개) · 시세 195,000~195,000원",
+      "source": "research",
+      "price": {
+        "min": 195000,
+        "max": 195000,
+        "unit": "개"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-23",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "화장실셋팅-욕실-위생도기-세면기-대림바스-일체형-반다리-개",
+      "name": "세면기 대림바스 일체형 반다리",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "세면기",
+      "spec": "개",
+      "detail": "신규 등록 (개) · 시세 159,000~174,000원",
+      "source": "research",
+      "price": {
+        "min": 159000,
+        "max": 174000,
+        "unit": "개"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-24",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "화장실셋팅-욕실-위생도기-수전-대림바스-dl-b4213-크롬-샤워욕조겸용-개",
+      "name": "수전 대림바스 DL-B4213 (크롬)",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "수전",
+      "spec": "샤워욕조겸용/개",
+      "detail": "신규 등록 (샤워욕조겸용/개) · 시세 156,900~156,900원",
+      "source": "research",
+      "price": {
+        "min": 156900,
+        "max": 156900,
+        "unit": "개"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-25",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "전기-조명-led-평판등-75w-번개표-75w-개",
+      "name": "LED 평판등 75W (번개표)",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "LED평판등",
+      "spec": "75W/개",
+      "detail": "신규 등록 (75W/개) · 시세 36,600~36,600원",
+      "source": "research",
+      "price": {
+        "min": 36600,
+        "max": 36600,
+        "unit": "개"
+      },
+      "before": null
+    },
+    {
+      "id": "cl-2026-07-07T15-42-41-745Z-26",
+      "ts": "2026-07-07T15:42:41.745Z",
+      "week": "2026-W28",
+      "type": "new",
+      "materialId": "전기-조명-led-매입등-다운라이트-7w-7w-타공-60mm-개",
+      "name": "LED 매입등 다운라이트 7W",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "LED매입등",
+      "spec": "7W, 타공 60mm/개",
+      "detail": "신규 등록 (7W, 타공 60mm/개) · 시세 10,400~13,500원",
+      "source": "research",
+      "price": {
+        "min": 10400,
+        "max": 13500,
+        "unit": "개"
+      },
+      "before": null
+    },
+    {
       "id": "cl-2026-07-05T14-53-37-087Z-1",
       "ts": "2026-07-05T14:53:37.087Z",
       "week": "2026-W27",

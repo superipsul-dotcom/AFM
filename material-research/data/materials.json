@@ -2,7 +2,7 @@
   "meta": {
     "version": 1,
     "seededAt": "2026-06-30T14:32:54.335Z",
-    "lastImportAt": "2026-07-05T14:53:37.087Z"
+    "lastImportAt": "2026-07-08T14:33:15.089Z"
   },
   "materials": [
     {
@@ -11267,6 +11267,629 @@
       "source": "seed",
       "collected_date": "2026-07-05",
       "updated_at": "2026-07-05T09:55:33.554Z"
+    },
+    {
+      "id": "바닥-바닥재-강마루-보급형-6t-시공포함-평",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "name": "강마루 보급형",
+      "spec": "6T, 시공포함/평",
+      "unit": "평",
+      "brands": [
+        "동화자연마루",
+        "LX하우시스"
+      ],
+      "price": {
+        "min": 80000,
+        "max": 105000,
+        "unit": "평",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "주거용 바닥",
+      "notes": "출처: kkumigo.com / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.745Z"
+    },
+    {
+      "id": "바닥-바닥재-강마루-중급형-동화-포레-6t-시공포함-평",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "name": "강마루 중급형 (동화 포레)",
+      "spec": "6T, 시공포함/평",
+      "unit": "평",
+      "brands": [
+        "동화자연마루"
+      ],
+      "price": {
+        "min": 105000,
+        "max": 120000,
+        "unit": "평",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "주거용 바닥",
+      "notes": "출처: Threads @jb_interiorcreator — 포레 ₩105,000, 오리진 ₩120,000 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.773Z"
+    },
+    {
+      "id": "바닥-바닥재-강마루-고급형-헤링본-6t-시공포함-평",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "강마루",
+      "name": "강마루 고급형 (헤링본)",
+      "spec": "6T, 시공포함/평",
+      "unit": "평",
+      "brands": [
+        "동화자연마루"
+      ],
+      "price": {
+        "min": 153000,
+        "max": 160000,
+        "unit": "평",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "고급",
+      "use": "주거용 바닥, 패턴 시공",
+      "notes": "출처: Threads @jb_interiorcreator — 헤링본 ₩153,000, 스퀘어 ₩155,000~160,000 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "바닥-바닥재-spc-lvt-바닥재-시공포함-평",
+      "trade": "바닥공사",
+      "category": "바닥재",
+      "subcategory": "SPC/LVT",
+      "name": "SPC/LVT 바닥재",
+      "spec": "시공포함/평",
+      "unit": "평",
+      "brands": [
+        "녹수",
+        "동화자연마루"
+      ],
+      "price": {
+        "min": 65000,
+        "max": 70000,
+        "unit": "평",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "주거·상업용 방수 바닥",
+      "notes": "출처: medinterior.com / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "타일-바닥재-포세린타일-600각-600-600mm-장",
+      "trade": "타일공사",
+      "category": "타일",
+      "subcategory": "포세린타일",
+      "name": "포세린타일 600각",
+      "spec": "600×600mm/장",
+      "unit": "장",
+      "brands": [],
+      "price": {
+        "min": 7500,
+        "max": 14750,
+        "unit": "장",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "주거·상업용 바닥 및 벽",
+      "notes": "출처: 쇼핑하우, jabjaje.com — 박스(4장) ₩30,000~59,000, 국산 vs 수입 2~3배 차이 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "도배-벽지-합지벽지-시공-시공포함-평",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "합지벽지",
+      "name": "합지벽지 시공",
+      "spec": "시공포함/평",
+      "unit": "평",
+      "brands": [],
+      "price": {
+        "min": 18000,
+        "max": 18000,
+        "unit": "평",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "주거용 벽·천장 도배",
+      "notes": "출처: soomgo.com / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "도배-벽지-실크벽지-신한벽지-1롤-약-5평-롤",
+      "trade": "도배공사",
+      "category": "벽지",
+      "subcategory": "실크벽지",
+      "name": "실크벽지 (신한벽지)",
+      "spec": "1롤(약 5평)/롤",
+      "unit": "롤",
+      "brands": [
+        "신한벽지"
+      ],
+      "price": {
+        "min": 64600,
+        "max": 72200,
+        "unit": "롤",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "주거용 벽 도배",
+      "notes": "출처: 검색 결과 종합 — 방염 실크 1롤 ₩64,600~72,200 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "도장-도장재-노루페인트-순앤수-친환경-수성페인트-18l-통-내부용",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "수성페인트",
+      "name": "노루페인트 순앤수 친환경 수성페인트",
+      "spec": "18L/통, 내부용",
+      "unit": "통",
+      "brands": [
+        "노루페인트"
+      ],
+      "price": {
+        "min": 20990,
+        "max": 46000,
+        "unit": "통",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "실내 벽·천장 도장",
+      "notes": "출처: danawa.com — 등급·용도별 가격 차이 존재 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "도장-도장재-삼화페인트-아이생각-아크로-18l-통-내부용",
+      "trade": "도장공사",
+      "category": "도장재",
+      "subcategory": "수성페인트",
+      "name": "삼화페인트 아이생각 아크로",
+      "spec": "18L/통, 내부용",
+      "unit": "통",
+      "brands": [
+        "삼화페인트"
+      ],
+      "price": {
+        "min": 24990,
+        "max": 24990,
+        "unit": "통",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "실내 벽·천장 도장",
+      "notes": "출처: wallplan.co.kr / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "목공-보드-목재-석고보드-일반-12-5t-900-1800mm-장",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "name": "석고보드 일반 12.5T",
+      "spec": "900×1800mm/장",
+      "unit": "장",
+      "brands": [
+        "KCC",
+        "USG"
+      ],
+      "price": {
+        "min": 3500,
+        "max": 3600,
+        "unit": "장",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "내벽·천장 마감",
+      "notes": "출처: ssakda.co.kr — 320장 이상 출고 기준 ₩3,500 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "목공-보드-목재-석고보드-방화-12-5t-kcc-900-1800mm-장",
+      "trade": "목공사",
+      "category": "판재·목재",
+      "subcategory": "석고보드",
+      "name": "석고보드 방화 12.5T (KCC)",
+      "spec": "900×1800mm/장",
+      "unit": "장",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 6170,
+        "max": 6300,
+        "unit": "장",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "내벽·천장 방화 마감",
+      "notes": "출처: baro09.com — 출고 수량별 차등 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "목공-천장재-kcc-석고텍스-9t-300-600mm-박스-18장",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "석고텍스",
+      "name": "KCC 석고텍스",
+      "spec": "9T×300×600mm/박스(18장)",
+      "unit": "박스",
+      "brands": [
+        "KCC"
+      ],
+      "price": {
+        "min": 16200,
+        "max": 16200,
+        "unit": "박스",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "경량 천장 마감",
+      "notes": "출처: baro09.com — VAT별도 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "목공-천장재-smc-천장판-600-600mm-장",
+      "trade": "경량공사",
+      "category": "천장재",
+      "subcategory": "SMC천장판",
+      "name": "SMC 천장판",
+      "spec": "600×600mm/장",
+      "unit": "장",
+      "brands": [
+        "극동씨앤씨"
+      ],
+      "price": {
+        "min": 9800,
+        "max": 9800,
+        "unit": "장",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "병원·상업시설 천장",
+      "notes": "출처: kdongcnc.co.kr / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "목공-몰딩-천장몰딩-mdf-폭-60mm-폭-60mm-개",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "천장몰딩",
+      "name": "천장몰딩 MDF (폭 60mm)",
+      "spec": "폭 60mm/개",
+      "unit": "개",
+      "brands": [
+        "공간디피"
+      ],
+      "price": {
+        "min": 9000,
+        "max": 9000,
+        "unit": "개",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "천장-벽 경계 마감",
+      "notes": "출처: spacedp.com / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "목공-몰딩-문선몰딩-라왕-집성목-45mm-45mm-개",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "문선몰딩",
+      "name": "문선몰딩 (라왕 집성목 45mm)",
+      "spec": "45mm/개",
+      "unit": "개",
+      "brands": [],
+      "price": {
+        "min": 8500,
+        "max": 8500,
+        "unit": "개",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "도어 문선 마감",
+      "notes": "출처: mol-ding.com / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "목공-몰딩-걸레받이-mdf-80-15a-개",
+      "trade": "목공사",
+      "category": "몰딩",
+      "subcategory": "걸레받이",
+      "name": "걸레받이 MDF",
+      "spec": "80×15A/개",
+      "unit": "개",
+      "brands": [],
+      "price": {
+        "min": 7545,
+        "max": 7545,
+        "unit": "개",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "벽 하부 마감",
+      "notes": "출처: 하나로건재 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "도어-창호-도어-창호-abs도어-보급형-짝",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "ABS도어",
+      "name": "ABS도어 보급형",
+      "spec": "짝",
+      "unit": "짝",
+      "brands": [
+        "KCC",
+        "영림"
+      ],
+      "price": {
+        "min": 94000,
+        "max": 119000,
+        "unit": "짝",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "실내 방문",
+      "notes": "출처: hangel.co.kr / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "도어-창호-도어-창호-abs도어-중급형-짝",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "ABS도어",
+      "name": "ABS도어 중급형",
+      "spec": "짝",
+      "unit": "짝",
+      "brands": [
+        "KCC",
+        "영림"
+      ],
+      "price": {
+        "min": 128000,
+        "max": 160000,
+        "unit": "짝",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "실내 방문",
+      "notes": "출처: 시종도어, 오늘의집 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "도어-창호-도어-창호-시스템창호-24평-시공포함-24평-세트",
+      "trade": "창호공사",
+      "category": "도어·창호",
+      "subcategory": "시스템창호",
+      "name": "시스템창호 (24평 시공포함)",
+      "spec": "24평 세트",
+      "unit": "세트",
+      "brands": [
+        "LX하우시스",
+        "KCC"
+      ],
+      "price": {
+        "min": 6500000,
+        "max": 6500000,
+        "unit": "세트",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "아파트 발코니·거실 창호",
+      "notes": "출처: LX Z:IN — 시공·철거 포함, 층수별 양중비 별도 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "주방-주방-가구-인조대리석-주방상판-m당",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "인조대리석상판",
+      "name": "인조대리석 주방상판",
+      "spec": "m당",
+      "unit": "m",
+      "brands": [
+        "LX하우시스",
+        "롯데스타론"
+      ],
+      "price": {
+        "min": 400000,
+        "max": 400000,
+        "unit": "m",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "주방 카운터 상판",
+      "notes": "출처: Threads @jb_interiorcreator / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "주방-주방-가구-칸스톤-엔지니어드스톤-주방상판-m당",
+      "trade": "가구공사",
+      "category": "주방·가구",
+      "subcategory": "엔지니어드스톤상판",
+      "name": "칸스톤 (엔지니어드스톤) 주방상판",
+      "spec": "m당",
+      "unit": "m",
+      "brands": [
+        "칸스톤"
+      ],
+      "price": {
+        "min": 700000,
+        "max": 700000,
+        "unit": "m",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "고급",
+      "use": "주방 카운터 상판",
+      "notes": "출처: Threads @jb_interiorcreator / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "화장실셋팅-욕실-위생도기-양변기-대림바스-cc-764h-개",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "양변기",
+      "name": "양변기 대림바스 CC-764H",
+      "spec": "개",
+      "unit": "개",
+      "brands": [
+        "대림바스"
+      ],
+      "price": {
+        "min": 195000,
+        "max": 195000,
+        "unit": "개",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "욕실 양변기",
+      "notes": "출처: yoiltech.kr (대림바스 공식 대리점) / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "화장실셋팅-욕실-위생도기-세면기-대림바스-일체형-반다리-개",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "세면기",
+      "name": "세면기 대림바스 일체형 반다리",
+      "spec": "개",
+      "unit": "개",
+      "brands": [
+        "대림바스"
+      ],
+      "price": {
+        "min": 159000,
+        "max": 174000,
+        "unit": "개",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "욕실 세면기",
+      "notes": "출처: bathnmore.co.kr / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "화장실셋팅-욕실-위생도기-수전-대림바스-dl-b4213-크롬-샤워욕조겸용-개",
+      "trade": "화장실셋팅공사",
+      "category": "욕실·위생도기",
+      "subcategory": "수전",
+      "name": "수전 대림바스 DL-B4213 (크롬)",
+      "spec": "샤워욕조겸용/개",
+      "unit": "개",
+      "brands": [
+        "대림바스"
+      ],
+      "price": {
+        "min": 156900,
+        "max": 156900,
+        "unit": "개",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "욕실 샤워·욕조 수전",
+      "notes": "출처: danawa.com / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "전기-조명-led-평판등-75w-번개표-75w-개",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "LED평판등",
+      "name": "LED 평판등 75W (번개표)",
+      "spec": "75W/개",
+      "unit": "개",
+      "brands": [
+        "번개표"
+      ],
+      "price": {
+        "min": 36600,
+        "max": 36600,
+        "unit": "개",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "중급",
+      "use": "사무실·상업공간 천장 조명",
+      "notes": "출처: kumholamp.com — 3개 세트 ₩109,800 기준 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
+    },
+    {
+      "id": "전기-조명-led-매입등-다운라이트-7w-7w-타공-60mm-개",
+      "trade": "전기공사",
+      "category": "조명",
+      "subcategory": "LED매입등",
+      "name": "LED 매입등 다운라이트 7W",
+      "spec": "7W, 타공 60mm/개",
+      "unit": "개",
+      "brands": [
+        "노랑조명"
+      ],
+      "price": {
+        "min": 10400,
+        "max": 13500,
+        "unit": "개",
+        "note": "주간 리서치 수집(출처 기반)"
+      },
+      "grade": "보급",
+      "use": "주거·상업공간 매입 조명",
+      "notes": "출처: ylt67.com (노랑조명) — 소비자가 ₩13,500, 판매가 ₩10,400 / 2026-07-06",
+      "source": "research",
+      "collected_date": "2026-07-06",
+      "updated_at": "2026-07-07T15:42:41.774Z"
     }
   ]
 }

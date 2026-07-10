@@ -2,7 +2,8 @@
   "key": "benjamin-moore",
   "brand": "Benjamin Moore",
   "name": "벤자민무어 (인기색 44)",
-  "note": "hex는 화면 표시용 근사값 — 실제 도장 전 공식 컬러칩(팬덱) 대조 필수",
+  "note": "hex는 화면 표시용 — 숫자코드 색상은 benjaminmoore.co.kr 공식 웹컬러로 보정(2026-07-08), OC/HC 등은 근사값. 실제 도장 전 공식 컬러칩 대조 필수",
+  "source": "",
   "colors": [
     {
       "name": "White Dove",
@@ -181,7 +182,7 @@
     {
       "name": "Moonshine",
       "code": "2140-60",
-      "hex": "#DCDED4",
+      "hex": "#D7D9D0",
       "group": "그레이"
     },
     {
@@ -241,7 +242,7 @@
     {
       "name": "Wrought Iron",
       "code": "2124-10",
-      "hex": "#444549",
+      "hex": "#4A4B4C",
       "group": "딥·악센트"
     },
     {

@@ -1,0 +1,7402 @@
+{
+ "key": "benjamin-moore-preview",
+ "brand": "Benjamin Moore",
+ "tab": "BM Preview",
+ "name": "벤자민무어 Color Preview (전체 1,232색)",
+ "note": "benjaminmoore.co.kr 컬러갤러리 Color Preview 컬렉션 공식 웹컬러 전량 수집(2026-07-08). 화면용 컬러 — 실도장 전 컬러칩 대조 권장.",
+ "source": "https://www.benjaminmoore.co.kr/colorgallery/colorgallery.php",
+ "colors": [
+  {
+   "name": "Red",
+   "code": "2000-10",
+   "hex": "#CA2F2F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tricycle Red",
+   "code": "2000-20",
+   "hex": "#D43B42",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Red Tulip",
+   "code": "2000-30",
+   "hex": "#E14D5C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Strawberry Shortcake",
+   "code": "2000-40",
+   "hex": "#F68095",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Blush Tone",
+   "code": "2000-50",
+   "hex": "#FEADBE",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Light Chiffon Pink",
+   "code": "2000-60",
+   "hex": "#FFCED9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Voile Pink",
+   "code": "2000-70",
+   "hex": "#FDE3E7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Ruby Red",
+   "code": "2001-10",
+   "hex": "#CB2D2D",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Bonfire",
+   "code": "2001-20",
+   "hex": "#D63A40",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Spring Tulips",
+   "code": "2001-30",
+   "hex": "#E24C5B",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Popsicle",
+   "code": "2001-40",
+   "hex": "#F67F93",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Full Bloom",
+   "code": "2001-50",
+   "hex": "#FFADBE",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Country Pink",
+   "code": "2001-60",
+   "hex": "#FFCED9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Marshmallow Bunny",
+   "code": "2001-70",
+   "hex": "#FFE3E8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Vermilion",
+   "code": "2002-10",
+   "hex": "#D0322C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Bull'S Eye Red",
+   "code": "2002-20",
+   "hex": "#DA3F3D",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rose Quartz",
+   "code": "2002-30",
+   "hex": "#E75559",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Flamingo'S Dream",
+   "code": "2002-40",
+   "hex": "#F98892",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tickled Pink",
+   "code": "2002-50",
+   "hex": "#FFB4BE",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Sweet 16 Pink",
+   "code": "2002-60",
+   "hex": "#FFD4D9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Cadillac",
+   "code": "2002-70",
+   "hex": "#FEE8E9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Million Dollar Red",
+   "code": "2003-10",
+   "hex": "#B6342D",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Strawberry Red",
+   "code": "2003-20",
+   "hex": "#C43E3E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Berry Wine",
+   "code": "2003-30",
+   "hex": "#D54D58",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "True Pink",
+   "code": "2003-40",
+   "hex": "#EE7F8F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Coral Pink",
+   "code": "2003-50",
+   "hex": "#FAACBB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Exotic Pink",
+   "code": "2003-60",
+   "hex": "#FFCED7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pleasing Pink",
+   "code": "2003-70",
+   "hex": "#FEE3E7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Deep Rose",
+   "code": "2004-10",
+   "hex": "#A13830",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Chili Pepper",
+   "code": "2004-20",
+   "hex": "#B24141",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Raspberry Pudding",
+   "code": "2004-30",
+   "hex": "#CB505B",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Starburst",
+   "code": "2004-40",
+   "hex": "#E58091",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Baby Girl",
+   "code": "2004-50",
+   "hex": "#F6ADBD",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Parfait",
+   "code": "2004-60",
+   "hex": "#FDCDD7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Romantic Pink",
+   "code": "2004-70",
+   "hex": "#FDE4E8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Red Rock",
+   "code": "2005-10",
+   "hex": "#7D3F33",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Hot Apple Spice",
+   "code": "2005-20",
+   "hex": "#8B463F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Bricktone Red",
+   "code": "2005-30",
+   "hex": "#9D5352",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Genuine Pink",
+   "code": "2005-40",
+   "hex": "#C88187",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Eraser",
+   "code": "2005-50",
+   "hex": "#E2AEB4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Pearl",
+   "code": "2005-60",
+   "hex": "#F1CED2",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Wispy Pink",
+   "code": "2005-70",
+   "hex": "#F8E5E5",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Merlot Red",
+   "code": "2006-10",
+   "hex": "#9E3E2E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Sangria",
+   "code": "2006-20",
+   "hex": "#A64438",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rosy Apple",
+   "code": "2006-30",
+   "hex": "#B24D46",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Glamour Pink",
+   "code": "2006-40",
+   "hex": "#D47979",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Punch",
+   "code": "2006-50",
+   "hex": "#EBA7AA",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Authentic Pink",
+   "code": "2006-60",
+   "hex": "#F7C9CB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Fairy",
+   "code": "2006-70",
+   "hex": "#FBE1E1",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Smoldering Red",
+   "code": "2007-10",
+   "hex": "#A43B2E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Shy Cherry",
+   "code": "2007-20",
+   "hex": "#AF4239",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rhubarb",
+   "code": "2007-30",
+   "hex": "#BF4F4F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Coral Essence",
+   "code": "2007-40",
+   "hex": "#DF7D84",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Supple Pink",
+   "code": "2007-50",
+   "hex": "#F3ABB4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pastel Pink",
+   "code": "2007-60",
+   "hex": "#FBCCD1",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Angel Pink",
+   "code": "2007-70",
+   "hex": "#FDE2E4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Ravishing Red",
+   "code": "2008-10",
+   "hex": "#BE4739",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Claret Rose",
+   "code": "2008-20",
+   "hex": "#CA5044",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Raspberry Blush",
+   "code": "2008-30",
+   "hex": "#D86057",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Hydrangrea Flowers",
+   "code": "2008-40",
+   "hex": "#F1918E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Delicate Rose",
+   "code": "2008-50",
+   "hex": "#FCBABA",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Little Piggy",
+   "code": "2008-60",
+   "hex": "#FFD7D6",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Touch Of Pink",
+   "code": "2008-70",
+   "hex": "#FEE9E7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Redstone",
+   "code": "2009-10",
+   "hex": "#D43C2C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Salsa",
+   "code": "2009-20",
+   "hex": "#DD483A",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Dark Salmon",
+   "code": "2009-30",
+   "hex": "#E85B51",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Peach",
+   "code": "2009-40",
+   "hex": "#F98B88",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Fashion Pink",
+   "code": "2009-50",
+   "hex": "#FFB7B7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Sea Shell",
+   "code": "2009-60",
+   "hex": "#FFD5D4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Powder Pink",
+   "code": "2009-70",
+   "hex": "#FEE8E5",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tomato Red",
+   "code": "2010-10",
+   "hex": "#D8412C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Warm Comfort",
+   "code": "2010-20",
+   "hex": "#E04D38",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Starburst Orange",
+   "code": "2010-30",
+   "hex": "#EA604E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Coral Gables",
+   "code": "2010-40",
+   "hex": "#FA9084",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Dawn Pink",
+   "code": "2010-50",
+   "hex": "#FFBAB4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rose Petal",
+   "code": "2010-60",
+   "hex": "#FFD8D2",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Frosty Pink",
+   "code": "2010-70",
+   "hex": "#FEEAE4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Orange",
+   "code": "2011-10",
+   "hex": "#E1422C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Blazing Orange",
+   "code": "2011-20",
+   "hex": "#E8523C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Hot Spice",
+   "code": "2011-30",
+   "hex": "#F16551",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Old World",
+   "code": "2011-40",
+   "hex": "#FE998F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Mixed Fruit",
+   "code": "2011-50",
+   "hex": "#FFBFB9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Springy Peach",
+   "code": "2011-60",
+   "hex": "#FFDAD5",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Light Quartz",
+   "code": "2011-70",
+   "hex": "#FEEBE7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tawny Day Lily",
+   "code": "2012-10",
+   "hex": "#E14328",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Flame",
+   "code": "2012-20",
+   "hex": "#E85237",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tangerine Dream",
+   "code": "2012-30",
+   "hex": "#F26851",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Summer Sun Pink",
+   "code": "2012-40",
+   "hex": "#FF9A8A",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Perky Peach",
+   "code": "2012-50",
+   "hex": "#FFC1B8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Creamy Peach",
+   "code": "2012-60",
+   "hex": "#FFDCD5",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Soft Pink",
+   "code": "2012-70",
+   "hex": "#FEECE6",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Outrageous Orange",
+   "code": "2013-10",
+   "hex": "#E44D29",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Orange Nectar",
+   "code": "2013-20",
+   "hex": "#EB5A34",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Jeweled Peach",
+   "code": "2013-30",
+   "hex": "#F5704C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Dusk Pink",
+   "code": "2013-40",
+   "hex": "#FF9F85",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Salmon Peach",
+   "code": "2013-50",
+   "hex": "#FFC6B6",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Harmony",
+   "code": "2013-60",
+   "hex": "#FFDFD4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Bridal Pink",
+   "code": "2013-70",
+   "hex": "#FEEEE6",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Festive Orange",
+   "code": "2014-10",
+   "hex": "#EA5924",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Rumba Orange",
+   "code": "2014-20",
+   "hex": "#F06631",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Tangy Orange",
+   "code": "2014-30",
+   "hex": "#F87A47",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peachy Keen",
+   "code": "2014-40",
+   "hex": "#FFA77F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Springtime Peach",
+   "code": "2014-50",
+   "hex": "#FFCBB1",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Whispering Peach",
+   "code": "2014-60",
+   "hex": "#FFE2D0",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Ecru",
+   "code": "2014-70",
+   "hex": "#FEF0E3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Electric Orange",
+   "code": "2015-10",
+   "hex": "#F1711B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Orange Burst",
+   "code": "2015-20",
+   "hex": "#F67D29",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Calypso Orange",
+   "code": "2015-30",
+   "hex": "#FC8C3D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peach Sorbet",
+   "code": "2015-40",
+   "hex": "#FFB678",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Funky Fruit",
+   "code": "2015-50",
+   "hex": "#FFD5AB",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Gerbera Daisy",
+   "code": "2015-60",
+   "hex": "#FFE8CC",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Apricot Ice",
+   "code": "2015-70",
+   "hex": "#FDF3E2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Startling Orange",
+   "code": "2016-10",
+   "hex": "#F57D1C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Citrus Orange",
+   "code": "2016-20",
+   "hex": "#F88624",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Carrot Stick",
+   "code": "2016-30",
+   "hex": "#FD9638",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Marmalade",
+   "code": "2016-40",
+   "hex": "#FFBB72",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Melon Popsicle",
+   "code": "2016-50",
+   "hex": "#FFD9A7",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Creamy Beige",
+   "code": "2016-60",
+   "hex": "#FFEBCA",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cancun Sand",
+   "code": "2016-70",
+   "hex": "#FDF4DF",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Orange Juice",
+   "code": "2017-10",
+   "hex": "#FA8B0D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sharp Cheddar",
+   "code": "2017-20",
+   "hex": "#FD941F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Tangelo",
+   "code": "2017-30",
+   "hex": "#FFA235",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sweet Orange",
+   "code": "2017-40",
+   "hex": "#FFC470",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Yellow Haze",
+   "code": "2017-50",
+   "hex": "#FFDEA7",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pale Daffodil",
+   "code": "2017-60",
+   "hex": "#FFEDC8",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "White Vanilla",
+   "code": "2017-70",
+   "hex": "#FDF5DF",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Orange Sky",
+   "code": "2018-10",
+   "hex": "#FFA001",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mandarin Orange",
+   "code": "2018-20",
+   "hex": "#FFA807",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Citrus Blast",
+   "code": "2018-30",
+   "hex": "#FFB32A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Nacho Cheese",
+   "code": "2018-40",
+   "hex": "#FFD06C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Morning Sunshine",
+   "code": "2018-50",
+   "hex": "#FFE5A2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Lighthouse",
+   "code": "2018-60",
+   "hex": "#FFF1C7",
+   "group": "옐로우"
+  },
+  {
+   "name": "Milkyway",
+   "code": "2018-70",
+   "hex": "#FCF7DE",
+   "group": "옐로우"
+  },
+  {
+   "name": "Mardigras Gold",
+   "code": "2019-10",
+   "hex": "#FFB001",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Nugget",
+   "code": "2019-20",
+   "hex": "#FFB801",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sunflower",
+   "code": "2019-30",
+   "hex": "#FFC31C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "American Cheese",
+   "code": "2019-40",
+   "hex": "#FFD867",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Lemon Drops",
+   "code": "2019-50",
+   "hex": "#FFE9A0",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lemon Sorbet",
+   "code": "2019-60",
+   "hex": "#FFF3C4",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lightning White",
+   "code": "2019-70",
+   "hex": "#FCF7DC",
+   "group": "옐로우"
+  },
+  {
+   "name": "Bumble Bee Yellow",
+   "code": "2020-10",
+   "hex": "#FFB101",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Lemon Shine",
+   "code": "2020-20",
+   "hex": "#FFB701",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sparkling Sun",
+   "code": "2020-30",
+   "hex": "#FFC41F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Yellow Rain Coat",
+   "code": "2020-40",
+   "hex": "#FFD968",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mellow Yellow",
+   "code": "2020-50",
+   "hex": "#FFEAA0",
+   "group": "옐로우"
+  },
+  {
+   "name": "Moonlight",
+   "code": "2020-60",
+   "hex": "#FFF4C5",
+   "group": "옐로우"
+  },
+  {
+   "name": "Yellow Freeze",
+   "code": "2020-70",
+   "hex": "#FCF8DE",
+   "group": "옐로우"
+  },
+  {
+   "name": "Yellow Flash",
+   "code": "2021-10",
+   "hex": "#FFBE01",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Lemon",
+   "code": "2021-20",
+   "hex": "#FFC501",
+   "group": "옐로우"
+  },
+  {
+   "name": "Sunshine",
+   "code": "2021-30",
+   "hex": "#FFCF0C",
+   "group": "옐로우"
+  },
+  {
+   "name": "Yellow Highlighter",
+   "code": "2021-40",
+   "hex": "#FFDF65",
+   "group": "옐로우"
+  },
+  {
+   "name": "Yellow Lotus",
+   "code": "2021-50",
+   "hex": "#FFED9F",
+   "group": "옐로우"
+  },
+  {
+   "name": "Provence Creme",
+   "code": "2021-60",
+   "hex": "#FFF5C4",
+   "group": "옐로우"
+  },
+  {
+   "name": "Pale Straw",
+   "code": "2021-70",
+   "hex": "#FCF8DC",
+   "group": "옐로우"
+  },
+  {
+   "name": "Yellow",
+   "code": "2022-10",
+   "hex": "#FFD501",
+   "group": "옐로우"
+  },
+  {
+   "name": "Sun Kissed Yellow",
+   "code": "2022-20",
+   "hex": "#FFD701",
+   "group": "옐로우"
+  },
+  {
+   "name": "Bright Yellow",
+   "code": "2022-30",
+   "hex": "#FFDC01",
+   "group": "옐로우"
+  },
+  {
+   "name": "Banana Yellow",
+   "code": "2022-40",
+   "hex": "#FFE866",
+   "group": "옐로우"
+  },
+  {
+   "name": "Sundance",
+   "code": "2022-50",
+   "hex": "#FFF2A0",
+   "group": "옐로우"
+  },
+  {
+   "name": "Light Yellow",
+   "code": "2022-60",
+   "hex": "#FEF6C5",
+   "group": "옐로우"
+  },
+  {
+   "name": "Creme Brulee",
+   "code": "2022-70",
+   "hex": "#FBF8DD",
+   "group": "옐로우"
+  },
+  {
+   "name": "Yolk",
+   "code": "2023-10",
+   "hex": "#EDCA01",
+   "group": "옐로우"
+  },
+  {
+   "name": "Baby Chick",
+   "code": "2023-20",
+   "hex": "#F1CE01",
+   "group": "옐로우"
+  },
+  {
+   "name": "Sun Porch",
+   "code": "2023-30",
+   "hex": "#F9D70B",
+   "group": "옐로우"
+  },
+  {
+   "name": "Sunburst",
+   "code": "2023-40",
+   "hex": "#FBE567",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lemon Meringue",
+   "code": "2023-50",
+   "hex": "#FFF1A2",
+   "group": "옐로우"
+  },
+  {
+   "name": "Butter",
+   "code": "2023-60",
+   "hex": "#FDF6C5",
+   "group": "옐로우"
+  },
+  {
+   "name": "Creme Fraiche",
+   "code": "2023-70",
+   "hex": "#FCF9DE",
+   "group": "옐로우"
+  },
+  {
+   "name": "Chartreuse",
+   "code": "2024-10",
+   "hex": "#C2B501",
+   "group": "옐로우"
+  },
+  {
+   "name": "Eve Green",
+   "code": "2024-20",
+   "hex": "#CDBC0F",
+   "group": "옐로우"
+  },
+  {
+   "name": "Citron",
+   "code": "2024-30",
+   "hex": "#D8C62F",
+   "group": "옐로우"
+  },
+  {
+   "name": "Yellow Finch",
+   "code": "2024-40",
+   "hex": "#EDDD72",
+   "group": "옐로우"
+  },
+  {
+   "name": "Jasper Yellow",
+   "code": "2024-50",
+   "hex": "#F7EDAA",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lemonade",
+   "code": "2024-60",
+   "hex": "#FBF5C9",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lemon Ice",
+   "code": "2024-70",
+   "hex": "#FBF9E1",
+   "group": "옐로우"
+  },
+  {
+   "name": "Bright Lime",
+   "code": "2025-10",
+   "hex": "#B5CB01",
+   "group": "옐로우"
+  },
+  {
+   "name": "Yew Green",
+   "code": "2025-20",
+   "hex": "#C4D001",
+   "group": "옐로우"
+  },
+  {
+   "name": "New Lime",
+   "code": "2025-30",
+   "hex": "#D3D713",
+   "group": "옐로우"
+  },
+  {
+   "name": "Limelight",
+   "code": "2025-40",
+   "hex": "#E2E566",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lemon Freeze",
+   "code": "2025-50",
+   "hex": "#F1F1A0",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lemon Glow",
+   "code": "2025-60",
+   "hex": "#F8F7C4",
+   "group": "옐로우"
+  },
+  {
+   "name": "Barely Yellow",
+   "code": "2025-70",
+   "hex": "#F8F9DC",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lime Green",
+   "code": "2026-10",
+   "hex": "#98C201",
+   "group": "그린"
+  },
+  {
+   "name": "Margarita",
+   "code": "2026-20",
+   "hex": "#A5C801",
+   "group": "그린"
+  },
+  {
+   "name": "Snow Cone Green",
+   "code": "2026-30",
+   "hex": "#BED221",
+   "group": "옐로우"
+  },
+  {
+   "name": "Apple Green",
+   "code": "2026-40",
+   "hex": "#D3E26A",
+   "group": "옐로우"
+  },
+  {
+   "name": "Fresh Cut Grass",
+   "code": "2026-50",
+   "hex": "#E8F0A1",
+   "group": "옐로우"
+  },
+  {
+   "name": "Summer Lime",
+   "code": "2026-60",
+   "hex": "#F4F6C6",
+   "group": "옐로우"
+  },
+  {
+   "name": "Eggshell",
+   "code": "2026-70",
+   "hex": "#F8F9DD",
+   "group": "옐로우"
+  },
+  {
+   "name": "Dark Lime",
+   "code": "2027-10",
+   "hex": "#9AB10A",
+   "group": "옐로우"
+  },
+  {
+   "name": "Spring Moss",
+   "code": "2027-20",
+   "hex": "#ACBA16",
+   "group": "옐로우"
+  },
+  {
+   "name": "Eccentric Lime",
+   "code": "2027-30",
+   "hex": "#C0C529",
+   "group": "옐로우"
+  },
+  {
+   "name": "Grape Green",
+   "code": "2027-40",
+   "hex": "#D6D96A",
+   "group": "옐로우"
+  },
+  {
+   "name": "Hibiscus",
+   "code": "2027-50",
+   "hex": "#E9EAA0",
+   "group": "옐로우"
+  },
+  {
+   "name": "Light Daffodil",
+   "code": "2027-60",
+   "hex": "#F3F3C4",
+   "group": "옐로우"
+  },
+  {
+   "name": "Aspen White",
+   "code": "2027-70",
+   "hex": "#F6F7DC",
+   "group": "옐로우"
+  },
+  {
+   "name": "Iguana Green",
+   "code": "2028-10",
+   "hex": "#7AA31F",
+   "group": "그린"
+  },
+  {
+   "name": "Douglas Fir",
+   "code": "2028-20",
+   "hex": "#89AB28",
+   "group": "그린"
+  },
+  {
+   "name": "Tequila Lime",
+   "code": "2028-30",
+   "hex": "#A7BB33",
+   "group": "옐로우"
+  },
+  {
+   "name": "Pear Green",
+   "code": "2028-40",
+   "hex": "#C4D270",
+   "group": "옐로우"
+  },
+  {
+   "name": "Wales Green",
+   "code": "2028-50",
+   "hex": "#DEE6A4",
+   "group": "옐로우"
+  },
+  {
+   "name": "Celadon Green",
+   "code": "2028-60",
+   "hex": "#EEF2C8",
+   "group": "옐로우"
+  },
+  {
+   "name": "Seahorse",
+   "code": "2028-70",
+   "hex": "#F5F7DE",
+   "group": "옐로우"
+  },
+  {
+   "name": "Basil Green",
+   "code": "2029-10",
+   "hex": "#579229",
+   "group": "그린"
+  },
+  {
+   "name": "Baby Fern",
+   "code": "2029-20",
+   "hex": "#679B31",
+   "group": "그린"
+  },
+  {
+   "name": "Rosemary Green",
+   "code": "2029-30",
+   "hex": "#7CA741",
+   "group": "그린"
+  },
+  {
+   "name": "Stem Green",
+   "code": "2029-40",
+   "hex": "#ADC875",
+   "group": "그린"
+  },
+  {
+   "name": "Potpourri Green",
+   "code": "2029-50",
+   "hex": "#CEE0A8",
+   "group": "그린"
+  },
+  {
+   "name": "Pale Vista",
+   "code": "2029-60",
+   "hex": "#E5EFC9",
+   "group": "그린"
+  },
+  {
+   "name": "Frosty Lime",
+   "code": "2029-70",
+   "hex": "#F1F6DF",
+   "group": "그린"
+  },
+  {
+   "name": "Lizard Green",
+   "code": "2030-10",
+   "hex": "#34A223",
+   "group": "그린"
+  },
+  {
+   "name": "Tropical Seaweed Green",
+   "code": "2030-20",
+   "hex": "#49AC2D",
+   "group": "그린"
+  },
+  {
+   "name": "Lucky Charm Green",
+   "code": "2030-30",
+   "hex": "#62B93F",
+   "group": "그린"
+  },
+  {
+   "name": "Spring Leaf",
+   "code": "2030-40",
+   "hex": "#98D578",
+   "group": "그린"
+  },
+  {
+   "name": "Shimmering Lime",
+   "code": "2030-50",
+   "hex": "#C0E9AB",
+   "group": "그린"
+  },
+  {
+   "name": "Celery Ice",
+   "code": "2030-60",
+   "hex": "#DCF4CC",
+   "group": "그린"
+  },
+  {
+   "name": "Iced Mint",
+   "code": "2030-70",
+   "hex": "#EDF8E1",
+   "group": "그린"
+  },
+  {
+   "name": "Neon Lime",
+   "code": "2031-10",
+   "hex": "#51AC19",
+   "group": "그린"
+  },
+  {
+   "name": "Paradise Green",
+   "code": "2031-20",
+   "hex": "#63B525",
+   "group": "그린"
+  },
+  {
+   "name": "Sweet Pea",
+   "code": "2031-30",
+   "hex": "#79C039",
+   "group": "그린"
+  },
+  {
+   "name": "Spring Meadow Green",
+   "code": "2031-40",
+   "hex": "#A8D974",
+   "group": "그린"
+  },
+  {
+   "name": "Key Lime",
+   "code": "2031-50",
+   "hex": "#CCEBA8",
+   "group": "그린"
+  },
+  {
+   "name": "Neon Celery",
+   "code": "2031-60",
+   "hex": "#E2F4CA",
+   "group": "그린"
+  },
+  {
+   "name": "Lime Froth",
+   "code": "2031-70",
+   "hex": "#F0F9E0",
+   "group": "그린"
+  },
+  {
+   "name": "Neon Green",
+   "code": "2032-10",
+   "hex": "#179A29",
+   "group": "그린"
+  },
+  {
+   "name": "Traffic Light Green",
+   "code": "2032-20",
+   "hex": "#33A532",
+   "group": "그린"
+  },
+  {
+   "name": "Fresh Lime",
+   "code": "2032-30",
+   "hex": "#4FB346",
+   "group": "그린"
+  },
+  {
+   "name": "Citrus Green",
+   "code": "2032-40",
+   "hex": "#89D27F",
+   "group": "그린"
+  },
+  {
+   "name": "Early Spring Green",
+   "code": "2032-50",
+   "hex": "#B7E7B0",
+   "group": "그린"
+  },
+  {
+   "name": "Citra Lime",
+   "code": "2032-60",
+   "hex": "#D6F3CF",
+   "group": "그린"
+  },
+  {
+   "name": "Lime Sorbet",
+   "code": "2032-70",
+   "hex": "#E8F7E2",
+   "group": "그린"
+  },
+  {
+   "name": "Yellow Green",
+   "code": "2033-10",
+   "hex": "#018B32",
+   "group": "그린"
+  },
+  {
+   "name": "Peppermint Leaf",
+   "code": "2033-20",
+   "hex": "#01993D",
+   "group": "그린"
+  },
+  {
+   "name": "Fresh Scent Green",
+   "code": "2033-30",
+   "hex": "#32AB51",
+   "group": "그린"
+  },
+  {
+   "name": "Lime Tart",
+   "code": "2033-40",
+   "hex": "#73CD89",
+   "group": "그린"
+  },
+  {
+   "name": "Bud Green",
+   "code": "2033-50",
+   "hex": "#A7E4B6",
+   "group": "그린"
+  },
+  {
+   "name": "Mantis Green",
+   "code": "2033-60",
+   "hex": "#CCF1D3",
+   "group": "그린"
+  },
+  {
+   "name": "Sweet Honeydew Melon",
+   "code": "2033-70",
+   "hex": "#E4F7E6",
+   "group": "그린"
+  },
+  {
+   "name": "Clover Green",
+   "code": "2034-10",
+   "hex": "#217438",
+   "group": "그린"
+  },
+  {
+   "name": "Vine Green",
+   "code": "2034-20",
+   "hex": "#307E40",
+   "group": "그린"
+  },
+  {
+   "name": "Grassy Fields",
+   "code": "2034-30",
+   "hex": "#458D4F",
+   "group": "그린"
+  },
+  {
+   "name": "Cedar Green",
+   "code": "2034-40",
+   "hex": "#80B480",
+   "group": "그린"
+  },
+  {
+   "name": "Acadia Green",
+   "code": "2034-50",
+   "hex": "#AFD3B1",
+   "group": "그린"
+  },
+  {
+   "name": "Light Pistachio",
+   "code": "2034-60",
+   "hex": "#D0E7CF",
+   "group": "그린"
+  },
+  {
+   "name": "Daiquiri Ice",
+   "code": "2034-70",
+   "hex": "#E6F2E3",
+   "group": "그린"
+  },
+  {
+   "name": "Seaweed",
+   "code": "2035-10",
+   "hex": "#146A39",
+   "group": "그린"
+  },
+  {
+   "name": "Cactus Green",
+   "code": "2035-20",
+   "hex": "#237543",
+   "group": "그린"
+  },
+  {
+   "name": "Nile Green",
+   "code": "2035-30",
+   "hex": "#358455",
+   "group": "그린"
+  },
+  {
+   "name": "Stokes Forest Green",
+   "code": "2035-40",
+   "hex": "#72AE88",
+   "group": "그린"
+  },
+  {
+   "name": "Spruce Green",
+   "code": "2035-50",
+   "hex": "#A4CEB6",
+   "group": "그린"
+  },
+  {
+   "name": "Leisure Green",
+   "code": "2035-60",
+   "hex": "#C9E4D3",
+   "group": "그린"
+  },
+  {
+   "name": "Italian Ice Green",
+   "code": "2035-70",
+   "hex": "#E2F1E5",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Cat'S Eye",
+   "code": "2036-10",
+   "hex": "#307047",
+   "group": "그린"
+  },
+  {
+   "name": "Irish Moss",
+   "code": "2036-20",
+   "hex": "#357F51",
+   "group": "그린"
+  },
+  {
+   "name": "Green With Envy",
+   "code": "2036-30",
+   "hex": "#439666",
+   "group": "그린"
+  },
+  {
+   "name": "Meadowlands Green",
+   "code": "2036-40",
+   "hex": "#76C19A",
+   "group": "그린"
+  },
+  {
+   "name": "Marina Bay",
+   "code": "2036-50",
+   "hex": "#A5DDC2",
+   "group": "그린"
+  },
+  {
+   "name": "Surf Green",
+   "code": "2036-60",
+   "hex": "#CAEDDB",
+   "group": "그린"
+  },
+  {
+   "name": "Creme De Mint",
+   "code": "2036-70",
+   "hex": "#E3F6EA",
+   "group": "그린"
+  },
+  {
+   "name": "Amazon Moss",
+   "code": "2037-10",
+   "hex": "#01713B",
+   "group": "그린"
+  },
+  {
+   "name": "Jade Green",
+   "code": "2037-20",
+   "hex": "#01884B",
+   "group": "그린"
+  },
+  {
+   "name": "Kelly Green",
+   "code": "2037-30",
+   "hex": "#01A263",
+   "group": "그린"
+  },
+  {
+   "name": "Adam Green",
+   "code": "2037-40",
+   "hex": "#54C89A",
+   "group": "그린"
+  },
+  {
+   "name": "Greenwood Lake",
+   "code": "2037-50",
+   "hex": "#95E2C3",
+   "group": "그린"
+  },
+  {
+   "name": "Santa Barbara Green",
+   "code": "2037-60",
+   "hex": "#C1F0DC",
+   "group": "그린"
+  },
+  {
+   "name": "Fresh Mint",
+   "code": "2037-70",
+   "hex": "#DDF7EA",
+   "group": "그린"
+  },
+  {
+   "name": "Celtic Green",
+   "code": "2038-10",
+   "hex": "#0D6647",
+   "group": "그린"
+  },
+  {
+   "name": "Irish Clover",
+   "code": "2038-20",
+   "hex": "#017D57",
+   "group": "그린"
+  },
+  {
+   "name": "Prairie Green",
+   "code": "2038-30",
+   "hex": "#0B986E",
+   "group": "그린"
+  },
+  {
+   "name": "Monmouth Green",
+   "code": "2038-40",
+   "hex": "#5CC3A3",
+   "group": "그린"
+  },
+  {
+   "name": "Return To Paradise",
+   "code": "2038-50",
+   "hex": "#96DEC8",
+   "group": "그린"
+  },
+  {
+   "name": "Tropical Pool",
+   "code": "2038-60",
+   "hex": "#C0EEDF",
+   "group": "그린"
+  },
+  {
+   "name": "Irish Spring",
+   "code": "2038-70",
+   "hex": "#DDF7EC",
+   "group": "그린"
+  },
+  {
+   "name": "Deep Green",
+   "code": "2039-10",
+   "hex": "#016343",
+   "group": "그린"
+  },
+  {
+   "name": "Emerald Isle",
+   "code": "2039-20",
+   "hex": "#018259",
+   "group": "그린"
+  },
+  {
+   "name": "Cabana Green",
+   "code": "2039-30",
+   "hex": "#019F76",
+   "group": "그린"
+  },
+  {
+   "name": "Teal Blast",
+   "code": "2039-40",
+   "hex": "#36C7A9",
+   "group": "블루"
+  },
+  {
+   "name": "Mermaid Green",
+   "code": "2039-50",
+   "hex": "#86E0CC",
+   "group": "블루"
+  },
+  {
+   "name": "Seafoam Green",
+   "code": "2039-60",
+   "hex": "#B9EFE1",
+   "group": "그린"
+  },
+  {
+   "name": "Refreshing Teal",
+   "code": "2039-70",
+   "hex": "#D9F7ED",
+   "group": "그린"
+  },
+  {
+   "name": "Rainforest Foliage",
+   "code": "2040-10",
+   "hex": "#115B3D",
+   "group": "그린"
+  },
+  {
+   "name": "Green Meadows",
+   "code": "2040-20",
+   "hex": "#0B6649",
+   "group": "그린"
+  },
+  {
+   "name": "Very Green",
+   "code": "2040-30",
+   "hex": "#18785D",
+   "group": "그린"
+  },
+  {
+   "name": "Summer Basket Green",
+   "code": "2040-40",
+   "hex": "#5DA593",
+   "group": "블루"
+  },
+  {
+   "name": "Hazy Blue",
+   "code": "2040-50",
+   "hex": "#93C7BC",
+   "group": "블루"
+  },
+  {
+   "name": "Antiguan Sky",
+   "code": "2040-60",
+   "hex": "#C0E1D8",
+   "group": "그린"
+  },
+  {
+   "name": "Spring Mint",
+   "code": "2040-70",
+   "hex": "#DAEEE8",
+   "group": "그린"
+  },
+  {
+   "name": "Hunter Green",
+   "code": "2041-10",
+   "hex": "#2B463E",
+   "group": "그린"
+  },
+  {
+   "name": "Fiddlehead Green",
+   "code": "2041-20",
+   "hex": "#2A6354",
+   "group": "그린"
+  },
+  {
+   "name": "Green Gables",
+   "code": "2041-30",
+   "hex": "#358270",
+   "group": "블루"
+  },
+  {
+   "name": "Juneau Spring",
+   "code": "2041-40",
+   "hex": "#66B5A6",
+   "group": "블루"
+  },
+  {
+   "name": "Sea Mist Green",
+   "code": "2041-50",
+   "hex": "#9BD6CC",
+   "group": "블루"
+  },
+  {
+   "name": "Soft Mint",
+   "code": "2041-60",
+   "hex": "#C3E9E1",
+   "group": "블루"
+  },
+  {
+   "name": "Irish Mint",
+   "code": "2041-70",
+   "hex": "#DFF5EE",
+   "group": "그린"
+  },
+  {
+   "name": "True Green",
+   "code": "2042-10",
+   "hex": "#016148",
+   "group": "그린"
+  },
+  {
+   "name": "Reef Green",
+   "code": "2042-20",
+   "hex": "#017F5E",
+   "group": "그린"
+  },
+  {
+   "name": "Hummingbird Green",
+   "code": "2042-30",
+   "hex": "#019E7C",
+   "group": "블루"
+  },
+  {
+   "name": "Miami Green",
+   "code": "2042-40",
+   "hex": "#3EC7AC",
+   "group": "블루"
+  },
+  {
+   "name": "Caribe Green",
+   "code": "2042-50",
+   "hex": "#87DFCE",
+   "group": "블루"
+  },
+  {
+   "name": "Florida Aqua",
+   "code": "2042-60",
+   "hex": "#B9EFE2",
+   "group": "블루"
+  },
+  {
+   "name": "Minty Green",
+   "code": "2042-70",
+   "hex": "#D9F6ED",
+   "group": "그린"
+  },
+  {
+   "name": "Absolute Green",
+   "code": "2043-10",
+   "hex": "#065244",
+   "group": "블랙·딥"
+  },
+  {
+   "name": "Ming Jade",
+   "code": "2043-20",
+   "hex": "#01755E",
+   "group": "블루"
+  },
+  {
+   "name": "Kelp Forest Green",
+   "code": "2043-30",
+   "hex": "#01977B",
+   "group": "블루"
+  },
+  {
+   "name": "Egyptian Green",
+   "code": "2043-40",
+   "hex": "#46C2AD",
+   "group": "블루"
+  },
+  {
+   "name": "South Beach",
+   "code": "2043-50",
+   "hex": "#8ADDCE",
+   "group": "블루"
+  },
+  {
+   "name": "Summer Green",
+   "code": "2043-60",
+   "hex": "#B9ECE2",
+   "group": "블루"
+  },
+  {
+   "name": "Frosty Mint",
+   "code": "2043-70",
+   "hex": "#D8F5ED",
+   "group": "그린"
+  },
+  {
+   "name": "Green",
+   "code": "2044-10",
+   "hex": "#01624A",
+   "group": "블루"
+  },
+  {
+   "name": "Leprechaun",
+   "code": "2044-20",
+   "hex": "#018464",
+   "group": "블루"
+  },
+  {
+   "name": "St. Patrick",
+   "code": "2044-30",
+   "hex": "#01A07F",
+   "group": "블루"
+  },
+  {
+   "name": "Amelia Island Blue",
+   "code": "2044-40",
+   "hex": "#26C8B0",
+   "group": "블루"
+  },
+  {
+   "name": "Bermuda Teal",
+   "code": "2044-50",
+   "hex": "#7FDFCE",
+   "group": "블루"
+  },
+  {
+   "name": "Crystal Clear",
+   "code": "2044-60",
+   "hex": "#B4EEE2",
+   "group": "블루"
+  },
+  {
+   "name": "Light Touch",
+   "code": "2044-70",
+   "hex": "#D4F5EC",
+   "group": "그린"
+  },
+  {
+   "name": "Green Bay",
+   "code": "2045-10",
+   "hex": "#015A4A",
+   "group": "블랙·딥"
+  },
+  {
+   "name": "Lawn Green",
+   "code": "2045-20",
+   "hex": "#017D62",
+   "group": "블루"
+  },
+  {
+   "name": "Green Leaf",
+   "code": "2045-30",
+   "hex": "#019D7E",
+   "group": "블루"
+  },
+  {
+   "name": "Bahama Green",
+   "code": "2045-40",
+   "hex": "#25C6AF",
+   "group": "블루"
+  },
+  {
+   "name": "Green Coral",
+   "code": "2045-50",
+   "hex": "#80DED0",
+   "group": "블루"
+  },
+  {
+   "name": "Winter Green",
+   "code": "2045-60",
+   "hex": "#B4EEE3",
+   "group": "블루"
+  },
+  {
+   "name": "Soft Green",
+   "code": "2045-70",
+   "hex": "#D5F5EE",
+   "group": "블루"
+  },
+  {
+   "name": "Calypso Green",
+   "code": "2046-10",
+   "hex": "#015B49",
+   "group": "블루"
+  },
+  {
+   "name": "Garden Green",
+   "code": "2046-20",
+   "hex": "#017B64",
+   "group": "블루"
+  },
+  {
+   "name": "Cayman Lagoon",
+   "code": "2046-30",
+   "hex": "#019B80",
+   "group": "블루"
+  },
+  {
+   "name": "Green Sponge",
+   "code": "2046-40",
+   "hex": "#23C4B0",
+   "group": "블루"
+  },
+  {
+   "name": "Scuba Green",
+   "code": "2046-50",
+   "hex": "#82DED1",
+   "group": "블루"
+  },
+  {
+   "name": "Misty Teal",
+   "code": "2046-60",
+   "hex": "#B5EDE4",
+   "group": "블루"
+  },
+  {
+   "name": "Light Mint",
+   "code": "2046-70",
+   "hex": "#D6F5EE",
+   "group": "블루"
+  },
+  {
+   "name": "Forest Green",
+   "code": "2047-10",
+   "hex": "#184B44",
+   "group": "블루"
+  },
+  {
+   "name": "Manor Green",
+   "code": "2047-20",
+   "hex": "#016C5C",
+   "group": "블루"
+  },
+  {
+   "name": "Rolling Hill Green",
+   "code": "2047-30",
+   "hex": "#01917B",
+   "group": "블루"
+  },
+  {
+   "name": "Capri Seas",
+   "code": "2047-40",
+   "hex": "#4CBDAC",
+   "group": "블루"
+  },
+  {
+   "name": "Shore House Green",
+   "code": "2047-50",
+   "hex": "#8CD9CE",
+   "group": "블루"
+  },
+  {
+   "name": "Ocean Spray",
+   "code": "2047-60",
+   "hex": "#BBEBE3",
+   "group": "블루"
+  },
+  {
+   "name": "Baby Green",
+   "code": "2047-70",
+   "hex": "#D9F4ED",
+   "group": "그린"
+  },
+  {
+   "name": "Sherwood Forest",
+   "code": "2048-10",
+   "hex": "#014F4B",
+   "group": "블랙·딥"
+  },
+  {
+   "name": "Juniper",
+   "code": "2048-20",
+   "hex": "#016E67",
+   "group": "블루"
+  },
+  {
+   "name": "Aruba Blue",
+   "code": "2048-30",
+   "hex": "#018C85",
+   "group": "블루"
+  },
+  {
+   "name": "Poolside Blue",
+   "code": "2048-40",
+   "hex": "#20BAB5",
+   "group": "블루"
+  },
+  {
+   "name": "Tropicana Cabana",
+   "code": "2048-50",
+   "hex": "#7FD6D5",
+   "group": "블루"
+  },
+  {
+   "name": "Jamaican Aqua",
+   "code": "2048-60",
+   "hex": "#B4E9E7",
+   "group": "블루"
+  },
+  {
+   "name": "Barely Teal",
+   "code": "2048-70",
+   "hex": "#D4F2EF",
+   "group": "블루"
+  },
+  {
+   "name": "Pacific Sea Teal",
+   "code": "2049-10",
+   "hex": "#284144",
+   "group": "블루"
+  },
+  {
+   "name": "Oasis Blue",
+   "code": "2049-20",
+   "hex": "#235B5E",
+   "group": "블루"
+  },
+  {
+   "name": "Teal Ocean",
+   "code": "2049-30",
+   "hex": "#2A787C",
+   "group": "블루"
+  },
+  {
+   "name": "Peacock Blue",
+   "code": "2049-40",
+   "hex": "#62ADAF",
+   "group": "블루"
+  },
+  {
+   "name": "Spectra Blue",
+   "code": "2049-50",
+   "hex": "#99CFD1",
+   "group": "블루"
+  },
+  {
+   "name": "Forget Me Not",
+   "code": "2049-60",
+   "hex": "#C1E4E4",
+   "group": "블루"
+  },
+  {
+   "name": "Icing On The Cake",
+   "code": "2049-70",
+   "hex": "#DDF1EE",
+   "group": "블루"
+  },
+  {
+   "name": "Salamander",
+   "code": "2050-10",
+   "hex": "#303F3F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Dollar Bill Green",
+   "code": "2050-20",
+   "hex": "#335755",
+   "group": "블루"
+  },
+  {
+   "name": "Newport Green",
+   "code": "2050-30",
+   "hex": "#3F7472",
+   "group": "블루"
+  },
+  {
+   "name": "Florida Keys Blue",
+   "code": "2050-40",
+   "hex": "#6EAAA8",
+   "group": "블루"
+  },
+  {
+   "name": "Waterfall",
+   "code": "2050-50",
+   "hex": "#9ECECC",
+   "group": "블루"
+  },
+  {
+   "name": "Arctic Blue",
+   "code": "2050-60",
+   "hex": "#C5E4E2",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Bonnet",
+   "code": "2050-70",
+   "hex": "#DEF1ED",
+   "group": "블루"
+  },
+  {
+   "name": "Yukon Green",
+   "code": "2051-10",
+   "hex": "#305450",
+   "group": "블루"
+  },
+  {
+   "name": "Pine Green",
+   "code": "2051-20",
+   "hex": "#2E5E5B",
+   "group": "블루"
+  },
+  {
+   "name": "Casco Bay",
+   "code": "2051-30",
+   "hex": "#316F6E",
+   "group": "블루"
+  },
+  {
+   "name": "Majestic Blue",
+   "code": "2051-40",
+   "hex": "#63A0A1",
+   "group": "블루"
+  },
+  {
+   "name": "Tranquil Blue",
+   "code": "2051-50",
+   "hex": "#95C3C6",
+   "group": "블루"
+  },
+  {
+   "name": "Bird'S Egg",
+   "code": "2051-60",
+   "hex": "#BFDDDE",
+   "group": "블루"
+  },
+  {
+   "name": "Crystal Blue",
+   "code": "2051-70",
+   "hex": "#D9ECEA",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Ocean Tropic",
+   "code": "2052-10",
+   "hex": "#1D4F43",
+   "group": "블루"
+  },
+  {
+   "name": "Marine Aqua",
+   "code": "2052-20",
+   "hex": "#0B5B53",
+   "group": "블루"
+  },
+  {
+   "name": "Tropical Turquoise",
+   "code": "2052-30",
+   "hex": "#01716D",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Spa",
+   "code": "2052-40",
+   "hex": "#4A9FA2",
+   "group": "블루"
+  },
+  {
+   "name": "Pool Blue",
+   "code": "2052-50",
+   "hex": "#86C2C9",
+   "group": "블루"
+  },
+  {
+   "name": "China Blue",
+   "code": "2052-60",
+   "hex": "#B4DCDF",
+   "group": "블루"
+  },
+  {
+   "name": "Ice Blue",
+   "code": "2052-70",
+   "hex": "#D6ECEB",
+   "group": "블루"
+  },
+  {
+   "name": "Mallard Green",
+   "code": "2053-10",
+   "hex": "#2A4F50",
+   "group": "블루"
+  },
+  {
+   "name": "Dark Teal",
+   "code": "2053-20",
+   "hex": "#265B5F",
+   "group": "블루"
+  },
+  {
+   "name": "North Sea Green",
+   "code": "2053-30",
+   "hex": "#246E74",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Lake",
+   "code": "2053-40",
+   "hex": "#579DA6",
+   "group": "블루"
+  },
+  {
+   "name": "Passion Blue",
+   "code": "2053-50",
+   "hex": "#8EC2CB",
+   "group": "블루"
+  },
+  {
+   "name": "Tear Drop Blue",
+   "code": "2053-60",
+   "hex": "#B9DBE1",
+   "group": "블루"
+  },
+  {
+   "name": "Morning Sky Blue",
+   "code": "2053-70",
+   "hex": "#D7EBED",
+   "group": "블루"
+  },
+  {
+   "name": "Bavarian Forest",
+   "code": "2054-10",
+   "hex": "#1E4644",
+   "group": "블루"
+  },
+  {
+   "name": "Beau Green",
+   "code": "2054-20",
+   "hex": "#0B575B",
+   "group": "블루"
+  },
+  {
+   "name": "Venezuelan Sea",
+   "code": "2054-30",
+   "hex": "#016C77",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Lagoon",
+   "code": "2054-40",
+   "hex": "#419DAD",
+   "group": "블루"
+  },
+  {
+   "name": "Seaside Blue",
+   "code": "2054-50",
+   "hex": "#81C1D0",
+   "group": "블루"
+  },
+  {
+   "name": "Old Pickup Blue",
+   "code": "2054-60",
+   "hex": "#B1DBE4",
+   "group": "블루"
+  },
+  {
+   "name": "Clear Skies",
+   "code": "2054-70",
+   "hex": "#D3EBED",
+   "group": "블루"
+  },
+  {
+   "name": "Teal",
+   "code": "2055-10",
+   "hex": "#154653",
+   "group": "블루"
+  },
+  {
+   "name": "Pacific Ocean Blue",
+   "code": "2055-20",
+   "hex": "#016070",
+   "group": "블루"
+  },
+  {
+   "name": "Caribbean Blue Water",
+   "code": "2055-30",
+   "hex": "#017C8F",
+   "group": "블루"
+  },
+  {
+   "name": "Bahaman Sea Blue",
+   "code": "2055-40",
+   "hex": "#13ACBF",
+   "group": "블루"
+  },
+  {
+   "name": "Fairy Tale Blue",
+   "code": "2055-50",
+   "hex": "#79CCDB",
+   "group": "블루"
+  },
+  {
+   "name": "Serenity",
+   "code": "2055-60",
+   "hex": "#AFE2EB",
+   "group": "블루"
+  },
+  {
+   "name": "Innocence",
+   "code": "2055-70",
+   "hex": "#D2F0F2",
+   "group": "블루"
+  },
+  {
+   "name": "Tucson Teal",
+   "code": "2056-10",
+   "hex": "#0C474F",
+   "group": "블랙·딥"
+  },
+  {
+   "name": "Jade Garden",
+   "code": "2056-20",
+   "hex": "#01646D",
+   "group": "블루"
+  },
+  {
+   "name": "Surf Blue",
+   "code": "2056-30",
+   "hex": "#01818C",
+   "group": "블루"
+  },
+  {
+   "name": "Cool Aqua",
+   "code": "2056-40",
+   "hex": "#19B0BC",
+   "group": "블루"
+  },
+  {
+   "name": "Baby Boy Blue",
+   "code": "2056-50",
+   "hex": "#7BD0DA",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Seafoam",
+   "code": "2056-60",
+   "hex": "#B0E4EA",
+   "group": "블루"
+  },
+  {
+   "name": "Icy Moon Drops",
+   "code": "2056-70",
+   "hex": "#D4F1F1",
+   "group": "블루"
+  },
+  {
+   "name": "River Blue",
+   "code": "2057-10",
+   "hex": "#264A53",
+   "group": "블루"
+  },
+  {
+   "name": "Galapagos Turquoise",
+   "code": "2057-20",
+   "hex": "#205864",
+   "group": "블루"
+  },
+  {
+   "name": "Naples Blue",
+   "code": "2057-30",
+   "hex": "#146C7C",
+   "group": "블루"
+  },
+  {
+   "name": "Ash Blue",
+   "code": "2057-40",
+   "hex": "#4E9DAF",
+   "group": "블루"
+  },
+  {
+   "name": "Turquoise Powder",
+   "code": "2057-50",
+   "hex": "#88C1D2",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Flower",
+   "code": "2057-60",
+   "hex": "#B6DBE5",
+   "group": "블루"
+  },
+  {
+   "name": "Icy Blue",
+   "code": "2057-70",
+   "hex": "#D6ECEF",
+   "group": "블루"
+  },
+  {
+   "name": "Twilight",
+   "code": "2058-10",
+   "hex": "#264556",
+   "group": "블루"
+  },
+  {
+   "name": "Slate Teal",
+   "code": "2058-20",
+   "hex": "#19556B",
+   "group": "블루"
+  },
+  {
+   "name": "Deep Ocean",
+   "code": "2058-30",
+   "hex": "#016A86",
+   "group": "블루"
+  },
+  {
+   "name": "Cool Blue",
+   "code": "2058-40",
+   "hex": "#429BB8",
+   "group": "블루"
+  },
+  {
+   "name": "Aquarium Blue",
+   "code": "2058-50",
+   "hex": "#81C0D8",
+   "group": "블루"
+  },
+  {
+   "name": "Ocean Breeze",
+   "code": "2058-60",
+   "hex": "#B1DAE9",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Angel",
+   "code": "2058-70",
+   "hex": "#D3EBF1",
+   "group": "블루"
+  },
+  {
+   "name": "Marine Blue",
+   "code": "2059-10",
+   "hex": "#1E3F5A",
+   "group": "블루"
+  },
+  {
+   "name": "Caribbean Azure",
+   "code": "2059-20",
+   "hex": "#01577D",
+   "group": "블루"
+  },
+  {
+   "name": "Laguna Blue",
+   "code": "2059-30",
+   "hex": "#01729D",
+   "group": "블루"
+  },
+  {
+   "name": "Yosemite Blue",
+   "code": "2059-40",
+   "hex": "#18A2C9",
+   "group": "블루"
+  },
+  {
+   "name": "Pool Party",
+   "code": "2059-50",
+   "hex": "#77C5E3",
+   "group": "블루"
+  },
+  {
+   "name": "Splash",
+   "code": "2059-60",
+   "hex": "#ABDDEF",
+   "group": "블루"
+  },
+  {
+   "name": "Fountain Spout",
+   "code": "2059-70",
+   "hex": "#D0EDF3",
+   "group": "블루"
+  },
+  {
+   "name": "Symphony Blue",
+   "code": "2060-10",
+   "hex": "#213C5E",
+   "group": "블루"
+  },
+  {
+   "name": "California Blue",
+   "code": "2060-20",
+   "hex": "#015482",
+   "group": "블루"
+  },
+  {
+   "name": "Seaport Blue",
+   "code": "2060-30",
+   "hex": "#016FA2",
+   "group": "블루"
+  },
+  {
+   "name": "Toronto Blue",
+   "code": "2060-40",
+   "hex": "#1AA0CD",
+   "group": "블루"
+  },
+  {
+   "name": "Cayman Blue",
+   "code": "2060-50",
+   "hex": "#74C2E5",
+   "group": "블루"
+  },
+  {
+   "name": "Turquoise Haze",
+   "code": "2060-60",
+   "hex": "#AADCF0",
+   "group": "블루"
+  },
+  {
+   "name": "Tear Drop",
+   "code": "2060-70",
+   "hex": "#CFECF4",
+   "group": "블루"
+  },
+  {
+   "name": "Deep Royal",
+   "code": "2061-10",
+   "hex": "#303A4C",
+   "group": "블루"
+  },
+  {
+   "name": "Champion Cobalt",
+   "code": "2061-20",
+   "hex": "#274965",
+   "group": "블루"
+  },
+  {
+   "name": "Bermuda Blue",
+   "code": "2061-30",
+   "hex": "#195E83",
+   "group": "블루"
+  },
+  {
+   "name": "Electric Blue",
+   "code": "2061-40",
+   "hex": "#3F91B9",
+   "group": "블루"
+  },
+  {
+   "name": "Tidal Wave",
+   "code": "2061-50",
+   "hex": "#7DB8D7",
+   "group": "블루"
+  },
+  {
+   "name": "Little Boy Blue",
+   "code": "2061-60",
+   "hex": "#ADD6EA",
+   "group": "블루"
+  },
+  {
+   "name": "Caribbean Mist",
+   "code": "2061-70",
+   "hex": "#CEE8F2",
+   "group": "블루"
+  },
+  {
+   "name": "Polo Blue",
+   "code": "2062-10",
+   "hex": "#333B44",
+   "group": "블루"
+  },
+  {
+   "name": "Gentlemans Gray",
+   "code": "2062-20",
+   "hex": "#314757",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Danube",
+   "code": "2062-30",
+   "hex": "#2E5A71",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Daisy",
+   "code": "2062-40",
+   "hex": "#558EA8",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Jean",
+   "code": "2062-50",
+   "hex": "#88B6CC",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Hydrangea",
+   "code": "2062-60",
+   "hex": "#B4D4E2",
+   "group": "블루"
+  },
+  {
+   "name": "Harbor Fog",
+   "code": "2062-70",
+   "hex": "#D4E8EE",
+   "group": "블루"
+  },
+  {
+   "name": "Old Navy",
+   "code": "2063-10",
+   "hex": "#2F364A",
+   "group": "블루"
+  },
+  {
+   "name": "Down Pour Blue",
+   "code": "2063-20",
+   "hex": "#26476A",
+   "group": "블루"
+  },
+  {
+   "name": "Blueberry",
+   "code": "2063-30",
+   "hex": "#1B5F8A",
+   "group": "블루"
+  },
+  {
+   "name": "Sailor'S Sea Blue",
+   "code": "2063-40",
+   "hex": "#4B94BF",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Marguerite",
+   "code": "2063-50",
+   "hex": "#85BCDD",
+   "group": "블루"
+  },
+  {
+   "name": "Sapphireberry",
+   "code": "2063-60",
+   "hex": "#B2D7EB",
+   "group": "블루"
+  },
+  {
+   "name": "Cumulus Cotton",
+   "code": "2063-70",
+   "hex": "#D4E9F2",
+   "group": "블루"
+  },
+  {
+   "name": "Bold Blue",
+   "code": "2064-10",
+   "hex": "#2C3659",
+   "group": "블루"
+  },
+  {
+   "name": "Patriot Blue",
+   "code": "2064-20",
+   "hex": "#194B7D",
+   "group": "블루"
+  },
+  {
+   "name": "Ol' Blue Eyes",
+   "code": "2064-30",
+   "hex": "#0163A1",
+   "group": "블루"
+  },
+  {
+   "name": "Clearest Ocean Blue",
+   "code": "2064-40",
+   "hex": "#3296CB",
+   "group": "블루"
+  },
+  {
+   "name": "Costa Rica Blue",
+   "code": "2064-50",
+   "hex": "#75BBE4",
+   "group": "블루"
+  },
+  {
+   "name": "Bluebelle",
+   "code": "2064-60",
+   "hex": "#A9D6F0",
+   "group": "블루"
+  },
+  {
+   "name": "Billowy Down",
+   "code": "2064-70",
+   "hex": "#CDE9F4",
+   "group": "블루"
+  },
+  {
+   "name": "Admiral Blue",
+   "code": "2065-10",
+   "hex": "#2C3863",
+   "group": "블루"
+  },
+  {
+   "name": "Dark Royal Blue",
+   "code": "2065-20",
+   "hex": "#154C87",
+   "group": "블루"
+  },
+  {
+   "name": "Brilliant Blue",
+   "code": "2065-30",
+   "hex": "#0164A7",
+   "group": "블루"
+  },
+  {
+   "name": "Utah Sky",
+   "code": "2065-40",
+   "hex": "#1D95D1",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Wave",
+   "code": "2065-50",
+   "hex": "#6FB9E6",
+   "group": "블루"
+  },
+  {
+   "name": "Caribbean Coast",
+   "code": "2065-60",
+   "hex": "#A4D5F1",
+   "group": "블루"
+  },
+  {
+   "name": "Bashful Blue",
+   "code": "2065-70",
+   "hex": "#C9E7F4",
+   "group": "블루"
+  },
+  {
+   "name": "Blue",
+   "code": "2066-10",
+   "hex": "#243973",
+   "group": "블루"
+  },
+  {
+   "name": "Evening Blue",
+   "code": "2066-20",
+   "hex": "#014F94",
+   "group": "블루"
+  },
+  {
+   "name": "Big Country Blue",
+   "code": "2066-30",
+   "hex": "#0167B2",
+   "group": "블루"
+  },
+  {
+   "name": "Rocky Mountain Sky",
+   "code": "2066-40",
+   "hex": "#1098D9",
+   "group": "블루"
+  },
+  {
+   "name": "True Blue",
+   "code": "2066-50",
+   "hex": "#6DBBEB",
+   "group": "블루"
+  },
+  {
+   "name": "Honolulu Blue",
+   "code": "2066-60",
+   "hex": "#A4D7F3",
+   "group": "블루"
+  },
+  {
+   "name": "Light Blue",
+   "code": "2066-70",
+   "hex": "#CBE9F4",
+   "group": "블루"
+  },
+  {
+   "name": "Midnight Navy",
+   "code": "2067-10",
+   "hex": "#343457",
+   "group": "블루"
+  },
+  {
+   "name": "Starry Night Blue",
+   "code": "2067-20",
+   "hex": "#344177",
+   "group": "블루"
+  },
+  {
+   "name": "Twilight Blue",
+   "code": "2067-30",
+   "hex": "#375597",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Lapis",
+   "code": "2067-40",
+   "hex": "#638AC7",
+   "group": "블루"
+  },
+  {
+   "name": "Summer Blue",
+   "code": "2067-50",
+   "hex": "#93B4E1",
+   "group": "블루"
+  },
+  {
+   "name": "Windmill Wings",
+   "code": "2067-60",
+   "hex": "#BDD3EE",
+   "group": "블루"
+  },
+  {
+   "name": "White Satin",
+   "code": "2067-70",
+   "hex": "#D8E6F3",
+   "group": "블루"
+  },
+  {
+   "name": "Majestic Violet",
+   "code": "2068-10",
+   "hex": "#3B3551",
+   "group": "블루"
+  },
+  {
+   "name": "Grape Gum",
+   "code": "2068-20",
+   "hex": "#423E6E",
+   "group": "블루"
+  },
+  {
+   "name": "Scandinavian Blue",
+   "code": "2068-30",
+   "hex": "#4F4F8D",
+   "group": "블루"
+  },
+  {
+   "name": "California Lilac",
+   "code": "2068-40",
+   "hex": "#8085BF",
+   "group": "블루"
+  },
+  {
+   "name": "Victorian Trim",
+   "code": "2068-50",
+   "hex": "#ABB1DC",
+   "group": "블루"
+  },
+  {
+   "name": "Purple Lace",
+   "code": "2068-60",
+   "hex": "#CCD0EB",
+   "group": "블루"
+  },
+  {
+   "name": "White Heaven",
+   "code": "2068-70",
+   "hex": "#E3E6F2",
+   "group": "블루"
+  },
+  {
+   "name": "Deep Mulberry",
+   "code": "2069-10",
+   "hex": "#3D3946",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Blackberry Wine",
+   "code": "2069-20",
+   "hex": "#49455F",
+   "group": "블루"
+  },
+  {
+   "name": "Darkest Grape",
+   "code": "2069-30",
+   "hex": "#5D5B7D",
+   "group": "블루"
+  },
+  {
+   "name": "Violet Stone",
+   "code": "2069-40",
+   "hex": "#8F90B1",
+   "group": "블루"
+  },
+  {
+   "name": "Blue Orchid",
+   "code": "2069-50",
+   "hex": "#B9BAD3",
+   "group": "블루"
+  },
+  {
+   "name": "Lavender Ice",
+   "code": "2069-60",
+   "hex": "#D7D6E6",
+   "group": "블루"
+  },
+  {
+   "name": "Polar White",
+   "code": "2069-70",
+   "hex": "#E9E9F0",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Tulsa Twilight",
+   "code": "2070-10",
+   "hex": "#3C343A",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Plum Royale",
+   "code": "2070-20",
+   "hex": "#463D51",
+   "group": "퍼플"
+  },
+  {
+   "name": "Dark Lilac",
+   "code": "2070-30",
+   "hex": "#554E6E",
+   "group": "블루"
+  },
+  {
+   "name": "Spring Purple",
+   "code": "2070-40",
+   "hex": "#8883A7",
+   "group": "블루"
+  },
+  {
+   "name": "Enchanted",
+   "code": "2070-50",
+   "hex": "#B0B0CC",
+   "group": "블루"
+  },
+  {
+   "name": "Lavender Mist",
+   "code": "2070-60",
+   "hex": "#D0D0E1",
+   "group": "블루"
+  },
+  {
+   "name": "Whisper Violet",
+   "code": "2070-70",
+   "hex": "#E6E6EE",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Exotic Purple",
+   "code": "2071-10",
+   "hex": "#44344E",
+   "group": "퍼플"
+  },
+  {
+   "name": "Gentle Violet",
+   "code": "2071-20",
+   "hex": "#533D69",
+   "group": "퍼플"
+  },
+  {
+   "name": "Mystical Grape",
+   "code": "2071-30",
+   "hex": "#674C87",
+   "group": "퍼플"
+  },
+  {
+   "name": "Crocus Petal Purple",
+   "code": "2071-40",
+   "hex": "#9B81BA",
+   "group": "퍼플"
+  },
+  {
+   "name": "Amethyst Cream",
+   "code": "2071-50",
+   "hex": "#C0AED8",
+   "group": "퍼플"
+  },
+  {
+   "name": "Lily Lavender",
+   "code": "2071-60",
+   "hex": "#DCCFE9",
+   "group": "퍼플"
+  },
+  {
+   "name": "Misty Lilac",
+   "code": "2071-70",
+   "hex": "#EBE4F1",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Dark Basalt",
+   "code": "2072-10",
+   "hex": "#41373D",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Black Raspberry",
+   "code": "2072-20",
+   "hex": "#4E3E4C",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Purple Lotus",
+   "code": "2072-30",
+   "hex": "#614C63",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Wild Orchid",
+   "code": "2072-40",
+   "hex": "#967F9A",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Lavender Lipstick",
+   "code": "2072-50",
+   "hex": "#BEACC3",
+   "group": "퍼플"
+  },
+  {
+   "name": "Beach Plum",
+   "code": "2072-60",
+   "hex": "#DACDDC",
+   "group": "퍼플"
+  },
+  {
+   "name": "Raspberry Ice",
+   "code": "2072-70",
+   "hex": "#ECE4EB",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Dark Purple",
+   "code": "2073-10",
+   "hex": "#4C3641",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Autumn Purple",
+   "code": "2073-20",
+   "hex": "#5E3E55",
+   "group": "퍼플"
+  },
+  {
+   "name": "Passion Plum",
+   "code": "2073-30",
+   "hex": "#774C6F",
+   "group": "퍼플"
+  },
+  {
+   "name": "Purple Hyacinth",
+   "code": "2073-40",
+   "hex": "#AB80A6",
+   "group": "퍼플"
+  },
+  {
+   "name": "Purple Easter Egg",
+   "code": "2073-50",
+   "hex": "#CDADCB",
+   "group": "퍼플"
+  },
+  {
+   "name": "Pale Iris",
+   "code": "2073-60",
+   "hex": "#E4CDE1",
+   "group": "퍼플"
+  },
+  {
+   "name": "Purple Cream",
+   "code": "2073-70",
+   "hex": "#F1E4ED",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Grape Juice",
+   "code": "2074-10",
+   "hex": "#63344B",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Summer Plum",
+   "code": "2074-20",
+   "hex": "#7C3D64",
+   "group": "퍼플"
+  },
+  {
+   "name": "Twilight Magenta",
+   "code": "2074-30",
+   "hex": "#9C4B81",
+   "group": "퍼플"
+  },
+  {
+   "name": "Lilac Pink",
+   "code": "2074-40",
+   "hex": "#C381B5",
+   "group": "퍼플"
+  },
+  {
+   "name": "Exotic Fuchsia",
+   "code": "2074-50",
+   "hex": "#DDADD4",
+   "group": "퍼플"
+  },
+  {
+   "name": "Bunny Nose Pink",
+   "code": "2074-60",
+   "hex": "#EECEE7",
+   "group": "퍼플"
+  },
+  {
+   "name": "Easter Bonnet",
+   "code": "2074-70",
+   "hex": "#F6E4F0",
+   "group": "퍼플"
+  },
+  {
+   "name": "Dark Burgundy",
+   "code": "2075-10",
+   "hex": "#673448",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Mulberry",
+   "code": "2075-20",
+   "hex": "#803C60",
+   "group": "퍼플"
+  },
+  {
+   "name": "Pre-Dawn Sky",
+   "code": "2075-30",
+   "hex": "#A0497E",
+   "group": "퍼플"
+  },
+  {
+   "name": "Pink Raspberry",
+   "code": "2075-40",
+   "hex": "#C77EB0",
+   "group": "퍼플"
+  },
+  {
+   "name": "Pink Taffy",
+   "code": "2075-50",
+   "hex": "#E0ABD2",
+   "group": "퍼플"
+  },
+  {
+   "name": "Passion Pink",
+   "code": "2075-60",
+   "hex": "#EECDE5",
+   "group": "퍼플"
+  },
+  {
+   "name": "Charming Pink",
+   "code": "2075-70",
+   "hex": "#F7E4F0",
+   "group": "퍼플"
+  },
+  {
+   "name": "Crushed Velvet",
+   "code": "2076-10",
+   "hex": "#8E2E49",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Royal Flush",
+   "code": "2076-20",
+   "hex": "#A13760",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Crushed Berries",
+   "code": "2076-30",
+   "hex": "#B5457C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Raspberry Mousse",
+   "code": "2076-40",
+   "hex": "#D77DB1",
+   "group": "퍼플"
+  },
+  {
+   "name": "Easter Pink",
+   "code": "2076-50",
+   "hex": "#E9AAD1",
+   "group": "퍼플"
+  },
+  {
+   "name": "Dog'S Ear",
+   "code": "2076-60",
+   "hex": "#F4CBE4",
+   "group": "퍼플"
+  },
+  {
+   "name": "Nursery Pink",
+   "code": "2076-70",
+   "hex": "#F8E3EE",
+   "group": "퍼플"
+  },
+  {
+   "name": "Magenta",
+   "code": "2077-10",
+   "hex": "#9D294C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Gypsy Pink",
+   "code": "2077-20",
+   "hex": "#AC3263",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Hot Lips",
+   "code": "2077-30",
+   "hex": "#BD4380",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Spring Azalea",
+   "code": "2077-40",
+   "hex": "#DC7CB5",
+   "group": "퍼플"
+  },
+  {
+   "name": "Pretty Pink",
+   "code": "2077-50",
+   "hex": "#ECA9D4",
+   "group": "퍼플"
+  },
+  {
+   "name": "Valentine'S Day",
+   "code": "2077-60",
+   "hex": "#F5CCE6",
+   "group": "퍼플"
+  },
+  {
+   "name": "I Love You Pink",
+   "code": "2077-70",
+   "hex": "#F9E3EF",
+   "group": "퍼플"
+  },
+  {
+   "name": "Roseate",
+   "code": "2078-10",
+   "hex": "#9E3549",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Raspberry Glaze",
+   "code": "2078-20",
+   "hex": "#AD3E59",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Royal Fuchsia",
+   "code": "2078-30",
+   "hex": "#BE5171",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Paradise Pink",
+   "code": "2078-40",
+   "hex": "#DD86A7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Begonia",
+   "code": "2078-50",
+   "hex": "#EDB1CB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Newborn Pink",
+   "code": "2078-60",
+   "hex": "#F6D1E2",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Peony",
+   "code": "2078-70",
+   "hex": "#F9E6ED",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Candy Cane Red",
+   "code": "2079-10",
+   "hex": "#AB263D",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Blushing Red",
+   "code": "2079-20",
+   "hex": "#B93254",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Peony",
+   "code": "2079-30",
+   "hex": "#C94571",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Springtime Bloom",
+   "code": "2079-40",
+   "hex": "#E57EA8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rhododendron",
+   "code": "2079-50",
+   "hex": "#F3ACCC",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Cherub",
+   "code": "2079-60",
+   "hex": "#F9CEE2",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Candy Stripe",
+   "code": "2079-70",
+   "hex": "#FBE3ED",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Raspberry Truffle",
+   "code": "2080-10",
+   "hex": "#933639",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Confederate Red",
+   "code": "2080-20",
+   "hex": "#9F3C46",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cherry Wine",
+   "code": "2080-30",
+   "hex": "#AE495C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Wild Pink",
+   "code": "2080-40",
+   "hex": "#D17A92",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Bayberry",
+   "code": "2080-50",
+   "hex": "#E7A8BD",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Posy Pink",
+   "code": "2080-60",
+   "hex": "#F4CAD8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Aztec Lily",
+   "code": "2080-70",
+   "hex": "#F9E2E8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Burnt Peanut Red",
+   "code": "2081-10",
+   "hex": "#A24149",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Sultan'S Palace",
+   "code": "2081-20",
+   "hex": "#AF4954",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Vibrant Blush",
+   "code": "2081-30",
+   "hex": "#BF5B68",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Blossom",
+   "code": "2081-40",
+   "hex": "#DD8D9C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Ruffle",
+   "code": "2081-50",
+   "hex": "#EEB7C4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Lace",
+   "code": "2081-60",
+   "hex": "#F6D5DD",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Flush Pink",
+   "code": "2081-70",
+   "hex": "#F9E8EB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Chestnut",
+   "code": "2082-10",
+   "hex": "#713F3D",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Plum Raisin",
+   "code": "2082-20",
+   "hex": "#7D4648",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cherokee Brick",
+   "code": "2082-30",
+   "hex": "#8D515A",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rosewood",
+   "code": "2082-40",
+   "hex": "#B8808D",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Damask Rose",
+   "code": "2082-50",
+   "hex": "#D7ADB9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Innocence",
+   "code": "2082-60",
+   "hex": "#EACDD5",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Ballerina Pink",
+   "code": "2082-70",
+   "hex": "#F4E3E7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Raisin Torte",
+   "code": "2083-10",
+   "hex": "#743940",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cranberry Cocktail",
+   "code": "2083-20",
+   "hex": "#84404E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Old Claret",
+   "code": "2083-30",
+   "hex": "#984D65",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Begonia",
+   "code": "2083-40",
+   "hex": "#C37F9B",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Pansy",
+   "code": "2083-50",
+   "hex": "#DDABC2",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Sweet Naivete",
+   "code": "2083-60",
+   "hex": "#EDCCDB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Baby Dreams",
+   "code": "2083-70",
+   "hex": "#F6E4EB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Brick Red",
+   "code": "2084-10",
+   "hex": "#7A3C32",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Maple Leaf Red",
+   "code": "2084-20",
+   "hex": "#924544",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rouge",
+   "code": "2084-30",
+   "hex": "#B3535E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Precious Pink",
+   "code": "2084-40",
+   "hex": "#D58396",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rosy Glow",
+   "code": "2084-50",
+   "hex": "#EBAFBF",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Early Sunrise",
+   "code": "2084-60",
+   "hex": "#F7D0DA",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Gentle Blush",
+   "code": "2084-70",
+   "hex": "#FBE5E9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Arroyo Red",
+   "code": "2085-10",
+   "hex": "#6F3832",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pottery Red",
+   "code": "2085-20",
+   "hex": "#864045",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Gypsy Love",
+   "code": "2085-30",
+   "hex": "#A74F5E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Taste Of Berry",
+   "code": "2085-40",
+   "hex": "#CC7F96",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Strawberry",
+   "code": "2085-50",
+   "hex": "#E5ADC1",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Petals",
+   "code": "2085-60",
+   "hex": "#F0CEDA",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Baby Pink",
+   "code": "2085-70",
+   "hex": "#F9E4E9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Exotic Red",
+   "code": "2086-10",
+   "hex": "#B42836",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rose Parade",
+   "code": "2086-20",
+   "hex": "#C1334B",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rosy Blush",
+   "code": "2086-30",
+   "hex": "#D04667",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Deep Carnation",
+   "code": "2086-40",
+   "hex": "#EA7C9E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Blushing Bride",
+   "code": "2086-50",
+   "hex": "#F6ACC6",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Sweet Taffy",
+   "code": "2086-60",
+   "hex": "#FBCEDE",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "50'S Pink",
+   "code": "2086-70",
+   "hex": "#FCE4EB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Neon Red",
+   "code": "2087-10",
+   "hex": "#B92E34",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Watermelon Red",
+   "code": "2087-20",
+   "hex": "#C63E47",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Italiano Rose",
+   "code": "2087-30",
+   "hex": "#D45462",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Autumn Red",
+   "code": "2087-40",
+   "hex": "#EC8B9A",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Strawberry Sorbet",
+   "code": "2087-50",
+   "hex": "#F7B7C4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Ribbon Pink",
+   "code": "2087-60",
+   "hex": "#FBD5DC",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Elephant Pink",
+   "code": "2087-70",
+   "hex": "#FBE8EA",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Red Oxide",
+   "code": "2088-10",
+   "hex": "#974434",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Country Lane",
+   "code": "2088-20",
+   "hex": "#9B4738",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Strawberry Field",
+   "code": "2088-30",
+   "hex": "#A04C3E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Persimmon",
+   "code": "2088-40",
+   "hex": "#BE6E65",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cool Lava",
+   "code": "2088-50",
+   "hex": "#DA9A93",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Fruit Shake",
+   "code": "2088-60",
+   "hex": "#EDBEB8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Fond Memory",
+   "code": "2088-70",
+   "hex": "#F7DAD5",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Iron Ore Red",
+   "code": "2089-10",
+   "hex": "#AA5546",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rosy Peach",
+   "code": "2089-20",
+   "hex": "#B65F50",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Mix",
+   "code": "2089-30",
+   "hex": "#C36D61",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tomato Cream Sauce",
+   "code": "2089-40",
+   "hex": "#E09C92",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Salmon Berry",
+   "code": "2089-50",
+   "hex": "#EFC1BB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Peach Kiss",
+   "code": "2089-60",
+   "hex": "#F7DCD7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Frosted Petal",
+   "code": "2089-70",
+   "hex": "#FAEDE8",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Grand Canyon Red",
+   "code": "2090-10",
+   "hex": "#984535",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rich Chestnut",
+   "code": "2090-20",
+   "hex": "#9C4938",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Terra Cotta Tile",
+   "code": "2090-30",
+   "hex": "#A24D3F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Wild Flower",
+   "code": "2090-40",
+   "hex": "#C07166",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tender Pink",
+   "code": "2090-50",
+   "hex": "#DB9C95",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Strawberry Freeze",
+   "code": "2090-60",
+   "hex": "#EEC1BA",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Spring Pink",
+   "code": "2090-70",
+   "hex": "#F8DBD6",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tea",
+   "code": "2091-10",
+   "hex": "#8A4435",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rustic Brick",
+   "code": "2091-20",
+   "hex": "#8F4839",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Deep Poinsettia",
+   "code": "2091-30",
+   "hex": "#984D3F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Red River Clay",
+   "code": "2091-40",
+   "hex": "#B47068",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rosy Tan",
+   "code": "2091-50",
+   "hex": "#D29B96",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Heather Pink",
+   "code": "2091-60",
+   "hex": "#E8C0BB",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "April Pink",
+   "code": "2091-70",
+   "hex": "#F4DBD6",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Clydesdale Brown",
+   "code": "2092-10",
+   "hex": "#7C4334",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Sienna",
+   "code": "2092-20",
+   "hex": "#814739",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Boston Brick",
+   "code": "2092-30",
+   "hex": "#874C41",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Texas Rose",
+   "code": "2092-40",
+   "hex": "#AA726A",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Titanic Rose",
+   "code": "2092-50",
+   "hex": "#CC9F9A",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Georgia Pink",
+   "code": "2092-60",
+   "hex": "#E4C2BE",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Fairest Pink",
+   "code": "2092-70",
+   "hex": "#F1DCD8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cimarron",
+   "code": "2093-10",
+   "hex": "#764432",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Fresh Clay",
+   "code": "2093-20",
+   "hex": "#8C5143",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Colonial Brick",
+   "code": "2093-30",
+   "hex": "#AF6658",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Belladonna Lily",
+   "code": "2093-40",
+   "hex": "#CF968F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Camellia Pink",
+   "code": "2093-50",
+   "hex": "#E6BFBC",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Playful Pink",
+   "code": "2093-60",
+   "hex": "#F3DBD8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Bliss",
+   "code": "2093-70",
+   "hex": "#F6EBE8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Burnt Cinnamon",
+   "code": "2094-10",
+   "hex": "#7C4633",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Copper Mine",
+   "code": "2094-20",
+   "hex": "#874E3C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Giant Sequoia",
+   "code": "2094-30",
+   "hex": "#985D4C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Soft Cranberry",
+   "code": "2094-40",
+   "hex": "#C28D81",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Desert Rose",
+   "code": "2094-50",
+   "hex": "#DEB7AF",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pleasant Pink",
+   "code": "2094-60",
+   "hex": "#EFD5CF",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Mellow Pink",
+   "code": "2094-70",
+   "hex": "#F7E9E3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Adirondack Brown",
+   "code": "2095-10",
+   "hex": "#704C3C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Antler Brown",
+   "code": "2095-20",
+   "hex": "#765040",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Butternut Brown",
+   "code": "2095-30",
+   "hex": "#7F594A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mudslide",
+   "code": "2095-40",
+   "hex": "#A58174",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Just Beige",
+   "code": "2095-50",
+   "hex": "#C7ABA1",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Southern Comfort",
+   "code": "2095-60",
+   "hex": "#E0CCC3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Melted Ice Cream",
+   "code": "2095-70",
+   "hex": "#EFE3DC",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Seed Brown",
+   "code": "2096-10",
+   "hex": "#724E3A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Chocolate Truffle",
+   "code": "2096-20",
+   "hex": "#795340",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Grandfather Clock Brown",
+   "code": "2096-30",
+   "hex": "#835C49",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Gaucho Brown",
+   "code": "2096-40",
+   "hex": "#AA8674",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cappuccino",
+   "code": "2096-50",
+   "hex": "#CBB0A2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Light Mocha",
+   "code": "2096-60",
+   "hex": "#E3D0C5",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Early Sunset",
+   "code": "2096-70",
+   "hex": "#F1E5DD",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Toasted Brown",
+   "code": "2097-10",
+   "hex": "#6C4B3D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Morning Coffee",
+   "code": "2097-20",
+   "hex": "#714F41",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Hedgehog Brown",
+   "code": "2097-30",
+   "hex": "#7B584A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Santa Fe Tan",
+   "code": "2097-40",
+   "hex": "#A08074",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Hint Of Mauve",
+   "code": "2097-50",
+   "hex": "#C4ABA2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Misty Blush",
+   "code": "2097-60",
+   "hex": "#DECCC4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Wild Rice",
+   "code": "2097-70",
+   "hex": "#EEE3DD",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Barrel Brown",
+   "code": "2098-10",
+   "hex": "#68483B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Roasted Coffee Beans",
+   "code": "2098-20",
+   "hex": "#6E4D40",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Dark Nut Brown",
+   "code": "2098-30",
+   "hex": "#795649",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cafe Ole",
+   "code": "2098-40",
+   "hex": "#9C7E74",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Flax",
+   "code": "2098-50",
+   "hex": "#C1AAA2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Wisp Of Mauve",
+   "code": "2098-60",
+   "hex": "#DCCBC4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Frosted Cafe",
+   "code": "2098-70",
+   "hex": "#EDE3DD",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Brown",
+   "code": "2099-10",
+   "hex": "#6F4A3B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cupcake",
+   "code": "2099-20",
+   "hex": "#744E3F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Espresso",
+   "code": "2099-30",
+   "hex": "#7D5648",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Autumn Brown",
+   "code": "2099-40",
+   "hex": "#A27E72",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cafe Mocha",
+   "code": "2099-50",
+   "hex": "#C6AAA0",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Malted Milk",
+   "code": "2099-60",
+   "hex": "#DFCBC3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Wheatberry",
+   "code": "2099-70",
+   "hex": "#EEE2DB",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mocha Madness",
+   "code": "2100-10",
+   "hex": "#6F4A3A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Leather Saddle Brown",
+   "code": "2100-20",
+   "hex": "#764F40",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "English Brown",
+   "code": "2100-30",
+   "hex": "#7E5749",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Appalachian Spring",
+   "code": "2100-40",
+   "hex": "#A58074",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pebble Stone",
+   "code": "2100-50",
+   "hex": "#C7ABA1",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Bermuda Sands",
+   "code": "2100-60",
+   "hex": "#E1CCC4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Victorian Lace",
+   "code": "2100-70",
+   "hex": "#EFE2DC",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Suede Brown",
+   "code": "2101-10",
+   "hex": "#70493C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cocoa Brown",
+   "code": "2101-20",
+   "hex": "#754E41",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Warm Brownie",
+   "code": "2101-30",
+   "hex": "#7F564B",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Almond Beige",
+   "code": "2101-40",
+   "hex": "#A68076",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Allspice",
+   "code": "2101-50",
+   "hex": "#C9ABA4",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pale Cherry Blossom",
+   "code": "2101-60",
+   "hex": "#E1CCC6",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tropical Sand",
+   "code": "2101-70",
+   "hex": "#F0E3DE",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Earth Brown",
+   "code": "2102-10",
+   "hex": "#70483C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pumpernickel",
+   "code": "2102-20",
+   "hex": "#764D41",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pueblo Brown",
+   "code": "2102-30",
+   "hex": "#80564C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Brown Teepee",
+   "code": "2102-40",
+   "hex": "#A88079",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rose Bisque",
+   "code": "2102-50",
+   "hex": "#CBACA7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Honey Hut",
+   "code": "2102-60",
+   "hex": "#E2CCC8",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "First Light",
+   "code": "2102-70",
+   "hex": "#F0E3DF",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Natural Brown",
+   "code": "2103-10",
+   "hex": "#694135",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "English Manor",
+   "code": "2103-20",
+   "hex": "#6E4439",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Peatmoss",
+   "code": "2103-30",
+   "hex": "#764C42",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Hickory Stick",
+   "code": "2103-40",
+   "hex": "#9B736E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Sandblast",
+   "code": "2103-50",
+   "hex": "#C0A09D",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pale Berry",
+   "code": "2103-60",
+   "hex": "#DCC4C1",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Strawberry-N-Cream",
+   "code": "2103-70",
+   "hex": "#EDDEDB",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Pancake Syrup",
+   "code": "2104-10",
+   "hex": "#724336",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Beaver Brown",
+   "code": "2104-20",
+   "hex": "#75463A",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Harvest Brown",
+   "code": "2104-30",
+   "hex": "#7D4C43",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "New England Brown",
+   "code": "2104-40",
+   "hex": "#9F736E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cherry Malt",
+   "code": "2104-50",
+   "hex": "#C29F9C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rose Silk",
+   "code": "2104-60",
+   "hex": "#DEC4C1",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Strawberry Yogurt",
+   "code": "2104-70",
+   "hex": "#EDDDDA",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Forest Brown",
+   "code": "2105-10",
+   "hex": "#6D4A3B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Rootbeer Candy",
+   "code": "2105-20",
+   "hex": "#734F40",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Rabbit Brown",
+   "code": "2105-30",
+   "hex": "#7B5749",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Dusty Ranch Brown",
+   "code": "2105-40",
+   "hex": "#A17F72",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sand Pebble",
+   "code": "2105-50",
+   "hex": "#C4AAA0",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Acapulco Sand",
+   "code": "2105-60",
+   "hex": "#DECAC2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Savory Cream",
+   "code": "2105-70",
+   "hex": "#EDE2DB",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Java",
+   "code": "2106-10",
+   "hex": "#684A3B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Auberge",
+   "code": "2106-20",
+   "hex": "#6E4F40",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pine Cone",
+   "code": "2106-30",
+   "hex": "#76584A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cougar Brown",
+   "code": "2106-40",
+   "hex": "#9D8275",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Driftscape Tan",
+   "code": "2106-50",
+   "hex": "#C2ADA3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Soft Sand",
+   "code": "2106-60",
+   "hex": "#DDCEC6",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Foggy Morning",
+   "code": "2106-70",
+   "hex": "#EDE4DD",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Chocolate Candy Brown",
+   "code": "2107-10",
+   "hex": "#624B3C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mocha Brown",
+   "code": "2107-20",
+   "hex": "#675041",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Rockies Brown",
+   "code": "2107-30",
+   "hex": "#705A4C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Driftwood",
+   "code": "2107-40",
+   "hex": "#988578",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Sandlot Gray",
+   "code": "2107-50",
+   "hex": "#BEB0A7",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sea Froth",
+   "code": "2107-60",
+   "hex": "#D9D0C8",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cloudy Gray",
+   "code": "2107-70",
+   "hex": "#EBE5DF",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Ferret Brown",
+   "code": "2108-10",
+   "hex": "#5E4C3E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sierra Spruce",
+   "code": "2108-20",
+   "hex": "#614F41",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Brown Horse",
+   "code": "2108-30",
+   "hex": "#6A5B4D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Stardust",
+   "code": "2108-40",
+   "hex": "#928679",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Silver Fox",
+   "code": "2108-50",
+   "hex": "#B9B2A8",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Abalone",
+   "code": "2108-60",
+   "hex": "#D4D0C8",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Lacey Pearl",
+   "code": "2108-70",
+   "hex": "#E9E6E0",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Classic Brown",
+   "code": "2109-10",
+   "hex": "#59463C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Hearthstone Brown",
+   "code": "2109-20",
+   "hex": "#614E45",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Wood Grain Brown",
+   "code": "2109-30",
+   "hex": "#69564E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Smoked Oyster",
+   "code": "2109-40",
+   "hex": "#8F807A",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Elephant Gray",
+   "code": "2109-50",
+   "hex": "#B6ACA8",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Portland Gray",
+   "code": "2109-60",
+   "hex": "#D4CDC8",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "A La Mode",
+   "code": "2109-70",
+   "hex": "#E7E3DF",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Taupe",
+   "code": "2110-10",
+   "hex": "#5B4531",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Brown Tar",
+   "code": "2110-20",
+   "hex": "#6F5541",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Saddle Soap",
+   "code": "2110-30",
+   "hex": "#896B5A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Seaside Sand",
+   "code": "2110-40",
+   "hex": "#B69E95",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Gobi Desert",
+   "code": "2110-50",
+   "hex": "#D4C4BE",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pampas Grass",
+   "code": "2110-60",
+   "hex": "#E9DED9",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Vintage Taupe",
+   "code": "2110-70",
+   "hex": "#F3EEE9",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Deep Taupe",
+   "code": "2111-10",
+   "hex": "#5A4435",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Grizzly Bear Brown",
+   "code": "2111-20",
+   "hex": "#604C3D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mustang",
+   "code": "2111-30",
+   "hex": "#69584B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Taos Taupe",
+   "code": "2111-40",
+   "hex": "#8D857B",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Stone Harbor",
+   "code": "2111-50",
+   "hex": "#B5B0A9",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Barren Plain",
+   "code": "2111-60",
+   "hex": "#D4D1CA",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Calm",
+   "code": "2111-70",
+   "hex": "#E7E5E0",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Mink",
+   "code": "2112-10",
+   "hex": "#53453D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Brown Sugar",
+   "code": "2112-20",
+   "hex": "#574A43",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Stone Brown",
+   "code": "2112-30",
+   "hex": "#60554F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Stone",
+   "code": "2112-40",
+   "hex": "#87817F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Stormy Monday",
+   "code": "2112-50",
+   "hex": "#AFACAB",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Cement Gray",
+   "code": "2112-60",
+   "hex": "#CECDCB",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "American White",
+   "code": "2112-70",
+   "hex": "#E5E4E1",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Chocolate Sundae",
+   "code": "2113-10",
+   "hex": "#5C4037",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pine Cone Brown",
+   "code": "2113-20",
+   "hex": "#60443D",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Bison Brown",
+   "code": "2113-30",
+   "hex": "#674C48",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cinnamon Slate",
+   "code": "2113-40",
+   "hex": "#8A7576",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Mauve Desert",
+   "code": "2113-50",
+   "hex": "#B2A3A5",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Porcelain",
+   "code": "2113-60",
+   "hex": "#D1C6C6",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Antique Pearl",
+   "code": "2113-70",
+   "hex": "#E5DFDE",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Bittersweet Chocolate",
+   "code": "2114-10",
+   "hex": "#443832",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mississippi Mud",
+   "code": "2114-20",
+   "hex": "#53443F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Desert Shadows",
+   "code": "2114-30",
+   "hex": "#695654",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Wet Concrete",
+   "code": "2114-40",
+   "hex": "#9D8A8A",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Victorian Mauve",
+   "code": "2114-50",
+   "hex": "#C3B6B8",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Hint Of Violet",
+   "code": "2114-60",
+   "hex": "#DDD5D4",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Venetian Marble",
+   "code": "2114-70",
+   "hex": "#EDE8E6",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Appalachian Brown",
+   "code": "2115-10",
+   "hex": "#4A3B34",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Incense Stick",
+   "code": "2115-20",
+   "hex": "#594845",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Amazon Soil",
+   "code": "2115-30",
+   "hex": "#705C5D",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Mauve Blush",
+   "code": "2115-40",
+   "hex": "#A29296",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Iced Mauve",
+   "code": "2115-50",
+   "hex": "#C5BCC1",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Majestic Mauve",
+   "code": "2115-60",
+   "hex": "#DFD9DB",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Oyster",
+   "code": "2115-70",
+   "hex": "#EDEAE9",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Night Shade",
+   "code": "2116-10",
+   "hex": "#453B37",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Vintage Wine",
+   "code": "2116-20",
+   "hex": "#55474A",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Cabernet",
+   "code": "2116-30",
+   "hex": "#6C5B65",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Hazy Lilac",
+   "code": "2116-40",
+   "hex": "#9C8F9D",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "African Violet",
+   "code": "2116-50",
+   "hex": "#C2BAC5",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Touch Of Gray",
+   "code": "2116-60",
+   "hex": "#DDD7DE",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Mirage White",
+   "code": "2116-70",
+   "hex": "#ECEAEB",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Carbon Copy",
+   "code": "2117-10",
+   "hex": "#393638",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Galaxy",
+   "code": "2117-20",
+   "hex": "#423E45",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Shadow",
+   "code": "2117-30",
+   "hex": "#524B59",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Tropical Dusk",
+   "code": "2117-40",
+   "hex": "#867E90",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Spring Violet",
+   "code": "2117-50",
+   "hex": "#B1ADBC",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Winter Gray",
+   "code": "2117-60",
+   "hex": "#D1CED7",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Dreamy Cloud",
+   "code": "2117-70",
+   "hex": "#E6E4E8",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Universal Black",
+   "code": "2118-10",
+   "hex": "#363536",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Toucan Black",
+   "code": "2118-20",
+   "hex": "#3D3C41",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Ebony Slate",
+   "code": "2118-30",
+   "hex": "#4B4B54",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Sea Life",
+   "code": "2118-40",
+   "hex": "#7C7D89",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Excalibur Gray",
+   "code": "2118-50",
+   "hex": "#AAACB7",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Misty Memories",
+   "code": "2118-60",
+   "hex": "#CBCDD4",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Heaven",
+   "code": "2118-70",
+   "hex": "#E2E3E6",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Space Black",
+   "code": "2119-10",
+   "hex": "#343435",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Black Berry",
+   "code": "2119-20",
+   "hex": "#3B3C40",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Baby Seal Black",
+   "code": "2119-30",
+   "hex": "#474B51",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Silver Streak",
+   "code": "2119-40",
+   "hex": "#767C84",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Nickel",
+   "code": "2119-50",
+   "hex": "#A3AAB2",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Silver Lining",
+   "code": "2119-60",
+   "hex": "#C7CCD0",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Full Moon",
+   "code": "2119-70",
+   "hex": "#E0E3E4",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Jet Black",
+   "code": "2120-10",
+   "hex": "#343435",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Black Iron",
+   "code": "2120-20",
+   "hex": "#3B3D3F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Witching Hour",
+   "code": "2120-30",
+   "hex": "#474A50",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Smoke Gray",
+   "code": "2120-40",
+   "hex": "#767C83",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Silver Spring",
+   "code": "2120-50",
+   "hex": "#A4ABB1",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "White Water",
+   "code": "2120-60",
+   "hex": "#C7CCD0",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Stone White",
+   "code": "2120-70",
+   "hex": "#E0E4E4",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Gray",
+   "code": "2121-10",
+   "hex": "#585858",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Steel Wool",
+   "code": "2121-20",
+   "hex": "#797C7E",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Pewter",
+   "code": "2121-30",
+   "hex": "#989DA0",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Silver Half Dollar",
+   "code": "2121-40",
+   "hex": "#C4C9CC",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Iced Cube Silver",
+   "code": "2121-50",
+   "hex": "#DDE2E2",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "White Diamond",
+   "code": "2121-60",
+   "hex": "#EDF0ED",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Chantilly Lace",
+   "code": "2121-70",
+   "hex": "#F5F7F2",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Dark Pewter",
+   "code": "2122-10",
+   "hex": "#4C5857",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Steep Cliff Gray",
+   "code": "2122-20",
+   "hex": "#6F7D7E",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Cloudy Sky",
+   "code": "2122-30",
+   "hex": "#909E9F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Smoke",
+   "code": "2122-40",
+   "hex": "#BBC9CA",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Iceberg",
+   "code": "2122-50",
+   "hex": "#D7E1E1",
+   "group": "블루"
+  },
+  {
+   "name": "Palest Pistachio",
+   "code": "2122-60",
+   "hex": "#EAF0EE",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Snow White",
+   "code": "2122-70",
+   "hex": "#F2F6F2",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Mediterranean Teal",
+   "code": "2123-10",
+   "hex": "#475A57",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Caribbean Teal",
+   "code": "2123-20",
+   "hex": "#637D7B",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Sea Star",
+   "code": "2123-30",
+   "hex": "#899F9F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gossamer Blue",
+   "code": "2123-40",
+   "hex": "#B4C9C9",
+   "group": "블루"
+  },
+  {
+   "name": "Ocean Air",
+   "code": "2123-50",
+   "hex": "#D4E2E2",
+   "group": "블루"
+  },
+  {
+   "name": "Sea Foam",
+   "code": "2123-60",
+   "hex": "#E8F0ED",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Ice Mist",
+   "code": "2123-70",
+   "hex": "#F2F5F2",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Wrought Iron",
+   "code": "2124-10",
+   "hex": "#4A4B4C",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Trout Gray",
+   "code": "2124-20",
+   "hex": "#6A6E71",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Deep Silver",
+   "code": "2124-30",
+   "hex": "#8C9195",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Thundercloud Gray",
+   "code": "2124-40",
+   "hex": "#B9BEC1",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Bunny Gray",
+   "code": "2124-50",
+   "hex": "#D7DCDD",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Misty Gray",
+   "code": "2124-60",
+   "hex": "#E9ECEB",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Distant Gray",
+   "code": "2124-70",
+   "hex": "#F3F5F2",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Black Panther",
+   "code": "2125-10",
+   "hex": "#3E4041",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Deep Space",
+   "code": "2125-20",
+   "hex": "#53575B",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gray Shower",
+   "code": "2125-30",
+   "hex": "#6E7479",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Shadow Gray",
+   "code": "2125-40",
+   "hex": "#A3AAAF",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Sweet Innocence",
+   "code": "2125-50",
+   "hex": "#C8CED2",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Marilyn'S Dress",
+   "code": "2125-60",
+   "hex": "#E1E5E5",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Wedding Veil",
+   "code": "2125-70",
+   "hex": "#EFF1EF",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Black Tar",
+   "code": "2126-10",
+   "hex": "#393A3B",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Raccoon Fur",
+   "code": "2126-20",
+   "hex": "#474B4E",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Anchor Gray",
+   "code": "2126-30",
+   "hex": "#5D6268",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Sweatshirt Gray",
+   "code": "2126-40",
+   "hex": "#939A9F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gray Timber Wolf",
+   "code": "2126-50",
+   "hex": "#BBC2C7",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gray Cloud",
+   "code": "2126-60",
+   "hex": "#D8DDDF",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Chalk White",
+   "code": "2126-70",
+   "hex": "#EBEEEC",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Twilight Zone",
+   "code": "2127-10",
+   "hex": "#353536",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Black Ink",
+   "code": "2127-20",
+   "hex": "#383B3E",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gravel Gray",
+   "code": "2127-30",
+   "hex": "#454B51",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Wolf Gray",
+   "code": "2127-40",
+   "hex": "#737D84",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Pike'S Peak Gray",
+   "code": "2127-50",
+   "hex": "#A1ABB2",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Feather Gray",
+   "code": "2127-60",
+   "hex": "#C5CCD1",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Cascade White",
+   "code": "2127-70",
+   "hex": "#DEE3E4",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Black Beauty",
+   "code": "2128-10",
+   "hex": "#3A3837",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Abyss",
+   "code": "2128-20",
+   "hex": "#43454C",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Evening Dove",
+   "code": "2128-30",
+   "hex": "#525B68",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Oxford Gray",
+   "code": "2128-40",
+   "hex": "#8391A1",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "November Skies",
+   "code": "2128-50",
+   "hex": "#ADBBC9",
+   "group": "블루"
+  },
+  {
+   "name": "Beacon Gray",
+   "code": "2128-60",
+   "hex": "#CED8DF",
+   "group": "블루"
+  },
+  {
+   "name": "Lily White",
+   "code": "2128-70",
+   "hex": "#E4EAEC",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Midnight Dream",
+   "code": "2129-10",
+   "hex": "#333537",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Soot",
+   "code": "2129-20",
+   "hex": "#383D42",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Blue Note",
+   "code": "2129-30",
+   "hex": "#414C55",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Normandy",
+   "code": "2129-40",
+   "hex": "#6E7F8A",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Winter Lake",
+   "code": "2129-50",
+   "hex": "#9DAEB8",
+   "group": "블루"
+  },
+  {
+   "name": "Mt. Rainier Gray",
+   "code": "2129-60",
+   "hex": "#C2CED4",
+   "group": "블루"
+  },
+  {
+   "name": "Silver Cloud",
+   "code": "2129-70",
+   "hex": "#DCE4E6",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Black Bean Soup",
+   "code": "2130-10",
+   "hex": "#463D3A",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Deep Caviar",
+   "code": "2130-20",
+   "hex": "#4A4343",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Almost Black",
+   "code": "2130-30",
+   "hex": "#504F54",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Black Pepper",
+   "code": "2130-40",
+   "hex": "#727D87",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "New Hope Gray",
+   "code": "2130-50",
+   "hex": "#9DA9B4",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Iced Slate",
+   "code": "2130-60",
+   "hex": "#C2CBD2",
+   "group": "블루"
+  },
+  {
+   "name": "Seattle Gray",
+   "code": "2130-70",
+   "hex": "#DDE2E5",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Black Satin",
+   "code": "2131-10",
+   "hex": "#323536",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Midnight",
+   "code": "2131-20",
+   "hex": "#383E40",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Lead Gray",
+   "code": "2131-30",
+   "hex": "#444F53",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Smokestack Gray",
+   "code": "2131-40",
+   "hex": "#738388",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Nimbus Gray",
+   "code": "2131-50",
+   "hex": "#A2B1B5",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Silver Gray",
+   "code": "2131-60",
+   "hex": "#C5D0D3",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gray Sky",
+   "code": "2131-70",
+   "hex": "#DEE6E6",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Black",
+   "code": "2132-10",
+   "hex": "#323233",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Ebony King",
+   "code": "2132-20",
+   "hex": "#393B3D",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Black Horizon",
+   "code": "2132-30",
+   "hex": "#45494E",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Eclipse",
+   "code": "2132-40",
+   "hex": "#727A81",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Pilgrim Haze",
+   "code": "2132-50",
+   "hex": "#9FA8AE",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Metallic Silver",
+   "code": "2132-60",
+   "hex": "#C4CACE",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Mineral Ice",
+   "code": "2132-70",
+   "hex": "#DEE2E2",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Onyx",
+   "code": "2133-10",
+   "hex": "#363535",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Black Jack",
+   "code": "2133-20",
+   "hex": "#3E3E3F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Day'S End",
+   "code": "2133-30",
+   "hex": "#4C4C50",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Charcoal Linen",
+   "code": "2133-40",
+   "hex": "#7D8085",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Pigeon Gray",
+   "code": "2133-50",
+   "hex": "#ABAFB4",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Sidewalk Gray",
+   "code": "2133-60",
+   "hex": "#CCCFD1",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Tundra",
+   "code": "2133-70",
+   "hex": "#E3E5E4",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Night Horizon",
+   "code": "2134-10",
+   "hex": "#4C443E",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Midsummer Night",
+   "code": "2134-20",
+   "hex": "#514B46",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Iron Mountain",
+   "code": "2134-30",
+   "hex": "#585654",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Whale Gray",
+   "code": "2134-40",
+   "hex": "#7F8384",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gull Wing Gray",
+   "code": "2134-50",
+   "hex": "#A8AFB1",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Whitestone",
+   "code": "2134-60",
+   "hex": "#CACFCF",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Genesis White",
+   "code": "2134-70",
+   "hex": "#E2E5E4",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Blacktop",
+   "code": "2135-10",
+   "hex": "#3A3E3D",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Stonecutter",
+   "code": "2135-20",
+   "hex": "#444D50",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Nocturnal Gray",
+   "code": "2135-30",
+   "hex": "#56666C",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Province Blue",
+   "code": "2135-40",
+   "hex": "#839CA2",
+   "group": "블루"
+  },
+  {
+   "name": "Soft Chinchilla",
+   "code": "2135-50",
+   "hex": "#AEC4C9",
+   "group": "블루"
+  },
+  {
+   "name": "Summer Shower",
+   "code": "2135-60",
+   "hex": "#CFDEE0",
+   "group": "블루"
+  },
+  {
+   "name": "Patriotic White",
+   "code": "2135-70",
+   "hex": "#E5EEEC",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Black Knight",
+   "code": "2136-10",
+   "hex": "#313637",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Regent Green",
+   "code": "2136-20",
+   "hex": "#374143",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Amazon Green",
+   "code": "2136-30",
+   "hex": "#425558",
+   "group": "블루"
+  },
+  {
+   "name": "Aegean Teal",
+   "code": "2136-40",
+   "hex": "#708A8C",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Colorado Gray",
+   "code": "2136-50",
+   "hex": "#9FB6B9",
+   "group": "블루"
+  },
+  {
+   "name": "Harbor Haze",
+   "code": "2136-60",
+   "hex": "#C4D5D5",
+   "group": "블루"
+  },
+  {
+   "name": "Whispering Spring",
+   "code": "2136-70",
+   "hex": "#DDE8E7",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Otter Brown",
+   "code": "2137-10",
+   "hex": "#55493A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Char Brown",
+   "code": "2137-20",
+   "hex": "#5B5041",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Durango",
+   "code": "2137-30",
+   "hex": "#655E4F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Desert Twilight",
+   "code": "2137-40",
+   "hex": "#8E8D80",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Sea Haze",
+   "code": "2137-50",
+   "hex": "#B4B6AC",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gray Owl",
+   "code": "2137-60",
+   "hex": "#D4D5CD",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "White Wisp",
+   "code": "2137-70",
+   "hex": "#E7E9E2",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Southern Vine",
+   "code": "2138-10",
+   "hex": "#504A3C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Green Grove",
+   "code": "2138-20",
+   "hex": "#565143",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Mohegan Sage",
+   "code": "2138-30",
+   "hex": "#605F51",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Carolina Gull",
+   "code": "2138-40",
+   "hex": "#868E82",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Misted Green",
+   "code": "2138-50",
+   "hex": "#B1B9AF",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gray Cashmere",
+   "code": "2138-60",
+   "hex": "#D0D6CE",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gray Lake",
+   "code": "2138-70",
+   "hex": "#E5E9E3",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "River Rock",
+   "code": "2139-10",
+   "hex": "#474334",
+   "group": "옐로우"
+  },
+  {
+   "name": "Dakota Woods Green",
+   "code": "2139-20",
+   "hex": "#575445",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Sharkskin",
+   "code": "2139-30",
+   "hex": "#6E6D5F",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Heather Gray",
+   "code": "2139-40",
+   "hex": "#9AA297",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Silver Marlin",
+   "code": "2139-50",
+   "hex": "#C1C9C2",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Green Tint",
+   "code": "2139-60",
+   "hex": "#DBE1DB",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "White Ice",
+   "code": "2139-70",
+   "hex": "#EBEFEA",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Fatigue Green",
+   "code": "2140-10",
+   "hex": "#4C4C40",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Tuscany Green",
+   "code": "2140-20",
+   "hex": "#555548",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Dark Olive",
+   "code": "2140-30",
+   "hex": "#626354",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Storm Cloud Gray",
+   "code": "2140-40",
+   "hex": "#929385",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Gray Horse",
+   "code": "2140-50",
+   "hex": "#BABCB2",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Moonshine",
+   "code": "2140-60",
+   "hex": "#D7D9D0",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Winter White",
+   "code": "2140-70",
+   "hex": "#E8EAE3",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Artichoke",
+   "code": "2141-10",
+   "hex": "#545241",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Cabbage Patch",
+   "code": "2141-20",
+   "hex": "#5D5B48",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Army Green",
+   "code": "2141-30",
+   "hex": "#6B6956",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Creekside Green",
+   "code": "2141-40",
+   "hex": "#9B9986",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Horizon Gray",
+   "code": "2141-50",
+   "hex": "#C0C1B2",
+   "group": "그레이·뉴트럴"
+  },
+  {
+   "name": "Titanium",
+   "code": "2141-60",
+   "hex": "#DBDCD0",
+   "group": "옐로우"
+  },
+  {
+   "name": "Vanilla Milkshake",
+   "code": "2141-70",
+   "hex": "#EDEDE4",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Mediterranean Olive",
+   "code": "2142-10",
+   "hex": "#5F5B43",
+   "group": "옐로우"
+  },
+  {
+   "name": "Turtle Green",
+   "code": "2142-20",
+   "hex": "#6A654A",
+   "group": "옐로우"
+  },
+  {
+   "name": "Mountain Moss",
+   "code": "2142-30",
+   "hex": "#767156",
+   "group": "옐로우"
+  },
+  {
+   "name": "Dry Sage",
+   "code": "2142-40",
+   "hex": "#A4A085",
+   "group": "옐로우"
+  },
+  {
+   "name": "Gray Mirage",
+   "code": "2142-50",
+   "hex": "#C9C6B3",
+   "group": "옐로우"
+  },
+  {
+   "name": "November Rain",
+   "code": "2142-60",
+   "hex": "#E1DFD1",
+   "group": "옐로우"
+  },
+  {
+   "name": "Icicle",
+   "code": "2142-70",
+   "hex": "#EEEEE4",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Sage",
+   "code": "2143-10",
+   "hex": "#776D4C",
+   "group": "옐로우"
+  },
+  {
+   "name": "Alligator Green",
+   "code": "2143-20",
+   "hex": "#8E845F",
+   "group": "옐로우"
+  },
+  {
+   "name": "Olive Branch",
+   "code": "2143-30",
+   "hex": "#A69D7A",
+   "group": "옐로우"
+  },
+  {
+   "name": "Camouflage",
+   "code": "2143-40",
+   "hex": "#CCC8B1",
+   "group": "옐로우"
+  },
+  {
+   "name": "Old Prairie",
+   "code": "2143-50",
+   "hex": "#E3E1D2",
+   "group": "옐로우"
+  },
+  {
+   "name": "Moonlight White",
+   "code": "2143-60",
+   "hex": "#F0EFE4",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Simply White",
+   "code": "2143-70",
+   "hex": "#F7F7EE",
+   "group": "옐로우"
+  },
+  {
+   "name": "Guacamole",
+   "code": "2144-10",
+   "hex": "#656843",
+   "group": "옐로우"
+  },
+  {
+   "name": "Eucalyptus Leaf",
+   "code": "2144-20",
+   "hex": "#84865F",
+   "group": "옐로우"
+  },
+  {
+   "name": "Rosemary Sprig",
+   "code": "2144-30",
+   "hex": "#A1A37F",
+   "group": "옐로우"
+  },
+  {
+   "name": "Soft Fern",
+   "code": "2144-40",
+   "hex": "#C9CBB3",
+   "group": "옐로우"
+  },
+  {
+   "name": "Silken Pine",
+   "code": "2144-50",
+   "hex": "#E1E4D5",
+   "group": "그린"
+  },
+  {
+   "name": "Cloud Nine",
+   "code": "2144-60",
+   "hex": "#EFF0E6",
+   "group": "화이트·페일"
+  },
+  {
+   "name": "Snowfall White",
+   "code": "2144-70",
+   "hex": "#F7F8EF",
+   "group": "옐로우"
+  },
+  {
+   "name": "Avocado",
+   "code": "2145-10",
+   "hex": "#6F753B",
+   "group": "옐로우"
+  },
+  {
+   "name": "Terrapin Green",
+   "code": "2145-20",
+   "hex": "#8C8D51",
+   "group": "옐로우"
+  },
+  {
+   "name": "Brookside Moss",
+   "code": "2145-30",
+   "hex": "#A7A66D",
+   "group": "옐로우"
+  },
+  {
+   "name": "Fernwood Green",
+   "code": "2145-40",
+   "hex": "#CDCDA4",
+   "group": "옐로우"
+  },
+  {
+   "name": "Limesickle",
+   "code": "2145-50",
+   "hex": "#E4E5CB",
+   "group": "옐로우"
+  },
+  {
+   "name": "Minced Onion",
+   "code": "2145-60",
+   "hex": "#F1F1E0",
+   "group": "옐로우"
+  },
+  {
+   "name": "Cotton Balls",
+   "code": "2145-70",
+   "hex": "#F6F7EC",
+   "group": "옐로우"
+  },
+  {
+   "name": "Dark Celery",
+   "code": "2146-10",
+   "hex": "#84882F",
+   "group": "옐로우"
+  },
+  {
+   "name": "Forest Moss",
+   "code": "2146-20",
+   "hex": "#9B993E",
+   "group": "옐로우"
+  },
+  {
+   "name": "Split Pea",
+   "code": "2146-30",
+   "hex": "#B2AE56",
+   "group": "옐로우"
+  },
+  {
+   "name": "Pale Avocado",
+   "code": "2146-40",
+   "hex": "#D4D090",
+   "group": "옐로우"
+  },
+  {
+   "name": "Rainforest Dew",
+   "code": "2146-50",
+   "hex": "#E8E6BE",
+   "group": "옐로우"
+  },
+  {
+   "name": "Cream Silk",
+   "code": "2146-60",
+   "hex": "#F3F2D8",
+   "group": "옐로우"
+  },
+  {
+   "name": "Bavarian Cream",
+   "code": "2146-70",
+   "hex": "#F8F8E8",
+   "group": "옐로우"
+  },
+  {
+   "name": "Oregano",
+   "code": "2147-10",
+   "hex": "#8D8940",
+   "group": "옐로우"
+  },
+  {
+   "name": "Olive Moss",
+   "code": "2147-20",
+   "hex": "#959247",
+   "group": "옐로우"
+  },
+  {
+   "name": "Jalepeno Pepper",
+   "code": "2147-30",
+   "hex": "#A29E53",
+   "group": "옐로우"
+  },
+  {
+   "name": "Dill Pickle",
+   "code": "2147-40",
+   "hex": "#C5C285",
+   "group": "옐로우"
+  },
+  {
+   "name": "Pale Sea Mist",
+   "code": "2147-50",
+   "hex": "#DEDDB2",
+   "group": "옐로우"
+  },
+  {
+   "name": "Dark Linen",
+   "code": "2147-60",
+   "hex": "#EDEDD0",
+   "group": "옐로우"
+  },
+  {
+   "name": "Alpine White",
+   "code": "2147-70",
+   "hex": "#F5F5E4",
+   "group": "옐로우"
+  },
+  {
+   "name": "Foot Hills",
+   "code": "2148-10",
+   "hex": "#8C7845",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Thyme",
+   "code": "2148-20",
+   "hex": "#9E8853",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Military Tan",
+   "code": "2148-30",
+   "hex": "#B29D69",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Light Khaki",
+   "code": "2148-40",
+   "hex": "#D4C69E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sandy White",
+   "code": "2148-50",
+   "hex": "#E8E0C6",
+   "group": "옐로우"
+  },
+  {
+   "name": "Timid White",
+   "code": "2148-60",
+   "hex": "#F3EFDE",
+   "group": "옐로우"
+  },
+  {
+   "name": "Mountain Peak White",
+   "code": "2148-70",
+   "hex": "#F8F6EC",
+   "group": "옐로우"
+  },
+  {
+   "name": "Newt Green",
+   "code": "2149-10",
+   "hex": "#8C7E44",
+   "group": "옐로우"
+  },
+  {
+   "name": "G.I. Green",
+   "code": "2149-20",
+   "hex": "#96874A",
+   "group": "옐로우"
+  },
+  {
+   "name": "Fresh Olive",
+   "code": "2149-30",
+   "hex": "#AC9655",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Timothy Straw",
+   "code": "2149-40",
+   "hex": "#C7BA85",
+   "group": "옐로우"
+  },
+  {
+   "name": "Mellowed Ivory",
+   "code": "2149-50",
+   "hex": "#DFD7B0",
+   "group": "옐로우"
+  },
+  {
+   "name": "White Marigold",
+   "code": "2149-60",
+   "hex": "#EEE9D0",
+   "group": "옐로우"
+  },
+  {
+   "name": "White Chocolate",
+   "code": "2149-70",
+   "hex": "#F6F4E4",
+   "group": "옐로우"
+  },
+  {
+   "name": "Willow Green",
+   "code": "2150-10",
+   "hex": "#A08D40",
+   "group": "옐로우"
+  },
+  {
+   "name": "Lichen Green",
+   "code": "2150-20",
+   "hex": "#A99444",
+   "group": "옐로우"
+  },
+  {
+   "name": "Savannah Green",
+   "code": "2150-30",
+   "hex": "#BBA150",
+   "group": "옐로우"
+  },
+  {
+   "name": "Spring Dust",
+   "code": "2150-40",
+   "hex": "#D4C382",
+   "group": "옐로우"
+  },
+  {
+   "name": "Hampton Green",
+   "code": "2150-50",
+   "hex": "#E8DDAF",
+   "group": "옐로우"
+  },
+  {
+   "name": "Pale Celery",
+   "code": "2150-60",
+   "hex": "#F3ECCE",
+   "group": "옐로우"
+  },
+  {
+   "name": "Easter Lily",
+   "code": "2150-70",
+   "hex": "#F8F5E3",
+   "group": "옐로우"
+  },
+  {
+   "name": "Mustard Olive",
+   "code": "2151-10",
+   "hex": "#A18643",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Chalice",
+   "code": "2151-20",
+   "hex": "#AD8E47",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Ochre",
+   "code": "2151-30",
+   "hex": "#BC9A52",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sulfur Yellow",
+   "code": "2151-40",
+   "hex": "#D3BB80",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Bronzed Beige",
+   "code": "2151-50",
+   "hex": "#E9D9AE",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Linen Sand",
+   "code": "2151-60",
+   "hex": "#F1E9CC",
+   "group": "옐로우"
+  },
+  {
+   "name": "Powder Sand",
+   "code": "2151-70",
+   "hex": "#F6F3E2",
+   "group": "옐로우"
+  },
+  {
+   "name": "Medieval Gold",
+   "code": "2152-10",
+   "hex": "#AE873F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Aztec Yellow",
+   "code": "2152-20",
+   "hex": "#B99146",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Autumn Gold",
+   "code": "2152-30",
+   "hex": "#C69F56",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Tan",
+   "code": "2152-40",
+   "hex": "#E1C48A",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Straw",
+   "code": "2152-50",
+   "hex": "#F0DEB6",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mannequin Cream",
+   "code": "2152-60",
+   "hex": "#F8EDD3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mayonnaise",
+   "code": "2152-70",
+   "hex": "#FAF6E6",
+   "group": "옐로우"
+  },
+  {
+   "name": "Golden Bark",
+   "code": "2153-10",
+   "hex": "#97732F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Corduroy",
+   "code": "2153-20",
+   "hex": "#A17B36",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Tapestry Gold",
+   "code": "2153-30",
+   "hex": "#B08941",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cork",
+   "code": "2153-40",
+   "hex": "#D2B172",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Desert Tan",
+   "code": "2153-50",
+   "hex": "#E7D0A2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Rich Cream",
+   "code": "2153-60",
+   "hex": "#F3E5C6",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Ivory Tusk",
+   "code": "2153-70",
+   "hex": "#F9F2DE",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Yellow Oxide",
+   "code": "2154-10",
+   "hex": "#C68F39",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Spicy Mustard",
+   "code": "2154-20",
+   "hex": "#CD963E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Buttercup",
+   "code": "2154-30",
+   "hex": "#D6A24C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "York Harbor Yellow",
+   "code": "2154-40",
+   "hex": "#EBC27D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Straw",
+   "code": "2154-50",
+   "hex": "#F6DBAA",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Filtered Sunlight",
+   "code": "2154-60",
+   "hex": "#FBECCD",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Vanilla Ice Cream",
+   "code": "2154-70",
+   "hex": "#FBF4E1",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Desert Sunset",
+   "code": "2155-10",
+   "hex": "#D78B1B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Gold Mine",
+   "code": "2155-20",
+   "hex": "#DD9323",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Yellow Marigold",
+   "code": "2155-30",
+   "hex": "#EBA832",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Semolina",
+   "code": "2155-40",
+   "hex": "#F5C46C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Suntan Yellow",
+   "code": "2155-50",
+   "hex": "#FCDDA0",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cream Yellow",
+   "code": "2155-60",
+   "hex": "#FDECC4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cotton Tail",
+   "code": "2155-70",
+   "hex": "#FCF5DD",
+   "group": "옐로우"
+  },
+  {
+   "name": "Autumn Orange",
+   "code": "2156-10",
+   "hex": "#C67727",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pumpkin Blush",
+   "code": "2156-20",
+   "hex": "#CD802E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Jack O'Lantern",
+   "code": "2156-30",
+   "hex": "#D88D3C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "August Morning",
+   "code": "2156-40",
+   "hex": "#EDB46E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Asbury Sand",
+   "code": "2156-50",
+   "hex": "#F9D4A2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Soft Beige",
+   "code": "2156-60",
+   "hex": "#FCE8C6",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Fine China",
+   "code": "2156-70",
+   "hex": "#FCF3DD",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Dunes",
+   "code": "2157-10",
+   "hex": "#C67C3B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Harvest",
+   "code": "2157-20",
+   "hex": "#CE8442",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Butterscotch",
+   "code": "2157-30",
+   "hex": "#D99151",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Beeswax",
+   "code": "2157-40",
+   "hex": "#EFB884",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Crisp Straw",
+   "code": "2157-50",
+   "hex": "#FAD6B1",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Tudor Cream",
+   "code": "2157-60",
+   "hex": "#FDE8D0",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Ivory Tower",
+   "code": "2157-70",
+   "hex": "#FCF3E5",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Dried Mustard",
+   "code": "2158-10",
+   "hex": "#BF803F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Venetian Gold",
+   "code": "2158-20",
+   "hex": "#C78846",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Delightful Golden",
+   "code": "2158-30",
+   "hex": "#D29851",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Mist",
+   "code": "2158-40",
+   "hex": "#E9BA82",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Manila",
+   "code": "2158-50",
+   "hex": "#F5D7AF",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Lion Yellow",
+   "code": "2158-60",
+   "hex": "#FBE9CF",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cream Froth",
+   "code": "2158-70",
+   "hex": "#FBF4E4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Dash Of Curry",
+   "code": "2159-10",
+   "hex": "#C58A3B",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peanut Butter",
+   "code": "2159-20",
+   "hex": "#CD9141",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Apple Crisp",
+   "code": "2159-30",
+   "hex": "#D79E4E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Amber Waves",
+   "code": "2159-40",
+   "hex": "#EDC080",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Wheatfield",
+   "code": "2159-50",
+   "hex": "#F8DBAE",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Cream",
+   "code": "2159-60",
+   "hex": "#FCEBCE",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "White Cloud",
+   "code": "2159-70",
+   "hex": "#FBF4E3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Caramel Corn",
+   "code": "2160-10",
+   "hex": "#B3813E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Turmeric",
+   "code": "2160-20",
+   "hex": "#BB8845",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Maple Sugar",
+   "code": "2160-30",
+   "hex": "#CA9850",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Roasted Sesame Seed",
+   "code": "2160-40",
+   "hex": "#E1BA80",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Oklahoma Wheat",
+   "code": "2160-50",
+   "hex": "#F1D6AD",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Kansas Grain",
+   "code": "2160-60",
+   "hex": "#F9E9CD",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sugar Cookie",
+   "code": "2160-70",
+   "hex": "#FAF3E1",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Coppertone",
+   "code": "2161-10",
+   "hex": "#976C42",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Tawny",
+   "code": "2161-20",
+   "hex": "#A07348",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Dark Mustard",
+   "code": "2161-30",
+   "hex": "#AC7F52",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Acorn Yellow",
+   "code": "2161-40",
+   "hex": "#CEA980",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Yellow Squash",
+   "code": "2161-50",
+   "hex": "#E4CAAB",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Hazelnut Cream",
+   "code": "2161-60",
+   "hex": "#F2E2CD",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Woodland Snow",
+   "code": "2161-70",
+   "hex": "#F8F0E2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Autumn Bronze",
+   "code": "2162-10",
+   "hex": "#845F35",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Desert Camel",
+   "code": "2162-20",
+   "hex": "#8D673C",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Warm Tan",
+   "code": "2162-30",
+   "hex": "#9A7346",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peanut Shell",
+   "code": "2162-40",
+   "hex": "#C19E74",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Arizona Tan",
+   "code": "2162-50",
+   "hex": "#DCC4A5",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Mystic Beige",
+   "code": "2162-60",
+   "hex": "#EDDDC6",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "October Sky",
+   "code": "2162-70",
+   "hex": "#F6EDDD",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Log Cabin",
+   "code": "2163-10",
+   "hex": "#865D40",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pony Brown",
+   "code": "2163-20",
+   "hex": "#8E6446",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Penny",
+   "code": "2163-30",
+   "hex": "#996F50",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Metallic Gold",
+   "code": "2163-40",
+   "hex": "#BF9A7D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Burlap",
+   "code": "2163-50",
+   "hex": "#DBC1AB",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Latte",
+   "code": "2163-60",
+   "hex": "#ECDCCB",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Winter Sky",
+   "code": "2163-70",
+   "hex": "#F5ECE0",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Saddle Brown",
+   "code": "2164-10",
+   "hex": "#775239",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Marsh Brown",
+   "code": "2164-20",
+   "hex": "#7F593E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Rich Clay Brown",
+   "code": "2164-30",
+   "hex": "#8B6449",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Serengeti Sand",
+   "code": "2164-40",
+   "hex": "#B28F75",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Saint Martin Sand",
+   "code": "2164-50",
+   "hex": "#D2B8A4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Soft Satin",
+   "code": "2164-60",
+   "hex": "#E7D5C5",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Candle White",
+   "code": "2164-70",
+   "hex": "#F3E9DE",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Camel",
+   "code": "2165-10",
+   "hex": "#A6773F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Meadow",
+   "code": "2165-20",
+   "hex": "#AF7F47",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Golden Retriever",
+   "code": "2165-30",
+   "hex": "#BB8C53",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Dark Beige",
+   "code": "2165-40",
+   "hex": "#D9B382",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Natural Sand",
+   "code": "2165-50",
+   "hex": "#ECD3AE",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Durango Dust",
+   "code": "2165-60",
+   "hex": "#F6E6CD",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Butter Pecan",
+   "code": "2165-70",
+   "hex": "#F9F2E2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Gold Rush",
+   "code": "2166-10",
+   "hex": "#B6642D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Caramel Latte",
+   "code": "2166-20",
+   "hex": "#BD6C33",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Bronze Tone",
+   "code": "2166-30",
+   "hex": "#C8783F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Soft Pumpkin",
+   "code": "2166-40",
+   "hex": "#E2A26E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Creamy Orange",
+   "code": "2166-50",
+   "hex": "#F2C6A1",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pale Oats",
+   "code": "2166-60",
+   "hex": "#FADFC4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Adobe White",
+   "code": "2166-70",
+   "hex": "#FBEEDC",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Burnt Caramel",
+   "code": "2167-10",
+   "hex": "#C86D38",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pumpkin Pie",
+   "code": "2167-20",
+   "hex": "#D17741",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Harvest Moon",
+   "code": "2167-30",
+   "hex": "#DC8551",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Toffee Orange",
+   "code": "2167-40",
+   "hex": "#F2AF85",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Perfect Peach",
+   "code": "2167-50",
+   "hex": "#FCD0B4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sweet Salmon",
+   "code": "2167-60",
+   "hex": "#FEE5D2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Summer Peach",
+   "code": "2167-70",
+   "hex": "#FDF2E5",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Fall Harvest",
+   "code": "2168-10",
+   "hex": "#C96739",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pumpkin Cream",
+   "code": "2168-20",
+   "hex": "#D27143",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Orange Blossom",
+   "code": "2168-30",
+   "hex": "#DD8153",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peachland",
+   "code": "2168-40",
+   "hex": "#F3AC86",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Summer Melon",
+   "code": "2168-50",
+   "hex": "#FCCDB4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peach Nectar",
+   "code": "2168-60",
+   "hex": "#FEE4D2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sun Kissed Peach",
+   "code": "2168-70",
+   "hex": "#FDF0E5",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Racing Orange",
+   "code": "2169-10",
+   "hex": "#CD5B33",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Orange Parrot",
+   "code": "2169-20",
+   "hex": "#D5663F",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Oriole",
+   "code": "2169-30",
+   "hex": "#E27852",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peach Cobbler",
+   "code": "2169-40",
+   "hex": "#F6A487",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Malibu Peach",
+   "code": "2169-50",
+   "hex": "#FEC9B7",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peach Cloud",
+   "code": "2169-60",
+   "hex": "#FFE1D4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sun Washed",
+   "code": "2169-70",
+   "hex": "#FEEFE6",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Fireball Orange",
+   "code": "2170-10",
+   "hex": "#C45333",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Tropical Orange",
+   "code": "2170-20",
+   "hex": "#CC5F3E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Autumn Cover",
+   "code": "2170-30",
+   "hex": "#D66F4F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Coral Spice",
+   "code": "2170-40",
+   "hex": "#EB9F83",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Teacup Rose",
+   "code": "2170-50",
+   "hex": "#F5C4B3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Sunlit Coral",
+   "code": "2170-60",
+   "hex": "#FADED0",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Soft White",
+   "code": "2170-70",
+   "hex": "#FBEEE4",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Navajo Red",
+   "code": "2171-10",
+   "hex": "#AC4931",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Fire Dance",
+   "code": "2171-20",
+   "hex": "#BE553E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Adobe Orange",
+   "code": "2171-30",
+   "hex": "#D46752",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Passion Fruit",
+   "code": "2171-40",
+   "hex": "#EB968A",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pearly Pink",
+   "code": "2171-50",
+   "hex": "#F9BFB9",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Rose Reflection",
+   "code": "2171-60",
+   "hex": "#FEDBD6",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Swirl",
+   "code": "2171-70",
+   "hex": "#FDEBE7",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Copper Clay",
+   "code": "2172-10",
+   "hex": "#8F4433",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Mars Red",
+   "code": "2172-20",
+   "hex": "#934838",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Mexicana",
+   "code": "2172-30",
+   "hex": "#9B4C3E",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Raspberry Parfait",
+   "code": "2172-40",
+   "hex": "#B87168",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Bouquet Rose",
+   "code": "2172-50",
+   "hex": "#D69B95",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Pink Hibiscus",
+   "code": "2172-60",
+   "hex": "#EBC0BA",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Spring Blossom",
+   "code": "2172-70",
+   "hex": "#F5DAD6",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Earthly Russet",
+   "code": "2173-10",
+   "hex": "#814632",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Tawny Rose",
+   "code": "2173-20",
+   "hex": "#8E4F3B",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Salmon Stream",
+   "code": "2173-30",
+   "hex": "#9F5E4C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Antique Rose",
+   "code": "2173-40",
+   "hex": "#C98E82",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Coral Dust",
+   "code": "2173-50",
+   "hex": "#E3B9B1",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Just Peachy",
+   "code": "2173-60",
+   "hex": "#F1D6CF",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Gentle Butterfly",
+   "code": "2173-70",
+   "hex": "#F8E9E3",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Toasted Chestnut",
+   "code": "2174-10",
+   "hex": "#89452F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cinnamon",
+   "code": "2174-20",
+   "hex": "#99503C",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Sedona Clay",
+   "code": "2174-30",
+   "hex": "#AC614F",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Dusty Mauve",
+   "code": "2174-40",
+   "hex": "#D39286",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Eraser Pink",
+   "code": "2174-50",
+   "hex": "#E9BCB5",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Dream Whip",
+   "code": "2174-60",
+   "hex": "#F5D8D2",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Cream Puff",
+   "code": "2174-70",
+   "hex": "#FAEAE5",
+   "group": "레드·핑크"
+  },
+  {
+   "name": "Aztec Brick",
+   "code": "2175-10",
+   "hex": "#A75431",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Pilgrimage Foliage",
+   "code": "2175-20",
+   "hex": "#AE5A36",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Rust",
+   "code": "2175-30",
+   "hex": "#B76441",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Adobe Dust",
+   "code": "2175-40",
+   "hex": "#D58E6D",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peach Blossom",
+   "code": "2175-50",
+   "hex": "#EBB69E",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Light Salmon",
+   "code": "2175-60",
+   "hex": "#F7D5C2",
+   "group": "오렌지·브라운"
+  },
+  {
+   "name": "Peach Parfait",
+   "code": "2175-70",
+   "hex": "#FAE8DB",
+   "group": "오렌지·브라운"
+  }
+ ]
+}

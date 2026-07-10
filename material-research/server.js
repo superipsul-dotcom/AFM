@@ -40,6 +40,29 @@ const TRADE_ORDER = [
 ];
 function tradeIndex(t) { const i = TRADE_ORDER.indexOf(t); return i < 0 ? 999 : i; }
 
+// 주간 임포트 공종/대분류 정규화 — 리서치가 축약 공종명(바닥, 목공, 도어·창호 등)으로 보내도
+// 표준 21공종(TRADE_ORDER)으로 교정해 유령 공종이 트리/통계/커버리지에 생기지 않게 한다. (2026-W28 재발 방지)
+const TRADE_ALIAS = {
+  '가설': '가설공사', '철거': '철거공사', '창호': '창호공사', '도어·창호': '창호공사',
+  '단열': '단열/기밀공사', '단열/기밀': '단열/기밀공사', '설비': '설비공사', '방수': '방수공사',
+  '경량': '경량공사', '목공': '목공사', '전기': '전기공사', '조명': '전기공사', '에어컨': '에어컨공사',
+  '공조': '공조공사', '금속': '금속공사', '유리': '유리공사', '타일': '타일공사', '도장': '도장공사',
+  '페인트': '도장공사', '도배': '도배공사', '필름': '필름공사', '화장실셋팅': '화장실셋팅공사',
+  '욕실': '화장실셋팅공사', '바닥': '바닥공사', '가구': '가구공사', '주방': '가구공사', '기타': '기타공사'
+};
+const CATEGORY_ALIAS = { '보드·목재': '판재·목재' };
+function normalizeImportTaxonomy(raw) {
+  const it = Object.assign({}, raw);
+  const t = String(it.trade || '').trim();
+  it.trade = TRADE_ALIAS[t] || t;
+  const c = String(it.category || '').trim();
+  if (CATEGORY_ALIAS[c]) it.category = CATEGORY_ALIAS[c];
+  // 시드 분류 체계 보정: 천장재 대분류는 경량공사 소속 / 타일공사에 바닥재 대분류는 없음(포세린 등 → 타일)
+  if (String(it.category || '').trim() === '천장재' && it.trade !== '경량공사') it.trade = '경량공사';
+  if (it.trade === '타일공사' && String(it.category || '').trim() === '바닥재') it.category = '타일';
+  return it;
+}
+
 /* =====================================================================
  *  베이스라인 SEED — 국내 인테리어 자재 (대분류 25 / 중분류 60+ / 314건)
  *  add(trade, category, subcategory, rows)
@@ -856,7 +879,7 @@ function fail(res, status, message) {
 /* =====================================================================
  *  미들웨어
  * ===================================================================== */
-app.use(express.json({ limit: '4mb' }));
+app.use(express.json({ limit: '8mb' })); // 우드 합성 플로어(최대 6600px jpeg b64) 수용
 // file:// 로 직접 연 페이지나 다른 로컬 포트에서도 API 호출 허용
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1293,7 +1316,7 @@ function runImport(items, source, note) {
     const newLogs = [];
 
     for (const raw of items) {
-      const it = raw || {};
+      const it = normalizeImportTaxonomy(raw || {});
       const name = String(it.name || '').trim();
       const trade = String(it.trade || '').trim();
       if (!name || !trade) { skipped.push({ name: name || '(이름없음)', reason: 'trade/name 누락' }); continue; }
@@ -1596,6 +1619,20 @@ function loadTextures() {
 }
 function saveTextures() { atomicWriteJSON(TEXTURES_FILE, { textures: tdb.textures }); }
 
+/* 실제 자재 우드 라이브러리 — 제조사(구정마루/지복득마루 등) 제품 텍스처를 실측 mm와 함께 보관 */
+const WOOD_DIR = path.join(TEXTURES_DIR, 'wood');
+const WOOD_FILE = path.join(DATA_DIR, 'wood-library.json');
+const wdb = { woods: [] };
+function loadWood() {
+  try {
+    if (fs.existsSync(WOOD_FILE)) {
+      const p = JSON.parse(fs.readFileSync(WOOD_FILE, 'utf8'));
+      if (Array.isArray(p.woods)) wdb.woods = p.woods;
+    }
+  } catch (e) { console.error('[wood] load 실패', e.message); }
+}
+function saveWood() { atomicWriteJSON(WOOD_FILE, { woods: wdb.woods }); }
+
 app.get('/api/colors', (_req, res) => {
   try {
     const libs = [];
@@ -1607,6 +1644,31 @@ app.get('/api/colors', (_req, res) => {
     }
     return ok(res, 200, libs);
   } catch (e) { return fail(res, 500, '컬러 라이브러리를 불러오지 못했습니다.'); }
+});
+
+// 컬러 라이브러리 임포트 — 스크레이핑한 컬렉션(삼화 NCS, BM Preview 등)을 data/colors/{key}.json 으로 저장
+app.post('/api/colors/import', (req, res) => {
+  try {
+    const b = req.body || {};
+    const key = String(b.key || '').trim().toLowerCase();
+    if (!/^[a-z0-9-]{3,40}$/.test(key)) return fail(res, 400, 'key는 소문자 슬러그(a-z0-9-)여야 합니다.');
+    if (!b.brand || !Array.isArray(b.colors) || !b.colors.length) return fail(res, 400, 'brand와 colors 배열이 필요합니다.');
+    const colors = b.colors.filter(c => c && c.code && /^#[0-9A-Fa-f]{6}$/.test(String(c.hex || '')));
+    if (!colors.length) return fail(res, 400, '유효한 색(code + #hex)이 없습니다.');
+    const lib = {
+      key, brand: String(b.brand), name: String(b.name || b.brand),
+      note: String(b.note || ''), source: String(b.source || ''),
+      ...(b.tab ? { tab: String(b.tab) } : {}),
+      colors: colors.map(c => ({
+        name: String(c.name || c.code), ...(c.name_en ? { name_en: String(c.name_en) } : {}),
+        code: String(c.code), hex: String(c.hex).toUpperCase(),
+        group: String(c.group || ''), ...(c.page ? { page: String(c.page) } : {})
+      }))
+    };
+    fs.mkdirSync(COLORS_DIR, { recursive: true });
+    atomicWriteJSON(path.join(COLORS_DIR, key + '.json'), lib);
+    return ok(res, 201, { key, saved: lib.colors.length, dropped: b.colors.length - colors.length }, `컬러 라이브러리 "${lib.name}" 저장`);
+  } catch (e) { console.error('[colors/import]', e); return fail(res, 500, '컬러 라이브러리 저장 중 오류'); }
 });
 
 function b64ToBuf(s) {
@@ -1694,31 +1756,111 @@ const SKM_REFERENCES_XML = '<?xml version="1.0" encoding="UTF-8" standalone="no"
   + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
   + ' xsi:schemaLocation="http://sketchup.google.com/schemas/1.0/references http://sketchup.google.com/schemas/1.0/references.xsd" />\n';
 
+// 공용 SKM 패키징: 이미지 파일 + 실측 mm + 평균색 → .skm 다운로드 (zip 내부 파일명은 ASCII 고정 — Windows SketchUp 호환)
+function packSkmAndSend(res, opt) {
+  try {
+    const safe = opt.name.replace(/[\\/:*?"<>|]/g, '_');
+    const ext = (path.extname(opt.imagePath) || '.png').toLowerCase(); // .png | .jpg
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'skm-'));
+    const texName = 'texture' + ext;
+    const xs = opt.w_mm / 25.4, ys = opt.h_mm / 25.4; // mm → inch
+    const { r, g, b } = opt.avg;
+    const avgPacked = (b << 16) | (g << 8) | r; // BGR
+    fs.writeFileSync(path.join(tmp, 'document.xml'), skmDocumentXml(opt.name, texName, r, g, b, avgPacked, xs, ys));
+    fs.writeFileSync(path.join(tmp, 'documentProperties.xml'), skmPropertiesXml(opt.name));
+    fs.writeFileSync(path.join(tmp, 'references.xml'), SKM_REFERENCES_XML);
+    // doc_thumbnail.png 는 PNG 필수 — PNG 썸네일이 없으면 원본이 PNG일 때만 복사
+    const thumbSrc = (opt.thumbPath && fs.existsSync(opt.thumbPath)) ? opt.thumbPath : (ext === '.png' ? opt.imagePath : null);
+    if (thumbSrc) fs.copyFileSync(thumbSrc, path.join(tmp, 'doc_thumbnail.png'));
+    fs.mkdirSync(path.join(tmp, 'ref'));
+    fs.copyFileSync(opt.imagePath, path.join(tmp, 'ref', 'texture_1' + ext));
+    const out = path.join(tmp, safe + '.skm');
+    const entries = ['document.xml', 'documentProperties.xml', 'references.xml', 'ref'];
+    if (thumbSrc) entries.splice(3, 0, 'doc_thumbnail.png');
+    execFile('zip', ['-r', '-X', '-q', out, ...entries], { cwd: tmp }, (err) => {
+      if (err) { console.error('[skm] zip', err); return fail(res, 500, 'SKM 패키징 실패'); }
+      res.download(out, safe + '.skm', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) {} });
+    });
+  } catch (e) { console.error('[skm]', e); return fail(res, 500, 'SKM 생성 중 오류'); }
+}
+
 app.get('/api/textures/:id/skm', (req, res) => {
   const t = tdb.textures.find(x => x.id === req.params.id);
   if (!t) return fail(res, 404, '텍스처를 찾을 수 없습니다.');
   const pngPath = path.join(TEXTURES_DIR, t.id + '.png');
   if (!fs.existsSync(pngPath)) return fail(res, 404, '텍스처 파일이 없습니다.');
+  const thumbPath = path.join(TEXTURES_DIR, t.id + '.thumb.png');
+  return packSkmAndSend(res, { name: t.name, imagePath: pngPath, thumbPath, w_mm: t.size_mm.w, h_mm: t.size_mm.h, avg: t.avg });
+});
+
+/* ---------- 실제 자재 우드 라이브러리 API ---------- */
+app.get('/api/wood', (_req, res) => ok(res, 200, wdb.woods));
+
+// upsert (id 기준 멱등) — 수집 스크립트가 브라우저 캔버스로 가공한 텍스처+실측을 등록
+app.post('/api/wood/import', (req, res) => {
   try {
-    const safe = t.name.replace(/[\\/:*?"<>|]/g, '_');
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'skm-'));
-    const texName = 'texture.png'; // zip 내부는 ASCII 고정 (한글 zip 엔트리 → Windows SketchUp 호환 이슈 회피)
-    const xs = t.size_mm.w / 25.4, ys = t.size_mm.h / 25.4; // mm → inch
-    const { r, g, b } = t.avg;
-    const avgPacked = (b << 16) | (g << 8) | r; // BGR
-    fs.writeFileSync(path.join(tmp, 'document.xml'), skmDocumentXml(t.name, texName, r, g, b, avgPacked, xs, ys));
-    fs.writeFileSync(path.join(tmp, 'documentProperties.xml'), skmPropertiesXml(t.name));
-    fs.writeFileSync(path.join(tmp, 'references.xml'), SKM_REFERENCES_XML);
-    const thumbPath = path.join(TEXTURES_DIR, t.id + '.thumb.png');
-    fs.copyFileSync(fs.existsSync(thumbPath) ? thumbPath : pngPath, path.join(tmp, 'doc_thumbnail.png'));
-    fs.mkdirSync(path.join(tmp, 'ref'));
-    fs.copyFileSync(pngPath, path.join(tmp, 'ref', 'texture_1.png'));
-    const out = path.join(tmp, safe + '.skm');
-    execFile('zip', ['-r', '-X', '-q', out, 'document.xml', 'documentProperties.xml', 'references.xml', 'doc_thumbnail.png', 'ref'], { cwd: tmp }, (err) => {
-      if (err) { console.error('[skm] zip', err); return fail(res, 500, 'SKM 패키징 실패'); }
-      res.download(out, safe + '.skm', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) {} });
-    });
-  } catch (e) { console.error('[skm]', e); return fail(res, 500, 'SKM 생성 중 오류'); }
+    const b = req.body || {};
+    const brand = String(b.brand || '').trim();
+    const name = String(b.name || '').trim();
+    if (!brand || !name) return fail(res, 400, 'brand와 name이 필요합니다.');
+    const w = Number((b.size_mm || {}).w), h = Number((b.size_mm || {}).h);
+    if (!(w > 0 && h > 0)) return fail(res, 400, 'size_mm {w,h} (텍스처 실측 mm)가 필요합니다.');
+    const img = b64ToBuf(b.image_b64);
+    const id = String(b.id || '').trim() || slugify(`${brand}-${b.line || ''}-${name}`);
+    const existing = wdb.woods.find(x => x.id === id);
+    if (img.length < 100 && !existing) return fail(res, 400, 'image_b64가 필요합니다.');
+    const ext = /^\/9j\//.test(String(b.image_b64 || '').replace(/^data:image\/\w+;base64,/, '')) ? '.jpg' : '.png';
+    fs.mkdirSync(WOOD_DIR, { recursive: true });
+    let file = existing ? existing.file : null;
+    if (img.length >= 100) {
+      file = id + ext;
+      fs.writeFileSync(path.join(WOOD_DIR, file), img);
+    }
+    const thumb = b64ToBuf(b.thumb_b64);
+    let thumbFile = existing ? existing.thumb : null;
+    if (thumb.length >= 100) {
+      thumbFile = id + '.thumb.png';
+      fs.writeFileSync(path.join(WOOD_DIR, thumbFile), thumb);
+    }
+    const avg = b.avg && Number.isFinite(b.avg.r) ? { r: b.avg.r | 0, g: b.avg.g | 0, b: b.avg.b | 0 } : (existing ? existing.avg : { r: 160, g: 130, b: 100 });
+    const rec = {
+      id, brand, line: String(b.line || ''), name,
+      code: String(b.code || ''),
+      kind: String(b.kind || ''),                    // 강마루 | 원목마루 …
+      spec: (b.spec && typeof b.spec === 'object') ? b.spec : (existing ? existing.spec : {}),  // {t,w,l} 플랭크 실측
+      size_mm: { w, h },                             // 텍스처 이미지 실측
+      layout: String(b.layout || 'multi-plank'),     // multi-plank(패턴 포함) | grain(결 스와치)
+      avg, file, thumb: thumbFile,
+      image_url: '/data/textures/wood/' + file,
+      thumb_url: thumbFile ? '/data/textures/wood/' + thumbFile : null,
+      source_url: String(b.source_url || ''),
+      note: String(b.note || ''),
+      created_at: existing ? existing.created_at : new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    if (existing) Object.assign(existing, rec); else wdb.woods.push(rec);
+    saveWood();
+    return ok(res, existing ? 200 : 201, rec, `"${brand} ${name}" ${existing ? '갱신' : '등록'}`);
+  } catch (e) { console.error('[wood/import]', e); return fail(res, 500, '우드 라이브러리 저장 중 오류'); }
+});
+
+app.delete('/api/wood/:id', (req, res) => {
+  const i = wdb.woods.findIndex(x => x.id === req.params.id);
+  if (i < 0) return fail(res, 404, '항목을 찾을 수 없습니다.');
+  const [t] = wdb.woods.splice(i, 1);
+  for (const f of [t.file, t.thumb]) { if (f) { try { fs.unlinkSync(path.join(WOOD_DIR, f)); } catch (_) {} } }
+  saveWood();
+  return ok(res, 200, { id: t.id, deleted: true }, '삭제되었습니다.');
+});
+
+app.get('/api/wood/:id/skm', (req, res) => {
+  const t = wdb.woods.find(x => x.id === req.params.id);
+  if (!t) return fail(res, 404, '항목을 찾을 수 없습니다.');
+  const imagePath = path.join(WOOD_DIR, t.file || '');
+  if (!t.file || !fs.existsSync(imagePath)) return fail(res, 404, '텍스처 파일이 없습니다.');
+  const name = `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}`;
+  const thumbPath = t.thumb ? path.join(WOOD_DIR, t.thumb) : null;
+  return packSkmAndSend(res, { name, imagePath, thumbPath, w_mm: t.size_mm.w, h_mm: t.size_mm.h, avg: t.avg });
 });
 
 // Ruby 로더: 붙여넣기 한 번으로 컬러(무텍스처 솔리드) + 저장 텍스처(실측 mm 스케일)를 SketchUp 머티리얼로 등록
@@ -1757,6 +1899,16 @@ app.get('/api/textures/ruby-loader', (req, res) => {
         lines.push(`begin; m = mats["${nm}"] || mats.add("${nm}"); m.texture = "${p}"; m.texture.size = [${t.size_mm.w}.mm, ${t.size_mm.h}.mm]; made += 1; rescue => e; puts "skip ${nm}: #{e}"; end`);
       }
     }
+    const includeWood = String(req.query.wood || '1') !== '0';
+    if (includeWood && wdb.woods.length) {
+      lines.push(`# --- 실제 자재 (${wdb.woods.length}) — 제조사 텍스처 · 실측 mm ---`);
+      for (const t of wdb.woods) {
+        const p = path.join(WOOD_DIR, t.file || '');
+        if (!t.file || !fs.existsSync(p)) continue;
+        const nm = `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}`.replace(/"/g, '');
+        lines.push(`begin; m = mats["${nm}"] || mats.add("${nm}"); m.texture = "${p}"; m.texture.size = [${t.size_mm.w}.mm, ${t.size_mm.h}.mm]; made += 1; rescue => e; puts "skip ${nm}: #{e}"; end`);
+      }
+    }
     lines.push('puts "머티리얼 #{made}개 등록/갱신 완료"');
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     return res.send(lines.join('\n'));
@@ -1783,6 +1935,7 @@ app.use((err, _req, res, _next) => {
 loadStore();
 loadFavGroups();
 loadTextures();
+loadWood();
 ingestIncomingDir(); // 부팅 시 data/incoming/ 의 주간 업데이트(클라우드 트리거가 레포에 커밋한 파일) 자동 반영
 
 if (require.main === module) {

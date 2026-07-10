@@ -1,6 +1,26 @@
 {
   "textures": [
     {
+      "id": "tx-mrc6sd8ce34d",
+      "name": "삼화페인트 골든 오커 SH S 4040-Y10R · 무광",
+      "mode": "paint",
+      "size_mm": {
+        "w": 600,
+        "h": 600
+      },
+      "avg": {
+        "r": 161,
+        "g": 121,
+        "b": 53
+      },
+      "params": {
+        "seed": 7
+      },
+      "png_url": "/data/textures/tx-mrc6sd8ce34d.png",
+      "thumb_url": "/data/textures/tx-mrc6sd8ce34d.thumb.png",
+      "created_at": "2026-07-08T14:42:08.509Z"
+    },
+    {
       "id": "tx-mr7mi1tfxudl",
       "name": "BARAM 16 내추럴 오크 헤링본",
       "mode": "wood",

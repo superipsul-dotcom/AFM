@@ -243,13 +243,15 @@ if(location.protocol==="file:"){
   });
 }
 function $(id){return document.getElementById(id);}
+/* 서버 상대경로 자산(/data/...)을 file:// 로 직접 열었을 때도 로드되게 API 오리진으로 절대화 */
+function assetUrl(p){if(!p)return"";return /^https?:/i.test(p)?p:API.replace(/\/api$/,"")+p;}
 function api(p){return fetch(API+p).then(function(r){return r.json().then(function(j){if(!r.ok||j.success===false)throw new Error(j.message||("HTTP "+r.status));return j;});});}
 function apiSend(p,m,b){return fetch(API+p,{method:m,headers:{"Content-Type":"application/json"},body:b?JSON.stringify(b):undefined}).then(function(r){return r.json().then(function(j){if(!r.ok||j.success===false)throw new Error(j.message||("HTTP "+r.status));return j;});});}
 function toast(s){var t=$("toast");t.textContent=s;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(function(){t.style.display="none";},2200);}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 
 /* ---------- 상태 ---------- */
-var st={mode:"paint",libs:[],libKey:"benjamin-moore",selChip:null,selWood:null,saved:[],autoName:""};
+var st={mode:"paint",libs:[],libKey:"benjamin-moore",selChip:null,selWood:null,saved:[],autoName:"",woods:[],woodFilter:"",realWood:null,realWoodImg:null};
 
 /* ---------- 시드 RNG ---------- */
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -424,6 +426,7 @@ var rT;
 function render(){
   clearTimeout(rT);
   rT=setTimeout(function(){
+    if(st.realWood){renderRealWood();return;}
     if(st.mode==="paint")renderPaint();
     else if(st.mode==="wallpaper")renderWallpaper();
     else if(st.mode==="wood")renderWood();
@@ -434,6 +437,32 @@ function render(){
     updateTiled();
   },60);
 }
+/* 실제 자재 미리보기: 제조사 원본 이미지를 캔버스에 그대로 (실측 mm는 라이브러리 값) */
+function renderRealWood(){
+  var w=st.realWood;
+  var done=function(img){
+    cv.width=img.naturalWidth;cv.height=img.naturalHeight;
+    ctx.drawImage(img,0,0);
+    real={w:w.size_mm.w,h:w.size_mm.h};
+    $("mSize").textContent=real.w+" × "+real.h+" mm (실측)";
+    $("mPx").textContent=cv.width+" × "+cv.height+" px";
+    $("mMode").textContent="실제 자재 · "+(w.kind||"마루");
+    updateTiled();
+  };
+  if(st.realWoodImg&&st.realWoodImg._id===w.id){done(st.realWoodImg);return;}
+  var img=new Image();
+  img.crossOrigin="anonymous"; // file:// 열람 시 캔버스 오염 방지 (서버가 ACAO * 전송)
+  img.onload=function(){img._id=w.id;st.realWoodImg=img;done(img);};
+  img.onerror=function(){toast("이미지 로딩 실패");};
+  img.src=assetUrl(w.image_url);
+}
+function selectRealWood(w){
+  st.realWood=w;st.realWoodImg=null;
+  var sp=w.spec&&w.spec.w?(" ("+w.spec.w+"×"+w.spec.l+(w.spec.t?"×"+w.spec.t+"T":"")+")"):"";
+  $("matName").value=w.brand+" "+w.name+(w.code?" "+w.code:"")+sp;$("matName").dataset.auto="0";
+  renderLib();render();
+}
+function clearRealWood(){if(st.realWood){st.realWood=null;st.realWoodImg=null;}}
 function updateTiled(){
   var url=cv.toDataURL("image/png");
   var t=$("tiled");
@@ -450,37 +479,74 @@ document.querySelectorAll(".mode").forEach(function(m){
     document.querySelectorAll(".mset").forEach(function(s){s.style.display="none";});
     var set=$("set-"+st.mode);if(set)set.style.display="";
     $("baseLabel").textContent=st.mode==="wood"?"바닥 기본톤":st.mode==="tile"?"타일 색":"기본색";
-    if(st.mode==="wood")st.libKey="wood-presets"; // 마루 모드는 프리셋 탭 기본
+    clearRealWood();
+    if(st.mode==="wood")st.libKey=st.woods.length?"real-wood":"wood-presets"; // 마루 모드는 실제 자재 탭 기본
     renderLib();autoName();render();
   });
 });
 function bindColor(cid,hid){
-  $(cid).addEventListener("input",function(){$(hid).value=$(cid).value.toUpperCase();render();});
-  $(hid).addEventListener("change",function(){var v=$(hid).value.trim();if(!/^#?[0-9a-fA-F]{6}$/.test(v))return;if(v[0]!=="#")v="#"+v;$(hid).value=v.toUpperCase();$(cid).value=v;render();});
+  $(cid).addEventListener("input",function(){$(hid).value=$(cid).value.toUpperCase();clearRealWood();render();});
+  $(hid).addEventListener("change",function(){var v=$(hid).value.trim();if(!/^#?[0-9a-fA-F]{6}$/.test(v))return;if(v[0]!=="#")v="#"+v;$(hid).value=v.toUpperCase();$(cid).value=v;clearRealWood();render();});
 }
 bindColor("cBase","hBase");bindColor("cTone2","hTone2");bindColor("cGrain","hGrain");bindColor("cGap","hGap");bindColor("cGrout","hGrout");
-["pFinish","wpWeave","wdPat","tlPat"].forEach(function(id){$(id).addEventListener("change",function(){autoName();render();});});
-["wdW","wdL","tlW","tlH","tlG","seed"].forEach(function(id){$(id).addEventListener("change",function(){autoName();render();});});
+["pFinish","wpWeave","wdPat","tlPat"].forEach(function(id){$(id).addEventListener("change",function(){clearRealWood();autoName();render();});});
+["wdW","wdL","tlW","tlH","tlG","seed"].forEach(function(id){$(id).addEventListener("change",function(){clearRealWood();autoName();render();});});
 [["wpInt","wpIntV",""],["wdVar","wdVarV","%"],["wdGr","wdGrV",""],["tlVar","tlVarV",""]].forEach(function(x){
-  $(x[0]).addEventListener("input",function(){$(x[1]).textContent=$(x[0]).value+x[2];render();});
+  $(x[0]).addEventListener("input",function(){$(x[1]).textContent=$(x[0]).value+x[2];clearRealWood();render();});
 });
-$("reroll").addEventListener("click",function(){$("seed").value=Math.floor(Math.random()*10000);render();});
+$("reroll").addEventListener("click",function(){$("seed").value=Math.floor(Math.random()*10000);clearRealWood();render();});
 $("vTile").addEventListener("click",function(){$("vTile").classList.add("on");$("vOne").classList.remove("on");$("tiled").style.display="";cv.style.display="none";});
 $("vOne").addEventListener("click",function(){$("vOne").classList.add("on");$("vTile").classList.remove("on");$("tiled").style.display="none";cv.style.display="";});
 
 /* ---------- 라이브러리 ---------- */
 function renderLibTabs(){
-  var keys=st.libs.filter(function(l){return l.colors;}).map(function(l){return{k:l.key,n:l.brand};});
-  if(st.mode==="wood")keys.unshift({k:"wood-presets",n:"🪵 마루 프리셋"});
+  var keys=st.libs.filter(function(l){return l.colors;}).map(function(l){return{k:l.key,n:l.tab||l.brand};});
+  if(st.mode==="wood"){keys.unshift({k:"wood-presets",n:"🪵 마루 프리셋"});if(st.woods.length)keys.unshift({k:"real-wood",n:"🌳 실제 자재"});}
   var html="";keys.forEach(function(t){html+='<span class="ltab'+(st.libKey===t.k?" on":"")+'" data-k="'+esc(t.k)+'">'+esc(t.n)+'</span>';});
   $("libtabs").innerHTML=html;
   $("libtabs").querySelectorAll(".ltab").forEach(function(t){t.addEventListener("click",function(){st.libKey=t.getAttribute("data-k");renderLib();});});
 }
 function renderLib(){
-  if(st.mode==="wood"&&st.libKey!=="wood-presets"&&!st.libs.some(function(l){return l.key===st.libKey&&l.colors;}))st.libKey="wood-presets";
-  if(st.mode!=="wood"&&st.libKey==="wood-presets")st.libKey="benjamin-moore";
+  if(st.mode==="wood"&&st.libKey!=="wood-presets"&&st.libKey!=="real-wood"&&!st.libs.some(function(l){return l.key===st.libKey&&l.colors;}))st.libKey=st.woods.length?"real-wood":"wood-presets";
+  if(st.mode!=="wood"&&(st.libKey==="wood-presets"||st.libKey==="real-wood"))st.libKey="benjamin-moore";
   renderLibTabs();
   var lib=st.libs.find(function(l){return l.key===st.libKey;});
+  if(st.libKey==="real-wood"){
+    /* 🌳 실제 자재: 제조사 제품 텍스처(실측 mm) — 구정마루/지복득마루 수집분 */
+    $("chips").style.display="none";$("wpre").style.display="";
+    $("libnote").textContent="제조사 제품 텍스처 · 실측 mm — 선택하면 미리보기가 실제 이미지로 바뀝니다";
+    var fl=st.woodFilter||"";
+    var brands=[];st.woods.forEach(function(w){if(brands.indexOf(w.brand)<0)brands.push(w.brand);});
+    var kinds=[];st.woods.forEach(function(w){if(w.kind&&kinds.indexOf(w.kind)<0)kinds.push(w.kind);});
+    var fhtml='<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">';
+    [["","전체"]].concat(brands.map(function(b){return[b,b];})).concat(kinds.map(function(k){return["kind:"+k,k];})).forEach(function(f){
+      fhtml+='<span class="ltab'+(fl===f[0]?" on":"")+'" data-f="'+esc(f[0])+'">'+esc(f[1])+'</span>';
+    });
+    fhtml+='</div>';
+    var list=st.woods.filter(function(w){
+      if(!fl)return true;
+      if(fl.indexOf("kind:")===0)return w.kind===fl.slice(5);
+      return w.brand===fl;
+    });
+    var html=fhtml;
+    list.forEach(function(w){
+      var sp=w.spec&&w.spec.w?(w.spec.w+"×"+w.spec.l+(w.spec.t?"×"+w.spec.t+"T":"")):"";
+      html+='<div class="wp'+(st.realWood&&st.realWood.id===w.id?" sel":"")+'" data-w="'+esc(w.id)+'">'
+        +(w.thumb_url?'<img class="sw" src="'+esc(assetUrl(w.thumb_url))+'" style="object-fit:cover" loading="lazy">':'<div class="sw" style="background:rgb('+w.avg.r+','+w.avg.g+','+w.avg.b+')"></div>')
+        +'<div><div class="nm">'+esc(w.name+(w.code?" "+w.code:""))+'</div><div class="mt">'+esc(w.brand+(w.line?" · "+w.line:"")+(sp?" · "+sp:""))+'</div></div></div>';
+    });
+    $("wpre").innerHTML=html||'<div class="empty">수집된 실제 자재 없음</div>';
+    $("wpre").querySelectorAll("[data-f]").forEach(function(n){
+      n.addEventListener("click",function(){st.woodFilter=n.getAttribute("data-f");renderLib();});
+    });
+    $("wpre").querySelectorAll("[data-w]").forEach(function(n){
+      n.addEventListener("click",function(){
+        var w=st.woods.find(function(x){return x.id===n.getAttribute("data-w");});
+        if(w)selectRealWood(w);
+      });
+    });
+    return;
+  }
   if(st.libKey==="wood-presets"){
     $("chips").style.display="none";$("wpre").style.display="";
     $("libnote").textContent=lib?lib.note:"";
@@ -494,6 +560,7 @@ function renderLib(){
     $("wpre").querySelectorAll(".wp").forEach(function(n){
       n.addEventListener("click",function(){
         var p=lib.presets[+n.getAttribute("data-i")];st.selWood=+n.getAttribute("data-i");
+        clearRealWood();
         $("hBase").value=p.base;$("cBase").value=p.base;
         $("hTone2").value=p.tone2;$("cTone2").value=p.tone2;
         $("hGrain").value=p.grain;$("cGrain").value=p.grain;
@@ -508,13 +575,16 @@ function renderLib(){
     $("libnote").textContent=lib?lib.note:"";
     var html2="";
     (lib?lib.colors:[]).forEach(function(c,i){
+      /* lib.label==="code": 칩 라벨을 코드로 (삼화 NCS — '빨강색' 류 중복 한글 키워드 대신) */
+      var lbl=(lib&&lib.label==="code")?String(c.code||c.name).replace(/^SH\s+/,""):c.name;
       html2+='<div class="cchip'+(st.selChip===lib.key+i?" sel":"")+'" data-i="'+i+'" title="'+esc(c.name+" "+c.code+" "+c.hex)+'">'
-        +'<div class="sw" style="background:'+c.hex+'"></div><div class="cn">'+esc(c.name)+'</div></div>';
+        +'<div class="sw" style="background:'+c.hex+'"></div><div class="cn">'+esc(lbl)+'</div></div>';
     });
     $("chips").innerHTML=html2||'<div class="empty">컬러 없음</div>';
     $("chips").querySelectorAll(".cchip").forEach(function(n){
       n.addEventListener("click",function(){
         var c=lib.colors[+n.getAttribute("data-i")];st.selChip=lib.key+n.getAttribute("data-i");
+        clearRealWood();
         $("hBase").value=c.hex.toUpperCase();$("cBase").value=c.hex;
         st.autoName=lib.brand+" "+c.name+" "+c.code;autoName(true);
         renderLib();render();
@@ -553,12 +623,17 @@ function saveMat(){
     png:cv.toDataURL("image/png"),thumb:makeThumb()
   }).then(function(j){toast('"'+name+'" 저장됨');loadSaved();return j.data;});
 }
-$("btnSave").addEventListener("click",function(){saveMat().catch(function(e){toast("실패: "+e.message);});});
+$("btnSave").addEventListener("click",function(){
+  if(st.realWood){toast("실제 자재는 이미 라이브러리에 있습니다 — SKM ⬇으로 바로 받으세요");return;}
+  saveMat().catch(function(e){toast("실패: "+e.message);});
+});
 $("btnSaveSkm").addEventListener("click",function(){
+  if(st.realWood){location.href=API+"/wood/"+encodeURIComponent(st.realWood.id)+"/skm";return;}
   saveMat().then(function(t){location.href=API+"/textures/"+encodeURIComponent(t.id)+"/skm";})
     .catch(function(e){toast("실패: "+e.message);});
 });
 $("btnPng").addEventListener("click",function(){
+  if(st.realWood){var a0=document.createElement("a");a0.download="";a0.href=assetUrl(st.realWood.image_url);a0.click();return;}
   var a=document.createElement("a");a.download=($("matName").value.trim()||"texture")+".png";a.href=cv.toDataURL("image/png");a.click();
 });
 
@@ -569,7 +644,7 @@ function loadSaved(){
     if(!st.saved.length){$("saved").innerHTML='<div class="empty">저장된 머티리얼이 없습니다.<br>텍스처를 만들고 💾 저장을 누르세요.</div>';return;}
     var html="";
     st.saved.forEach(function(t){
-      html+='<div class="sv"><img src="'+esc(t.thumb_url||t.png_url)+'" alt="">'
+      html+='<div class="sv"><img src="'+esc(assetUrl(t.thumb_url||t.png_url))+'" alt="">'
         +'<div class="nm">'+esc(t.name)+'<div class="mt">'+esc(t.size_mm.w+"×"+t.size_mm.h+"mm · "+({paint:"페인트",wallpaper:"벽지",wood:"마루",tile:"타일"}[t.mode]||t.mode))+'</div></div>'
         +'<div class="act"><button class="sb" data-skm="'+esc(t.id)+'">SKM</button><button class="sb" data-del="'+esc(t.id)+'">✕</button></div></div>';
     });
@@ -596,6 +671,7 @@ $("btnCopy").addEventListener("click",function(){
 
 /* ---------- 초기화 ---------- */
 api("/colors").then(function(j){st.libs=j.data;renderLib();}).catch(function(e){$("libnote").textContent="컬러 로딩 실패: "+e.message;});
+api("/wood").then(function(j){st.woods=j.data||[];if(st.mode==="wood")renderLib();}).catch(function(){/* 실제 자재 없음 — 프리셋만 사용 */});
 loadSaved();autoName(true);render();
 })();
 </script>
