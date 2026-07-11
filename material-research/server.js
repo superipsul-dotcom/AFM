@@ -1633,6 +1633,58 @@ function loadWood() {
 }
 function saveWood() { atomicWriteJSON(WOOD_FILE, { woods: wdb.woods }); }
 
+/* 실제 자재 벽지 라이브러리 — 제조사(LX지인 디아망 등) 도배지 텍스처를 시멀리스 가공본+칩 스케일(mm)과 함께 보관 */
+const WALLPAPER_DIR = path.join(TEXTURES_DIR, 'wallpaper');
+const WALLPAPER_FILE = path.join(DATA_DIR, 'wallpaper-library.json');
+const wpdb = { wallpapers: [] };
+function loadWallpaper() {
+  try {
+    if (fs.existsSync(WALLPAPER_FILE)) {
+      const p = JSON.parse(fs.readFileSync(WALLPAPER_FILE, 'utf8'));
+      if (Array.isArray(p.wallpapers)) wpdb.wallpapers = p.wallpapers;
+    }
+  } catch (e) { console.error('[wallpaper] load 실패', e.message); }
+}
+function saveWallpaper() { atomicWriteJSON(WALLPAPER_FILE, { wallpapers: wpdb.wallpapers }); }
+
+/* =====================================================================
+ *  (v27 연동) 자재 코드 — 스케치업↔견적 조인 키 (interior-cost CONTRACT.md v27)
+ *  - 발급형(영속): WD-####(우드) · TX-####(스튜디오 텍스처) · WP-####(벽지).
+ *    부여 순서 created_at asc → id asc, 신규 = max+1. 한번 발급하면 불변·재사용 금지.
+ *  - 파생형(비저장): PT:{LIB}:{컬러코드} — 컬러는 브랜드 코드가 이미 유일해 발급 불필요.
+ *  - 머티리얼 "이름"의 [코드] 태그가 조인 키 (SKM 속성 아님 — 역공학 포맷 리스크 회피).
+ * ===================================================================== */
+function assignMatCodes(list, prefix) {
+  let max = 0;
+  for (const it of list) {
+    const m = /^([A-Z]{2})-(\d{4,})$/.exec(String(it.mat_code || ''));
+    if (m && m[1] === prefix && Number(m[2]) > max) max = Number(m[2]);
+  }
+  const pending = list.filter((it) => !it.mat_code)
+    .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')) || String(a.id).localeCompare(String(b.id)));
+  for (const it of pending) it.mat_code = `${prefix}-${String(++max).padStart(4, '0')}`;
+  return pending.length;
+}
+function codedName(matCode, base) { return matCode ? `[${matCode}] ${base}` : base; }
+// 컬러 라이브러리 key → PT: 코드의 LIB 축약 (미등록 라이브러리는 코드 미부여)
+const COLOR_LIB_CODE = {
+  'benjamin-moore': 'BM', 'benjamin-moore-preview': 'BM',
+  'dunn-edwards': 'DE', 'samhwa-ncs950': 'NCS', 'korea-standard': 'KR',
+};
+function colorMatCode(libKey, colorCode) {
+  const lib = COLOR_LIB_CODE[libKey];
+  const norm = String(colorCode || '').replace(/\s+/g, '');
+  return (lib && norm) ? `PT:${lib}:${norm}` : null;
+}
+// 부팅/신규 등록 시 호출 — 미부여분만 발급하고 발급이 있었던 라이브러리만 저장 (멱등)
+function ensureMatCodes() {
+  try {
+    if (assignMatCodes(tdb.textures, 'TX') > 0) saveTextures();
+    if (assignMatCodes(wdb.woods, 'WD') > 0) saveWood();
+    if (assignMatCodes(wpdb.wallpapers, 'WP') > 0) saveWallpaper();
+  } catch (e) { console.error('[mat-code] 발급 실패', e.message); }
+}
+
 app.get('/api/colors', (_req, res) => {
   try {
     const libs = [];
@@ -1700,6 +1752,7 @@ app.post('/api/textures', (req, res) => {
       created_at: new Date().toISOString()
     };
     tdb.textures.unshift(rec);
+    ensureMatCodes(); // (v27) 신규 텍스처에 TX-#### 즉시 발급
     saveTextures();
     return ok(res, 201, rec, `"${name}" 저장`);
   } catch (e) { console.error('[textures] save', e); return fail(res, 500, '텍스처 저장 중 오류'); }
@@ -1790,7 +1843,7 @@ app.get('/api/textures/:id/skm', (req, res) => {
   const pngPath = path.join(TEXTURES_DIR, t.id + '.png');
   if (!fs.existsSync(pngPath)) return fail(res, 404, '텍스처 파일이 없습니다.');
   const thumbPath = path.join(TEXTURES_DIR, t.id + '.thumb.png');
-  return packSkmAndSend(res, { name: t.name, imagePath: pngPath, thumbPath, w_mm: t.size_mm.w, h_mm: t.size_mm.h, avg: t.avg });
+  return packSkmAndSend(res, { name: codedName(t.mat_code, t.name), imagePath: pngPath, thumbPath, w_mm: t.size_mm.w, h_mm: t.size_mm.h, avg: t.avg });
 });
 
 /* ---------- 실제 자재 우드 라이브러리 API ---------- */
@@ -1838,7 +1891,8 @@ app.post('/api/wood/import', (req, res) => {
       created_at: existing ? existing.created_at : new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    if (existing) Object.assign(existing, rec); else wdb.woods.push(rec);
+    if (existing) { Object.assign(existing, rec); rec.mat_code = existing.mat_code; } else wdb.woods.push(rec);
+    ensureMatCodes(); // (v27) 신규 우드에 WD-#### 즉시 발급 (기존 코드는 불변)
     saveWood();
     return ok(res, existing ? 200 : 201, rec, `"${brand} ${name}" ${existing ? '갱신' : '등록'}`);
   } catch (e) { console.error('[wood/import]', e); return fail(res, 500, '우드 라이브러리 저장 중 오류'); }
@@ -1858,61 +1912,173 @@ app.get('/api/wood/:id/skm', (req, res) => {
   if (!t) return fail(res, 404, '항목을 찾을 수 없습니다.');
   const imagePath = path.join(WOOD_DIR, t.file || '');
   if (!t.file || !fs.existsSync(imagePath)) return fail(res, 404, '텍스처 파일이 없습니다.');
-  const name = `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}`;
+  const name = codedName(t.mat_code, `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}`);
   const thumbPath = t.thumb ? path.join(WOOD_DIR, t.thumb) : null;
   return packSkmAndSend(res, { name, imagePath, thumbPath, w_mm: t.size_mm.w, h_mm: t.size_mm.h, avg: t.avg });
 });
 
+/* ---------- 실제 자재 벽지 라이브러리 API — 우드와 동일 패턴 ---------- */
+app.get('/api/wallpaper', (_req, res) => ok(res, 200, wpdb.wallpapers));
+
+// upsert (id 기준 멱등) — 시멀리스 가공된 도배지 텍스처+칩 스케일(mm)을 등록
+app.post('/api/wallpaper/import', (req, res) => {
+  try {
+    const b = req.body || {};
+    const brand = String(b.brand || '').trim();
+    const name = String(b.name || '').trim();
+    if (!brand || !name) return fail(res, 400, 'brand와 name이 필요합니다.');
+    const w = Number((b.size_mm || {}).w), h = Number((b.size_mm || {}).h);
+    if (!(w > 0 && h > 0)) return fail(res, 400, 'size_mm {w,h} (텍스처 매핑 mm)가 필요합니다.');
+    const img = b64ToBuf(b.image_b64);
+    const id = String(b.id || '').trim() || slugify(`${brand}-${b.line || ''}-${name}`);
+    const existing = wpdb.wallpapers.find(x => x.id === id);
+    if (img.length < 100 && !existing) return fail(res, 400, 'image_b64가 필요합니다.');
+    const ext = /^\/9j\//.test(String(b.image_b64 || '').replace(/^data:image\/\w+;base64,/, '')) ? '.jpg' : '.png';
+    fs.mkdirSync(WALLPAPER_DIR, { recursive: true });
+    let file = existing ? existing.file : null;
+    if (img.length >= 100) {
+      file = id + ext;
+      fs.writeFileSync(path.join(WALLPAPER_DIR, file), img);
+    }
+    const thumb = b64ToBuf(b.thumb_b64);
+    let thumbFile = existing ? existing.thumb : null;
+    if (thumb.length >= 100) {
+      thumbFile = id + '.thumb.png';
+      fs.writeFileSync(path.join(WALLPAPER_DIR, thumbFile), thumb);
+    }
+    const avg = b.avg && Number.isFinite(b.avg.r) ? { r: b.avg.r | 0, g: b.avg.g | 0, b: b.avg.b | 0 } : (existing ? existing.avg : { r: 220, g: 215, b: 205 });
+    const rec = {
+      id, brand, line: String(b.line || ''), name,
+      code: String(b.code || ''),
+      kind: String(b.kind || '실크벽지'),             // 실크벽지 | 프리미엄 벽지 | 합지 …
+      spec: (b.spec && typeof b.spec === 'object') ? b.spec : (existing ? existing.spec : {}),  // {roll_w, roll_l} 롤 규격 mm
+      size_mm: { w, h },                             // 텍스처 1장이 커버하는 실측(칩 스케일)
+      avg, file, thumb: thumbFile,
+      image_url: '/data/textures/wallpaper/' + file,
+      thumb_url: thumbFile ? '/data/textures/wallpaper/' + thumbFile : null,
+      source_url: String(b.source_url || ''),
+      note: String(b.note || ''),
+      created_at: existing ? existing.created_at : new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    if (existing) { Object.assign(existing, rec); rec.mat_code = existing.mat_code; } else wpdb.wallpapers.push(rec);
+    ensureMatCodes(); // (v27) 신규 벽지에 WP-#### 즉시 발급 (기존 코드는 불변)
+    saveWallpaper();
+    return ok(res, existing ? 200 : 201, rec, `"${brand} ${name}" ${existing ? '갱신' : '등록'}`);
+  } catch (e) { console.error('[wallpaper/import]', e); return fail(res, 500, '벽지 라이브러리 저장 중 오류'); }
+});
+
+app.delete('/api/wallpaper/:id', (req, res) => {
+  const i = wpdb.wallpapers.findIndex(x => x.id === req.params.id);
+  if (i < 0) return fail(res, 404, '항목을 찾을 수 없습니다.');
+  const [t] = wpdb.wallpapers.splice(i, 1);
+  for (const f of [t.file, t.thumb]) { if (f) { try { fs.unlinkSync(path.join(WALLPAPER_DIR, f)); } catch (_) {} } }
+  saveWallpaper();
+  return ok(res, 200, { id: t.id, deleted: true }, '삭제되었습니다.');
+});
+
+app.get('/api/wallpaper/:id/skm', (req, res) => {
+  const t = wpdb.wallpapers.find(x => x.id === req.params.id);
+  if (!t) return fail(res, 404, '항목을 찾을 수 없습니다.');
+  const imagePath = path.join(WALLPAPER_DIR, t.file || '');
+  if (!t.file || !fs.existsSync(imagePath)) return fail(res, 404, '텍스처 파일이 없습니다.');
+  const name = codedName(t.mat_code, `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}`);
+  const thumbPath = t.thumb ? path.join(WALLPAPER_DIR, t.thumb) : null;
+  return packSkmAndSend(res, { name, imagePath, thumbPath, w_mm: t.size_mm.w, h_mm: t.size_mm.h, avg: t.avg });
+});
+
 // Ruby 로더: 붙여넣기 한 번으로 컬러(무텍스처 솔리드) + 저장 텍스처(실측 mm 스케일)를 SketchUp 머티리얼로 등록
+// (v27) 이름에 [자재코드] 태그 부여 + 구(舊)이름 머티리얼 rename pre-pass — 이미 칠해둔 모델도 코드 승계
 app.get('/api/textures/ruby-loader', (req, res) => {
   try {
     // libs 파라미터 없으면 colors 있는 라이브러리 전부 포함 (예: ?libs=benjamin-moore,samhwa-ncs950 으로 선택 가능)
     const libsParam = String(req.query.libs || '').trim();
     const wantLibs = libsParam ? new Set(libsParam.split(',').map(s => s.trim()).filter(Boolean)) : null;
     const includeTex = String(req.query.textures || '1') !== '0';
-    const lines = [];
-    lines.push('# 자재DB 머티리얼 로더 — SketchUp Ruby Console에 전체 붙여넣기');
-    lines.push('# 컬러 hex는 화면용 근사값: 실제 도장 전 공식 컬러칩 대조');
-    lines.push('model = Sketchup.active_model');
-    lines.push('mats = model.materials');
-    lines.push('made = 0');
+    const rq = (s) => String(s).replace(/"/g, ''); // 루비 문자열 리터럴 안전화
+    const renames = []; // [구이름, 신이름] — 코드 태그 도입 전 이름 승계용
+    const body = [];
     if (fs.existsSync(COLORS_DIR)) {
       for (const f of fs.readdirSync(COLORS_DIR).filter(x => x.endsWith('.json')).sort()) {
         let lib; try { lib = JSON.parse(fs.readFileSync(path.join(COLORS_DIR, f), 'utf8')); } catch (_) { continue; }
-        if (!lib || !Array.isArray(lib.colors) || (wantLibs && !wantLibs.has(lib.key))) continue;
-        lines.push(`# --- ${lib.brand} (${lib.colors.length}) ---`);
+        if (!lib || !Array.isArray(lib.colors) || !lib.colors.length || (wantLibs && !wantLibs.has(lib.key))) continue;
+        body.push(`# --- ${lib.brand} (${lib.colors.length}) ---`);
         const rows = lib.colors.map(c => {
           const hex = String(c.hex || '#CCCCCC').replace('#', '');
           const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-          const nm = `${lib.brand} ${c.name} ${c.code}`.replace(/"/g, '');
+          const base = rq(`${lib.brand} ${c.name} ${c.code}`);
+          const nm = rq(codedName(colorMatCode(lib.key, c.code), `${lib.brand} ${c.name} ${c.code}`));
+          if (nm !== base) renames.push([base, nm]);
           return `["${nm}",${r},${g},${b}]`;
         });
-        lines.push(`[${rows.join(',')}].each { |n,r,g,b| m = mats[n] || mats.add(n); m.color = Sketchup::Color.new(r,g,b); made += 1 }`);
+        body.push(`[${rows.join(',')}].each { |n,r,g,b| m = mats[n] || mats.add(n); m.color = Sketchup::Color.new(r,g,b); made += 1 }`);
       }
     }
-    if (includeTex && tdb.textures.length) {
-      lines.push(`# --- 스튜디오 텍스처 (${tdb.textures.length}) — 실측 mm 스케일 ---`);
-      for (const t of tdb.textures) {
-        const p = path.join(TEXTURES_DIR, t.id + '.png');
-        if (!fs.existsSync(p)) continue;
-        const nm = t.name.replace(/"/g, '');
-        lines.push(`begin; m = mats["${nm}"] || mats.add("${nm}"); m.texture = "${p}"; m.texture.size = [${t.size_mm.w}.mm, ${t.size_mm.h}.mm]; made += 1; rescue => e; puts "skip ${nm}: #{e}"; end`);
+    // 텍스처류 3종(스튜디오/우드/벽지) 공통 생성 — [mat_code] 태그 + 실측 mm 스케일
+    const texGroups = [
+      { on: includeTex, list: tdb.textures, title: (n) => `스튜디오 텍스처 (${n}) — 실측 mm 스케일`, file: (t) => path.join(TEXTURES_DIR, t.id + '.png'), base: (t) => t.name },
+      { on: String(req.query.wood || '1') !== '0', list: wdb.woods, title: (n) => `실제 자재 (${n}) — 제조사 텍스처 · 실측 mm`, file: (t) => (t.file ? path.join(WOOD_DIR, t.file) : ''), base: (t) => `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}` },
+      { on: String(req.query.wallpaper || '1') !== '0', list: wpdb.wallpapers, title: (n) => `실제 벽지 (${n}) — 제조사 텍스처(시멀리스) · 칩 스케일 mm`, file: (t) => (t.file ? path.join(WALLPAPER_DIR, t.file) : ''), base: (t) => `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}` },
+    ];
+    for (const g of texGroups) {
+      if (!g.on || !g.list.length) continue;
+      body.push(`# --- ${g.title(g.list.length)} ---`);
+      for (const t of g.list) {
+        const p = g.file(t);
+        if (!p || !fs.existsSync(p)) continue;
+        const base = rq(g.base(t));
+        const nm = rq(codedName(t.mat_code, g.base(t)));
+        if (nm !== base) renames.push([base, nm]);
+        body.push(`begin; m = mats["${nm}"] || mats.add("${nm}"); m.texture = "${p}"; m.texture.size = [${t.size_mm.w}.mm, ${t.size_mm.h}.mm]; made += 1; rescue => e; puts "skip ${nm}: #{e}"; end`);
       }
     }
-    const includeWood = String(req.query.wood || '1') !== '0';
-    if (includeWood && wdb.woods.length) {
-      lines.push(`# --- 실제 자재 (${wdb.woods.length}) — 제조사 텍스처 · 실측 mm ---`);
-      for (const t of wdb.woods) {
-        const p = path.join(WOOD_DIR, t.file || '');
-        if (!t.file || !fs.existsSync(p)) continue;
-        const nm = `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}`.replace(/"/g, '');
-        lines.push(`begin; m = mats["${nm}"] || mats.add("${nm}"); m.texture = "${p}"; m.texture.size = [${t.size_mm.w}.mm, ${t.size_mm.h}.mm]; made += 1; rescue => e; puts "skip ${nm}: #{e}"; end`);
+    const lines = [];
+    lines.push('# 자재DB 머티리얼 로더 — SketchUp Ruby Console에 전체 붙여넣기');
+    lines.push('# 컬러 hex는 화면용 근사값: 실제 도장 전 공식 컬러칩 대조');
+    lines.push('# 이름의 [코드] 태그는 AndoEstimator 물량↔견적 조인 키 — 지우거나 바꾸지 마세요');
+    lines.push('model = Sketchup.active_model');
+    lines.push('mats = model.materials');
+    lines.push('made = 0');
+    if (renames.length) {
+      lines.push(`# --- 이름 마이그레이션 (${renames.length}) — 구이름 머티리얼에 [코드] 승계 (신이름이 이미 있으면 건너뜀) ---`);
+      lines.push('ren = 0');
+      for (let i = 0; i < renames.length; i += 400) {
+        const chunk = renames.slice(i, i + 400).map(([o, n]) => `["${o}","${n}"]`).join(',');
+        lines.push(`[${chunk}].each { |o,n| m = mats[o]; next unless m; next if mats[n]; m.name = n; ren += 1 }`);
       }
+      lines.push('puts "이름 마이그레이션 #{ren}개"');
     }
+    lines.push(...body);
     lines.push('puts "머티리얼 #{made}개 등록/갱신 완료"');
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     return res.send(lines.join('\n'));
   } catch (e) { console.error('[ruby-loader]', e); return fail(res, 500, 'Ruby 로더 생성 중 오류'); }
+});
+
+// (v27) 자재 코드 레지스트리 내보내기 — interior-cost 관리탭 [동기화]가 읽는다 (CORS 허용: 라이브 앱→localhost 폴링)
+app.get('/api/mat-codes', (_req, res) => {
+  try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    const items = [];
+    for (const t of tdb.textures) {
+      if (!t.mat_code) continue;
+      const mode = String(t.mode || '');
+      const trade_hint = mode === 'paint' ? '도장공사' : mode === 'wallpaper' ? '도배공사' : mode === 'tile' ? '타일공사' : /wood|floor|herring/.test(mode) ? '바닥공사' : '';
+      items.push({ code: t.mat_code, type: 'texture', brand: '', name: t.name, kind: mode, spec: t.size_mm ? `${t.size_mm.w}×${t.size_mm.h}mm` : '', unit: 'm2', trade_hint, source_id: t.id });
+    }
+    for (const t of wdb.woods) {
+      if (!t.mat_code) continue;
+      const sp = t.spec || {};
+      const spec = [sp.t ? `${sp.t}T` : '', sp.w ? `${sp.w}W` : '', sp.l ? `${sp.l}L` : ''].filter(Boolean).join('·');
+      items.push({ code: t.mat_code, type: 'wood', brand: t.brand || '', name: `${t.line ? t.line + ' ' : ''}${t.name}`, kind: t.kind || '', spec, unit: 'm2', trade_hint: '바닥공사', source_id: t.id });
+    }
+    for (const t of wpdb.wallpapers) {
+      if (!t.mat_code) continue;
+      const spec = (t.spec && t.spec.roll_w) ? `롤폭 ${t.spec.roll_w}mm` : '';
+      items.push({ code: t.mat_code, type: 'wallpaper', brand: t.brand || '', name: `${t.line ? t.line + ' ' : ''}${t.name}${t.code ? ' ' + t.code : ''}`, kind: t.kind || '', spec, unit: 'm2', trade_hint: '도배공사', source_id: t.id });
+    }
+    return ok(res, 200, { version: 1, exported_at: new Date().toISOString(), items });
+  } catch (e) { console.error('[mat-codes]', e); return fail(res, 500, '자재 코드 내보내기 중 오류'); }
 });
 
 /* =====================================================================
@@ -1936,6 +2102,8 @@ loadStore();
 loadFavGroups();
 loadTextures();
 loadWood();
+loadWallpaper();
+ensureMatCodes(); // (v27) 자재 코드 발급 — 미부여분만, 기존 코드 불변
 ingestIncomingDir(); // 부팅 시 data/incoming/ 의 주간 업데이트(클라우드 트리거가 레포에 커밋한 파일) 자동 반영
 
 if (require.main === module) {

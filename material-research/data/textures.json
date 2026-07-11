@@ -18,7 +18,8 @@
       },
       "png_url": "/data/textures/tx-mrc6sd8ce34d.png",
       "thumb_url": "/data/textures/tx-mrc6sd8ce34d.thumb.png",
-      "created_at": "2026-07-08T14:42:08.509Z"
+      "created_at": "2026-07-08T14:42:08.509Z",
+      "mat_code": "TX-0004"
     },
     {
       "id": "tx-mr7mi1tfxudl",
@@ -38,7 +39,8 @@
       },
       "png_url": "/data/textures/tx-mr7mi1tfxudl.png",
       "thumb_url": "/data/textures/tx-mr7mi1tfxudl.thumb.png",
-      "created_at": "2026-07-05T10:03:10.131Z"
+      "created_at": "2026-07-05T10:03:10.131Z",
+      "mat_code": "TX-0003"
     },
     {
       "id": "tx-mr7mi0h19f95",
@@ -58,7 +60,8 @@
       },
       "png_url": "/data/textures/tx-mr7mi0h19f95.png",
       "thumb_url": "/data/textures/tx-mr7mi0h19f95.thumb.png",
-      "created_at": "2026-07-05T10:03:08.391Z"
+      "created_at": "2026-07-05T10:03:08.391Z",
+      "mat_code": "TX-0002"
     },
     {
       "id": "tx-mr7mgp9g0mf4",
@@ -78,7 +81,8 @@
       },
       "png_url": "/data/textures/tx-mr7mgp9g0mf4.png",
       "thumb_url": "/data/textures/tx-mr7mgp9g0mf4.thumb.png",
-      "created_at": "2026-07-05T10:02:07.204Z"
+      "created_at": "2026-07-05T10:02:07.204Z",
+      "mat_code": "TX-0001"
     }
   ]
 }

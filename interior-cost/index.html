@@ -215,6 +215,12 @@
     };
     const tradeHex = (t) => TRADE_HEX[t] || '#94a3b8';
 
+    // (v27) 자재 코드 태그 — 머티리얼/정의 이름 속 [WD-0001]/[TX-0012]/[PT:BM:2062-30] 태그.
+    //   공용 정규식(서버·스케치업 플러그인과 동일). SketchUp 기본 재질([Color M01] 등 소문자 포함)과 충돌 없음.
+    const MAT_CODE_RE = /\[([A-Z]{2,4}[-:][A-Za-z0-9:._\-]+)\]/;
+    // (v27) 자재 코드 동기화 기본 URL — material-research(PORT 3011) /api/mat-codes (CORS 허용)
+    const MAT_SYNC_DEFAULT_URL = 'http://localhost:3011/api/mat-codes';
+
     // 원가계산서 가정율 기본값 (CONTRACT v3 와 1:1)
     const BUILDUP_DEFAULTS = {
       indirect_material_rate: 0.025, indirect_labor_rate: 0.03,
@@ -1707,7 +1713,7 @@
           const mk = (b) => ({
             id: uid(), site_id: siteId, trade: b.trade || '', name: String(b.name || '').trim(), spec: b.spec || '',
             unit: b.unit || '', qty: Number(b.qty) || 0, source: b.source || 'manual', source_guid: b.source_guid || '',
-            memo: b.memo || '', created_at: new Date().toISOString(),
+            memo: b.memo || '', material_code: b.material_code || '', created_at: new Date().toISOString(), // v27: 폴백에도 코드 보존
           });
           if (Array.isArray(body && body.items)) {
             let cur = takeoffStore.read();
@@ -1735,6 +1741,18 @@
         try { await this._tryFetch(`${API_BASE_URL}/takeoff/${id}`, { method: 'DELETE' }); this._useMock = false; return { success: true }; }
         catch (e) { if (e.status) throw e; this._useMock = true; takeoffStore.write(takeoffStore.read().filter((x) => String(x.id) !== String(id))); return { success: true }; }
       },
+
+      // ════════ v27: 자재 코드(materials) — 서버 전용(데모/오프라인은 UI 에서 안내) ════════
+      async listMaterials() { return this._tryFetch(`${API_BASE_URL}/materials`); },
+      async updateMaterial(id, body) { return this._tryFetch(`${API_BASE_URL}/materials/${id}`, { method: 'PUT', body: JSON.stringify(body) }); },
+      async removeMaterial(id) { return this._tryFetch(`${API_BASE_URL}/materials/${id}`, { method: 'DELETE' }); },
+      async syncMaterials(items) { return this._tryFetch(`${API_BASE_URL}/materials/sync`, { method: 'POST', body: JSON.stringify({ items }) }); },
+      // 코드 배열 → {[code]: {via, trade, price, waste_pct, material, catalog}} (임포트 공종 프리필/견적행 단가 주입용)
+      async resolveMaterialCodes(codes) { return this._tryFetch(`${API_BASE_URL}/materials/resolve`, { method: 'POST', body: JSON.stringify({ codes }) }); },
+      // 임포트에서 수정한 코드 매핑 학습 — 자재 행 갱신 or exact 규칙 upsert
+      async rememberMaterialCodes(items) { return this._tryFetch(`${API_BASE_URL}/materials/remember`, { method: 'POST', body: JSON.stringify({ items }) }); },
+      async listMatRules() { return this._tryFetch(`${API_BASE_URL}/materials/rules`); },
+      async removeMatRule(id) { return this._tryFetch(`${API_BASE_URL}/materials/rules/${id}`, { method: 'DELETE' }); },
 
       // ════════ v5: 고객/리드 (clients) — 전역 마스터 (staff/vendors 동형) ════════
       async listClients(all) {
@@ -5264,8 +5282,9 @@
       const first = rows[0].map((c) => String(c).trim());
       let format = null; let dataStart = 1; let meta = { model: '' };
       if (/^#DLP-TAKEOFF/i.test(first[0])) {
-        // v1: 1행 매직헤더(#DLP-TAKEOFF,v1,exported_at=..,model=..) + 2행 컬럼헤더 + 데이터
-        format = 'v1';
+        // v1/v2: 1행 매직헤더(#DLP-TAKEOFF,v1|v2,exported_at=..,model=..) + 2행 컬럼헤더 + 데이터
+        // (v27) v2 = 9열(8열 + material_code). v1 은 기존 8열 그대로(하위호환).
+        format = String(first[1] || '').trim().toLowerCase() === 'v2' ? 'v2' : 'v1';
         first.forEach((cell) => { const m = cell.match(/^model=(.*)$/); if (m) meta.model = m[1]; });
         dataStart = rows[1] && /^category$/i.test(String(rows[1][0]).trim()) ? 2 : 1;
       } else if (first[0] === '구분' && first[1] === '이름') {
@@ -5279,12 +5298,13 @@
       for (let i = dataStart; i < rows.length; i++) {
         const r = rows[i].map((c) => String(c).trim());
         const lineNo = i + 1;
-        let category, name, spec, qty, unit, altQty, altUnit, guid;
-        if (format === 'v1') {
+        let category, name, spec, qty, unit, altQty, altUnit, guid, materialCode = '';
+        if (format === 'v1' || format === 'v2') {
           [category, name, spec] = [r[0] || '', r[1] || '', r[2] || ''];
           qty = parseTakeoffQty(r[3]); unit = normTakeoffUnit(r[4]);
           altQty = parseTakeoffQty(r[5]); altUnit = normTakeoffUnit(r[6]);
           guid = r[7] || '';
+          materialCode = format === 'v2' ? (r[8] || '') : ''; // (v27) v2 9열: material_code
         } else {
           // legacy: 구분,이름,값,단위,갯수,단위2 — 구분 괄호(구조재(다루끼) 등)는 spec 으로
           const catM = (r[0] || '').match(/^(.*?)\((.*)\)$/);
@@ -5312,12 +5332,15 @@
           name, spec, unit, qty,
           source: 'sketchup', source_guid: guid,
           memo: memoParts.join(' · '),
+          material_code: materialCode, // (v27) v2 코드 행(빈값=비코드) — resolve 로 공종/단가 프리필
         });
       }
       return { format, ok, skipped, meta };
     }
 
     // (v23) 스케치업 CSV 임포트 모달 — 파일 선택 → 파싱 미리보기(공종 수정) → takeoff 배치 저장
+    //   (v27) v2 CSV 의 material_code 를 일괄 resolve → 공종 프리필(resolve > 키워드 추정) + 🧱코드/자재/단가 표시
+    //         + [수정한 코드 매핑 기억](기본 on — resolve 와 다르게 수정한 코드만 remember POST)
     function SketchupImportModal({ isOpen, onClose, siteId, onDone }) {
       const toast = useToast();
       const [fileName, setFileName] = useState('');
@@ -5326,17 +5349,19 @@
       const [err, setErr] = useState('');
       const [replace, setReplace] = useState(true);
       const [busy, setBusy] = useState(false);
+      const [resolveMap, setResolveMap] = useState({}); // v27: {code: {via,trade,price,material,catalog}}
+      const [remember, setRemember] = useState(true);   // v27: 수정한 코드 매핑 기억 (기본 on)
       const fileRef = useRef(null);
 
       useEffect(() => {
-        if (!isOpen) { setFileName(''); setParsed(null); setDrafts([]); setErr(''); setReplace(true); setBusy(false); }
+        if (!isOpen) { setFileName(''); setParsed(null); setDrafts([]); setErr(''); setReplace(true); setBusy(false); setResolveMap({}); setRemember(true); }
       }, [isOpen]);
 
       const onFile = (ev) => {
         const f = (ev.target.files || [])[0];
         ev.target.value = '';
         if (!f) return;
-        setErr(''); setParsed(null); setDrafts([]); setFileName(f.name || '');
+        setErr(''); setParsed(null); setDrafts([]); setResolveMap({}); setFileName(f.name || '');
         const reader = new FileReader();
         reader.onload = () => {
           try {
@@ -5344,6 +5369,20 @@
             if (p.ok.length === 0 && p.skipped.length === 0) { setErr('가져올 데이터 행이 없습니다.'); return; }
             setParsed(p);
             setDrafts(p.ok.map((d, i) => ({ ...d, _i: i, _include: true })));
+            // (v27) 코드 있는 행 일괄 resolve 1회 → 공종 프리필(키워드 추정보다 우선). 서버 미연결 시 조용히 스킵.
+            const codes = Array.from(new Set(p.ok.map((d) => d.material_code).filter(Boolean)));
+            if (codes.length) {
+              api.resolveMaterialCodes(codes)
+                .then((map) => {
+                  if (!map) return;
+                  setResolveMap(map);
+                  setDrafts((prev) => prev.map((d) => {
+                    const rv = d.material_code ? map[d.material_code] : null;
+                    return rv && rv.trade ? { ...d, trade: rv.trade } : d;
+                  }));
+                })
+                .catch(() => {});
+            }
           } catch (e) { setErr(e.message || 'CSV를 읽지 못했습니다.'); }
         };
         reader.onerror = () => setErr('파일을 읽지 못했습니다.');
@@ -5352,14 +5391,30 @@
 
       const setDraft = (i, patch) => setDrafts((prev) => prev.map((d) => (d._i === i ? { ...d, ...patch } : d)));
       const included = drafts.filter((d) => d._include);
+      const codedCount = useMemo(() => new Set(drafts.filter((d) => d.material_code).map((d) => d.material_code)).size, [drafts]);
 
       const doImport = async () => {
         if (busy || included.length === 0) return;
         setBusy(true);
         try {
-          const items = included.map(({ _i, _include, ...rest }) => rest);
+          const items = included.map(({ _i, _include, ...rest }) => rest); // material_code 포함(서버 v27 저장)
           await api.createTakeoff(siteId, { items }, { replaceSketchup: replace });
           toast(`스케치업 물량 ${items.length}개를 가져왔습니다.${replace ? ' (기존 스케치업분 대체)' : ''}`, 'success');
+          // (v27) 임포트 성공 후 — resolve 결과와 다르게 수정된 코드만 remember(자재 행 갱신 or exact 규칙 학습)
+          if (remember) {
+            const seen = new Set(); const learn = [];
+            included.forEach((d) => {
+              const code = d.material_code;
+              if (!code || seen.has(code)) return;
+              seen.add(code);
+              const rv = resolveMap[code];
+              const resolvedTrade = rv ? (rv.trade || '') : '';
+              if (d.trade && d.trade !== resolvedTrade) learn.push({ code, trade: d.trade });
+            });
+            if (learn.length) {
+              try { await api.rememberMaterialCodes(learn); toast(`코드 매핑 ${learn.length}건을 기억했습니다. 다음 임포트부터 자동 적용돼요.`, 'info'); } catch (e) { /* 학습 실패는 임포트 성공에 영향 없음 */ }
+            }
+          }
           if (onDone) onDone();
           onClose();
         } catch (e) {
@@ -5379,9 +5434,12 @@
               <Button variant="secondary" onClick={() => fileRef.current && fileRef.current.click()}>📄 CSV 파일 선택</Button>
               {fileName && <span className="text-sm text-slate-500">{fileName}</span>}
               {parsed && (
-                <span className={`text-[11px] px-2 py-0.5 rounded-full ${parsed.format === 'v1' ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
-                  {parsed.format === 'v1' ? 'DLP-TAKEOFF v1' : '레거시(견적 산출)'}
+                <span className={`text-[11px] px-2 py-0.5 rounded-full ${parsed.format === 'v2' ? 'bg-emerald-100 text-emerald-700' : parsed.format === 'v1' ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-700'}`}>
+                  {parsed.format === 'v2' ? 'DLP-TAKEOFF v2 · 자재 코드' : parsed.format === 'v1' ? 'DLP-TAKEOFF v1' : '레거시(견적 산출)'}
                 </span>
+              )}
+              {parsed && codedCount > 0 && (
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">🧱 코드 자재 {codedCount}종</span>
               )}
               {parsed && parsed.meta.model && <span className="text-[11px] text-slate-400">모델: {parsed.meta.model}</span>}
             </div>
@@ -5419,7 +5477,25 @@
                                 {TRADE_MASTER.map((t) => <option key={t} value={t}>{t}</option>)}
                               </select>
                             </td>
-                            <td className="py-1.5 pr-2 text-slate-700 break-all">{d.name}</td>
+                            <td className="py-1.5 pr-2 text-slate-700 break-all">
+                              {d.name}
+                              {d.material_code && (() => { // (v27) 🧱코드 뱃지 + 매핑된 자재명/단가 유무
+                                const rv = resolveMap[d.material_code];
+                                return (
+                                  <span className="mt-0.5 flex flex-wrap items-center gap-1">
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-medium whitespace-nowrap">🧱 {d.material_code}</span>
+                                    {!rv || !rv.via ? (
+                                      <span className="text-[10px] text-slate-400">미매핑 — 공종 선택 시 기억됩니다</span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400">
+                                        {rv.material ? rv.material.name : (rv.via === 'prefix' ? '프리픽스 규칙' : '규칙')}
+                                        {rv.price != null ? ` · ${fmtNum(rv.price)}원` : ' · 단가 미정'}
+                                      </span>
+                                    )}
+                                  </span>
+                                );
+                              })()}
+                            </td>
                             <td className="py-1.5 pr-2 text-slate-400 text-xs break-all">{[d.spec, d.memo].filter(Boolean).join(' · ')}</td>
                             <td className="py-1.5 pr-2 text-right font-medium text-slate-700 whitespace-nowrap">{fmtNum(d.qty)}</td>
                             <td className="py-1.5 pr-2 text-slate-500">{d.unit || '-'}</td>
@@ -5441,6 +5517,12 @@
                   <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} className="w-4 h-4 accent-blue-600" />
                   기존 <b>스케치업</b> 물량 대체 <span className="text-[11px] text-slate-400">(재내보내기 반복 시 중복 방지 · 수기 물량은 보존)</span>
                 </label>
+                {codedCount > 0 && (
+                  <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                    <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="w-4 h-4 accent-emerald-600" />
+                    수정한 코드 매핑 기억 <span className="text-[11px] text-slate-400">(공종을 바꾼 코드는 자재/규칙에 저장 → 다음 임포트부터 자동 적용)</span>
+                  </label>
+                )}
               </>
             )}
 
@@ -5745,19 +5827,34 @@
         }
       };
       // (v8) 물량(takeoff) 선택 항목들 → 견적 행으로 추가 (단가는 0/수동 — 카탈로그·직접입력으로 채움)
-      const addTakeoffRows = (picked) => {
+      //   (v27) material_code 있는 행은 일괄 resolve 1회 → 재료비단가(=resolve price)/노무·부자재(연결 카탈로그)/catalog_id 프리필.
+      //         단가 정보가 없으면 기존처럼 빈값(수동 입력). resolve 실패(서버 미연결 등)도 기존 동작 그대로.
+      const addTakeoffRows = async (picked) => {
         setTakeoffOpen(false);
         if (!picked || !picked.length) return;
-        setItems((arr) => [
-          ...arr,
-          ...picked.map((t) => ({
+        let resolved = {};
+        const codes = Array.from(new Set(picked.map((t) => t.material_code).filter(Boolean)));
+        if (codes.length) {
+          try { resolved = (await api.resolveMaterialCodes(codes)) || {}; } catch (e) { resolved = {}; }
+        }
+        let priced = 0;
+        const rows = picked.map((t) => {
+          const rv = t.material_code ? resolved[t.material_code] : null;
+          const hasPrice = !!(rv && rv.price != null);
+          if (hasPrice) priced++;
+          return {
             _k: uid(), trade: t.trade || '', name: t.name || '', spec: t.spec || '', unit: t.unit || '',
             qty: String(t.qty != null ? t.qty : ''),
-            material_price: '', labor_price: '', sub_price: '', // 단가 미정 → 수동/카탈로그 입력
-            memo: t.memo || '', catalog_id: null,
-          })),
-        ]);
-        toast(`물량 ${picked.length}개를 견적 행으로 추가했습니다. 단가를 입력하세요.`, 'success');
+            material_price: hasPrice ? String(rv.price) : '',
+            labor_price: rv && rv.catalog && Number(rv.catalog.labor_price) ? String(Number(rv.catalog.labor_price)) : '',
+            sub_price: rv && rv.catalog && Number(rv.catalog.sub_price) ? String(Number(rv.catalog.sub_price)) : '',
+            memo: t.memo || '', catalog_id: rv && rv.catalog ? rv.catalog.id : null,
+          };
+        });
+        setItems((arr) => [...arr, ...rows]);
+        toast(priced > 0
+          ? `물량 ${picked.length}개를 견적 행으로 추가했습니다 · 단가 자동 적용 ${priced}건`
+          : `물량 ${picked.length}개를 견적 행으로 추가했습니다. 단가를 입력하세요.`, 'success');
       };
       const parseItem = (it, i) => {
         const m = Math.round(Number(it.material_price) || 0), l = Math.round(Number(it.labor_price) || 0), s = Math.round(Number(it.sub_price) || 0);
@@ -9639,6 +9736,299 @@
       );
     }
 
+    // ========================================
+    // 🧱 v27: 자재 코드 (material-research 연동) — 동기화 · 단가/공종/카탈로그 매핑 · 규칙 관리
+    // ========================================
+    // 동기화 모달: URL(기본 material-research /api/mat-codes) fetch 시도 → 실패 시 JSON 파일 업로드 폴백
+    function MatSyncModal({ isOpen, onClose, onDone }) {
+      const toast = useToast();
+      const [url, setUrl] = useState(MAT_SYNC_DEFAULT_URL);
+      const [busy, setBusy] = useState(false);
+      const [fetchErr, setFetchErr] = useState('');
+      const fileRef = useRef(null);
+      useEffect(() => { if (!isOpen) { setBusy(false); setFetchErr(''); } }, [isOpen]);
+
+      // {version, exported_at, items:[{code,type,brand,name,kind,spec,unit,trade_hint,source_id}]} (CONTRACT 27-2)
+      //   material-research API 는 ok() 래퍼로 {success, data:{...}} 로 감싸므로 둘 다 수용.
+      const payloadItems = (json) => {
+        const body = (json && json.data && typeof json.data === 'object') ? json.data : json;
+        const items = body && Array.isArray(body.items) ? body.items : null;
+        if (!items) throw new Error('mat-codes 페이로드 형식이 아닙니다. ({items:[...]} JSON 필요)');
+        return items;
+      };
+      const runSync = async (items) => {
+        const r = await api.syncMaterials(items);
+        toast(`자재 코드 동기화 완료 — 신규 ${fmtNum(r.inserted)} · 갱신 ${fmtNum(r.updated)}`, 'success');
+        if (onDone) onDone();
+        onClose();
+      };
+      const fromUrl = async () => {
+        if (busy) return;
+        setBusy(true); setFetchErr('');
+        try {
+          const res = await fetch(url.trim()); // material-research 는 CORS(Access-Control-Allow-Origin: *) 허용
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          await runSync(payloadItems(await res.json()));
+        } catch (e) {
+          setFetchErr(`URL에서 불러오지 못했습니다 (${e.message || '연결 실패'}). material-research 서버(3011) 실행 여부를 확인하거나, 아래 JSON 파일 업로드를 이용하세요.`);
+        } finally { setBusy(false); }
+      };
+      const fromFile = (ev) => {
+        const f = (ev.target.files || [])[0];
+        ev.target.value = '';
+        if (!f) return;
+        setBusy(true);
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try { await runSync(payloadItems(JSON.parse(String(reader.result || '')))); }
+          catch (e) { toast(e.message || 'JSON 파일을 읽지 못했습니다.', 'error'); }
+          finally { setBusy(false); }
+        };
+        reader.onerror = () => { setBusy(false); toast('파일을 읽지 못했습니다.', 'error'); };
+        reader.readAsText(f, 'utf-8');
+      };
+      const txtCls = 'w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300';
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="⟳ 자재 코드 동기화 (material-research)" size="md">
+          <div className="space-y-3">
+            <p className="text-[11px] text-slate-400">
+              material-research 의 <b>/api/mat-codes</b> 를 불러와 코드 레지스트리를 갱신합니다.
+              재동기화해도 이미 설정한 <b>단가·공종·카탈로그 연결은 보존</b>되고 이름/브랜드 등 정보만 갱신돼요.
+            </p>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">mat-codes URL</label>
+              <input className={txtCls} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={MAT_SYNC_DEFAULT_URL} />
+            </div>
+            {fetchErr && <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5">{fetchErr}</div>}
+            <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={fromFile} aria-hidden="true" tabIndex={-1} />
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <Button variant="secondary" onClick={onClose}>닫기</Button>
+              <Button variant="secondary" onClick={() => fileRef.current && fileRef.current.click()} disabled={busy}>📄 JSON 파일 업로드</Button>
+              <Button onClick={fromUrl} disabled={busy}>{busy ? '동기화 중…' : '⟳ URL에서 동기화'}</Button>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    function MaterialManager() {
+      const toast = useToast();
+      const [list, setList] = useState([]);
+      const [rules, setRules] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [offline, setOffline] = useState(false); // 서버 전용 — 데모/오프라인 안내
+      const [q, setQ] = useState('');
+      const [syncOpen, setSyncOpen] = useState(false);
+      const [priceDraft, setPriceDraft] = useState({}); // {id: '45000'} 단가 인라인 편집 버퍼
+      const [pickerFor, setPickerFor] = useState(null); // 카탈로그 [연결] 대상 자재
+      const [delTarget, setDelTarget] = useState(null);
+      const [page, setPage] = useState(0);
+      const pageSize = 25;
+
+      const reload = useCallback(async () => {
+        setLoading(true);
+        try {
+          const [m, r] = await Promise.all([api.listMaterials(), api.listMatRules()]);
+          setList(Array.isArray(m) ? m : []);
+          setRules(Array.isArray(r) ? r : []);
+          setOffline(false);
+        } catch (e) { setList([]); setRules([]); setOffline(true); }
+        finally { setLoading(false); }
+      }, []);
+      useEffect(() => { reload(); }, [reload]);
+
+      const filtered = useMemo(() => {
+        const n = q.trim().toLowerCase();
+        if (!n) return list;
+        return list.filter((m) => [m.code, m.name, m.brand, m.kind, m.trade].some((f) => String(f || '').toLowerCase().includes(n)));
+      }, [list, q]);
+      useEffect(() => { setPage(0); }, [q]);
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      const pageItems = filtered.slice(page * pageSize, page * pageSize + pageSize);
+
+      const patch = async (m, body, okMsg) => {
+        try {
+          await api.updateMaterial(m.id, body);
+          if (okMsg) toast(okMsg, 'success');
+          await reload();
+        } catch (e) { toast(e.status === 400 ? e.message : '수정에 실패했습니다.', 'error'); }
+      };
+      // 단가 인라인 편집 — blur/Enter 시 저장. 빈값 = 단가 미정(null).
+      const commitPrice = async (m) => {
+        const raw = priceDraft[m.id];
+        if (raw === undefined) return;
+        setPriceDraft((prev) => { const n = { ...prev }; delete n[m.id]; return n; });
+        const cur = m.price == null ? '' : String(m.price);
+        if (String(raw).trim() === cur) return;
+        await patch(m, { price: String(raw).trim() === '' ? null : Math.round(Number(raw) || 0) }, '단가가 저장되었습니다.');
+      };
+      const confirmDel = async () => {
+        const m = delTarget; setDelTarget(null);
+        try { await api.removeMaterial(m.id); toast('자재가 삭제되었습니다.', 'info'); await reload(); }
+        catch (e) { toast('삭제에 실패했습니다.', 'error'); }
+      };
+      const delRule = async (r) => {
+        try { await api.removeMatRule(r.id); toast('규칙이 삭제되었습니다.', 'info'); await reload(); }
+        catch (e) { toast('규칙 삭제에 실패했습니다.', 'error'); }
+      };
+
+      const txtCls = 'w-full px-2 py-1.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300';
+      const typeLabel = (t) => (t === 'wood' ? '우드' : t === 'texture' ? '텍스처' : t || '기타');
+      return (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+            <h2 className="text-base font-bold text-slate-800">🧱 자재 코드 <span className="text-sm font-normal text-slate-400">· material-research 연동</span></h2>
+            <Button size="sm" onClick={() => setSyncOpen(true)}>⟳ 동기화</Button>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">
+            스케치업 머티리얼 이름의 <span className="font-mono">[WD-0001]</span> 같은 코드가 여기 자재와 매핑됩니다.
+            단가·공종·카탈로그 연결을 설정해 두면 <b>스케치업 CSV 임포트/견적 행 추가 시 자동 적용</b>돼요.
+          </p>
+
+          {offline ? (
+            <div className="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-4 py-6 text-center">
+              자재 코드는 서버 연결(로그인) 상태에서 사용할 수 있습니다.
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                <input className={txtCls + ' flex-1'} placeholder="코드·이름·브랜드·공종 검색" value={q} onChange={(e) => setQ(e.target.value)} />
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                <span>{loading ? '불러오는 중…' : `${fmtNum(filtered.length)}개 자재`}</span>
+                {filtered.length > pageSize && <span>{page + 1} / {totalPages} 페이지</span>}
+              </div>
+
+              {filtered.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">
+                  {loading ? '불러오는 중…' : (list.length === 0 ? '자재가 없습니다. [⟳ 동기화]로 material-research 코드를 불러오세요.' : '검색 결과가 없습니다.')}
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" style={{ minWidth: '880px' }}>
+                    <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                      <th className="py-2 pr-2 font-medium">코드</th><th className="py-2 pr-2 font-medium">자재</th>
+                      <th className="py-2 pr-2 font-medium">단위</th><th className="py-2 pr-2 font-medium text-right">단가(원)</th>
+                      <th className="py-2 pr-2 font-medium">공종</th><th className="py-2 pr-2 font-medium">카탈로그</th>
+                      <th className="py-2 pr-2 font-medium">활성</th><th className="py-2 font-medium text-right">관리</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {pageItems.map((m) => {
+                        const inList = !m.trade || TRADE_MASTER.includes(m.trade);
+                        return (
+                          <tr key={m.id} className={m.active === false ? 'opacity-50' : ''}>
+                            <td className="py-2 pr-2 whitespace-nowrap">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-medium">🧱 {m.code}</span>
+                              <span className="block text-[10px] text-slate-400 mt-0.5">{typeLabel(m.type)}</span>
+                            </td>
+                            <td className="py-2 pr-2 text-slate-700">
+                              <span className="font-medium">{m.name}</span>
+                              {(m.brand || m.kind || m.spec) && <span className="block text-[11px] text-slate-400 truncate max-w-[220px]">{[m.brand, m.kind, m.spec].filter(Boolean).join(' · ')}</span>}
+                            </td>
+                            <td className="py-2 pr-2 text-slate-500">{m.unit || '-'}</td>
+                            <td className="py-2 pr-2 text-right">
+                              <input type="number" min="0" placeholder="미정"
+                                className="w-24 px-2 py-1 rounded-lg border border-slate-200 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                value={priceDraft[m.id] !== undefined ? priceDraft[m.id] : (m.price == null ? '' : String(m.price))}
+                                onChange={(e) => setPriceDraft((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                                onBlur={() => commitPrice(m)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }} />
+                            </td>
+                            <td className="py-2 pr-2">
+                              <select className="w-32 px-2 py-1 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                value={m.trade || ''} onChange={(e) => patch(m, { trade: e.target.value }, '공종이 저장되었습니다.')}>
+                                <option value="">미분류</option>
+                                {!inList && <option value={m.trade}>{m.trade}</option>}
+                                {TRADE_MASTER.map((t) => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </td>
+                            <td className="py-2 pr-2">
+                              {m.catalog_item_id ? (
+                                <span className="inline-flex items-center gap-1 max-w-[180px]">
+                                  <span className="text-xs text-slate-600 truncate" title={m.catalog_name || ''}>📚 {m.catalog_name || `#${m.catalog_item_id}`}</span>
+                                  <button onClick={() => patch(m, { catalog_item_id: null }, '카탈로그 연결이 해제되었습니다.')}
+                                    className="text-slate-300 hover:text-red-500 text-xs" title="연결 해제">✕</button>
+                                </span>
+                              ) : (
+                                <button onClick={() => setPickerFor(m)}
+                                  className="text-xs px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500">연결</button>
+                              )}
+                            </td>
+                            <td className="py-2 pr-2">
+                              <button onClick={() => patch(m, { active: !(m.active !== false) })}>
+                                <Badge color={m.active === false ? 'bg-slate-400' : 'bg-emerald-500'}>{m.active === false ? '비활성' : '활성'}</Badge>
+                              </button>
+                            </td>
+                            <td className="py-2 text-right whitespace-nowrap">
+                              <button onClick={() => setDelTarget(m)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" aria-label="삭제">🗑️</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {filtered.length > pageSize && (
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <Button size="sm" variant="secondary" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>◀ 이전</Button>
+                  <span className="text-xs text-slate-500">{page + 1} / {totalPages}</span>
+                  <Button size="sm" variant="secondary" disabled={page >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>다음 ▶</Button>
+                </div>
+              )}
+
+              {/* 매핑 규칙 — 자재 행이 없는 코드의 폴백(exact/prefix). prefix 기본 2종은 resolve 시 자동 시드 */}
+              <div className="mt-6 pt-4 border-t border-slate-100">
+                <h3 className="text-sm font-bold text-slate-700 mb-1">코드 매핑 규칙 <span className="text-[11px] font-normal text-slate-400">· 자재 미등록 코드의 공종 폴백 (프리픽스/정확일치)</span></h3>
+                {rules.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-3">규칙이 없습니다. 스케치업 임포트에서 코드 공종을 수정하면 자동으로 학습돼요.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" style={{ minWidth: '520px' }}>
+                      <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                        <th className="py-2 pr-2 font-medium">패턴</th><th className="py-2 pr-2 font-medium">방식</th>
+                        <th className="py-2 pr-2 font-medium">공종</th><th className="py-2 pr-2 font-medium">카탈로그</th>
+                        <th className="py-2 font-medium text-right">관리</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {rules.map((r) => (
+                          <tr key={r.id}>
+                            <td className="py-2 pr-2"><span className="font-mono text-xs text-slate-700">{r.pattern}{r.is_prefix ? '…' : ''}</span></td>
+                            <td className="py-2 pr-2"><Badge color={r.is_prefix ? 'bg-indigo-400' : 'bg-slate-500'}>{r.is_prefix ? '프리픽스' : '정확일치'}</Badge></td>
+                            <td className="py-2 pr-2">{r.trade ? <span className="text-xs px-2 py-0.5 rounded-full text-white whitespace-nowrap" style={{ backgroundColor: tradeHex(r.trade) }}>{r.trade}</span> : <span className="text-slate-300">-</span>}</td>
+                            <td className="py-2 pr-2 text-xs text-slate-500">{r.catalog_name ? `📚 ${r.catalog_name}` : '-'}</td>
+                            <td className="py-2 text-right">
+                              <button onClick={() => delRule(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" aria-label="규칙 삭제">🗑️</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          <MatSyncModal isOpen={syncOpen} onClose={() => setSyncOpen(false)} onDone={reload} />
+          {/* 카탈로그 [연결] — 기존 CatalogPickerModal 재사용 */}
+          <CatalogPickerModal isOpen={!!pickerFor} onClose={() => setPickerFor(null)} trades={TRADE_MASTER} mode="replace"
+            onPick={async (c) => { const m = pickerFor; setPickerFor(null); if (m) await patch(m, { catalog_item_id: c.id }, `'${c.name}' 카탈로그에 연결되었습니다.`); }} />
+          <Modal isOpen={!!delTarget} onClose={() => setDelTarget(null)} title="자재 삭제" size="sm">
+            {delTarget && (
+              <div>
+                <p className="text-sm text-slate-600">'<span className="font-semibold">{delTarget.code}</span> {delTarget.name}' 자재를 삭제하시겠습니까?<br />물량/견적의 기존 행은 코드 텍스트를 그대로 보유하므로 영향받지 않습니다.</p>
+                <div className="mt-5 flex gap-2 justify-end">
+                  <Button variant="secondary" onClick={() => setDelTarget(null)}>취소</Button>
+                  <Button variant="danger" onClick={confirmDel}>삭제</Button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        </Card>
+      );
+    }
+
     function ManageTab({ sites, onMastersChanged, onSitesChanged, onTemplatesChanged, isAdmin = false }) {
       const [sub, setSub] = useState('staff');
       const [staffAll, setStaffAll] = useState([]);
@@ -9660,6 +10050,7 @@
         { id: 'clients', label: '고객/리드', icon: '👤' },
         { id: 'categories', label: '카테고리', icon: '🏷️' },
         { id: 'catalog', label: '단가 카탈로그', icon: '📚' },
+        { id: 'materials', label: '자재 코드', icon: '🧱' }, // v27
         { id: 'templates', label: '견적 템플릿', icon: '🧩' },
         { id: 'manuals', label: '매뉴얼 DB', icon: '📖' }, // v25
         { id: 'sites', label: '현장 마스터', icon: '🏗️' },
@@ -9684,6 +10075,7 @@
           {sub === 'clients' && <ClientManager clients={clientsAll} onChanged={reloadMasters} />}
           {sub === 'categories' && <CategoryManager cats={catsAll} onChanged={reloadMasters} />}
           {sub === 'catalog' && <CatalogManager />}
+          {sub === 'materials' && <MaterialManager />}
           {sub === 'templates' && <TemplateManager onChanged={onTemplatesChanged} />}
           {sub === 'manuals' && <ManualManager isAdmin={isAdmin} />}
           {sub === 'sites' && <SiteMaster sites={sites} onChanged={onSitesChanged} staffNames={staffNames} />}

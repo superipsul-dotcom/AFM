@@ -1334,3 +1334,68 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 
 ## 검증
 > ✅ **구현·검증 완료 (2026-07-05)**. 백엔드 e2e **17/17**(임시팀 2, 잔존 0 — **interior_vendors.team_id 도 v13 ALTER 라 팀삭제 CASCADE 없음** → 정리에 vendors 명시 삭제 추가): 단가 프리셋 저장/음수 보정/PUT 보존/vendor만 전달→프리셋 자동 스냅샷(145만)/명시 단가 override(156만)/**프리셋 변경 후 행 불변**/수동 단가/타팀 vendor 무시/summary cost·by_process·daily_process/일자별 cost/usage laborTotal·현장별·타팀 404. Playwright: 시공팀 선택→일당 자동(35만/20만)→행 인건비 145만→당일 인건비→누적 223만(2일)→공정별 추이 차트(스택바 렌더 스크린샷 확인)+누적 테이블→거래처 이름 클릭→상세 페이지(시공 파트 뱃지·단가 프리필·사용내역 인건비 145만·현장별 1일 기3조2).
+
+# v27 — 자재 코드 연동 (material-research ↔ SketchUp ↔ 견적)
+
+> 사용자 요청(2026-07-12): material-research의 자재(우드 134·스튜디오 텍스처·컬러 4,400+)를 **코드화**하고, 스케치업 모델링에서 해당 자재(SKM/로더 머티리얼)를 적용하면 AndoEstimator가 **코드+물량**을 읽어 앱 견적에 **단가까지 자동 적용**되는 관통 파이프라인. 검토·수정은 앱에서, 저장·공유는 기존 견적(v17 공유링크/v22 클라이언트뷰) 재사용.
+
+## 27-0 설계 원칙
+- **조인 키 = 머티리얼/컴포넌트 정의 "이름" 안의 `[코드]` 태그** (SKM 속성 아님 — 역공학 포맷 리스크 회피, 사람 눈에 보임).
+- **코드는 데이터가 아니라 포인터**: 단가/거래처/규격 인코딩 금지. 한번 발급하면 불변·재사용 금지.
+- **CSV에 단가 없음**: 플러그인=물리량 측정기(수량만), 앱=단가·로스율·비즈니스 규칙 소유.
+- **자재(제품) ≠ 견적항목(시공)**: 코드→자재→(공종/카탈로그 연결)→견적행 3분할 단가. 매핑은 v24 가맹점 학습규칙 패턴 재사용.
+
+## 27-1 코드 체계
+- **발급형(레지스트리 저장, material-research가 발급·영속)**: `WD-####`(우드 134, 4자리 0패딩), `TX-####`(스튜디오 텍스처). 부여 순서 = created_at asc, id asc. 신규 = max+1. 마이그레이션은 loadWood()/loadTextures()에서 멱등(기존 코드 절대 변경 없음, 즉시 저장).
+- **파생형(비저장, 컬러)**: `PT:{LIB}:{코드}` — LIB: benjamin-moore(-preview)→`BM`, dunn-edwards→`DE`, samhwa-ncs950→`NCS`, korea-standard→`KR`. 컬러코드는 공백 제거(`S 0300-N`→`S0300-N`).
+- **이름 태그 규칙**: 이름 어디든 `[코드]` 1개. 공용 정규식(JS/Ruby 동일): `\[([A-Z]{2,4}[-:][A-Za-z0-9:._\-]+)\]` — SketchUp 기본 재질(`[Color M01]` 등 소문자 포함)과 충돌 없음. `aa_`로 시작하는 이름은 코드 패스에서 제외(레거시 소유).
+
+## 27-2 material-research (PORT 3011)
+- wood/textures 레코드에 `mat_code` 필드 추가(마이그레이션 위 규칙). API 응답에 포함.
+- SKM 내보내기(`/api/textures/:id/skm`, `/api/wood/:id/skm`): 머티리얼명 = `[<mat_code>] <기존 이름>`.
+- 루비 로더(`/api/textures/ruby-loader`):
+  - 컬러: `[PT:LIB:코드] <브랜드> <이름> <코드>` (wood-presets 등 colors 빈 라이브러리 제외).
+  - 텍스처/우드: `[<mat_code>] <기존 이름>`.
+  - **리네임 마이그레이션 pre-pass**: 기존 모델의 구(舊)이름 머티리얼을 신이름으로 rename(`mats[old] 존재 && mats[new] 부재`일 때만) → 이미 칠해둔 모델도 코드 승계.
+- `GET /api/mat-codes` (**CORS `Access-Control-Allow-Origin: *`**): `{version:1, exported_at, items:[{code,type:'wood'|'texture'|'wallpaper',brand,name,kind,spec,unit:'m2',trade_hint,source_id}]}` — trade_hint: wood→바닥공사, wallpaper→도배공사, texture mode paint→도장공사·wallpaper→도배공사·tile→타일공사·wood→바닥공사·기타 ''. 컬러는 미포함(프리픽스 규칙이 커버). **주의: 실제 응답은 ok() 래퍼로 `{success, data:{…}}` — 임포터(payloadItems)는 래핑/비래핑 둘 다 수용.**
+- UI: 우드/텍스처 카드에 mat_code 뱃지 표시.
+
+## 27-3 플러그인 (AndoEstimator25 1.2.0)
+- **코드 자재 집계 패스**(collect_rows에 추가, 레거시 패스 무변경):
+  - model.entities부터 재귀(변환 누적 `tr`, 상속 머티리얼 `inherited` 전달).
+  - **코드 정의 개체**(Group/ComponentInstance, 정의명에 코드·`aa_` 아님): 코드별 수량 +1, **서브트리 미하강**(하나의 제품으로 취급 — 내부 면적/부품 미집계).
+  - **면**: `mat = face.material || inherited`(렌더와 동일한 상속 규칙), 코드 매치 시 `면적 += face.area(tr) × 0.00064516` (스케일 그룹 정확). 앞면 기준 — 앞면 미코드·뒷면 코드인 면은 **경고 카운트만**(미집계).
+  - rows 추가: `{category:'자재면적', name:태그 제거 표시명, qty:m² round2, unit:'m²', guid:코드, code:코드}` / `{category:'자재수량', unit:'EA', ...}`.
+- **DLP-TAKEOFF v2 CSV**: 매직 `#DLP-TAKEOFF,v2,...,plugin=AndoEstimator25/1.2.0`, 컬럼 `category,name,spec,qty,unit,alt_qty,alt_unit,guid,material_code`(9열). 비코드 행 material_code=''. 사람용 6열 CSV에도 자재면적/자재수량 행 추가(기존 행 출력은 100% 동일).
+- CSV 조립을 순수 메서드 `build_app_csv(rows)`로 분리(라이브 스모크 테스트용) + 내보내기 요약에 "코드 자재 N종 · 뒷면 전용 M면 미집계" 표기.
+- 설치본(`~/Library/.../Plugins/AndoEstimator25/`)이 캐노니컬, 레포 스냅샷 `interior-cost/sketchup-plugin/ando_estimator25.rb` 보관.
+
+## 27-4 interior-cost DB (CREATE/ALTER IF NOT EXISTS, 멱등)
+- `interior_materials`: id, team_id(FK interior_teams **ON DELETE CASCADE**), code TEXT, type TEXT DEFAULT 'other', brand TEXT DEFAULT '', name TEXT NOT NULL, kind TEXT DEFAULT '', spec TEXT DEFAULT '', unit TEXT DEFAULT 'm2', price BIGINT(NULL 허용=단가 미정), waste_pct NUMERIC DEFAULT 0, trade TEXT DEFAULT '', catalog_item_id BIGINT REFERENCES interior_catalog(id) ON DELETE SET NULL, source TEXT DEFAULT 'material-research', active BOOL DEFAULT true, created_at, updated_at, **UNIQUE(team_id, code)**.
+- `interior_mat_rules`: id, team_id(FK CASCADE), pattern TEXT, is_prefix BOOL DEFAULT false, trade TEXT DEFAULT '', catalog_item_id BIGINT(SET NULL), created_at, **UNIQUE(team_id, pattern)**.
+- `interior_takeoff` +`material_code TEXT NOT NULL DEFAULT ''` — 배치 POST/PUT/rowToTakeoff 반영.
+
+## 27-5 interior-cost REST (인증 필수·팀 스코프, vendors 패턴)
+- `GET /api/materials` — 팀 자재 목록(code asc) · `PUT /api/materials/:id`(price/waste_pct/trade/catalog_item_id/active/brand/name/kind/spec/unit 부분 수정, COALESCE 보존) · `DELETE /api/materials/:id`.
+- `POST /api/materials/sync` `{items:[...27-2 payload...]}` → (team_id,code) upsert. 신규=trade_hint를 trade로. 기존=정보필드(brand/name/kind/spec/type/unit)만 갱신, **price/trade/catalog_item_id/waste_pct/active 보존**(trade=''면 trade_hint 채움). 반환 `{inserted,updated,total}`.
+- `POST /api/materials/resolve` `{codes:[..]}` → `{[code]: {via:'material'|'rule'|'prefix'|null, trade, price, waste_pct, material:{id,brand,name,unit,price,catalog_item_id}|null, catalog:{id,name,unit,material_price,labor_price,sub_price}|null}}`. 우선순위 **자재(active) > 규칙(exact) > 규칙(prefix, 최장)**. price = material.price ?? (연결 카탈로그의 material_price). 호출 시 팀 기본 프리픽스 규칙 시드(ON CONFLICT DO NOTHING): `PT:`→도장공사, `WD-`→바닥공사.
+- `POST /api/materials/remember` `{items:[{code,trade,catalog_item_id?}]}` — 자재 행 존재 시 그 행 갱신, 없으면 exact 규칙 upsert.
+- `GET /api/materials/rules` · `DELETE /api/materials/rules/:id`.
+
+## 27-6 interior-cost UI
+- **SketchupImportModal**: v2 뱃지, 파싱 후 코드 일괄 resolve → 공종 프리필(resolve > 키워드 추정), 행에 🧱코드 뱃지+자재명/단가 유무 표시, 하단 [수정한 코드 매핑 기억] 체크(기본 on — 임포트 성공 후 resolve와 다르게 수정된 코드만 remember POST). 임포트 items에 material_code 포함.
+- **addTakeoffRows**(물량→견적행): material_code 있는 행 일괄 resolve → material_price(=resolve price)/labor_price/sub_price(연결 카탈로그)/catalog_id 프리필, 토스트에 "단가 자동 적용 N건".
+- **관리탭 "🧱 자재 코드" 섹션**: [⟳ 동기화] 모달(URL 기본 `http://localhost:3011/api/mat-codes` fetch + JSON 파일 업로드 폴백) / 자재 테이블(코드·브랜드·이름·단위·**단가 인라인 편집**·공종 select·카탈로그 [연결](CatalogPickerModal 재사용)·활성·삭제) / 규칙 목록(패턴·prefix·공종·삭제).
+
+## 검증
+- 백엔드 e2e(임시팀·잔존 0, v24~v26 관례): sync 신규/재sync 보존(단가·공종 유지, 이름 갱신)/resolve 우선순위(자재>exact>prefix 최장)+프리픽스 시드/remember(자재행 갱신 vs 규칙 생성)/takeoff material_code 저장+replace_sketchup 회귀/PUT 보존/rules 삭제/타팀 격리/팀삭제 CASCADE(신규 2테이블)/v23 v1 CSV 임포트 회귀.
+- material-research: mat_code 마이그레이션 멱등(재기동 코드 불변)/SKM·로더 이름 태그/mat-codes CORS/리네임 pre-pass.
+- 플러그인: SketchUp 라이브(MCP) — 스케일 그룹 내 코드 면적 정확·상속 머티리얼·뒷면 경고·코드 컴포넌트 수량·v2 CSV 9열 → 실파일 앱 임포트 Playwright 관통.
+
+> ✅ **구현·검증 완료 (2026-07-12)**.
+> - **백엔드 e2e 56/56** (PORT 3210, 임시팀 2·잔존 0): sync 신규/재sync 보존(단가·공종·카탈로그·waste·active 유지, 이름 갱신, trade'' hint 채움)/resolve 우선순위(자재>exact>prefix 최장, 비활성 제외, price 카탈로그 폴백)+PT:/WD- 시드 멱등/remember 분기(자재행 갱신 vs exact 규칙 upsert, 카탈로그 보존)/takeoff material_code 저장·replace_sketchup 수기보존·PUT COALESCE/rules 삭제→prefix 폴백/타팀 격리 9종/팀삭제 CASCADE(신규 2테이블 0건)/v1 8열 회귀.
+> - **material-research**: 코드 발급 141→(벽지 수집 진행과 함께 증가), 재기동 멱등(WD-0001 불변), SKM document.xml name=`[WD-0001] …`, 루비 로더 리네임 pre-pass 4,621쌍+코드 add, /api/mat-codes CORS(전역 미들웨어). 신규 등록(POST) 시 즉시 발급 — 병렬 벽지 수집 세션의 신규 항목이 WP-#### 자동 수령 확인.
+> - **플러그인 (SketchUp 2025 라이브, DevBridge MCP)**: 스케일 2× 그룹 면적 정확(2+4=6m²)·코드 컴포넌트 서브트리 미하강·상속 머티리얼 1m²·뒷면 전용 경고 1·레거시 aa_ 회귀·v2 9열 CSV 실파일 생성. start_operation→abort로 모델 무흔적.
+> - **통합 (Playwright 관통)**: 관리탭 [⟳ 동기화] URL 실호출(3011, 277자재)→WD-0001 단가 45,000 인라인 저장→실플러그인 CSV 임포트(v2 뱃지·코드 자재 3종·WD-0001=자재 매칭·PT:DE:DEW340=프리픽스 규칙 도장공사)→물량 6건→견적 행 추가 시 재료비 45,000 자동 주입(행 270,000·합계 297,000 VAT포함). 임시팀 CASCADE 정리 잔존 0.
+> - **수정 1건**: mat-codes 응답이 ok() 래퍼(`{success,data:{items}}`)라 임포터 payloadItems가 래핑/비래핑 모두 수용하도록 보강(스펙 27-2에 주석).
+> - 플러그인 스냅샷 `interior-cost/sketchup-plugin/ando_estimator25.rb` (캐노니컬=설치본, README 참조).

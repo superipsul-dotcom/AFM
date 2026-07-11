@@ -1069,6 +1069,57 @@ async function initDB() {
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_notifications_user ON interior_notifications (user_id, read_at);');
 
+  // ====================================================================
+  // (v27) 자재 코드 연동 — material-research 자재 레지스트리 + 코드 매핑 규칙 + takeoff 코드 컬럼
+  //   코드([WD-0001]/[PT:BM:2062-30] 등)는 "포인터": 단가/로스율/공종/카탈로그 연결은 이 앱(팀)이 소유.
+  //   전부 CREATE TABLE / ADD COLUMN IF NOT EXISTS → v1~v26 데이터 100% 보존, 멱등.
+  // ====================================================================
+
+  // 자재 레지스트리(팀 소유) — material-research /api/mat-codes 동기화(sync) 대상.
+  //   price NULL = 단가 미정(빈값). sync 재실행 시 정보필드만 갱신되고 price/trade/카탈로그 연결은 보존된다.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_materials (
+      id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id         BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      code            TEXT NOT NULL,
+      type            TEXT NOT NULL DEFAULT 'other',
+      brand           TEXT NOT NULL DEFAULT '',
+      name            TEXT NOT NULL,
+      kind            TEXT NOT NULL DEFAULT '',
+      spec            TEXT NOT NULL DEFAULT '',
+      unit            TEXT NOT NULL DEFAULT 'm2',
+      price           BIGINT,
+      waste_pct       NUMERIC NOT NULL DEFAULT 0,
+      trade           TEXT NOT NULL DEFAULT '',
+      catalog_item_id BIGINT REFERENCES interior_catalog(id) ON DELETE SET NULL,
+      source          TEXT NOT NULL DEFAULT 'material-research',
+      active          BOOLEAN NOT NULL DEFAULT true,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (team_id, code)
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_materials_team_code ON interior_materials (team_id, code);');
+
+  // 코드 매핑 규칙(자재 행이 없을 때의 폴백) — v24 가맹점 학습규칙 패턴.
+  //   exact(is_prefix=false, pattern=코드 전체) / prefix(is_prefix=true, 전방일치·최장 우선).
+  //   resolve 호출 시 팀 기본 프리픽스 규칙('PT:'→도장공사, 'WD-'→바닥공사)이 시드된다.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_mat_rules (
+      id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id         BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      pattern         TEXT NOT NULL,
+      is_prefix       BOOLEAN NOT NULL DEFAULT false,
+      trade           TEXT NOT NULL DEFAULT '',
+      catalog_item_id BIGINT REFERENCES interior_catalog(id) ON DELETE SET NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (team_id, pattern)
+    )
+  `);
+
+  // takeoff 에 자재 코드(빈값=비코드 행) — DLP-TAKEOFF v2 CSV 의 material_code 컬럼 저장.
+  await pool.query(`ALTER TABLE interior_takeoff ADD COLUMN IF NOT EXISTS material_code TEXT NOT NULL DEFAULT ''`);
+
   // (v25) 매뉴얼 시드 — 전체 0건일 때만 노션 43건을 가장 오래된 팀에 적재
   await seedManualsIfEmpty();
 
@@ -6103,8 +6154,8 @@ app.post('/api/receipts/analyze', async (req, res) => {
 //   v1~v7 동작/엔드포인트/스키마 100% 보존. 아래 라우트는 catch-all('*') 앞.
 // ========================================
 
-// takeoff SELECT 컬럼 (qty 는 rowToTakeoff 에서 Number 직렬화)
-const TAKEOFF_COLS = 'id, site_id, trade, name, spec, unit, qty, source, source_guid, memo, created_at';
+// takeoff SELECT 컬럼 (qty 는 rowToTakeoff 에서 Number 직렬화). (v27) +material_code
+const TAKEOFF_COLS = 'id, site_id, trade, name, spec, unit, qty, source, source_guid, memo, material_code, created_at';
 
 function rowToTakeoff(row) {
   return {
@@ -6118,6 +6169,7 @@ function rowToTakeoff(row) {
     source: row.source || 'manual',
     source_guid: row.source_guid || '',
     memo: row.memo || '',
+    material_code: row.material_code || '', // (v27) 자재 코드 (빈값=비코드 행)
     created_at: new Date(row.created_at).toISOString(),
   };
 }
@@ -6152,6 +6204,9 @@ function validateTakeoff(body) {
       source,
       source_guid: typeof b.source_guid === 'string' ? b.source_guid.trim() : '',
       memo: typeof b.memo === 'string' ? b.memo.trim() : '',
+      // (v27) 자재 코드 — 미전달이면 INSERT 시 '', PUT 은 provided 플래그로 기존값 보존(COALESCE)
+      material_code: typeof b.material_code === 'string' ? b.material_code.trim() : '',
+      material_code_provided: b.material_code !== undefined,
     },
   };
 }
@@ -6160,13 +6215,13 @@ function validateTakeoff(body) {
 //   (v23) db 인자: 트랜잭션 client 를 넘기면 그 안에서 실행(기본 pool — 기존 호출 무영향).
 async function insertTakeoffRows(siteId, valsArr, db = pool) {
   if (!valsArr || valsArr.length === 0) return [];
-  const cols = ['site_id', 'trade', 'name', 'spec', 'unit', 'qty', 'source', 'source_guid', 'memo'];
+  const cols = ['site_id', 'trade', 'name', 'spec', 'unit', 'qty', 'source', 'source_guid', 'memo', 'material_code']; // (v27) +material_code
   const placeholders = [];
   const params = [];
   valsArr.forEach((v, i) => {
     const base = i * cols.length;
     placeholders.push('(' + cols.map((_, j) => '$' + (base + j + 1)).join(',') + ')');
-    params.push(siteId, v.trade, v.name, v.spec, v.unit, v.qty, v.source, v.source_guid, v.memo);
+    params.push(siteId, v.trade, v.name, v.spec, v.unit, v.qty, v.source, v.source_guid, v.memo, v.material_code || '');
   });
   const { rows } = await db.query(
     `INSERT INTO interior_takeoff (${cols.join(', ')}) VALUES ${placeholders.join(', ')} RETURNING ${TAKEOFF_COLS}`,
@@ -6250,9 +6305,11 @@ app.put('/api/takeoff/:id', async (req, res) => {
     const v = check.values;
     const { rows } = await pool.query(
       `UPDATE interior_takeoff
-       SET trade=$1, name=$2, spec=$3, unit=$4, qty=$5, source=$6, source_guid=$7, memo=$8
-       WHERE id=$9 RETURNING ${TAKEOFF_COLS}`,
-      [v.trade, v.name, v.spec, v.unit, v.qty, v.source, v.source_guid, v.memo, id]
+       SET trade=$1, name=$2, spec=$3, unit=$4, qty=$5, source=$6, source_guid=$7, memo=$8,
+           material_code=COALESCE($9, material_code)
+       WHERE id=$10 RETURNING ${TAKEOFF_COLS}`,
+      [v.trade, v.name, v.spec, v.unit, v.qty, v.source, v.source_guid, v.memo,
+       v.material_code_provided ? v.material_code : null, id] // (v27) 미전달 시 기존 코드 보존
     );
     if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 물량 항목을 찾을 수 없습니다.' });
     res.json(rowToTakeoff(rows[0]));
@@ -7620,6 +7677,382 @@ app.post('/api/notifications/read-all', async (req, res) => {
   } catch (err) {
     console.error('POST /api/notifications/read-all 오류:', err.message);
     res.status(500).json({ success: false, message: '알림을 읽음 처리하지 못했습니다.' });
+  }
+});
+
+// ========================================
+// (v27) 자재 코드 연동 REST — material-research 동기화 · 코드 resolve · 매핑 기억(remember) · 규칙
+//   전부 인증 게이트 내 + 팀 스코핑(team_id 직접 컬럼, vendors 패턴).
+//   resolve 우선순위: 자재(active) > 규칙(exact) > 규칙(prefix, 최장). price = 자재.price ?? 연결 카탈로그 material_price.
+// ========================================
+
+// 자재 row → 클라이언트 모델 (BIGINT → Number, price NULL = 단가 미정 유지, catalog_name 은 JOIN 된 경우만)
+function rowToMaterial(row) {
+  return {
+    id: row.id,
+    code: row.code,
+    type: row.type || 'other',
+    brand: row.brand || '',
+    name: row.name,
+    kind: row.kind || '',
+    spec: row.spec || '',
+    unit: row.unit || 'm2',
+    price: row.price == null ? null : Number(row.price),
+    waste_pct: Number(row.waste_pct || 0),
+    trade: row.trade || '',
+    catalog_item_id: row.catalog_item_id == null ? null : Number(row.catalog_item_id),
+    catalog_name: row.catalog_name == null ? null : row.catalog_name,
+    source: row.source || 'material-research',
+    active: row.active,
+    created_at: new Date(row.created_at).toISOString(),
+    updated_at: new Date(row.updated_at).toISOString(),
+  };
+}
+
+// 매핑 규칙 row → 클라이언트 모델
+function rowToMatRule(row) {
+  return {
+    id: row.id,
+    pattern: row.pattern,
+    is_prefix: !!row.is_prefix,
+    trade: row.trade || '',
+    catalog_item_id: row.catalog_item_id == null ? null : Number(row.catalog_item_id),
+    catalog_name: row.catalog_name == null ? null : row.catalog_name,
+    created_at: new Date(row.created_at).toISOString(),
+  };
+}
+
+// 팀 기본 프리픽스 규칙 시드(멱등, resolve 호출 시 보장) — 컬러 파생코드 PT:* → 도장공사, 우드 WD-* → 바닥공사.
+async function seedMatPrefixRules(teamId, db = pool) {
+  await db.query(
+    `INSERT INTO interior_mat_rules (team_id, pattern, is_prefix, trade)
+     VALUES ($1,'PT:',true,'도장공사'), ($1,'WD-',true,'바닥공사')
+     ON CONFLICT (team_id, pattern) DO NOTHING`,
+    [teamId]
+  );
+}
+
+// catalog_item_id 입력 정규화: 미전달 → {provided:false}, null/'' → 해제(null), id → 팀 소유 검증(타팀/미존재 → 무시=미전달 취급).
+async function normCatalogRef(raw, teamId, db = pool) {
+  if (raw === undefined) return { provided: false, id: null };
+  if (raw === null || raw === '') return { provided: true, id: null }; // 명시적 해제
+  const cid = parseId(raw);
+  if (!cid) return { provided: false, id: null };
+  const q = await db.query('SELECT 1 FROM interior_catalog WHERE id=$1 AND team_id=$2', [cid, teamId]);
+  return q.rows.length > 0 ? { provided: true, id: cid } : { provided: false, id: null };
+}
+
+// GET /api/materials — 팀 자재 목록 (code asc, 연결 카탈로그명 JOIN)
+app.get('/api/materials', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT m.*, c.name AS catalog_name
+         FROM interior_materials m
+         LEFT JOIN interior_catalog c ON c.id = m.catalog_item_id
+        WHERE m.team_id=$1
+        ORDER BY m.code ASC, m.id ASC`,
+      [req.teamId]
+    );
+    res.json(rows.map(rowToMaterial));
+  } catch (err) {
+    console.error('GET /api/materials 오류:', err.message);
+    res.status(500).json({ success: false, message: '자재 목록을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/materials/sync {items:[{code,type,brand,name,kind,spec,unit,trade_hint,source_id}]} — (team_id, code) upsert.
+//   신규 = trade_hint 를 trade 로. 기존 = 정보필드(brand/name/kind/spec/type/unit)만 갱신,
+//   price/trade/catalog_item_id/waste_pct/active 는 보존(단, trade='' 면 trade_hint 로 채움). code 없는 항목 skip.
+app.post('/api/materials/sync', async (req, res) => {
+  const items = Array.isArray(req.body && req.body.items) ? req.body.items : null;
+  if (!items) return res.status(400).json({ success: false, message: 'items 배열이 필요합니다.' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let inserted = 0;
+    let updated = 0;
+    for (const raw of items) {
+      const it = raw || {};
+      const code = typeof it.code === 'string' ? it.code.trim() : '';
+      if (!code) continue; // 코드 없는 항목 skip
+      const name = (typeof it.name === 'string' && it.name.trim()) || code; // name 비면 코드로 대체(NOT NULL)
+      const type = (typeof it.type === 'string' && it.type.trim()) || 'other';
+      const brand = typeof it.brand === 'string' ? it.brand.trim() : '';
+      const kind = typeof it.kind === 'string' ? it.kind.trim() : '';
+      const spec = typeof it.spec === 'string' ? it.spec.trim() : '';
+      const unit = (typeof it.unit === 'string' && it.unit.trim()) || 'm2';
+      const tradeHint = typeof it.trade_hint === 'string' ? it.trade_hint.trim() : '';
+      // xmax=0 → 이번에 INSERT 된 행(신규/갱신 카운트 분리)
+      const r = await client.query(
+        `INSERT INTO interior_materials (team_id, code, type, brand, name, kind, spec, unit, trade)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         ON CONFLICT (team_id, code) DO UPDATE
+           SET type=EXCLUDED.type, brand=EXCLUDED.brand, name=EXCLUDED.name, kind=EXCLUDED.kind,
+               spec=EXCLUDED.spec, unit=EXCLUDED.unit,
+               trade=CASE WHEN interior_materials.trade='' THEN EXCLUDED.trade ELSE interior_materials.trade END,
+               updated_at=now()
+         RETURNING (xmax = 0) AS is_insert`,
+        [req.teamId, code, type, brand, name, kind, spec, unit, tradeHint]
+      );
+      if (r.rows[0].is_insert) inserted++;
+      else updated++;
+    }
+    await client.query('COMMIT');
+    res.json({ inserted, updated, total: inserted + updated });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('POST /api/materials/sync 오류:', err.message);
+    res.status(500).json({ success: false, message: '자재 코드 동기화에 실패했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// POST /api/materials/resolve {codes:[..]} → {[code]: {via, trade, price, waste_pct, material|null, catalog|null}}
+//   우선순위: 자재(active) > 규칙(exact) > 규칙(prefix, 최장). 호출 시 팀 기본 프리픽스 규칙 시드(멱등).
+app.post('/api/materials/resolve', async (req, res) => {
+  try {
+    const codes = Array.isArray(req.body && req.body.codes)
+      ? Array.from(new Set(req.body.codes.map((c) => String(c == null ? '' : c).trim()).filter(Boolean)))
+      : [];
+    await seedMatPrefixRules(req.teamId);
+    const result = {};
+    if (codes.length === 0) return res.json(result);
+
+    // ① 자재(active, 연결 카탈로그 JOIN) 일괄 조회
+    const matQ = await pool.query(
+      `SELECT m.*, c.id AS c_id, c.name AS c_name, c.unit AS c_unit,
+              c.material_price AS c_material_price, c.labor_price AS c_labor_price, c.sub_price AS c_sub_price
+         FROM interior_materials m
+         LEFT JOIN interior_catalog c ON c.id = m.catalog_item_id
+        WHERE m.team_id=$1 AND m.active=true AND m.code = ANY($2::text[])`,
+      [req.teamId, codes]
+    );
+    const matBy = new Map(matQ.rows.map((r) => [r.code, r]));
+
+    // ② 팀 규칙 전체 — exact 는 코드 일치, prefix 는 전방일치(패턴 최장 우선)
+    const ruleQ = await pool.query(
+      `SELECT r.*, c.id AS c_id, c.name AS c_name, c.unit AS c_unit,
+              c.material_price AS c_material_price, c.labor_price AS c_labor_price, c.sub_price AS c_sub_price
+         FROM interior_mat_rules r
+         LEFT JOIN interior_catalog c ON c.id = r.catalog_item_id
+        WHERE r.team_id=$1`,
+      [req.teamId]
+    );
+    const exactBy = new Map();
+    const prefixRules = [];
+    for (const r of ruleQ.rows) {
+      if (r.is_prefix) prefixRules.push(r);
+      else exactBy.set(r.pattern, r);
+    }
+    prefixRules.sort((a, b) => b.pattern.length - a.pattern.length); // 최장 프리픽스 우선
+
+    const catOf = (r) => (r.c_id == null ? null : {
+      id: Number(r.c_id),
+      name: r.c_name,
+      unit: r.c_unit || '',
+      material_price: Number(r.c_material_price),
+      labor_price: Number(r.c_labor_price),
+      sub_price: Number(r.c_sub_price),
+    });
+
+    for (const code of codes) {
+      const m = matBy.get(code);
+      if (m) {
+        const catalog = catOf(m);
+        result[code] = {
+          via: 'material',
+          trade: m.trade || '',
+          price: m.price != null ? Number(m.price) : (catalog ? catalog.material_price : null),
+          waste_pct: Number(m.waste_pct || 0),
+          material: {
+            id: Number(m.id), brand: m.brand || '', name: m.name, unit: m.unit || 'm2',
+            price: m.price == null ? null : Number(m.price),
+            catalog_item_id: m.catalog_item_id == null ? null : Number(m.catalog_item_id),
+          },
+          catalog,
+        };
+        continue;
+      }
+      const ex = exactBy.get(code);
+      const rule = ex || prefixRules.find((r) => code.startsWith(r.pattern)) || null;
+      if (rule) {
+        const catalog = catOf(rule);
+        result[code] = {
+          via: ex ? 'rule' : 'prefix',
+          trade: rule.trade || '',
+          price: catalog ? catalog.material_price : null,
+          waste_pct: 0,
+          material: null,
+          catalog,
+        };
+      } else {
+        result[code] = { via: null, trade: '', price: null, waste_pct: 0, material: null, catalog: null };
+      }
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/materials/resolve 오류:', err.message);
+    res.status(500).json({ success: false, message: '자재 코드를 해석하지 못했습니다.' });
+  }
+});
+
+// POST /api/materials/remember {items:[{code,trade,catalog_item_id?}]} — 임포트에서 수정한 코드 매핑 학습.
+//   자재 행이 있으면(비활성 포함) 그 행의 trade/catalog 를 갱신, 없으면 exact 규칙 upsert(v24 가맹점 규칙 패턴).
+//   미전달 catalog_item_id 는 기존값 보존, trade='' 는 보존(빈 값으로 덮지 않음).
+app.post('/api/materials/remember', async (req, res) => {
+  const items = Array.isArray(req.body && req.body.items) ? req.body.items : null;
+  if (!items) return res.status(400).json({ success: false, message: 'items 배열이 필요합니다.' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    let materials = 0;
+    let rules = 0;
+    for (const raw of items) {
+      const it = raw || {};
+      const code = typeof it.code === 'string' ? it.code.trim() : '';
+      if (!code) continue;
+      const trade = typeof it.trade === 'string' ? it.trade.trim() : '';
+      const cat = await normCatalogRef(it.catalog_item_id, req.teamId, client);
+      // ① 자재 행 존재 → 행 갱신
+      const upd = await client.query(
+        `UPDATE interior_materials
+           SET trade = CASE WHEN $1 <> '' THEN $1 ELSE trade END,
+               catalog_item_id = CASE WHEN $2::boolean THEN $3::bigint ELSE catalog_item_id END,
+               updated_at = now()
+         WHERE team_id=$4 AND code=$5
+         RETURNING id`,
+        [trade, cat.provided, cat.id, req.teamId, code]
+      );
+      if (upd.rows.length > 0) {
+        materials++;
+        continue;
+      }
+      // ② 없으면 exact 규칙 upsert
+      await client.query(
+        `INSERT INTO interior_mat_rules (team_id, pattern, is_prefix, trade, catalog_item_id)
+         VALUES ($1,$2,false,$3,$4)
+         ON CONFLICT (team_id, pattern) DO UPDATE
+           SET is_prefix=false,
+               trade=CASE WHEN EXCLUDED.trade <> '' THEN EXCLUDED.trade ELSE interior_mat_rules.trade END,
+               catalog_item_id=CASE WHEN $5::boolean THEN EXCLUDED.catalog_item_id ELSE interior_mat_rules.catalog_item_id END`,
+        [req.teamId, code, trade, cat.provided ? cat.id : null, cat.provided]
+      );
+      rules++;
+    }
+    await client.query('COMMIT');
+    res.json({ materials, rules, total: materials + rules });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('POST /api/materials/remember 오류:', err.message);
+    res.status(500).json({ success: false, message: '코드 매핑을 저장하지 못했습니다.' });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/materials/rules — 팀 매핑 규칙 목록 (prefix 먼저, 패턴 asc)
+app.get('/api/materials/rules', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT r.*, c.name AS catalog_name
+         FROM interior_mat_rules r
+         LEFT JOIN interior_catalog c ON c.id = r.catalog_item_id
+        WHERE r.team_id=$1
+        ORDER BY r.is_prefix DESC, r.pattern ASC, r.id ASC`,
+      [req.teamId]
+    );
+    res.json(rows.map(rowToMatRule));
+  } catch (err) {
+    console.error('GET /api/materials/rules 오류:', err.message);
+    res.status(500).json({ success: false, message: '매핑 규칙을 불러오지 못했습니다.' });
+  }
+});
+
+// DELETE /api/materials/rules/:id — 규칙 삭제 (팀 스코핑)
+app.delete('/api/materials/rules/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 규칙 id 형식입니다.' });
+    const { rowCount } = await pool.query('DELETE FROM interior_mat_rules WHERE id=$1 AND team_id=$2', [id, req.teamId]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 규칙을 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/materials/rules/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '규칙을 삭제하지 못했습니다.' });
+  }
+});
+
+// PUT /api/materials/:id — 부분 수정(COALESCE 보존): price/waste_pct/trade/catalog_item_id/active/brand/name/kind/spec/unit.
+//   price 는 null/'' 로 "단가 미정" 해제 가능, catalog_item_id 도 null/'' 로 연결 해제(타팀/무효 id 는 무시=보존).
+app.put('/api/materials/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 자재 id 형식입니다.' });
+    const b = req.body || {};
+    // 텍스트류: 미전달 → null(COALESCE 보존), 전달 → trim 값('' 허용)
+    const txt = (k) => (b[k] !== undefined ? (typeof b[k] === 'string' ? b[k].trim() : String(b[k])) : null);
+    const name = txt('name');
+    if (name !== null && !name) return res.status(400).json({ success: false, message: 'name(자재명) 은 비울 수 없습니다.' });
+    // price: 미전달 → 보존, null/'' → NULL(단가 미정), 숫자 → 0 이상 정수 반올림
+    const priceProvided = b.price !== undefined;
+    let price = null;
+    if (priceProvided && b.price !== null && b.price !== '') {
+      const n = Number(b.price);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ success: false, message: 'price(단가) 는 0 이상의 숫자여야 합니다.' });
+      price = Math.round(n);
+    }
+    // waste_pct: 미전달 → 보존, 0 이상 숫자
+    const wasteProvided = b.waste_pct !== undefined;
+    let waste = 0;
+    if (wasteProvided) {
+      const n = Number(b.waste_pct);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ success: false, message: 'waste_pct(로스율) 는 0 이상의 숫자여야 합니다.' });
+      waste = n;
+    }
+    const cat = await normCatalogRef(b.catalog_item_id, req.teamId);
+    const activeProvided = b.active !== undefined;
+    const active = parseBool(b.active, true);
+
+    const { rows } = await pool.query(
+      `UPDATE interior_materials SET
+         brand=COALESCE($1, brand), name=COALESCE($2, name), kind=COALESCE($3, kind),
+         spec=COALESCE($4, spec), unit=COALESCE($5, unit), trade=COALESCE($6, trade),
+         price=CASE WHEN $7::boolean THEN $8::bigint ELSE price END,
+         waste_pct=CASE WHEN $9::boolean THEN $10::numeric ELSE waste_pct END,
+         catalog_item_id=CASE WHEN $11::boolean THEN $12::bigint ELSE catalog_item_id END,
+         active=CASE WHEN $13::boolean THEN $14::boolean ELSE active END,
+         updated_at=now()
+       WHERE id=$15 AND team_id=$16
+       RETURNING id`,
+      [txt('brand'), name, txt('kind'), txt('spec'), txt('unit'), txt('trade'),
+       priceProvided, price, wasteProvided, waste, cat.provided, cat.id, activeProvided, active, id, req.teamId]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 자재를 찾을 수 없습니다.' });
+    const q = await pool.query(
+      `SELECT m.*, c.name AS catalog_name
+         FROM interior_materials m LEFT JOIN interior_catalog c ON c.id = m.catalog_item_id
+        WHERE m.id=$1`,
+      [id]
+    );
+    res.json(rowToMaterial(q.rows[0]));
+  } catch (err) {
+    console.error('PUT /api/materials/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '자재를 수정하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/materials/:id — 자재 삭제 (팀 스코핑; takeoff/견적 행은 코드 텍스트 보유라 영향 없음)
+app.delete('/api/materials/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 자재 id 형식입니다.' });
+    const { rowCount } = await pool.query('DELETE FROM interior_materials WHERE id=$1 AND team_id=$2', [id, req.teamId]);
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 자재를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/materials/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '자재를 삭제하지 못했습니다.' });
   }
 });
 
