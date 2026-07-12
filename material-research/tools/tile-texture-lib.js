@@ -96,6 +96,100 @@ function resample(img, tw, th) {
   return out;
 }
 
+/* ---------- 원판면 정리: 배경 여백 트림 + 다중 패널 사진에서 최대 패널 추출 ---------- */
+// 행/열 luma 프로파일(평균·표준편차)
+function colProfile(img) {
+  const mean = new Float64Array(img.w), std = new Float64Array(img.w);
+  for (let x = 0; x < img.w; x++) {
+    let s = 0, s2 = 0;
+    for (let y = 0; y < img.h; y++) {
+      const i = (y * img.w + x) * 4, l = 0.299 * img.data[i] + 0.587 * img.data[i + 1] + 0.114 * img.data[i + 2];
+      s += l; s2 += l * l;
+    }
+    mean[x] = s / img.h; std[x] = Math.sqrt(Math.max(0, s2 / img.h - mean[x] * mean[x]));
+  }
+  return { mean, std };
+}
+function rowProfile(img) {
+  const mean = new Float64Array(img.h), std = new Float64Array(img.h);
+  for (let y = 0; y < img.h; y++) {
+    let s = 0, s2 = 0;
+    for (let x = 0; x < img.w; x++) {
+      const i = (y * img.w + x) * 4, l = 0.299 * img.data[i] + 0.587 * img.data[i + 1] + 0.114 * img.data[i + 2];
+      s += l; s2 += l * l;
+    }
+    mean[y] = s / img.w; std[y] = Math.sqrt(Math.max(0, s2 / img.w - mean[y] * mean[y]));
+  }
+  return { mean, std };
+}
+function cropRect(img, x0, y0, w, h) {
+  const out = mkImg(w, h);
+  for (let y = 0; y < h; y++) {
+    out.data.set(img.data.subarray(((y0 + y) * img.w + x0) * 4, ((y0 + y) * img.w + x0 + w) * 4), y * w * 4);
+  }
+  return out;
+}
+// 중앙부(40%) 평균의 중앙값 — 배경/갭 판정 기준
+function centralMedian(mean, len) {
+  const a = Math.floor(len * 0.3), b = Math.ceil(len * 0.7);
+  const arr = [...mean.slice(a, b)].sort((x, y) => x - y);
+  return arr[(arr.length / 2) | 0];
+}
+// ① 가장자리 배경 밴드(흰 여백·스튜디오 배경·비네트) 트림 — 각 변 최대 30%
+//    배경 = 민무늬(std 낮음) AND 중앙부와 톤이 다름 (균일한 무광 타일 오트림 방지)
+function autoTrim(img) {
+  const BG_STD = 6, BG_DIFF = 18;
+  const cp = colProfile(img), rp = rowProfile(img);
+  const cmed = centralMedian(cp.mean, img.w), rmed = centralMedian(rp.mean, img.h);
+  const isBGc = (x) => cp.std[x] < BG_STD && Math.abs(cp.mean[x] - cmed) > BG_DIFF;
+  const isBGr = (y) => rp.std[y] < BG_STD && Math.abs(rp.mean[y] - rmed) > BG_DIFF;
+  let L = 0, R = img.w - 1, T = 0, B = img.h - 1;
+  const maxX = Math.floor(img.w * 0.3), maxY = Math.floor(img.h * 0.3);
+  while (L < maxX && isBGc(L)) L++;
+  while (R > img.w - 1 - maxX && isBGc(R)) R--;
+  while (T < maxY && isBGr(T)) T++;
+  while (B > img.h - 1 - maxY && isBGr(B)) B--;
+  // 트림 후 살짝 인셋(배경 경계 픽셀 제거)
+  if (L > 0) L += 2; if (R < img.w - 1) R -= 2; if (T > 0) T += 2; if (B < img.h - 1) B -= 2;
+  const w = R - L + 1, h = B - T + 1;
+  if (w < img.w * 0.4 || h < img.h * 0.4) return img; // 과도 트림 방지
+  if (L === 0 && T === 0 && w === img.w && h === img.h) return img;
+  return cropRect(img, L, T, w, h);
+}
+// ② 다중 패널 제품컷: 내부의 세로/가로 배경 갭(민무늬 + 중앙부와 톤 다름)을 찾아 가장 넓은 패널만 사용
+function extractMainPanel(img) {
+  const GAP_STD = 6, GAP_DIFF = 18, MINRUN = 2;
+  const pick = (prof, len) => {
+    const med = centralMedian(prof.mean, len);
+    // 갭 런 찾기 (내부 8%~92% 범위)
+    const gaps = [];
+    let run = 0;
+    for (let i = Math.floor(len * 0.08); i < Math.ceil(len * 0.92); i++) {
+      if (prof.std[i] < GAP_STD && Math.abs(prof.mean[i] - med) > GAP_DIFF) run++;
+      else { if (run >= MINRUN) gaps.push([i - run, i - 1]); run = 0; }
+    }
+    if (run >= MINRUN) gaps.push([Math.ceil(len * 0.92) - run, Math.ceil(len * 0.92) - 1]);
+    if (!gaps.length) return null;
+    // 갭 사이 세그먼트 중 최대
+    const cuts = [0, ...gaps.flatMap(g => [g[0], g[1] + 1]), len];
+    let best = null;
+    for (let c = 0; c + 1 < cuts.length; c += 2) {
+      const a = cuts[c], b = cuts[c + 1];
+      if (!best || b - a > best[1] - best[0]) best = [a, b];
+    }
+    // 3분할 패널 사진(각 ~32%)까지 허용, 모자이크 칩(수 %)은 배제
+    return best && best[1] - best[0] >= len * 0.22 ? best : null;
+  };
+  const cp = colProfile(img);
+  const vx = pick(cp, img.w);
+  let out = img;
+  if (vx) out = cropRect(out, Math.min(vx[0] + 2, img.w - 8), 0, Math.max(8, vx[1] - vx[0] - 4), out.h);
+  const rp2 = rowProfile(out);
+  const vy = pick(rp2, out.h);
+  if (vy) out = cropRect(out, 0, Math.min(vy[0] + 2, out.h - 8), out.w, Math.max(8, vy[1] - vy[0] - 4));
+  return out;
+}
+
 /* ---------- 시멀리스화 (X축): 1D 조명 평탄화 + 50% 롤 + 원본 중앙 힐 ---------- */
 function makeSeamlessX(img) {
   const { w, h } = img;
@@ -141,16 +235,20 @@ function makeSeamlessX(img) {
 const makeSeamlessY = (img) => rotate90(rotate90(rotate90(makeSeamlessX(rotate90(img)))));
 
 /* ---------- 격자 구성(순수 수학 — 임포트 단계 실측 계산에도 사용) ---------- */
+// 변주(셀 다양성)를 위해 1400mm 이하는 최소 2셀 (600×1200 → 2×2 = 1200×2400mm)
+function cellsFor(dim) {
+  return dim > 1400 ? 1 : dim >= 1000 ? 2 : Math.min(8, Math.max(2, Math.round(TEX_TARGET_MM / dim)));
+}
 function gridFor(tileW, tileH) {
-  const cols = Math.min(8, tileW >= 1000 ? 1 : Math.max(2, Math.round(TEX_TARGET_MM / tileW)));
-  const rows = Math.min(8, tileH >= 1000 ? 1 : Math.max(2, Math.round(TEX_TARGET_MM / tileH)));
+  const cols = cellsFor(tileW), rows = cellsFor(tileH);
   return { cols, rows, mmW: Math.min(TEX_MAX_MM, cols * tileW), mmH: Math.min(TEX_MAX_MM, rows * tileH) };
 }
 
 /* ---------- 원판면 → 규격 텍스처 ---------- */
 function buildTileTexture(face, tileW, tileH, rng) {
   const ar = (w, h) => w / h;
-  let f = face;
+  // 원판면 정리: 배경 여백 트림 → 다중 패널 사진이면 최대 패널만
+  let f = extractMainPanel(autoTrim(face));
   if (Math.abs(Math.log(ar(f.w, f.h) / ar(tileW, tileH))) > Math.abs(Math.log(ar(f.h, f.w) / ar(tileW, tileH)))) {
     f = rotate90(f);
   }
@@ -167,6 +265,12 @@ function buildTileTexture(face, tileW, tileH, rng) {
   let wrapX = false, wrapY = false;
   if (faceAR / cellAR < 0.97) { src = makeSeamlessX(src); wrapX = true; }
   else if (cellAR / faceAR < 0.97) { src = makeSeamlessY(src); wrapY = true; }
+  else if (cols > 1 || rows > 1) {
+    // 비율이 맞아도 다중 셀이면 긴 축을 시멀리스화 → 셀마다 랜덤 위상(랩 크롭)으로 반복감 제거
+    if (cellW >= cellH && cols > 1) { src = makeSeamlessX(src); wrapX = true; }
+    else if (rows > 1) { src = makeSeamlessY(src); wrapY = true; }
+    else { src = makeSeamlessX(src); wrapX = true; }
+  }
   let sw, sh;
   if (wrapX) { sh = cellH; sw = Math.max(8, Math.round(src.w * (cellH / src.h))); }
   else if (wrapY) { sw = cellW; sh = Math.max(8, Math.round(src.h * (cellW / src.w))); }
