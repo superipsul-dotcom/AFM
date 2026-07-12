@@ -19,3 +19,6 @@ data/product-images/
 
 # 플랭크 합성 타일(82MB) — 시드 고정 파생물: `node tools/gen-plank-tiles.js`로 동일 재생성 가능
 data/textures/wood/*.plank.jpg
+
+# 타일 원판면(1GB, 수집기로 재획득)·생성 캐시 — 커밋 제외 (카탈로그는 tile-source.json에 커밋)
+data/textures/tile/

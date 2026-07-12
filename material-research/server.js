@@ -1647,6 +1647,21 @@ function loadWallpaper() {
 }
 function saveWallpaper() { atomicWriteJSON(WALLPAPER_FILE, { wallpapers: wpdb.wallpapers }); }
 
+/* 실제 자재 타일 라이브러리 — 윤현상재 수입타일 원판면 → 규격별 텍스처는 요청 시 생성·캐시 */
+const TILE_DIR = path.join(TEXTURES_DIR, 'tile');
+const TILE_SRC_DIR = path.join(TILE_DIR, 'src');
+const TILE_FILE = path.join(DATA_DIR, 'tile-library.json');
+const tldb = { tiles: [] };
+function loadTile() {
+  try {
+    if (fs.existsSync(TILE_FILE)) {
+      const p = JSON.parse(fs.readFileSync(TILE_FILE, 'utf8'));
+      if (Array.isArray(p.tiles)) tldb.tiles = p.tiles;
+    }
+  } catch (e) { console.error('[tile] load 실패', e.message); }
+}
+function saveTile() { atomicWriteJSON(TILE_FILE, { tiles: tldb.tiles }); }
+
 /* =====================================================================
  *  (v27 연동) 자재 코드 — 스케치업↔견적 조인 키 (interior-cost CONTRACT.md v27)
  *  - 발급형(영속): WD-####(우드) · TX-####(스튜디오 텍스처) · WP-####(벽지).
@@ -1682,6 +1697,7 @@ function ensureMatCodes() {
     if (assignMatCodes(tdb.textures, 'TX') > 0) saveTextures();
     if (assignMatCodes(wdb.woods, 'WD') > 0) saveWood();
     if (assignMatCodes(wpdb.wallpapers, 'WP') > 0) saveWallpaper();
+    if (assignMatCodes(tldb.tiles, 'TL') > 0) saveTile();
   } catch (e) { console.error('[mat-code] 발급 실패', e.message); }
 }
 
@@ -2006,6 +2022,54 @@ app.get('/api/wallpaper/:id/skm', (req, res) => {
 
 // Ruby 로더: 붙여넣기 한 번으로 컬러(무텍스처 솔리드) + 저장 텍스처(실측 mm 스케일)를 SketchUp 머티리얼로 등록
 // (v27) 이름에 [자재코드] 태그 부여 + 구(舊)이름 머티리얼 rename pre-pass — 이미 칠해둔 모델도 코드 승계
+/* ---------- 실제 자재 타일 API — 윤현상재 수입타일 (텍스처는 요청 시 생성·캐시) ---------- */
+const tileLib = require('./tools/tile-texture-lib');
+
+app.get('/api/tile', (_req, res) => ok(res, 200, tldb.tiles));
+
+// 텍스처 보장(없으면 생성) 후 항목 반환 — 생성 시 실측 메타(px/ppm/avg) 반영
+function ensureTileEntry(t) {
+  const r = tileLib.ensureTileTexture(t, TILE_SRC_DIR, TILE_DIR);
+  if (r.meta) { Object.assign(t, r.meta, { updated_at: new Date().toISOString() }); saveTile(); }
+  return path.join(TILE_DIR, t.file);
+}
+
+app.get('/api/tile/:id/texture', (req, res) => {
+  const t = tldb.tiles.find(x => x.id === req.params.id);
+  if (!t) return fail(res, 404, '항목을 찾을 수 없습니다.');
+  try {
+    const p = ensureTileEntry(t);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.sendFile(p);
+  } catch (e) {
+    console.error('[tile/texture]', t.id, e.message);
+    return fail(res, 500, '타일 텍스처 생성 실패: ' + e.message);
+  }
+});
+
+app.get('/api/tile/:id/skm', (req, res) => {
+  const t = tldb.tiles.find(x => x.id === req.params.id);
+  if (!t) return fail(res, 404, '항목을 찾을 수 없습니다.');
+  try {
+    const imagePath = ensureTileEntry(t);
+    const name = codedName(t.mat_code, `${t.brand} ${t.name} ${t.spec.w}x${t.spec.l}`);
+    return packSkmAndSend(res, { name, imagePath, thumbPath: null, w_mm: t.size_mm.w, h_mm: t.size_mm.h, avg: t.avg });
+  } catch (e) {
+    console.error('[tile/skm]', t.id, e.message);
+    return fail(res, 500, '타일 SKM 생성 실패: ' + e.message);
+  }
+});
+
+app.delete('/api/tile/:id', (req, res) => {
+  const i = tldb.tiles.findIndex(x => x.id === req.params.id);
+  if (i < 0) return fail(res, 404, '항목을 찾을 수 없습니다.');
+  const [t] = tldb.tiles.splice(i, 1);
+  // 생성 캐시만 정리 (원판면 src는 같은 컬러웨이의 다른 규격이 공유하므로 유지)
+  if (t.file) { try { fs.unlinkSync(path.join(TILE_DIR, t.file)); } catch (_) {} }
+  saveTile();
+  return ok(res, 200, { id: t.id, deleted: true }, '삭제되었습니다.');
+});
+
 app.get('/api/textures/ruby-loader', (req, res) => {
   try {
     // libs 파라미터 없으면 colors 있는 라이브러리 전부 포함 (예: ?libs=benjamin-moore,samhwa-ncs950 으로 선택 가능)
@@ -2038,6 +2102,8 @@ app.get('/api/textures/ruby-loader', (req, res) => {
       { on: includeTex, list: tdb.textures, title: (n) => `스튜디오 텍스처 (${n}) — 실측 mm 스케일`, file: (t) => path.join(TEXTURES_DIR, t.id + '.png'), base: (t) => t.name },
       { on: String(req.query.wood || '1') !== '0', list: wdb.woods, title: (n) => `실제 자재 (${n}) — 플랭크 합성 우선 · 실측 mm`, file: (t) => woodTexSource(t, wantPlank).imagePath, size: (t) => woodTexSource(t, wantPlank).size, base: (t) => `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}` },
       { on: String(req.query.wallpaper || '1') !== '0', list: wpdb.wallpapers, title: (n) => `실제 벽지 (${n}) — 제조사 텍스처(시멀리스) · 칩 스케일 mm`, file: (t) => (t.file ? path.join(WALLPAPER_DIR, t.file) : ''), base: (t) => `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}` },
+      // 타일은 1,992종 전량이 아니라 "생성 캐시가 있는 것"(=앱에서 실제로 쓴 것)만 포함 (?tile=0 제외)
+      { on: String(req.query.tile || '1') !== '0', list: tldb.tiles.filter(t => t.file && fs.existsSync(path.join(TILE_DIR, t.file))), title: (n) => `실제 타일 (${n}) — 사용한 타일만(미리보기/SKM 생성분) · 실측 mm`, file: (t) => path.join(TILE_DIR, t.file), base: (t) => `${t.brand} ${t.name} ${t.spec.w}x${t.spec.l}` },
     ];
     for (const g of texGroups) {
       if (!g.on || !g.list.length) continue;
@@ -2097,6 +2163,10 @@ app.get('/api/mat-codes', (_req, res) => {
       const spec = (t.spec && t.spec.roll_w) ? `롤폭 ${t.spec.roll_w}mm` : '';
       items.push({ code: t.mat_code, type: 'wallpaper', brand: t.brand || '', name: `${t.line ? t.line + ' ' : ''}${t.name}${t.code ? ' ' + t.code : ''}`, kind: t.kind || '', spec, unit: 'm2', trade_hint: '도배공사', source_id: t.id });
     }
+    for (const t of tldb.tiles) {
+      if (!t.mat_code) continue;
+      items.push({ code: t.mat_code, type: 'tile', brand: t.brand || '', name: `${t.name} ${t.spec.w}x${t.spec.l}`, kind: t.kind || '', spec: `${t.spec.w}×${t.spec.l}mm`, unit: 'm2', trade_hint: '타일공사', source_id: t.id });
+    }
     return ok(res, 200, { version: 1, exported_at: new Date().toISOString(), items });
   } catch (e) { console.error('[mat-codes]', e); return fail(res, 500, '자재 코드 내보내기 중 오류'); }
 });
@@ -2123,6 +2193,7 @@ loadFavGroups();
 loadTextures();
 loadWood();
 loadWallpaper();
+loadTile();
 ensureMatCodes(); // (v27) 자재 코드 발급 — 미부여분만, 기존 코드 불변
 ingestIncomingDir(); // 부팅 시 data/incoming/ 의 주간 업데이트(클라우드 트리거가 레포에 커밋한 파일) 자동 반영
 
