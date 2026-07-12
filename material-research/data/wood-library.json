@@ -51,72 +51,6 @@
       }
     },
     {
-      "id": "kujung-264",
-      "brand": "구정마루",
-      "line": "노블레스 디 앤티크",
-      "name": "오크 브러쉬 라이트",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14.4,
-        "w": 240,
-        "l": 2200
-      },
-      "size_mm": {
-        "w": 889,
-        "h": 480
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 208,
-        "g": 174,
-        "b": 127
-      },
-      "file": "kujung-264.jpg",
-      "thumb": "kujung-264.thumb.png",
-      "image_url": "/data/textures/wood/kujung-264.jpg",
-      "thumb_url": "/data/textures/wood/kujung-264.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=264",
-      "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T07:53:13.123Z",
-      "updated_at": "2026-07-10T13:02:54.328Z",
-      "mat_code": "WD-0002",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
-      "id": "kujung-263",
-      "brand": "구정마루",
-      "line": "노블레스 디 앤티크",
-      "name": "오크 브러쉬 내츄럴",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14.4,
-        "w": 240,
-        "l": 2200
-      },
-      "size_mm": {
-        "w": 889,
-        "h": 480
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 212,
-        "g": 164,
-        "b": 108
-      },
-      "file": "kujung-263.jpg",
-      "thumb": "kujung-263.thumb.png",
-      "image_url": "/data/textures/wood/kujung-263.jpg",
-      "thumb_url": "/data/textures/wood/kujung-263.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=263",
-      "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T07:53:13.185Z",
-      "updated_at": "2026-07-10T13:02:54.350Z",
-      "mat_code": "WD-0003",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
       "id": "kujung-174",
       "brand": "구정마루",
       "line": "블론테",
@@ -667,72 +601,6 @@
       }
     },
     {
-      "id": "kujung-295",
-      "brand": "구정마루",
-      "line": "노블레스 디 앤티크",
-      "name": "화이트 오크",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14,
-        "w": 240,
-        "l": 2200
-      },
-      "size_mm": {
-        "w": 891,
-        "h": 480
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 222,
-        "g": 193,
-        "b": 153
-      },
-      "file": "kujung-295.jpg",
-      "thumb": "kujung-295.thumb.png",
-      "image_url": "/data/textures/wood/kujung-295.jpg",
-      "thumb_url": "/data/textures/wood/kujung-295.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=295",
-      "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T08:14:34.139Z",
-      "updated_at": "2026-07-10T13:02:54.738Z",
-      "mat_code": "WD-0015",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
-      "id": "kujung-294",
-      "brand": "구정마루",
-      "line": "노블레스 디 앤티크",
-      "name": "샌디 오크",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14,
-        "w": 240,
-        "l": 2200
-      },
-      "size_mm": {
-        "w": 893,
-        "h": 480
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 162,
-        "g": 119,
-        "b": 77
-      },
-      "file": "kujung-294.jpg",
-      "thumb": "kujung-294.thumb.png",
-      "image_url": "/data/textures/wood/kujung-294.jpg",
-      "thumb_url": "/data/textures/wood/kujung-294.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=294",
-      "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T08:14:34.201Z",
-      "updated_at": "2026-07-10T13:02:54.758Z",
-      "mat_code": "WD-0016",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
       "id": "kujung-289",
       "brand": "구정마루",
       "line": "피안테 델 아르보",
@@ -783,72 +651,6 @@
       }
     },
     {
-      "id": "kujung-288",
-      "brand": "구정마루",
-      "line": "피안테 델 아르보",
-      "name": "베키오",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 15,
-        "w": 242,
-        "l": 2350
-      },
-      "size_mm": {
-        "w": 964,
-        "h": 484
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 141,
-        "g": 109,
-        "b": 74
-      },
-      "file": "kujung-288.jpg",
-      "thumb": "kujung-288.thumb.png",
-      "image_url": "/data/textures/wood/kujung-288.jpg",
-      "thumb_url": "/data/textures/wood/kujung-288.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=288",
-      "note": "접착식 시공법 · 피안테 델 아르보 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T08:14:34.396Z",
-      "updated_at": "2026-07-10T13:02:54.817Z",
-      "mat_code": "WD-0018",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
-      "id": "kujung-287",
-      "brand": "구정마루",
-      "line": "피안테 델 아르보",
-      "name": "볼로네티",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 15,
-        "w": 242,
-        "l": 2350
-      },
-      "size_mm": {
-        "w": 964,
-        "h": 484
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 195,
-        "g": 181,
-        "b": 150
-      },
-      "file": "kujung-287.jpg",
-      "thumb": "kujung-287.thumb.png",
-      "image_url": "/data/textures/wood/kujung-287.jpg",
-      "thumb_url": "/data/textures/wood/kujung-287.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=287",
-      "note": "접착식 시공법 · 피안테 델 아르보 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T08:14:34.510Z",
-      "updated_at": "2026-07-10T13:02:54.845Z",
-      "mat_code": "WD-0019",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
       "id": "kujung-286",
       "brand": "구정마루",
       "line": "피안테 델 아르보",
@@ -897,39 +699,6 @@
         "layout": "2x8",
         "generated_at": "2026-07-12T13:52:19.641Z"
       }
-    },
-    {
-      "id": "kujung-285",
-      "brand": "구정마루",
-      "line": "피안테 델 아르보",
-      "name": "포스티에라",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 15,
-        "w": 242,
-        "l": 2350
-      },
-      "size_mm": {
-        "w": 957,
-        "h": 484
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 201,
-        "g": 162,
-        "b": 117
-      },
-      "file": "kujung-285.jpg",
-      "thumb": "kujung-285.thumb.png",
-      "image_url": "/data/textures/wood/kujung-285.jpg",
-      "thumb_url": "/data/textures/wood/kujung-285.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=285",
-      "note": "접착식 시공법 · 피안테 델 아르보 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T08:14:34.758Z",
-      "updated_at": "2026-07-10T13:02:54.932Z",
-      "mat_code": "WD-0021",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-281",
@@ -1380,105 +1149,6 @@
         "layout": "2x8",
         "generated_at": "2026-07-12T13:52:20.846Z"
       }
-    },
-    {
-      "id": "kujung-267",
-      "brand": "구정마루",
-      "line": "노블레스 디 앤티크",
-      "name": "앤티크 오크 UV",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14.4,
-        "w": 240,
-        "l": 2200
-      },
-      "size_mm": {
-        "w": 899,
-        "h": 480
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 195,
-        "g": 162,
-        "b": 111
-      },
-      "file": "kujung-267.jpg",
-      "thumb": "kujung-267.thumb.png",
-      "image_url": "/data/textures/wood/kujung-267.jpg",
-      "thumb_url": "/data/textures/wood/kujung-267.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=267",
-      "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T08:14:35.209Z",
-      "updated_at": "2026-07-10T13:02:55.118Z",
-      "mat_code": "WD-0031",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
-      "id": "kujung-266",
-      "brand": "구정마루",
-      "line": "노블레스 디 앤티크",
-      "name": "소프트 애쉬",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14.3,
-        "w": 190,
-        "l": 1900
-      },
-      "size_mm": {
-        "w": 714,
-        "h": 380
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 213,
-        "g": 180,
-        "b": 144
-      },
-      "file": "kujung-266.jpg",
-      "thumb": "kujung-266.thumb.png",
-      "image_url": "/data/textures/wood/kujung-266.jpg",
-      "thumb_url": "/data/textures/wood/kujung-266.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=266",
-      "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T08:14:35.281Z",
-      "updated_at": "2026-07-10T13:02:55.146Z",
-      "mat_code": "WD-0032",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
-      "id": "kujung-265",
-      "brand": "구정마루",
-      "line": "노블레스 디 앤티크",
-      "name": "애쉬 브러쉬 내츄럴",
-      "code": "",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14.3,
-        "w": 190,
-        "l": 1900
-      },
-      "size_mm": {
-        "w": 714,
-        "h": 380
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 188,
-        "g": 148,
-        "b": 104
-      },
-      "file": "kujung-265.jpg",
-      "thumb": "kujung-265.thumb.png",
-      "image_url": "/data/textures/wood/kujung-265.jpg",
-      "thumb_url": "/data/textures/wood/kujung-265.thumb.png",
-      "source_url": "https://www.kujungmaru.com/product/detail?id=265",
-      "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
-      "created_at": "2026-07-10T08:14:35.357Z",
-      "updated_at": "2026-07-10T13:02:55.165Z",
-      "mat_code": "WD-0033",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-203",
@@ -4081,39 +3751,6 @@
       }
     },
     {
-      "id": "jibokdeuk-a1601",
-      "brand": "지복득마루",
-      "line": "BARAM 16",
-      "name": "NATURAL",
-      "code": "A1601",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14,
-        "w": 190,
-        "l": 1900
-      },
-      "size_mm": {
-        "w": 3800,
-        "h": 1330
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 171,
-        "g": 146,
-        "b": 118
-      },
-      "file": "jibokdeuk-a1601.jpg",
-      "thumb": "jibokdeuk-a1601.thumb.png",
-      "image_url": "/data/textures/wood/jibokdeuk-a1601.jpg",
-      "thumb_url": "/data/textures/wood/jibokdeuk-a1601.thumb.png",
-      "source_url": "https://www.jibokdeukmaru.com/baram-16",
-      "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
-      "created_at": "2026-07-10T08:23:12.601Z",
-      "updated_at": "2026-07-10T13:10:15.573Z",
-      "mat_code": "WD-0086",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
-    },
-    {
       "id": "jibokdeuk-a1605",
       "brand": "지복득마루",
       "line": "BARAM 16",
@@ -4262,39 +3899,6 @@
         "layout": "2x8",
         "generated_at": "2026-07-12T13:52:40.029Z"
       }
-    },
-    {
-      "id": "jibokdeuk-a1603",
-      "brand": "지복득마루",
-      "line": "BARAM 16",
-      "name": "SPRING CREEK",
-      "code": "A1603",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14,
-        "w": 190,
-        "l": 1900
-      },
-      "size_mm": {
-        "w": 3800,
-        "h": 1330
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 141,
-        "g": 116,
-        "b": 85
-      },
-      "file": "jibokdeuk-a1603.jpg",
-      "thumb": "jibokdeuk-a1603.thumb.png",
-      "image_url": "/data/textures/wood/jibokdeuk-a1603.jpg",
-      "thumb_url": "/data/textures/wood/jibokdeuk-a1603.thumb.png",
-      "source_url": "https://www.jibokdeukmaru.com/baram-16",
-      "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
-      "created_at": "2026-07-10T08:23:13.045Z",
-      "updated_at": "2026-07-10T13:10:17.542Z",
-      "mat_code": "WD-0090",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "jibokdeuk-a1607",
@@ -5145,39 +4749,6 @@
         "layout": "2x8",
         "generated_at": "2026-07-12T13:53:02.956Z"
       }
-    },
-    {
-      "id": "jibokdeuk-c17015",
-      "brand": "지복득마루",
-      "line": "BARAM 17",
-      "name": "IVORY DUNE",
-      "code": "C17015",
-      "kind": "원목마루",
-      "spec": {
-        "t": 14,
-        "w": 190,
-        "l": 1900
-      },
-      "size_mm": {
-        "w": 3800,
-        "h": 1330
-      },
-      "layout": "multi-plank",
-      "avg": {
-        "r": 209,
-        "g": 192,
-        "b": 175
-      },
-      "file": "jibokdeuk-c17015.jpg",
-      "thumb": "jibokdeuk-c17015.thumb.png",
-      "image_url": "/data/textures/wood/jibokdeuk-c17015.jpg",
-      "thumb_url": "/data/textures/wood/jibokdeuk-c17015.thumb.png",
-      "source_url": "https://www.jibokdeukmaru.com/baram-17",
-      "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
-      "created_at": "2026-07-10T08:23:15.352Z",
-      "updated_at": "2026-07-10T13:11:00.299Z",
-      "mat_code": "WD-0108",
-      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "jibokdeuk-a1801",
