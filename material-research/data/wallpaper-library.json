@@ -1,0 +1,4035 @@
+{
+  "wallpapers": [
+    {
+      "id": "lx-df001-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "유러피안 플라스터/샌디 크림",
+      "code": "DF001-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 233,
+        "g": 231,
+        "b": 221
+      },
+      "file": "lx-df001-01.jpg",
+      "thumb": "lx-df001-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df001-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df001-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:25:23.874Z",
+      "updated_at": "2026-07-11T15:48:12.502Z",
+      "mat_code": "WP-0001"
+    },
+    {
+      "id": "lx-df002-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "프렌치 워시/아이스 미스트",
+      "code": "DF002-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 228,
+        "g": 228,
+        "b": 224
+      },
+      "file": "lx-df002-01.jpg",
+      "thumb": "lx-df002-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df002-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df002-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:25:23.885Z",
+      "updated_at": "2026-07-11T15:48:12.563Z",
+      "mat_code": "WP-0002"
+    },
+    {
+      "id": "lx-df005-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 시멘트/스노우 그레이",
+      "code": "DF005-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 248,
+        "g": 239,
+        "b": 234
+      },
+      "file": "lx-df005-03.jpg",
+      "thumb": "lx-df005-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df005-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df005-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:25:23.898Z",
+      "updated_at": "2026-07-11T15:48:13.139Z",
+      "mat_code": "WP-0003"
+    },
+    {
+      "id": "lx-pr028-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "모던회벽/화이트",
+      "code": "PR028-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 247,
+        "g": 247,
+        "b": 245
+      },
+      "file": "lx-pr028-01.jpg",
+      "thumb": "lx-pr028-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr028-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr028-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.306Z",
+      "updated_at": "2026-07-11T15:48:09.306Z",
+      "mat_code": "WP-0004"
+    },
+    {
+      "id": "lx-pr002-10",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "회벽/퓨어화이트",
+      "code": "PR002-10",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 252,
+        "g": 251,
+        "b": 248
+      },
+      "file": "lx-pr002-10.jpg",
+      "thumb": "lx-pr002-10.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr002-10.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr002-10.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.353Z",
+      "updated_at": "2026-07-11T15:48:09.353Z",
+      "mat_code": "WP-0005"
+    },
+    {
+      "id": "lx-pr031-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "내추럴회벽/크림 화이트",
+      "code": "PR031-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 249,
+        "g": 247,
+        "b": 240
+      },
+      "file": "lx-pr031-02.jpg",
+      "thumb": "lx-pr031-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr031-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr031-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.398Z",
+      "updated_at": "2026-07-11T15:48:09.398Z",
+      "mat_code": "WP-0006"
+    },
+    {
+      "id": "lx-pr002-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "회벽/화이트",
+      "code": "PR002-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 246,
+        "g": 246,
+        "b": 244
+      },
+      "file": "lx-pr002-01.jpg",
+      "thumb": "lx-pr002-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr002-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr002-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.439Z",
+      "updated_at": "2026-07-11T15:48:09.439Z",
+      "mat_code": "WP-0007"
+    },
+    {
+      "id": "lx-pr002-12",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "회벽/크림 화이트",
+      "code": "PR002-12",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 247,
+        "g": 243,
+        "b": 233
+      },
+      "file": "lx-pr002-12.jpg",
+      "thumb": "lx-pr002-12.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr002-12.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr002-12.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.483Z",
+      "updated_at": "2026-07-11T15:48:09.483Z",
+      "mat_code": "WP-0008"
+    },
+    {
+      "id": "lx-pr002-11",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "회벽/크림",
+      "code": "PR002-11",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 245,
+        "g": 242,
+        "b": 235
+      },
+      "file": "lx-pr002-11.jpg",
+      "thumb": "lx-pr002-11.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr002-11.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr002-11.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.519Z",
+      "updated_at": "2026-07-11T15:48:09.519Z",
+      "mat_code": "WP-0009"
+    },
+    {
+      "id": "lx-pr028-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "모던회벽/라이트 그레이",
+      "code": "PR028-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 231,
+        "g": 231,
+        "b": 229
+      },
+      "file": "lx-pr028-02.jpg",
+      "thumb": "lx-pr028-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr028-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr028-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.547Z",
+      "updated_at": "2026-07-11T15:48:09.547Z",
+      "mat_code": "WP-0010"
+    },
+    {
+      "id": "lx-pr031-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "내추럴회벽/화이트",
+      "code": "PR031-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 250,
+        "g": 249,
+        "b": 246
+      },
+      "file": "lx-pr031-01.jpg",
+      "thumb": "lx-pr031-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr031-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr031-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.577Z",
+      "updated_at": "2026-07-11T15:48:09.577Z",
+      "mat_code": "WP-0011"
+    },
+    {
+      "id": "lx-pr033-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "러스틱 회벽/내추럴 크림",
+      "code": "PR033-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 245,
+        "g": 240,
+        "b": 230
+      },
+      "file": "lx-pr033-02.jpg",
+      "thumb": "lx-pr033-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr033-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr033-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.619Z",
+      "updated_at": "2026-07-11T15:48:09.619Z",
+      "mat_code": "WP-0012"
+    },
+    {
+      "id": "lx-pr034-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "리얼 회벽/샌드 아이보리",
+      "code": "PR034-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 244,
+        "g": 238,
+        "b": 227
+      },
+      "file": "lx-pr034-02.jpg",
+      "thumb": "lx-pr034-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr034-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr034-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.658Z",
+      "updated_at": "2026-07-11T15:48:09.658Z",
+      "mat_code": "WP-0013"
+    },
+    {
+      "id": "lx-pr034-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "리얼 회벽/ 매트 화이트",
+      "code": "PR034-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 250,
+        "g": 248,
+        "b": 244
+      },
+      "file": "lx-pr034-01.jpg",
+      "thumb": "lx-pr034-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr034-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr034-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.686Z",
+      "updated_at": "2026-07-11T15:48:09.686Z",
+      "mat_code": "WP-0014"
+    },
+    {
+      "id": "lx-pr031-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "내추럴회벽/아이보리",
+      "code": "PR031-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 248,
+        "g": 244,
+        "b": 233
+      },
+      "file": "lx-pr031-03.jpg",
+      "thumb": "lx-pr031-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr031-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr031-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.717Z",
+      "updated_at": "2026-07-11T15:48:09.717Z",
+      "mat_code": "WP-0015"
+    },
+    {
+      "id": "lx-pr002-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "회벽/라이트그레이",
+      "code": "PR002-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 219,
+        "g": 221,
+        "b": 221
+      },
+      "file": "lx-pr002-03.jpg",
+      "thumb": "lx-pr002-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr002-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr002-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.747Z",
+      "updated_at": "2026-07-11T15:48:09.747Z",
+      "mat_code": "WP-0016"
+    },
+    {
+      "id": "lx-pr027-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "모던페인팅/화이트",
+      "code": "PR027-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 242,
+        "g": 241,
+        "b": 239
+      },
+      "file": "lx-pr027-01.jpg",
+      "thumb": "lx-pr027-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr027-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr027-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.780Z",
+      "updated_at": "2026-07-11T15:48:09.780Z",
+      "mat_code": "WP-0017"
+    },
+    {
+      "id": "lx-pr029-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "프레스코/화이트",
+      "code": "PR029-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 252,
+        "g": 250,
+        "b": 246
+      },
+      "file": "lx-pr029-01.jpg",
+      "thumb": "lx-pr029-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr029-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr029-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.828Z",
+      "updated_at": "2026-07-11T15:48:09.828Z",
+      "mat_code": "WP-0018"
+    },
+    {
+      "id": "lx-pr016-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "자이언트 스톤/그레이",
+      "code": "PR016-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 208,
+        "g": 195,
+        "b": 191
+      },
+      "file": "lx-pr016-01.jpg",
+      "thumb": "lx-pr016-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr016-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr016-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.869Z",
+      "updated_at": "2026-07-11T15:48:09.869Z",
+      "mat_code": "WP-0019"
+    },
+    {
+      "id": "lx-pr018-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "핸디코트/화이트",
+      "code": "PR018-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 237,
+        "g": 226,
+        "b": 214
+      },
+      "file": "lx-pr018-01.jpg",
+      "thumb": "lx-pr018-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr018-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr018-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.902Z",
+      "updated_at": "2026-07-11T15:48:09.902Z",
+      "mat_code": "WP-0020"
+    },
+    {
+      "id": "lx-pr027-05",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "모던페인팅/웜 화이트",
+      "code": "PR027-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 248,
+        "g": 247,
+        "b": 243
+      },
+      "file": "lx-pr027-05.jpg",
+      "thumb": "lx-pr027-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr027-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr027-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.930Z",
+      "updated_at": "2026-07-11T15:48:09.930Z",
+      "mat_code": "WP-0021"
+    },
+    {
+      "id": "lx-pr002-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "회벽/베이지",
+      "code": "PR002-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 224,
+        "g": 220,
+        "b": 207
+      },
+      "file": "lx-pr002-02.jpg",
+      "thumb": "lx-pr002-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr002-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr002-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:09.968Z",
+      "updated_at": "2026-07-11T15:48:09.968Z",
+      "mat_code": "WP-0022"
+    },
+    {
+      "id": "lx-pr002-13",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "회벽/블랑 그레이",
+      "code": "PR002-13",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 234,
+        "g": 228,
+        "b": 219
+      },
+      "file": "lx-pr002-13.jpg",
+      "thumb": "lx-pr002-13.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr002-13.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr002-13.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.013Z",
+      "updated_at": "2026-07-11T15:48:10.013Z",
+      "mat_code": "WP-0023"
+    },
+    {
+      "id": "lx-pr033-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "러스틱 회벽/화이트",
+      "code": "PR033-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 250,
+        "g": 248,
+        "b": 243
+      },
+      "file": "lx-pr033-01.jpg",
+      "thumb": "lx-pr033-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr033-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr033-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.046Z",
+      "updated_at": "2026-07-11T15:48:10.046Z",
+      "mat_code": "WP-0024"
+    },
+    {
+      "id": "lx-pr030-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드페인팅/라이트 그레이",
+      "code": "PR030-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 244,
+        "g": 242,
+        "b": 236
+      },
+      "file": "lx-pr030-03.jpg",
+      "thumb": "lx-pr030-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr030-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr030-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.078Z",
+      "updated_at": "2026-07-11T15:48:10.078Z",
+      "mat_code": "WP-0025"
+    },
+    {
+      "id": "lx-pr030-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드페인팅/아이보리",
+      "code": "PR030-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 247,
+        "g": 244,
+        "b": 237
+      },
+      "file": "lx-pr030-02.jpg",
+      "thumb": "lx-pr030-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr030-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr030-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.111Z",
+      "updated_at": "2026-07-11T15:48:10.111Z",
+      "mat_code": "WP-0026"
+    },
+    {
+      "id": "lx-pr030-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드페인팅/화이트",
+      "code": "PR030-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 251,
+        "g": 249,
+        "b": 248
+      },
+      "file": "lx-pr030-01.jpg",
+      "thumb": "lx-pr030-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr030-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr030-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.147Z",
+      "updated_at": "2026-07-11T15:48:10.147Z",
+      "mat_code": "WP-0027"
+    },
+    {
+      "id": "lx-pr031-05",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "내추럴회벽/애쉬 베이지",
+      "code": "PR031-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 217,
+        "g": 203,
+        "b": 184
+      },
+      "file": "lx-pr031-05.jpg",
+      "thumb": "lx-pr031-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr031-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr031-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.184Z",
+      "updated_at": "2026-07-11T15:48:10.184Z",
+      "mat_code": "WP-0028"
+    },
+    {
+      "id": "lx-pr027-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "모던페인팅/아이보리",
+      "code": "PR027-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 231,
+        "g": 228,
+        "b": 221
+      },
+      "file": "lx-pr027-03.jpg",
+      "thumb": "lx-pr027-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr027-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr027-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.216Z",
+      "updated_at": "2026-07-11T15:48:10.216Z",
+      "mat_code": "WP-0029"
+    },
+    {
+      "id": "lx-pr003-10",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "크로쉐/딥그린",
+      "code": "PR003-10",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 60,
+        "g": 78,
+        "b": 82
+      },
+      "file": "lx-pr003-10.jpg",
+      "thumb": "lx-pr003-10.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr003-10.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr003-10.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.253Z",
+      "updated_at": "2026-07-11T15:48:10.253Z",
+      "mat_code": "WP-0030"
+    },
+    {
+      "id": "lx-pr029-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "프레스코/샌드 아이보리",
+      "code": "PR029-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 247,
+        "g": 243,
+        "b": 232
+      },
+      "file": "lx-pr029-02.jpg",
+      "thumb": "lx-pr029-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr029-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr029-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.281Z",
+      "updated_at": "2026-07-11T15:48:10.281Z",
+      "mat_code": "WP-0031"
+    },
+    {
+      "id": "lx-pr011-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "질석/화이트",
+      "code": "PR011-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 247,
+        "g": 245,
+        "b": 242
+      },
+      "file": "lx-pr011-01.jpg",
+      "thumb": "lx-pr011-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr011-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr011-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.307Z",
+      "updated_at": "2026-07-11T15:48:10.307Z",
+      "mat_code": "WP-0032"
+    },
+    {
+      "id": "lx-pr014-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "내추럴 린넨/화이트",
+      "code": "PR014-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 244,
+        "g": 243,
+        "b": 237
+      },
+      "file": "lx-pr014-01.jpg",
+      "thumb": "lx-pr014-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr014-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr014-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.340Z",
+      "updated_at": "2026-07-11T15:48:10.340Z",
+      "mat_code": "WP-0033"
+    },
+    {
+      "id": "lx-pr033-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "러스틱 회벽/스톤 그레이",
+      "code": "PR033-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 230,
+        "g": 225,
+        "b": 212
+      },
+      "file": "lx-pr033-03.jpg",
+      "thumb": "lx-pr033-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr033-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr033-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.375Z",
+      "updated_at": "2026-07-11T15:48:10.375Z",
+      "mat_code": "WP-0034"
+    },
+    {
+      "id": "lx-pr048-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마르모아/포세린 화이트",
+      "code": "PR048-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 245,
+        "g": 241,
+        "b": 233
+      },
+      "file": "lx-pr048-02.jpg",
+      "thumb": "lx-pr048-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr048-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr048-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.405Z",
+      "updated_at": "2026-07-11T15:48:10.405Z",
+      "mat_code": "WP-0035"
+    },
+    {
+      "id": "lx-pr018-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "핸디코트/그레이지",
+      "code": "PR018-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 201,
+        "g": 180,
+        "b": 163
+      },
+      "file": "lx-pr018-03.jpg",
+      "thumb": "lx-pr018-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr018-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr018-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.428Z",
+      "updated_at": "2026-07-11T15:48:10.428Z",
+      "mat_code": "WP-0036"
+    },
+    {
+      "id": "lx-pr043-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마띠에르/크림",
+      "code": "PR043-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 249,
+        "g": 244,
+        "b": 233
+      },
+      "file": "lx-pr043-02.jpg",
+      "thumb": "lx-pr043-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr043-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr043-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.471Z",
+      "updated_at": "2026-07-11T15:48:10.471Z",
+      "mat_code": "WP-0037"
+    },
+    {
+      "id": "lx-pr010-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "헤링본/화이트",
+      "code": "PR010-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 246,
+        "g": 244,
+        "b": 241
+      },
+      "file": "lx-pr010-01.jpg",
+      "thumb": "lx-pr010-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr010-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr010-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.494Z",
+      "updated_at": "2026-07-11T15:48:10.494Z",
+      "mat_code": "WP-0038"
+    },
+    {
+      "id": "lx-pr003-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "크로쉐/아이보리",
+      "code": "PR003-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 245,
+        "g": 243,
+        "b": 233
+      },
+      "file": "lx-pr003-01.jpg",
+      "thumb": "lx-pr003-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr003-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr003-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.519Z",
+      "updated_at": "2026-07-11T15:48:10.519Z",
+      "mat_code": "WP-0039"
+    },
+    {
+      "id": "lx-pr025-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "글리터 린넨/실키 크림",
+      "code": "PR025-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 207,
+        "g": 196,
+        "b": 182
+      },
+      "file": "lx-pr025-01.jpg",
+      "thumb": "lx-pr025-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr025-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr025-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.545Z",
+      "updated_at": "2026-07-11T15:48:10.545Z",
+      "mat_code": "WP-0040"
+    },
+    {
+      "id": "lx-pr049-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "라임스톤/스톤 그레이",
+      "code": "PR049-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 205,
+        "g": 199,
+        "b": 193
+      },
+      "file": "lx-pr049-02.jpg",
+      "thumb": "lx-pr049-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr049-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr049-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.584Z",
+      "updated_at": "2026-07-11T15:48:10.584Z",
+      "mat_code": "WP-0041"
+    },
+    {
+      "id": "lx-pr048-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마르모아/도브 그레이",
+      "code": "PR048-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 229,
+        "g": 227,
+        "b": 217
+      },
+      "file": "lx-pr048-03.jpg",
+      "thumb": "lx-pr048-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr048-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr048-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.616Z",
+      "updated_at": "2026-07-11T15:48:10.616Z",
+      "mat_code": "WP-0042"
+    },
+    {
+      "id": "lx-pr044-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드 스타코/웜 화이트",
+      "code": "PR044-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 238,
+        "g": 233,
+        "b": 222
+      },
+      "file": "lx-pr044-03.jpg",
+      "thumb": "lx-pr044-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr044-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr044-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.646Z",
+      "updated_at": "2026-07-11T15:48:10.646Z",
+      "mat_code": "WP-0043"
+    },
+    {
+      "id": "lx-pr047-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "레이어드 스톤/딥스톤 그레이",
+      "code": "PR047-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 180,
+        "g": 176,
+        "b": 172
+      },
+      "file": "lx-pr047-01.jpg",
+      "thumb": "lx-pr047-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr047-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr047-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.677Z",
+      "updated_at": "2026-07-11T15:48:10.677Z",
+      "mat_code": "WP-0044"
+    },
+    {
+      "id": "lx-pr049-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "라임스톤/라임 크림",
+      "code": "PR049-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 239,
+        "g": 233,
+        "b": 224
+      },
+      "file": "lx-pr049-01.jpg",
+      "thumb": "lx-pr049-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr049-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr049-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.713Z",
+      "updated_at": "2026-07-11T15:48:10.713Z",
+      "mat_code": "WP-0045"
+    },
+    {
+      "id": "lx-pr043-07",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마띠에르/블랑 그레이지",
+      "code": "PR043-07",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 233,
+        "g": 227,
+        "b": 216
+      },
+      "file": "lx-pr043-07.jpg",
+      "thumb": "lx-pr043-07.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr043-07.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr043-07.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.747Z",
+      "updated_at": "2026-07-11T15:48:10.747Z",
+      "mat_code": "WP-0046"
+    },
+    {
+      "id": "lx-pr055-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "노스텔라/피치",
+      "code": "PR055-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 225,
+        "g": 219,
+        "b": 208
+      },
+      "file": "lx-pr055-01.jpg",
+      "thumb": "lx-pr055-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr055-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr055-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.779Z",
+      "updated_at": "2026-07-11T15:48:10.779Z",
+      "mat_code": "WP-0047"
+    },
+    {
+      "id": "lx-pr011-07",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "질석/매트화이트",
+      "code": "PR011-07",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 248,
+        "g": 247,
+        "b": 242
+      },
+      "file": "lx-pr011-07.jpg",
+      "thumb": "lx-pr011-07.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr011-07.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr011-07.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.823Z",
+      "updated_at": "2026-07-11T15:48:10.823Z",
+      "mat_code": "WP-0048"
+    },
+    {
+      "id": "lx-pr048-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마르모아/퓨어 화이트",
+      "code": "PR048-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 251,
+        "g": 250,
+        "b": 246
+      },
+      "file": "lx-pr048-01.jpg",
+      "thumb": "lx-pr048-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr048-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr048-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.852Z",
+      "updated_at": "2026-07-11T15:48:10.852Z",
+      "mat_code": "WP-0049"
+    },
+    {
+      "id": "lx-pr043-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마띠에르/뉴트럴 화이트",
+      "code": "PR043-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 239,
+        "g": 234,
+        "b": 226
+      },
+      "file": "lx-pr043-03.jpg",
+      "thumb": "lx-pr043-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr043-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr043-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.895Z",
+      "updated_at": "2026-07-11T15:48:10.895Z",
+      "mat_code": "WP-0050"
+    },
+    {
+      "id": "lx-pr044-04",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드 스타코/애쉬 베이지",
+      "code": "PR044-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 219,
+        "g": 213,
+        "b": 201
+      },
+      "file": "lx-pr044-04.jpg",
+      "thumb": "lx-pr044-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr044-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr044-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.937Z",
+      "updated_at": "2026-07-11T15:48:10.937Z",
+      "mat_code": "WP-0051"
+    },
+    {
+      "id": "lx-pr045-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "테라노바/미스티 그레이",
+      "code": "PR045-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 237,
+        "g": 235,
+        "b": 227
+      },
+      "file": "lx-pr045-02.jpg",
+      "thumb": "lx-pr045-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr045-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr045-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:10.981Z",
+      "updated_at": "2026-07-11T15:48:10.981Z",
+      "mat_code": "WP-0052"
+    },
+    {
+      "id": "lx-pr050-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "실버 그라나이트/스페이스 그레이",
+      "code": "PR050-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 197,
+        "g": 194,
+        "b": 187
+      },
+      "file": "lx-pr050-01.jpg",
+      "thumb": "lx-pr050-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr050-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr050-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.018Z",
+      "updated_at": "2026-07-11T15:48:11.018Z",
+      "mat_code": "WP-0053"
+    },
+    {
+      "id": "lx-pr046-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "브러쉬드월/크림 베이지",
+      "code": "PR046-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 227,
+        "g": 220,
+        "b": 207
+      },
+      "file": "lx-pr046-02.jpg",
+      "thumb": "lx-pr046-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr046-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr046-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.062Z",
+      "updated_at": "2026-07-11T15:48:11.062Z",
+      "mat_code": "WP-0054"
+    },
+    {
+      "id": "lx-pr043-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마띠에르/순백",
+      "code": "PR043-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 253,
+        "g": 250,
+        "b": 244
+      },
+      "file": "lx-pr043-01.jpg",
+      "thumb": "lx-pr043-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr043-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr043-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.104Z",
+      "updated_at": "2026-07-11T15:48:11.104Z",
+      "mat_code": "WP-0055"
+    },
+    {
+      "id": "lx-pr043-06",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마띠에르/딥 그레이",
+      "code": "PR043-06",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 167,
+        "g": 165,
+        "b": 161
+      },
+      "file": "lx-pr043-06.jpg",
+      "thumb": "lx-pr043-06.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr043-06.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr043-06.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.156Z",
+      "updated_at": "2026-07-11T15:48:11.156Z",
+      "mat_code": "WP-0056"
+    },
+    {
+      "id": "lx-pr056-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "린넨 캔버스/스노우 크림",
+      "code": "PR056-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 236,
+        "g": 234,
+        "b": 226
+      },
+      "file": "lx-pr056-03.jpg",
+      "thumb": "lx-pr056-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr056-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr056-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.233Z",
+      "updated_at": "2026-07-11T15:48:11.233Z",
+      "mat_code": "WP-0057"
+    },
+    {
+      "id": "lx-pr048-04",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마르모아/미스티 웜그레이",
+      "code": "PR048-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 196,
+        "g": 189,
+        "b": 178
+      },
+      "file": "lx-pr048-04.jpg",
+      "thumb": "lx-pr048-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr048-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr048-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.275Z",
+      "updated_at": "2026-07-11T15:48:11.275Z",
+      "mat_code": "WP-0058"
+    },
+    {
+      "id": "lx-pr044-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드 스타코/화이트",
+      "code": "PR044-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 249,
+        "g": 247,
+        "b": 240
+      },
+      "file": "lx-pr044-01.jpg",
+      "thumb": "lx-pr044-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr044-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr044-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.310Z",
+      "updated_at": "2026-07-11T15:48:11.310Z",
+      "mat_code": "WP-0059"
+    },
+    {
+      "id": "lx-pr043-05",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마띠에르/포그 그레이",
+      "code": "PR043-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 202,
+        "g": 196,
+        "b": 192
+      },
+      "file": "lx-pr043-05.jpg",
+      "thumb": "lx-pr043-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr043-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr043-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.342Z",
+      "updated_at": "2026-07-11T15:48:11.342Z",
+      "mat_code": "WP-0060"
+    },
+    {
+      "id": "lx-pr056-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "린넨 캔버스/샌드그레이",
+      "code": "PR056-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 229,
+        "g": 225,
+        "b": 215
+      },
+      "file": "lx-pr056-01.jpg",
+      "thumb": "lx-pr056-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr056-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr056-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.375Z",
+      "updated_at": "2026-07-11T15:48:11.375Z",
+      "mat_code": "WP-0061"
+    },
+    {
+      "id": "lx-pr044-06",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드 스타코/스톤 그레이지",
+      "code": "PR044-06",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 170,
+        "g": 165,
+        "b": 154
+      },
+      "file": "lx-pr044-06.jpg",
+      "thumb": "lx-pr044-06.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr044-06.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr044-06.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.420Z",
+      "updated_at": "2026-07-11T15:48:11.420Z",
+      "mat_code": "WP-0062"
+    },
+    {
+      "id": "lx-pr051-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "호라이즌/클라우디 블루",
+      "code": "PR051-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 171,
+        "g": 192,
+        "b": 204
+      },
+      "file": "lx-pr051-02.jpg",
+      "thumb": "lx-pr051-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr051-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr051-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.462Z",
+      "updated_at": "2026-07-11T15:48:11.462Z",
+      "mat_code": "WP-0063"
+    },
+    {
+      "id": "lx-pr045-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "테라노바/스톤 화이트",
+      "code": "PR045-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 251,
+        "g": 246,
+        "b": 235
+      },
+      "file": "lx-pr045-01.jpg",
+      "thumb": "lx-pr045-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr045-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr045-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.498Z",
+      "updated_at": "2026-07-11T15:48:11.498Z",
+      "mat_code": "WP-0064"
+    },
+    {
+      "id": "lx-pr056-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "린넨 캔버스/민트",
+      "code": "PR056-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 134,
+        "g": 173,
+        "b": 164
+      },
+      "file": "lx-pr056-02.jpg",
+      "thumb": "lx-pr056-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr056-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr056-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.548Z",
+      "updated_at": "2026-07-11T15:48:11.548Z",
+      "mat_code": "WP-0065"
+    },
+    {
+      "id": "lx-pr058-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "백야/블랙 화이트",
+      "code": "PR058-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 207,
+        "g": 205,
+        "b": 200
+      },
+      "file": "lx-pr058-01.jpg",
+      "thumb": "lx-pr058-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr058-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr058-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링 · ⚠️ 모티프 무늬(학) — 자동 시멀리스 한계로 힐링 구간 고스팅, 정밀 사용 시 실물 리핏 스캔 필요",
+      "created_at": "2026-07-11T15:48:11.590Z",
+      "updated_at": "2026-07-11T15:48:11.590Z",
+      "mat_code": "WP-0066"
+    },
+    {
+      "id": "lx-pr046-04",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "브러쉬드월/피치 테라코타",
+      "code": "PR046-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 223,
+        "g": 199,
+        "b": 177
+      },
+      "file": "lx-pr046-04.jpg",
+      "thumb": "lx-pr046-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr046-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr046-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.629Z",
+      "updated_at": "2026-07-11T15:48:11.629Z",
+      "mat_code": "WP-0067"
+    },
+    {
+      "id": "lx-pr051-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "호라이즌/화이트",
+      "code": "PR051-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 238,
+        "g": 234,
+        "b": 227
+      },
+      "file": "lx-pr051-01.jpg",
+      "thumb": "lx-pr051-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr051-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr051-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 평탄화+세로 롤+가로 밴드 힐링(가로 골 보존 변형)",
+      "created_at": "2026-07-11T15:48:11.669Z",
+      "updated_at": "2026-07-11T15:48:11.669Z",
+      "mat_code": "WP-0068"
+    },
+    {
+      "id": "lx-pr045-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "테라노바/그레이",
+      "code": "PR045-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 221,
+        "g": 217,
+        "b": 211
+      },
+      "file": "lx-pr045-03.jpg",
+      "thumb": "lx-pr045-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr045-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr045-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.703Z",
+      "updated_at": "2026-07-11T15:48:11.703Z",
+      "mat_code": "WP-0069"
+    },
+    {
+      "id": "lx-pr043-04",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "마띠에르/라이트 그레이",
+      "code": "PR043-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 226,
+        "g": 221,
+        "b": 214
+      },
+      "file": "lx-pr043-04.jpg",
+      "thumb": "lx-pr043-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr043-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr043-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.742Z",
+      "updated_at": "2026-07-11T15:48:11.742Z",
+      "mat_code": "WP-0070"
+    },
+    {
+      "id": "lx-pr045-05",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "테라노바/콘크리트 그레이",
+      "code": "PR045-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 175,
+        "g": 173,
+        "b": 169
+      },
+      "file": "lx-pr045-05.jpg",
+      "thumb": "lx-pr045-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr045-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr045-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.782Z",
+      "updated_at": "2026-07-11T15:48:11.782Z",
+      "mat_code": "WP-0071"
+    },
+    {
+      "id": "lx-pr046-03",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "브러쉬드월/그레이지",
+      "code": "PR046-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 220,
+        "g": 211,
+        "b": 197
+      },
+      "file": "lx-pr046-03.jpg",
+      "thumb": "lx-pr046-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr046-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr046-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.830Z",
+      "updated_at": "2026-07-11T15:48:11.830Z",
+      "mat_code": "WP-0072"
+    },
+    {
+      "id": "lx-pr044-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드 스타코/라이트 그레이",
+      "code": "PR044-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 242,
+        "g": 237,
+        "b": 227
+      },
+      "file": "lx-pr044-02.jpg",
+      "thumb": "lx-pr044-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr044-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr044-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.870Z",
+      "updated_at": "2026-07-11T15:48:11.870Z",
+      "mat_code": "WP-0073"
+    },
+    {
+      "id": "lx-pr046-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "브러쉬드월/스노우 화이트",
+      "code": "PR046-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 251,
+        "g": 247,
+        "b": 234
+      },
+      "file": "lx-pr046-01.jpg",
+      "thumb": "lx-pr046-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr046-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr046-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.900Z",
+      "updated_at": "2026-07-11T15:48:11.900Z",
+      "mat_code": "WP-0074"
+    },
+    {
+      "id": "lx-pr056-04",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "린넨 캔버스/라떼 베이지",
+      "code": "PR056-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 202,
+        "g": 197,
+        "b": 182
+      },
+      "file": "lx-pr056-04.jpg",
+      "thumb": "lx-pr056-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr056-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr056-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.938Z",
+      "updated_at": "2026-07-11T15:48:11.938Z",
+      "mat_code": "WP-0075"
+    },
+    {
+      "id": "lx-pr044-05",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "샌드 스타코/토프",
+      "code": "PR044-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 197,
+        "g": 191,
+        "b": 182
+      },
+      "file": "lx-pr044-05.jpg",
+      "thumb": "lx-pr044-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr044-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr044-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:11.974Z",
+      "updated_at": "2026-07-11T15:48:11.974Z",
+      "mat_code": "WP-0076"
+    },
+    {
+      "id": "lx-pr052-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "세로회벽/미스티 화이트",
+      "code": "PR052-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 236,
+        "g": 232,
+        "b": 223
+      },
+      "file": "lx-pr052-01.jpg",
+      "thumb": "lx-pr052-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr052-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr052-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.022Z",
+      "updated_at": "2026-07-11T15:48:12.022Z",
+      "mat_code": "WP-0077"
+    },
+    {
+      "id": "lx-pr053-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "아티장 린넨/베이지",
+      "code": "PR053-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 211,
+        "g": 204,
+        "b": 186
+      },
+      "file": "lx-pr053-01.jpg",
+      "thumb": "lx-pr053-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr053-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr053-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.058Z",
+      "updated_at": "2026-07-11T15:48:12.058Z",
+      "mat_code": "WP-0078"
+    },
+    {
+      "id": "lx-pr052-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "세로회벽/그레이",
+      "code": "PR052-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 218,
+        "g": 213,
+        "b": 208
+      },
+      "file": "lx-pr052-02.jpg",
+      "thumb": "lx-pr052-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr052-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr052-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.093Z",
+      "updated_at": "2026-07-11T15:48:12.093Z",
+      "mat_code": "WP-0079"
+    },
+    {
+      "id": "lx-pr045-04",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "테라노바/잿빛 그레이",
+      "code": "PR045-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 201,
+        "g": 198,
+        "b": 192
+      },
+      "file": "lx-pr045-04.jpg",
+      "thumb": "lx-pr045-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr045-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr045-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.127Z",
+      "updated_at": "2026-07-11T15:48:12.127Z",
+      "mat_code": "WP-0080"
+    },
+    {
+      "id": "lx-pr057-01",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "부클/오트크림",
+      "code": "PR057-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 247,
+        "g": 243,
+        "b": 235
+      },
+      "file": "lx-pr057-01.jpg",
+      "thumb": "lx-pr057-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr057-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr057-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.164Z",
+      "updated_at": "2026-07-11T15:48:12.164Z",
+      "mat_code": "WP-0081"
+    },
+    {
+      "id": "lx-pr046-05",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "브러쉬드월/그레이",
+      "code": "PR046-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 193,
+        "g": 193,
+        "b": 185
+      },
+      "file": "lx-pr046-05.jpg",
+      "thumb": "lx-pr046-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr046-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr046-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.212Z",
+      "updated_at": "2026-07-11T15:48:12.212Z",
+      "mat_code": "WP-0082"
+    },
+    {
+      "id": "lx-pr057-02",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "부클/그레이 울",
+      "code": "PR057-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 220,
+        "g": 216,
+        "b": 210
+      },
+      "file": "lx-pr057-02.jpg",
+      "thumb": "lx-pr057-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr057-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr057-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.252Z",
+      "updated_at": "2026-07-11T15:48:12.252Z",
+      "mat_code": "WP-0083"
+    },
+    {
+      "id": "lx-pr048-05",
+      "brand": "LX지인",
+      "line": "디아망",
+      "name": "헤이즈그레이",
+      "code": "PR048-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 205,
+        "g": 199,
+        "b": 190
+      },
+      "file": "lx-pr048-05.jpg",
+      "thumb": "lx-pr048-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-pr048-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-pr048-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100",
+      "note": "칩 스케일 300×300mm 추정(원본 1146px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.460Z",
+      "updated_at": "2026-07-11T15:48:12.460Z",
+      "mat_code": "WP-0084"
+    },
+    {
+      "id": "lx-df001-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "유러피안 플라스터/크림 카라멜",
+      "code": "DF001-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 215,
+        "g": 200,
+        "b": 181
+      },
+      "file": "lx-df001-02.jpg",
+      "thumb": "lx-df001-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df001-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df001-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.535Z",
+      "updated_at": "2026-07-11T15:48:12.535Z",
+      "mat_code": "WP-0085"
+    },
+    {
+      "id": "lx-df002-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "프렌치 워시/샌드 그레이",
+      "code": "DF002-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 218,
+        "g": 215,
+        "b": 201
+      },
+      "file": "lx-df002-02.jpg",
+      "thumb": "lx-df002-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df002-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df002-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.592Z",
+      "updated_at": "2026-07-11T15:48:12.592Z",
+      "mat_code": "WP-0086"
+    },
+    {
+      "id": "lx-df003-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/퓨어 화이트",
+      "code": "DF003-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 253,
+        "g": 252,
+        "b": 251
+      },
+      "file": "lx-df003-01.jpg",
+      "thumb": "lx-df003-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.623Z",
+      "updated_at": "2026-07-11T15:48:12.623Z",
+      "mat_code": "WP-0087"
+    },
+    {
+      "id": "lx-df003-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/에그쉘 화이트",
+      "code": "DF003-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 254,
+        "g": 252,
+        "b": 250
+      },
+      "file": "lx-df003-02.jpg",
+      "thumb": "lx-df003-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.649Z",
+      "updated_at": "2026-07-11T15:48:12.649Z",
+      "mat_code": "WP-0088"
+    },
+    {
+      "id": "lx-df003-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/포세린 화이트",
+      "code": "DF003-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 251,
+        "g": 248,
+        "b": 243
+      },
+      "file": "lx-df003-03.jpg",
+      "thumb": "lx-df003-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.674Z",
+      "updated_at": "2026-07-11T15:48:12.674Z",
+      "mat_code": "WP-0089"
+    },
+    {
+      "id": "lx-df003-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/프로즌 크림",
+      "code": "DF003-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 253,
+        "g": 250,
+        "b": 246
+      },
+      "file": "lx-df003-04.jpg",
+      "thumb": "lx-df003-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.697Z",
+      "updated_at": "2026-07-11T15:48:12.697Z",
+      "mat_code": "WP-0090"
+    },
+    {
+      "id": "lx-df003-05",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/바닐라 크림",
+      "code": "DF003-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 250,
+        "g": 246,
+        "b": 238
+      },
+      "file": "lx-df003-05.jpg",
+      "thumb": "lx-df003-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.727Z",
+      "updated_at": "2026-07-11T15:48:12.727Z",
+      "mat_code": "WP-0091"
+    },
+    {
+      "id": "lx-df003-06",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/오트밀",
+      "code": "DF003-06",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 248,
+        "g": 243,
+        "b": 236
+      },
+      "file": "lx-df003-06.jpg",
+      "thumb": "lx-df003-06.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-06.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-06.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.765Z",
+      "updated_at": "2026-07-11T15:48:12.765Z",
+      "mat_code": "WP-0092"
+    },
+    {
+      "id": "lx-df003-07",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/버터 크림",
+      "code": "DF003-07",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 250,
+        "g": 243,
+        "b": 229
+      },
+      "file": "lx-df003-07.jpg",
+      "thumb": "lx-df003-07.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-07.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-07.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.794Z",
+      "updated_at": "2026-07-11T15:48:12.794Z",
+      "mat_code": "WP-0093"
+    },
+    {
+      "id": "lx-df003-08",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/애프리콧",
+      "code": "DF003-08",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 248,
+        "g": 225,
+        "b": 210
+      },
+      "file": "lx-df003-08.jpg",
+      "thumb": "lx-df003-08.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-08.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-08.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.826Z",
+      "updated_at": "2026-07-11T15:48:12.826Z",
+      "mat_code": "WP-0094"
+    },
+    {
+      "id": "lx-df003-09",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "솔리드 페인팅/애쉬 베이지",
+      "code": "DF003-09",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 240,
+        "g": 233,
+        "b": 223
+      },
+      "file": "lx-df003-09.jpg",
+      "thumb": "lx-df003-09.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df003-09.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df003-09.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.864Z",
+      "updated_at": "2026-07-11T15:48:12.864Z",
+      "mat_code": "WP-0095"
+    },
+    {
+      "id": "lx-df004-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스웨이드 페인트/화이트",
+      "code": "DF004-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 252,
+        "g": 251,
+        "b": 250
+      },
+      "file": "lx-df004-01.jpg",
+      "thumb": "lx-df004-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df004-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df004-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.893Z",
+      "updated_at": "2026-07-11T15:48:12.893Z",
+      "mat_code": "WP-0096"
+    },
+    {
+      "id": "lx-df004-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스웨이드 페인트/크림",
+      "code": "DF004-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 250,
+        "g": 245,
+        "b": 240
+      },
+      "file": "lx-df004-02.jpg",
+      "thumb": "lx-df004-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df004-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df004-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.920Z",
+      "updated_at": "2026-07-11T15:48:12.920Z",
+      "mat_code": "WP-0097"
+    },
+    {
+      "id": "lx-df004-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스웨이드 페인트/샌드 그레이지",
+      "code": "DF004-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 238,
+        "g": 231,
+        "b": 223
+      },
+      "file": "lx-df004-03.jpg",
+      "thumb": "lx-df004-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df004-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df004-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.949Z",
+      "updated_at": "2026-07-11T15:48:12.949Z",
+      "mat_code": "WP-0098"
+    },
+    {
+      "id": "lx-df004-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스웨이드 페인트/화이트 블러쉬",
+      "code": "DF004-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 247,
+        "g": 237,
+        "b": 229
+      },
+      "file": "lx-df004-04.jpg",
+      "thumb": "lx-df004-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df004-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df004-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:12.984Z",
+      "updated_at": "2026-07-11T15:48:12.984Z",
+      "mat_code": "WP-0099"
+    },
+    {
+      "id": "lx-df004-05",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스웨이드 페인트/스모크 그레이",
+      "code": "DF004-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 222,
+        "g": 216,
+        "b": 206
+      },
+      "file": "lx-df004-05.jpg",
+      "thumb": "lx-df004-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df004-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df004-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.015Z",
+      "updated_at": "2026-07-11T15:48:13.015Z",
+      "mat_code": "WP-0100"
+    },
+    {
+      "id": "lx-df004-06",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스웨이드 페인트/카푸치노",
+      "code": "DF004-06",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 215,
+        "g": 196,
+        "b": 180
+      },
+      "file": "lx-df004-06.jpg",
+      "thumb": "lx-df004-06.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df004-06.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df004-06.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.046Z",
+      "updated_at": "2026-07-11T15:48:13.046Z",
+      "mat_code": "WP-0101"
+    },
+    {
+      "id": "lx-df005-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 시멘트/수퍼 화이트",
+      "code": "DF005-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 253,
+        "g": 251,
+        "b": 251
+      },
+      "file": "lx-df005-01.jpg",
+      "thumb": "lx-df005-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df005-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df005-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.070Z",
+      "updated_at": "2026-07-11T15:48:13.070Z",
+      "mat_code": "WP-0102"
+    },
+    {
+      "id": "lx-df005-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 시멘트/카밍 크림",
+      "code": "DF005-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 237,
+        "g": 231,
+        "b": 227
+      },
+      "file": "lx-df005-02.jpg",
+      "thumb": "lx-df005-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df005-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df005-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.098Z",
+      "updated_at": "2026-07-11T15:48:13.098Z",
+      "mat_code": "WP-0103"
+    },
+    {
+      "id": "lx-df005-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 시멘트/포그 미스트",
+      "code": "DF005-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 210,
+        "g": 202,
+        "b": 194
+      },
+      "file": "lx-df005-04.jpg",
+      "thumb": "lx-df005-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df005-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df005-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.212Z",
+      "updated_at": "2026-07-11T15:48:13.213Z",
+      "mat_code": "WP-0104"
+    },
+    {
+      "id": "lx-df006-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "샌드스톤/클라우드 화이트",
+      "code": "DF006-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 244,
+        "g": 237,
+        "b": 231
+      },
+      "file": "lx-df006-01.jpg",
+      "thumb": "lx-df006-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df006-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df006-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.250Z",
+      "updated_at": "2026-07-11T15:48:13.250Z",
+      "mat_code": "WP-0105"
+    },
+    {
+      "id": "lx-df006-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "샌드스톤/샌드 그레이",
+      "code": "DF006-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 237,
+        "g": 229,
+        "b": 224
+      },
+      "file": "lx-df006-02.jpg",
+      "thumb": "lx-df006-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df006-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df006-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.293Z",
+      "updated_at": "2026-07-11T15:48:13.293Z",
+      "mat_code": "WP-0106"
+    },
+    {
+      "id": "lx-df006-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "샌드스톤/토프",
+      "code": "DF006-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 215,
+        "g": 195,
+        "b": 177
+      },
+      "file": "lx-df006-03.jpg",
+      "thumb": "lx-df006-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df006-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df006-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.342Z",
+      "updated_at": "2026-07-11T15:48:13.342Z",
+      "mat_code": "WP-0107"
+    },
+    {
+      "id": "lx-df007-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "브러쉬드페인트/브러쉬드 화이트",
+      "code": "DF007-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 252,
+        "g": 251,
+        "b": 248
+      },
+      "file": "lx-df007-01.jpg",
+      "thumb": "lx-df007-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df007-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df007-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.375Z",
+      "updated_at": "2026-07-11T15:48:13.375Z",
+      "mat_code": "WP-0108"
+    },
+    {
+      "id": "lx-df007-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "브러쉬드페인트/페일 그레이",
+      "code": "DF007-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 248,
+        "g": 244,
+        "b": 242
+      },
+      "file": "lx-df007-02.jpg",
+      "thumb": "lx-df007-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df007-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df007-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.401Z",
+      "updated_at": "2026-07-11T15:48:13.401Z",
+      "mat_code": "WP-0109"
+    },
+    {
+      "id": "lx-df007-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "브러쉬드페인트/듄 화이트",
+      "code": "DF007-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 247,
+        "g": 240,
+        "b": 235
+      },
+      "file": "lx-df007-03.jpg",
+      "thumb": "lx-df007-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df007-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df007-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.430Z",
+      "updated_at": "2026-07-11T15:48:13.430Z",
+      "mat_code": "WP-0110"
+    },
+    {
+      "id": "lx-df007-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "브러쉬드페인트/마스카포네",
+      "code": "DF007-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 232,
+        "g": 225,
+        "b": 215
+      },
+      "file": "lx-df007-04.jpg",
+      "thumb": "lx-df007-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df007-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df007-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.461Z",
+      "updated_at": "2026-07-11T15:48:13.461Z",
+      "mat_code": "WP-0111"
+    },
+    {
+      "id": "lx-df007-05",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "브러쉬드페인트/크림 그레이",
+      "code": "DF007-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 236,
+        "g": 228,
+        "b": 215
+      },
+      "file": "lx-df007-05.jpg",
+      "thumb": "lx-df007-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df007-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df007-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.501Z",
+      "updated_at": "2026-07-11T15:48:13.501Z",
+      "mat_code": "WP-0112"
+    },
+    {
+      "id": "lx-df007-06",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "브러쉬드페인트/스모크 그레이",
+      "code": "DF007-06",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 209,
+        "g": 203,
+        "b": 192
+      },
+      "file": "lx-df007-06.jpg",
+      "thumb": "lx-df007-06.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df007-06.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df007-06.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.534Z",
+      "updated_at": "2026-07-11T15:48:13.534Z",
+      "mat_code": "WP-0113"
+    },
+    {
+      "id": "lx-df008-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스타코/화이트",
+      "code": "DF008-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 252,
+        "g": 251,
+        "b": 249
+      },
+      "file": "lx-df008-01.jpg",
+      "thumb": "lx-df008-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df008-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df008-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.558Z",
+      "updated_at": "2026-07-11T15:48:13.558Z",
+      "mat_code": "WP-0114"
+    },
+    {
+      "id": "lx-df008-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스타코/미스트 그레이지",
+      "code": "DF008-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 242,
+        "g": 237,
+        "b": 231
+      },
+      "file": "lx-df008-02.jpg",
+      "thumb": "lx-df008-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df008-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df008-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.586Z",
+      "updated_at": "2026-07-11T15:48:13.586Z",
+      "mat_code": "WP-0115"
+    },
+    {
+      "id": "lx-df008-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스타코/모카 크림",
+      "code": "DF008-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 239,
+        "g": 227,
+        "b": 213
+      },
+      "file": "lx-df008-03.jpg",
+      "thumb": "lx-df008-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df008-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df008-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.614Z",
+      "updated_at": "2026-07-11T15:48:13.614Z",
+      "mat_code": "WP-0116"
+    },
+    {
+      "id": "lx-df008-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "스타코/런던 포그",
+      "code": "DF008-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 220,
+        "g": 216,
+        "b": 211
+      },
+      "file": "lx-df008-04.jpg",
+      "thumb": "lx-df008-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df008-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df008-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.646Z",
+      "updated_at": "2026-07-11T15:48:13.646Z",
+      "mat_code": "WP-0117"
+    },
+    {
+      "id": "lx-df010-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "샌드웨이브/라이트 그레이",
+      "code": "DF010-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 193,
+        "g": 192,
+        "b": 191
+      },
+      "file": "lx-df010-01.jpg",
+      "thumb": "lx-df010-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df010-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df010-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.684Z",
+      "updated_at": "2026-07-11T15:48:13.684Z",
+      "mat_code": "WP-0118"
+    },
+    {
+      "id": "lx-df011-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "컬러풀트위드/컬러풀 그린",
+      "code": "DF011-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 172,
+        "g": 170,
+        "b": 151
+      },
+      "file": "lx-df011-01.jpg",
+      "thumb": "lx-df011-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df011-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df011-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.724Z",
+      "updated_at": "2026-07-11T15:48:13.724Z",
+      "mat_code": "WP-0119"
+    },
+    {
+      "id": "lx-df013-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 코튼/코튼 화이트",
+      "code": "DF013-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 251,
+        "g": 248,
+        "b": 245
+      },
+      "file": "lx-df013-01.jpg",
+      "thumb": "lx-df013-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df013-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df013-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.756Z",
+      "updated_at": "2026-07-11T15:48:13.756Z",
+      "mat_code": "WP-0120"
+    },
+    {
+      "id": "lx-df013-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 코튼/크리미 코튼",
+      "code": "DF013-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 243,
+        "g": 237,
+        "b": 230
+      },
+      "file": "lx-df013-02.jpg",
+      "thumb": "lx-df013-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df013-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df013-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.784Z",
+      "updated_at": "2026-07-11T15:48:13.784Z",
+      "mat_code": "WP-0121"
+    },
+    {
+      "id": "lx-df013-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 코튼/클라우드 그레이",
+      "code": "DF013-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 237,
+        "g": 229,
+        "b": 220
+      },
+      "file": "lx-df013-03.jpg",
+      "thumb": "lx-df013-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df013-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df013-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.815Z",
+      "updated_at": "2026-07-11T15:48:13.815Z",
+      "mat_code": "WP-0122"
+    },
+    {
+      "id": "lx-df013-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 코튼/모카 크림",
+      "code": "DF013-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 215,
+        "g": 207,
+        "b": 199
+      },
+      "file": "lx-df013-04.jpg",
+      "thumb": "lx-df013-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df013-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df013-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.848Z",
+      "updated_at": "2026-07-11T15:48:13.848Z",
+      "mat_code": "WP-0123"
+    },
+    {
+      "id": "lx-df013-05",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "마이크로 코튼/웜 다크 그레이",
+      "code": "DF013-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 192,
+        "g": 188,
+        "b": 184
+      },
+      "file": "lx-df013-05.jpg",
+      "thumb": "lx-df013-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df013-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df013-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.884Z",
+      "updated_at": "2026-07-11T15:48:13.884Z",
+      "mat_code": "WP-0124"
+    },
+    {
+      "id": "lx-df014-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "린넨/화이트",
+      "code": "DF014-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 251,
+        "g": 249,
+        "b": 248
+      },
+      "file": "lx-df014-01.jpg",
+      "thumb": "lx-df014-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df014-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df014-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.915Z",
+      "updated_at": "2026-07-11T15:48:13.915Z",
+      "mat_code": "WP-0125"
+    },
+    {
+      "id": "lx-df014-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "린넨/그린 미스트",
+      "code": "DF014-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 242,
+        "g": 239,
+        "b": 232
+      },
+      "file": "lx-df014-02.jpg",
+      "thumb": "lx-df014-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df014-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df014-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.946Z",
+      "updated_at": "2026-07-11T15:48:13.946Z",
+      "mat_code": "WP-0126"
+    },
+    {
+      "id": "lx-df014-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "린넨/화이트 그레이",
+      "code": "DF014-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 233,
+        "g": 228,
+        "b": 224
+      },
+      "file": "lx-df014-03.jpg",
+      "thumb": "lx-df014-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df014-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df014-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:13.978Z",
+      "updated_at": "2026-07-11T15:48:13.978Z",
+      "mat_code": "WP-0127"
+    },
+    {
+      "id": "lx-df014-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "린넨/웜 그레이",
+      "code": "DF014-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 226,
+        "g": 223,
+        "b": 221
+      },
+      "file": "lx-df014-04.jpg",
+      "thumb": "lx-df014-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df014-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df014-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.017Z",
+      "updated_at": "2026-07-11T15:48:14.017Z",
+      "mat_code": "WP-0128"
+    },
+    {
+      "id": "lx-df014-05",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "린넨/세이지 그린",
+      "code": "DF014-05",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 196,
+        "g": 196,
+        "b": 183
+      },
+      "file": "lx-df014-05.jpg",
+      "thumb": "lx-df014-05.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df014-05.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df014-05.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.048Z",
+      "updated_at": "2026-07-11T15:48:14.048Z",
+      "mat_code": "WP-0129"
+    },
+    {
+      "id": "lx-df015-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "심플 부클레/크림 바닐라",
+      "code": "DF015-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 248,
+        "g": 244,
+        "b": 237
+      },
+      "file": "lx-df015-01.jpg",
+      "thumb": "lx-df015-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df015-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df015-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.078Z",
+      "updated_at": "2026-07-11T15:48:14.078Z",
+      "mat_code": "WP-0130"
+    },
+    {
+      "id": "lx-df015-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "심플 부클레/웜 그레이",
+      "code": "DF015-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 233,
+        "g": 226,
+        "b": 221
+      },
+      "file": "lx-df015-02.jpg",
+      "thumb": "lx-df015-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df015-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df015-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.108Z",
+      "updated_at": "2026-07-11T15:48:14.108Z",
+      "mat_code": "WP-0131"
+    },
+    {
+      "id": "lx-df015-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "심플 부클레/실버 그레이",
+      "code": "DF015-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 227,
+        "g": 219,
+        "b": 216
+      },
+      "file": "lx-df015-03.jpg",
+      "thumb": "lx-df015-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df015-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df015-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.148Z",
+      "updated_at": "2026-07-11T15:48:14.148Z",
+      "mat_code": "WP-0132"
+    },
+    {
+      "id": "lx-df015-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "심플 부클레/로즈 블러쉬",
+      "code": "DF015-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 232,
+        "g": 198,
+        "b": 179
+      },
+      "file": "lx-df015-04.jpg",
+      "thumb": "lx-df015-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df015-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df015-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.191Z",
+      "updated_at": "2026-07-11T15:48:14.191Z",
+      "mat_code": "WP-0133"
+    },
+    {
+      "id": "lx-df016-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "크랙스톤/스톤 크림 그레이",
+      "code": "DF016-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 214,
+        "g": 203,
+        "b": 190
+      },
+      "file": "lx-df016-01.jpg",
+      "thumb": "lx-df016-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df016-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df016-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.224Z",
+      "updated_at": "2026-07-11T15:48:14.224Z",
+      "mat_code": "WP-0134"
+    },
+    {
+      "id": "lx-df017-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "트레버틴/라이트 크림",
+      "code": "DF017-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 222,
+        "g": 213,
+        "b": 204
+      },
+      "file": "lx-df017-01.jpg",
+      "thumb": "lx-df017-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df017-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df017-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.256Z",
+      "updated_at": "2026-07-11T15:48:14.256Z",
+      "mat_code": "WP-0135"
+    },
+    {
+      "id": "lx-df018-01",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "소프트 니트/화이트",
+      "code": "DF018-01",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 251,
+        "g": 250,
+        "b": 248
+      },
+      "file": "lx-df018-01.jpg",
+      "thumb": "lx-df018-01.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df018-01.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df018-01.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.279Z",
+      "updated_at": "2026-07-11T15:48:14.279Z",
+      "mat_code": "WP-0136"
+    },
+    {
+      "id": "lx-df018-02",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "소프트 니트/클린 그레이",
+      "code": "DF018-02",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 246,
+        "g": 243,
+        "b": 240
+      },
+      "file": "lx-df018-02.jpg",
+      "thumb": "lx-df018-02.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df018-02.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df018-02.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.314Z",
+      "updated_at": "2026-07-11T15:48:14.314Z",
+      "mat_code": "WP-0137"
+    },
+    {
+      "id": "lx-df018-03",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "소프트 니트/클래식 그레이",
+      "code": "DF018-03",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 234,
+        "g": 231,
+        "b": 225
+      },
+      "file": "lx-df018-03.jpg",
+      "thumb": "lx-df018-03.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df018-03.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df018-03.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.349Z",
+      "updated_at": "2026-07-11T15:48:14.349Z",
+      "mat_code": "WP-0138"
+    },
+    {
+      "id": "lx-df018-04",
+      "brand": "LX지인",
+      "line": "디아망 포스티",
+      "name": "소프트 니트/스모크 그레이",
+      "code": "DF018-04",
+      "kind": "프리미엄 벽지",
+      "spec": {
+        "roll_w": 1060
+      },
+      "size_mm": {
+        "w": 300,
+        "h": 300
+      },
+      "avg": {
+        "r": 223,
+        "g": 218,
+        "b": 216
+      },
+      "file": "lx-df018-04.jpg",
+      "thumb": "lx-df018-04.thumb.png",
+      "image_url": "/data/textures/wallpaper/lx-df018-04.jpg",
+      "thumb_url": "/data/textures/wallpaper/lx-df018-04.thumb.png",
+      "source_url": "https://www.lxzin.com/zin/category/a070000?mcate=a070100,a070102",
+      "note": "칩 스케일 300×300mm 추정(원본 550px) · 시멀리스 가공: 하이패스 조명 평탄화+50%롤+십자 힐링",
+      "created_at": "2026-07-11T15:48:14.378Z",
+      "updated_at": "2026-07-11T15:48:14.378Z",
+      "mat_code": "WP-0139"
+    }
+  ]
+}
