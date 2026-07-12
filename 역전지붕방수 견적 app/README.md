@@ -46,7 +46,8 @@ npm start          # → http://localhost:3015
 2. **견적서에서 평당 단가 제거** — 견적입력 우측 요약(내부용)에만 표시.
 3. **자재소개 이미지 file:// 폴백** — `manifest.json` fetch 가 막히는 환경(더블클릭 실행)에서도 내장 매니페스트로 이미지 표시.
 4. **가입 초대코드 제거** — 이메일/비밀번호/이름만으로 가입.
-5. **Vercel 배포 지원** — `vercel.json`(server.js 서버리스 + 정적 index.html/images), `server.js` 는 직접 실행 시에만 listen.
+5. **Vercel 배포 지원** — `vercel.json`(server.js 서버리스 + 정적 index.html/images), `server.js` 는 직접 실행 시에만 listen. **라이브: https://afm-roof.vercel.app**
+6. **✅ 확정견적 (v4.1)** — 작성 중 견적은 계속 자동저장되고, 견적입력 하단 **[확정 및 저장하기]** 를 누르면 그 시점의 **동결 사본**이 저장목록 "✅ 확정견적" 섹션에 별도 보관됩니다. 확정본은 이후 수정의 영향을 받지 않으며, [사본으로 열기]로 열면 원본은 그대로 두고 편집용 사본(새 작성본)이 열립니다.
 
 ## v3 변경점 (v2 대비)
 1. **⬇ 내보내기 = PDF 다운로드**(구 독립형 HTML 내보내기 제거). `html2pdf.js` 지연 로드 · 기존 `.page-break` CSS 연동.

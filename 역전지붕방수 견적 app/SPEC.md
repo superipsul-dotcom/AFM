@@ -483,3 +483,5 @@ perPyeong 502220.23126
 3. **자재소개 이미지 폴백**: manifest fetch 실패(file:// 등) 시 내장 `FALLBACK_MANIFEST`(27키, `<imgKey>.jpg` 규약) 사용. — 사용자가 본 "이미지 사라짐"의 원인은 file:// 실행에서 fetch 차단.
 4. **가입 초대코드 제거**: UI 필드·server.js 검증(503/403)·test-server 케이스 삭제 → 31체크. `ROOF_INVITE_CODE` env 불사용.
 5. **Vercel**: `vercel.json`(@vercel/node server.js + 정적 index.html/images 라우트), server.js `require.main` 가드 + `module.exports = app`. env: `DATABASE_URL`, `JWT_SECRET`.
+
+6. **V4.1 확정견적**: 견적입력 하단 [✅ 확정 및 저장하기] → 현재 상태의 동결 사본(`confirmed:true, confirmedAt`, meta에도 동일 플래그)을 **별도 레코드**로 POST. 작성 중 견적은 기존 자동저장 유지. 저장목록은 meta.confirmed 로 "✅ 확정견적"/"📝 작성 중" 두 섹션 분리(확정 행은 확정 시각 표시). 확정본 [사본으로 열기]=confirmed 제거+새 id 의 draft 로 로드(원본 동결), 복제도 동일. 서버 스키마 무변경(data/meta JSONB 불투명).
