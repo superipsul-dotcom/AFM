@@ -437,24 +437,34 @@ function render(){
     updateTiled();
   },60);
 }
-/* 실제 자재 미리보기: 제조사 원본 이미지를 캔버스에 그대로 (실측 mm는 라이브러리 값) */
+/* 실제 자재 미리보기: 플랭크 합성 타일 우선(1플랭크=1패턴·실측 격자), 없으면 제조사 원본 */
+function realWoodPlank(w){
+  return (st.realColl==="wood"&&w&&w.plank&&w.plank.image_url&&!w.__plankBroken)?w.plank:null;
+}
 function renderRealWood(){
   var w=st.realWood;
+  var pk=realWoodPlank(w);
+  var srcMeta=pk||w;
   var done=function(img){
-    cv.width=img.naturalWidth;cv.height=img.naturalHeight;
-    ctx.drawImage(img,0,0);
-    real={w:w.size_mm.w,h:w.size_mm.h};
-    $("mSize").textContent=real.w+" × "+real.h+" mm (실측)";
+    var sc=Math.min(1,2048/img.naturalWidth); // 캔버스/dataURL 무게 제한
+    cv.width=Math.round(img.naturalWidth*sc);cv.height=Math.round(img.naturalHeight*sc);
+    ctx.drawImage(img,0,0,cv.width,cv.height);
+    real={w:srcMeta.size_mm.w,h:srcMeta.size_mm.h};
+    $("mSize").textContent=Math.round(real.w)+" × "+Math.round(real.h)+" mm (실측)";
     $("mPx").textContent=cv.width+" × "+cv.height+" px";
-    $("mMode").textContent="실제 자재 · "+(w.kind||(st.realColl==="wallpaper"?"벽지":"마루"));
+    $("mMode").textContent="실제 자재 · "+(w.kind||(st.realColl==="wallpaper"?"벽지":"마루"))+(pk?" · 플랭크 합성"+(pk.quality==="low"?" (저해상도)":""):"");
     updateTiled();
   };
-  if(st.realWoodImg&&st.realWoodImg._id===w.id){done(st.realWoodImg);return;}
+  var key=w.id+(pk?":plank":"");
+  if(st.realWoodImg&&st.realWoodImg._id===key){done(st.realWoodImg);return;}
   var img=new Image();
   img.crossOrigin="anonymous"; // file:// 열람 시 캔버스 오염 방지 (서버가 ACAO * 전송)
-  img.onload=function(){img._id=w.id;st.realWoodImg=img;done(img);};
-  img.onerror=function(){toast("이미지 로딩 실패");};
-  img.src=assetUrl(w.image_url);
+  img.onload=function(){img._id=key;st.realWoodImg=img;done(img);};
+  img.onerror=function(){
+    if(pk){w.__plankBroken=true;st.realWoodImg=null;renderRealWood();return;} // 타일 없으면 스와치 폴백
+    toast("이미지 로딩 실패");
+  };
+  img.src=assetUrl(srcMeta.image_url);
 }
 function selectRealWood(w,coll){
   st.realWood=w;st.realColl=coll||"wood";st.realWoodImg=null;
@@ -536,7 +546,10 @@ function renderRealLib(arr,coll,filterProp,note){
     var sp=w.spec&&w.spec.w?(w.spec.w+"×"+w.spec.l+(w.spec.t?"×"+w.spec.t+"T":"")):(w.spec&&w.spec.roll_w?("롤폭 "+w.spec.roll_w):"");
     html+='<div class="wp'+(st.realWood&&st.realWood.id===w.id?" sel":"")+'" data-w="'+esc(w.id)+'">'
       +(w.thumb_url?'<img class="sw" src="'+esc(assetUrl(w.thumb_url))+'" style="object-fit:cover" loading="lazy">':'<div class="sw" style="background:rgb('+w.avg.r+','+w.avg.g+','+w.avg.b+')"></div>')
-      +'<div><div class="nm">'+(w.mat_code?'<span style="font-size:9px;padding:1px 4px;border-radius:4px;background:#eef2ff;color:#4f46e5;font-weight:700;margin-right:4px">'+esc(w.mat_code)+'</span>':'')+esc(w.name+(w.code?" "+w.code:""))+'</div><div class="mt">'+esc(w.brand+(w.line?" · "+w.line:"")+(sp?" · "+sp:""))+'</div></div></div>';
+      +'<div><div class="nm">'+(w.mat_code?'<span style="font-size:9px;padding:1px 4px;border-radius:4px;background:#eef2ff;color:#4f46e5;font-weight:700;margin-right:4px">'+esc(w.mat_code)+'</span>':'')
+      +(coll==="wood"&&w.plank?'<span style="font-size:9px;padding:1px 4px;border-radius:4px;background:#ecfdf5;color:#059669;font-weight:700;margin-right:4px">플랭크</span>':'')
+      +(coll==="wood"&&w.plank&&w.plank.quality==="low"?'<span style="font-size:9px;padding:1px 4px;border-radius:4px;background:#fffbeb;color:#b45309;font-weight:700;margin-right:4px">저해상도 ⚠️</span>':'')
+      +esc(w.name+(w.code?" "+w.code:""))+'</div><div class="mt">'+esc(w.brand+(w.line?" · "+w.line:"")+(sp?" · "+sp:""))+'</div></div></div>';
   });
   $("wpre").innerHTML=html||'<div class="empty">수집된 실제 자재 없음</div>';
   $("wpre").querySelectorAll("[data-f]").forEach(function(n){
@@ -652,7 +665,7 @@ $("btnSaveSkm").addEventListener("click",function(){
     .catch(function(e){toast("실패: "+e.message);});
 });
 $("btnPng").addEventListener("click",function(){
-  if(st.realWood){var a0=document.createElement("a");a0.download="";a0.href=assetUrl(st.realWood.image_url);a0.click();return;}
+  if(st.realWood){var a0=document.createElement("a");a0.download="";a0.href=assetUrl((realWoodPlank(st.realWood)||st.realWood).image_url);a0.click();return;}
   var a=document.createElement("a");a.download=($("matName").value.trim()||"texture")+".png";a.href=cv.toDataURL("image/png");a.click();
 });
 

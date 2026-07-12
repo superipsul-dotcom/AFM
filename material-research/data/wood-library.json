@@ -30,7 +30,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 수동검증 p25 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T07:53:13.060Z",
       "updated_at": "2026-07-10T13:02:54.301Z",
-      "mat_code": "WD-0001"
+      "mat_code": "WD-0001",
+      "plank": {
+        "file": "kujung-124.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-124.plank.jpg",
+        "size_mm": {
+          "w": 3603.4,
+          "h": 1649.9
+        },
+        "px": {
+          "w": 546,
+          "h": 250
+        },
+        "ppm": 0.152,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 108,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:17.221Z"
+      }
     },
     {
       "id": "kujung-264",
@@ -62,7 +80,8 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T07:53:13.123Z",
       "updated_at": "2026-07-10T13:02:54.328Z",
-      "mat_code": "WD-0002"
+      "mat_code": "WD-0002",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-263",
@@ -94,7 +113,8 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T07:53:13.185Z",
       "updated_at": "2026-07-10T13:02:54.350Z",
-      "mat_code": "WD-0003"
+      "mat_code": "WD-0003",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-174",
@@ -126,7 +146,25 @@
       "note": "접착식 시공 · 블론테 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.254Z",
       "updated_at": "2026-07-10T13:02:54.394Z",
-      "mat_code": "WD-0004"
+      "mat_code": "WD-0004",
+      "plank": {
+        "file": "kujung-174.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-174.plank.jpg",
+        "size_mm": {
+          "w": 4842.3,
+          "h": 1833.6
+        },
+        "px": {
+          "w": 1500,
+          "h": 568
+        },
+        "ppm": 0.31,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 18,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:17.394Z"
+      }
     },
     {
       "id": "kujung-127",
@@ -158,7 +196,25 @@
       "note": "접착식 시공 · 블론테 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.307Z",
       "updated_at": "2026-07-10T13:02:54.427Z",
-      "mat_code": "WD-0005"
+      "mat_code": "WD-0005",
+      "plank": {
+        "file": "kujung-127.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-127.plank.jpg",
+        "size_mm": {
+          "w": 4843.6,
+          "h": 1861.1
+        },
+        "px": {
+          "w": 812,
+          "h": 312
+        },
+        "ppm": 0.168,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 41,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:17.497Z"
+      }
     },
     {
       "id": "kujung-304",
@@ -190,7 +246,25 @@
       "note": "접착식 시공법 · 블론테 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.416Z",
       "updated_at": "2026-07-10T13:02:54.469Z",
-      "mat_code": "WD-0006"
+      "mat_code": "WD-0006",
+      "plank": {
+        "file": "kujung-304.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-304.plank.jpg",
+        "size_mm": {
+          "w": 4839.4,
+          "h": 1840.4
+        },
+        "px": {
+          "w": 3534,
+          "h": 1344
+        },
+        "ppm": 0.73,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 3,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:17.754Z"
+      }
     },
     {
       "id": "kujung-303",
@@ -222,7 +296,25 @@
       "note": "접착식 시공법 · 블론테 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.511Z",
       "updated_at": "2026-07-10T13:02:54.502Z",
-      "mat_code": "WD-0007"
+      "mat_code": "WD-0007",
+      "plank": {
+        "file": "kujung-303.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-303.plank.jpg",
+        "size_mm": {
+          "w": 4839.4,
+          "h": 1840.4
+        },
+        "px": {
+          "w": 3534,
+          "h": 1344
+        },
+        "ppm": 0.73,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 3,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:17.994Z"
+      }
     },
     {
       "id": "kujung-302",
@@ -254,7 +346,25 @@
       "note": "접착식 시공법 · 모던강 115 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.596Z",
       "updated_at": "2026-07-10T13:02:54.536Z",
-      "mat_code": "WD-0008"
+      "mat_code": "WD-0008",
+      "plank": {
+        "file": "kujung-302.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-302.plank.jpg",
+        "size_mm": {
+          "w": 2400.3,
+          "h": 1148.1
+        },
+        "px": {
+          "w": 1359,
+          "h": 650
+        },
+        "ppm": 0.566,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 17,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:18.112Z"
+      }
     },
     {
       "id": "kujung-301",
@@ -286,7 +396,25 @@
       "note": "접착식 시공법 · 모던강 115 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.683Z",
       "updated_at": "2026-07-10T13:02:54.568Z",
-      "mat_code": "WD-0009"
+      "mat_code": "WD-0009",
+      "plank": {
+        "file": "kujung-301.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-301.plank.jpg",
+        "size_mm": {
+          "w": 2401.1,
+          "h": 1153.4
+        },
+        "px": {
+          "w": 1374,
+          "h": 660
+        },
+        "ppm": 0.572,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 17,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:18.211Z"
+      }
     },
     {
       "id": "kujung-300",
@@ -318,7 +446,25 @@
       "note": "접착식 시공법 · 모던강 115 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.761Z",
       "updated_at": "2026-07-10T13:02:54.604Z",
-      "mat_code": "WD-0010"
+      "mat_code": "WD-0010",
+      "plank": {
+        "file": "kujung-300.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-300.plank.jpg",
+        "size_mm": {
+          "w": 2398.7,
+          "h": 1144.8
+        },
+        "px": {
+          "w": 1341,
+          "h": 640
+        },
+        "ppm": 0.559,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 21,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:18.316Z"
+      }
     },
     {
       "id": "kujung-299",
@@ -350,7 +496,25 @@
       "note": "접착식 시공법 · 모던강 115 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.828Z",
       "updated_at": "2026-07-10T13:02:54.629Z",
-      "mat_code": "WD-0011"
+      "mat_code": "WD-0011",
+      "plank": {
+        "file": "kujung-299.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-299.plank.jpg",
+        "size_mm": {
+          "w": 2399.1,
+          "h": 1145
+        },
+        "px": {
+          "w": 1320,
+          "h": 630
+        },
+        "ppm": 0.55,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 21,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:18.417Z"
+      }
     },
     {
       "id": "kujung-298",
@@ -382,7 +546,25 @@
       "note": "접착식 시공법 · 모던강 115 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.900Z",
       "updated_at": "2026-07-10T13:02:54.658Z",
-      "mat_code": "WD-0012"
+      "mat_code": "WD-0012",
+      "plank": {
+        "file": "kujung-298.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-298.plank.jpg",
+        "size_mm": {
+          "w": 2401.1,
+          "h": 1153.4
+        },
+        "px": {
+          "w": 1374,
+          "h": 660
+        },
+        "ppm": 0.572,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 21,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:18.517Z"
+      }
     },
     {
       "id": "kujung-297",
@@ -414,7 +596,25 @@
       "note": "접착식 시공법 · 모던강 115 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:33.985Z",
       "updated_at": "2026-07-10T13:02:54.690Z",
-      "mat_code": "WD-0013"
+      "mat_code": "WD-0013",
+      "plank": {
+        "file": "kujung-297.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-297.plank.jpg",
+        "size_mm": {
+          "w": 2398.5,
+          "h": 1156.4
+        },
+        "px": {
+          "w": 1203,
+          "h": 580
+        },
+        "ppm": 0.502,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 29,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:18.614Z"
+      }
     },
     {
       "id": "kujung-296",
@@ -446,7 +646,25 @@
       "note": "접착식 시공법 · 모던강 115 · 수동검증 p84.4 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.074Z",
       "updated_at": "2026-07-10T13:02:54.716Z",
-      "mat_code": "WD-0014"
+      "mat_code": "WD-0014",
+      "plank": {
+        "file": "kujung-296.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-296.plank.jpg",
+        "size_mm": {
+          "w": 2399.4,
+          "h": 1144.5
+        },
+        "px": {
+          "w": 1761,
+          "h": 840
+        },
+        "ppm": 0.734,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:18.732Z"
+      }
     },
     {
       "id": "kujung-295",
@@ -478,7 +696,8 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.139Z",
       "updated_at": "2026-07-10T13:02:54.738Z",
-      "mat_code": "WD-0015"
+      "mat_code": "WD-0015",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-294",
@@ -510,7 +729,8 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.201Z",
       "updated_at": "2026-07-10T13:02:54.758Z",
-      "mat_code": "WD-0016"
+      "mat_code": "WD-0016",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-289",
@@ -542,7 +762,25 @@
       "note": "접착식 시공법 · 피안테 델 아르보 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.297Z",
       "updated_at": "2026-07-10T13:02:54.788Z",
-      "mat_code": "WD-0017"
+      "mat_code": "WD-0017",
+      "plank": {
+        "file": "kujung-289.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-289.plank.jpg",
+        "size_mm": {
+          "w": 4700.8,
+          "h": 1937
+        },
+        "px": {
+          "w": 4096,
+          "h": 1688
+        },
+        "ppm": 1.045,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:19.268Z"
+      }
     },
     {
       "id": "kujung-288",
@@ -574,7 +812,8 @@
       "note": "접착식 시공법 · 피안테 델 아르보 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.396Z",
       "updated_at": "2026-07-10T13:02:54.817Z",
-      "mat_code": "WD-0018"
+      "mat_code": "WD-0018",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-287",
@@ -606,7 +845,8 @@
       "note": "접착식 시공법 · 피안테 델 아르보 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.510Z",
       "updated_at": "2026-07-10T13:02:54.845Z",
-      "mat_code": "WD-0019"
+      "mat_code": "WD-0019",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-286",
@@ -638,7 +878,25 @@
       "note": "접착식 시공법 · 피안테 델 아르보 · 수동검증 p194 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.644Z",
       "updated_at": "2026-07-10T13:02:54.903Z",
-      "mat_code": "WD-0020"
+      "mat_code": "WD-0020",
+      "plank": {
+        "file": "kujung-286.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-286.plank.jpg",
+        "size_mm": {
+          "w": 4701.2,
+          "h": 1935.3
+        },
+        "px": {
+          "w": 3770,
+          "h": 1552
+        },
+        "ppm": 0.802,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:19.641Z"
+      }
     },
     {
       "id": "kujung-285",
@@ -670,7 +928,8 @@
       "note": "접착식 시공법 · 피안테 델 아르보 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.758Z",
       "updated_at": "2026-07-10T13:02:54.932Z",
-      "mat_code": "WD-0021"
+      "mat_code": "WD-0021",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-281",
@@ -702,7 +961,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 142 · 수동검증 p31 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.784Z",
       "updated_at": "2026-07-10T13:02:54.948Z",
-      "mat_code": "WD-0022"
+      "mat_code": "WD-0022",
+      "plank": {
+        "file": "kujung-281.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-281.plank.jpg",
+        "size_mm": {
+          "w": 3599.9,
+          "h": 1419.8
+        },
+        "px": {
+          "w": 786,
+          "h": 310
+        },
+        "ppm": 0.218,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 29,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:19.725Z"
+      }
     },
     {
       "id": "kujung-280",
@@ -734,7 +1011,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 142 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.847Z",
       "updated_at": "2026-07-10T13:02:54.974Z",
-      "mat_code": "WD-0023"
+      "mat_code": "WD-0023",
+      "plank": {
+        "file": "kujung-280.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-280.plank.jpg",
+        "size_mm": {
+          "w": 3601.5,
+          "h": 1440.6
+        },
+        "px": {
+          "w": 600,
+          "h": 240
+        },
+        "ppm": 0.167,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 102,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:19.837Z"
+      }
     },
     {
       "id": "kujung-279",
@@ -766,7 +1061,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 142 · 수동검증 p17.9 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.878Z",
       "updated_at": "2026-07-10T13:02:54.990Z",
-      "mat_code": "WD-0024"
+      "mat_code": "WD-0024",
+      "plank": {
+        "file": "kujung-279.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-279.plank.jpg",
+        "size_mm": {
+          "w": 3606.8,
+          "h": 1420
+        },
+        "px": {
+          "w": 381,
+          "h": 150
+        },
+        "ppm": 0.106,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 32,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:19.902Z"
+      }
     },
     {
       "id": "kujung-278",
@@ -798,7 +1111,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 142 · 수동검증 p15.7 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.906Z",
       "updated_at": "2026-07-10T13:02:55.009Z",
-      "mat_code": "WD-0025"
+      "mat_code": "WD-0025",
+      "plank": {
+        "file": "kujung-278.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-278.plank.jpg",
+        "size_mm": {
+          "w": 3608.6,
+          "h": 1447
+        },
+        "px": {
+          "w": 399,
+          "h": 160
+        },
+        "ppm": 0.111,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 69,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:19.980Z"
+      }
     },
     {
       "id": "kujung-277",
@@ -830,7 +1161,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 142 · 수동검증 p15.7 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.948Z",
       "updated_at": "2026-07-10T13:02:55.034Z",
-      "mat_code": "WD-0026"
+      "mat_code": "WD-0026",
+      "plank": {
+        "file": "kujung-277.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-277.plank.jpg",
+        "size_mm": {
+          "w": 3608.6,
+          "h": 1447
+        },
+        "px": {
+          "w": 399,
+          "h": 160
+        },
+        "ppm": 0.111,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 48,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:20.060Z"
+      }
     },
     {
       "id": "kujung-276",
@@ -862,7 +1211,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 142 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:34.975Z",
       "updated_at": "2026-07-10T13:02:55.048Z",
-      "mat_code": "WD-0027"
+      "mat_code": "WD-0027",
+      "plank": {
+        "file": "kujung-276.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-276.plank.jpg",
+        "size_mm": {
+          "w": 3608.5,
+          "h": 1420
+        },
+        "px": {
+          "w": 432,
+          "h": 170
+        },
+        "ppm": 0.12,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 40,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:20.103Z"
+      }
     },
     {
       "id": "kujung-275",
@@ -894,7 +1261,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 142 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.002Z",
       "updated_at": "2026-07-10T13:02:55.062Z",
-      "mat_code": "WD-0028"
+      "mat_code": "WD-0028",
+      "plank": {
+        "file": "kujung-275.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-275.plank.jpg",
+        "size_mm": {
+          "w": 3608.5,
+          "h": 1420
+        },
+        "px": {
+          "w": 432,
+          "h": 170
+        },
+        "ppm": 0.12,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 58,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:20.156Z"
+      }
     },
     {
       "id": "kujung-271",
@@ -926,7 +1311,25 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 헤링본 클로즈업(반복 이음 어긋남 있음) · 수동검증 p187",
       "created_at": "2026-07-10T08:14:35.043Z",
       "updated_at": "2026-07-10T08:14:35.043Z",
-      "mat_code": "WD-0029"
+      "mat_code": "WD-0029",
+      "plank": {
+        "file": "kujung-271.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-271.plank.jpg",
+        "size_mm": {
+          "w": 1800.4,
+          "h": 899.9
+        },
+        "px": {
+          "w": 2160,
+          "h": 1080
+        },
+        "ppm": 2.078,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 3,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:20.822Z"
+      }
     },
     {
       "id": "kujung-268",
@@ -958,7 +1361,25 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.111Z",
       "updated_at": "2026-07-10T13:02:55.086Z",
-      "mat_code": "WD-0030"
+      "mat_code": "WD-0030",
+      "plank": {
+        "file": "kujung-268.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-268.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 280,
+          "h": 112
+        },
+        "ppm": 0.074,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 1,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:20.846Z"
+      }
     },
     {
       "id": "kujung-267",
@@ -990,7 +1411,8 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.209Z",
       "updated_at": "2026-07-10T13:02:55.118Z",
-      "mat_code": "WD-0031"
+      "mat_code": "WD-0031",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-266",
@@ -1022,7 +1444,8 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.281Z",
       "updated_at": "2026-07-10T13:02:55.146Z",
-      "mat_code": "WD-0032"
+      "mat_code": "WD-0032",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-265",
@@ -1054,7 +1477,8 @@
       "note": "접착식 시공법 · 노블레스 디 앤티크 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.357Z",
       "updated_at": "2026-07-10T13:02:55.165Z",
-      "mat_code": "WD-0033"
+      "mat_code": "WD-0033",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "kujung-203",
@@ -1086,7 +1510,25 @@
       "note": " 접착식 시공 · 블론테 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.489Z",
       "updated_at": "2026-07-10T13:02:55.207Z",
-      "mat_code": "WD-0034"
+      "mat_code": "WD-0034",
+      "plank": {
+        "file": "kujung-203.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-203.plank.jpg",
+        "size_mm": {
+          "w": 4841.5,
+          "h": 1835.8
+        },
+        "px": {
+          "w": 1498,
+          "h": 568
+        },
+        "ppm": 0.309,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 19,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:21.028Z"
+      }
     },
     {
       "id": "kujung-189",
@@ -1118,7 +1560,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 수동검증 p23.8 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.547Z",
       "updated_at": "2026-07-10T13:02:55.241Z",
-      "mat_code": "WD-0035"
+      "mat_code": "WD-0035",
+      "plank": {
+        "file": "kujung-189.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-189.plank.jpg",
+        "size_mm": {
+          "w": 3598,
+          "h": 1663.8
+        },
+        "px": {
+          "w": 519,
+          "h": 240
+        },
+        "ppm": 0.144,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 71,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:21.141Z"
+      }
     },
     {
       "id": "kujung-188",
@@ -1150,7 +1610,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 수동검증 p23.5 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.597Z",
       "updated_at": "2026-07-10T13:02:55.267Z",
-      "mat_code": "WD-0036"
+      "mat_code": "WD-0036",
+      "plank": {
+        "file": "kujung-188.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-188.plank.jpg",
+        "size_mm": {
+          "w": 3601.9,
+          "h": 1685.1
+        },
+        "px": {
+          "w": 513,
+          "h": 240
+        },
+        "ppm": 0.142,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 78,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:21.254Z"
+      }
     },
     {
       "id": "kujung-164",
@@ -1182,7 +1660,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.675Z",
       "updated_at": "2026-07-10T13:02:55.289Z",
-      "mat_code": "WD-0037"
+      "mat_code": "WD-0037",
+      "plank": {
+        "file": "kujung-164.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-164.plank.jpg",
+        "size_mm": {
+          "w": 3601.3,
+          "h": 1641.6
+        },
+        "px": {
+          "w": 2106,
+          "h": 960
+        },
+        "ppm": 0.585,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 7,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:21.379Z"
+      }
     },
     {
       "id": "kujung-163",
@@ -1214,7 +1710,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.760Z",
       "updated_at": "2026-07-10T13:02:55.321Z",
-      "mat_code": "WD-0038"
+      "mat_code": "WD-0038",
+      "plank": {
+        "file": "kujung-163.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-163.plank.jpg",
+        "size_mm": {
+          "w": 3601.3,
+          "h": 1641.6
+        },
+        "px": {
+          "w": 2106,
+          "h": 960
+        },
+        "ppm": 0.585,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 4,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:21.516Z"
+      }
     },
     {
       "id": "kujung-162",
@@ -1246,7 +1760,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.837Z",
       "updated_at": "2026-07-10T13:02:55.354Z",
-      "mat_code": "WD-0039"
+      "mat_code": "WD-0039",
+      "plank": {
+        "file": "kujung-162.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-162.plank.jpg",
+        "size_mm": {
+          "w": 3601.3,
+          "h": 1652.2
+        },
+        "px": {
+          "w": 3771,
+          "h": 1730
+        },
+        "ppm": 1.047,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 4,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:21.866Z"
+      }
     },
     {
       "id": "kujung-161",
@@ -1278,7 +1810,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.923Z",
       "updated_at": "2026-07-10T13:02:55.382Z",
-      "mat_code": "WD-0040"
+      "mat_code": "WD-0040",
+      "plank": {
+        "file": "kujung-161.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-161.plank.jpg",
+        "size_mm": {
+          "w": 3599.1,
+          "h": 1652.4
+        },
+        "px": {
+          "w": 2091,
+          "h": 960
+        },
+        "ppm": 0.581,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 8,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:22.005Z"
+      }
     },
     {
       "id": "kujung-128",
@@ -1310,7 +1860,25 @@
       "note": "접착식 시공 · 블론테 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:35.985Z",
       "updated_at": "2026-07-10T13:02:55.404Z",
-      "mat_code": "WD-0041"
+      "mat_code": "WD-0041",
+      "plank": {
+        "file": "kujung-128.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-128.plank.jpg",
+        "size_mm": {
+          "w": 4836,
+          "h": 1824
+        },
+        "px": {
+          "w": 806,
+          "h": 304
+        },
+        "ppm": 0.167,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 40,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:22.099Z"
+      }
     },
     {
       "id": "kujung-123",
@@ -1342,7 +1910,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.052Z",
       "updated_at": "2026-07-10T13:02:55.422Z",
-      "mat_code": "WD-0042"
+      "mat_code": "WD-0042",
+      "plank": {
+        "file": "kujung-123.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-123.plank.jpg",
+        "size_mm": {
+          "w": 3603.6,
+          "h": 1650
+        },
+        "px": {
+          "w": 546,
+          "h": 250
+        },
+        "ppm": 0.152,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 74,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:22.184Z"
+      }
     },
     {
       "id": "kujung-61",
@@ -1374,7 +1960,25 @@
       "note": "접착식 시공법 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.128Z",
       "updated_at": "2026-07-10T13:02:55.443Z",
-      "mat_code": "WD-0043"
+      "mat_code": "WD-0043",
+      "plank": {
+        "file": "kujung-61.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-61.plank.jpg",
+        "size_mm": {
+          "w": 2400,
+          "h": 948.4
+        },
+        "px": {
+          "w": 2880,
+          "h": 1138
+        },
+        "ppm": 2.109,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:22.531Z"
+      }
     },
     {
       "id": "kujung-58",
@@ -1406,7 +2010,25 @@
       "note": "접착식 시공법 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.188Z",
       "updated_at": "2026-07-10T13:02:55.461Z",
-      "mat_code": "WD-0044"
+      "mat_code": "WD-0044",
+      "plank": {
+        "file": "kujung-58.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-58.plank.jpg",
+        "size_mm": {
+          "w": 2400.5,
+          "h": 949.9
+        },
+        "px": {
+          "w": 2881,
+          "h": 1140
+        },
+        "ppm": 2.137,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:22.860Z"
+      }
     },
     {
       "id": "kujung-57",
@@ -1438,7 +2060,25 @@
       "note": "접착식 시공법 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.260Z",
       "updated_at": "2026-07-10T13:02:55.481Z",
-      "mat_code": "WD-0045"
+      "mat_code": "WD-0045",
+      "plank": {
+        "file": "kujung-57.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-57.plank.jpg",
+        "size_mm": {
+          "w": 2399.8,
+          "h": 950.8
+        },
+        "px": {
+          "w": 2880,
+          "h": 1141
+        },
+        "ppm": 2.135,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:23.182Z"
+      }
     },
     {
       "id": "kujung-55",
@@ -1470,7 +2110,25 @@
       "note": "접착식 시공법 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.337Z",
       "updated_at": "2026-07-10T13:02:55.501Z",
-      "mat_code": "WD-0046"
+      "mat_code": "WD-0046",
+      "plank": {
+        "file": "kujung-55.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-55.plank.jpg",
+        "size_mm": {
+          "w": 2399.7,
+          "h": 949
+        },
+        "px": {
+          "w": 2880,
+          "h": 1139
+        },
+        "ppm": 2.139,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:23.544Z"
+      }
     },
     {
       "id": "kujung-51",
@@ -1502,7 +2160,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.404Z",
       "updated_at": "2026-07-10T13:02:55.530Z",
-      "mat_code": "WD-0047"
+      "mat_code": "WD-0047",
+      "plank": {
+        "file": "kujung-51.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-51.plank.jpg",
+        "size_mm": {
+          "w": 2399.9,
+          "h": 955.2
+        },
+        "px": {
+          "w": 603,
+          "h": 240
+        },
+        "ppm": 0.251,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 75,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:23.661Z"
+      }
     },
     {
       "id": "kujung-50",
@@ -1534,7 +2210,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.480Z",
       "updated_at": "2026-07-10T13:02:55.561Z",
-      "mat_code": "WD-0048"
+      "mat_code": "WD-0048",
+      "plank": {
+        "file": "kujung-50.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-50.plank.jpg",
+        "size_mm": {
+          "w": 2401.4,
+          "h": 925.2
+        },
+        "px": {
+          "w": 597,
+          "h": 230
+        },
+        "ppm": 0.249,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 93,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:23.780Z"
+      }
     },
     {
       "id": "kujung-49",
@@ -1566,7 +2260,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.543Z",
       "updated_at": "2026-07-10T13:02:55.586Z",
-      "mat_code": "WD-0049"
+      "mat_code": "WD-0049",
+      "plank": {
+        "file": "kujung-49.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-49.plank.jpg",
+        "size_mm": {
+          "w": 2400.4,
+          "h": 932.5
+        },
+        "px": {
+          "w": 1287,
+          "h": 500
+        },
+        "ppm": 0.536,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 13,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:23.857Z"
+      }
     },
     {
       "id": "kujung-46",
@@ -1598,7 +2310,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.628Z",
       "updated_at": "2026-07-10T13:02:55.615Z",
-      "mat_code": "WD-0050"
+      "mat_code": "WD-0050",
+      "plank": {
+        "file": "kujung-46.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-46.plank.jpg",
+        "size_mm": {
+          "w": 2400,
+          "h": 960
+        },
+        "px": {
+          "w": 600,
+          "h": 240
+        },
+        "ppm": 0.25,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 94,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:23.970Z"
+      }
     },
     {
       "id": "kujung-45",
@@ -1630,7 +2360,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.713Z",
       "updated_at": "2026-07-10T13:02:55.645Z",
-      "mat_code": "WD-0051"
+      "mat_code": "WD-0051",
+      "plank": {
+        "file": "kujung-45.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-45.plank.jpg",
+        "size_mm": {
+          "w": 2398.4,
+          "h": 954.6
+        },
+        "px": {
+          "w": 603,
+          "h": 240
+        },
+        "ppm": 0.251,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 101,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:24.100Z"
+      }
     },
     {
       "id": "kujung-43",
@@ -1662,7 +2410,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.743Z",
       "updated_at": "2026-07-10T13:02:55.660Z",
-      "mat_code": "WD-0052"
+      "mat_code": "WD-0052",
+      "plank": {
+        "file": "kujung-43.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-43.plank.jpg",
+        "size_mm": {
+          "w": 2395,
+          "h": 927.4
+        },
+        "px": {
+          "w": 594,
+          "h": 230
+        },
+        "ppm": 0.248,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 37,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:24.164Z"
+      }
     },
     {
       "id": "kujung-41",
@@ -1694,7 +2460,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.817Z",
       "updated_at": "2026-07-10T13:02:55.694Z",
-      "mat_code": "WD-0053"
+      "mat_code": "WD-0053",
+      "plank": {
+        "file": "kujung-41.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-41.plank.jpg",
+        "size_mm": {
+          "w": 2397.2,
+          "h": 935.1
+        },
+        "px": {
+          "w": 846,
+          "h": 330
+        },
+        "ppm": 0.353,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 56,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:24.278Z"
+      }
     },
     {
       "id": "kujung-40",
@@ -1726,7 +2510,25 @@
       "note": "접착식 시공법 · 구정강 · 수동검증 p15.6 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.846Z",
       "updated_at": "2026-07-10T13:02:55.710Z",
-      "mat_code": "WD-0054"
+      "mat_code": "WD-0054",
+      "plank": {
+        "file": "kujung-40.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-40.plank.jpg",
+        "size_mm": {
+          "w": 2404.4,
+          "h": 964.2
+        },
+        "px": {
+          "w": 399,
+          "h": 160
+        },
+        "ppm": 0.166,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 52,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:24.343Z"
+      }
     },
     {
       "id": "kujung-39",
@@ -1758,7 +2560,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.907Z",
       "updated_at": "2026-07-10T13:02:55.736Z",
-      "mat_code": "WD-0055"
+      "mat_code": "WD-0055",
+      "plank": {
+        "file": "kujung-39.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-39.plank.jpg",
+        "size_mm": {
+          "w": 2402.6,
+          "h": 940
+        },
+        "px": {
+          "w": 639,
+          "h": 250
+        },
+        "ppm": 0.266,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 45,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:24.431Z"
+      }
     },
     {
       "id": "kujung-38",
@@ -1790,7 +2610,25 @@
       "note": "접착식 시공 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:36.977Z",
       "updated_at": "2026-07-10T13:02:55.760Z",
-      "mat_code": "WD-0056"
+      "mat_code": "WD-0056",
+      "plank": {
+        "file": "kujung-38.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-38.plank.jpg",
+        "size_mm": {
+          "w": 2402.6,
+          "h": 940
+        },
+        "px": {
+          "w": 639,
+          "h": 250
+        },
+        "ppm": 0.266,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 58,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:24.516Z"
+      }
     },
     {
       "id": "kujung-37",
@@ -1822,7 +2660,25 @@
       "note": "접착식 시공 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.013Z",
       "updated_at": "2026-07-10T13:02:55.792Z",
-      "mat_code": "WD-0057"
+      "mat_code": "WD-0057",
+      "plank": {
+        "file": "kujung-37.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-37.plank.jpg",
+        "size_mm": {
+          "w": 2401.4,
+          "h": 925.2
+        },
+        "px": {
+          "w": 597,
+          "h": 230
+        },
+        "ppm": 0.249,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 98,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:24.646Z"
+      }
     },
     {
       "id": "kujung-156",
@@ -1854,7 +2710,25 @@
       "note": "접착식 시공마루 · 파켓 더 헤리티지 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.076Z",
       "updated_at": "2026-07-10T13:02:55.825Z",
-      "mat_code": "WD-0058"
+      "mat_code": "WD-0058",
+      "plank": {
+        "file": "kujung-156.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-156.plank.jpg",
+        "size_mm": {
+          "w": 3801.5,
+          "h": 1524.4
+        },
+        "px": {
+          "w": 798,
+          "h": 320
+        },
+        "ppm": 0.21,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 30,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:24.740Z"
+      }
     },
     {
       "id": "kujung-154",
@@ -1886,7 +2760,25 @@
       "note": "접착식 시공법 · 파켓 더 헤리티지 · 수동검증 p99 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.124Z",
       "updated_at": "2026-07-10T13:02:55.862Z",
-      "mat_code": "WD-0059"
+      "mat_code": "WD-0059",
+      "plank": {
+        "file": "kujung-154.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-154.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 400,
+          "h": 160
+        },
+        "ppm": 0.105,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 71,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:24.893Z"
+      }
     },
     {
       "id": "kujung-151",
@@ -1918,7 +2810,25 @@
       "note": "접착식 시공법 · 파켓 더 헤리티지 · 수동검증 p40 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.166Z",
       "updated_at": "2026-07-10T13:02:55.899Z",
-      "mat_code": "WD-0060"
+      "mat_code": "WD-0060",
+      "plank": {
+        "file": "kujung-151.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-151.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 400,
+          "h": 160
+        },
+        "ppm": 0.105,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 112,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:25.031Z"
+      }
     },
     {
       "id": "kujung-150",
@@ -1950,7 +2860,25 @@
       "note": "접착식 시공법 · 파켓 더 헤리티지 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.219Z",
       "updated_at": "2026-07-10T13:02:55.925Z",
-      "mat_code": "WD-0061"
+      "mat_code": "WD-0061",
+      "plank": {
+        "file": "kujung-150.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-150.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 400,
+          "h": 160
+        },
+        "ppm": 0.105,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 61,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:25.127Z"
+      }
     },
     {
       "id": "kujung-148",
@@ -1982,7 +2910,25 @@
       "note": "접착식 시공법 · 파켓 더 헤리티지 · 수동검증 p20 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.259Z",
       "updated_at": "2026-07-10T13:02:55.962Z",
-      "mat_code": "WD-0062"
+      "mat_code": "WD-0062",
+      "plank": {
+        "file": "kujung-148.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-148.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 400,
+          "h": 160
+        },
+        "ppm": 0.105,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 119,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:25.281Z"
+      }
     },
     {
       "id": "kujung-122",
@@ -2014,7 +2960,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.316Z",
       "updated_at": "2026-07-10T13:02:56.000Z",
-      "mat_code": "WD-0063"
+      "mat_code": "WD-0063",
+      "plank": {
+        "file": "kujung-122.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-122.plank.jpg",
+        "size_mm": {
+          "w": 3603.6,
+          "h": 1650
+        },
+        "px": {
+          "w": 546,
+          "h": 250
+        },
+        "ppm": 0.152,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 98,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:25.456Z"
+      }
     },
     {
       "id": "kujung-119",
@@ -2046,7 +3010,25 @@
       "note": "접착식 시공법  · 그랜드 텍스쳐 165 · 수동검증 p25 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.355Z",
       "updated_at": "2026-07-10T13:02:56.032Z",
-      "mat_code": "WD-0064"
+      "mat_code": "WD-0064",
+      "plank": {
+        "file": "kujung-119.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-119.plank.jpg",
+        "size_mm": {
+          "w": 3603.4,
+          "h": 1649.9
+        },
+        "px": {
+          "w": 546,
+          "h": 250
+        },
+        "ppm": 0.152,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 114,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:25.577Z"
+      }
     },
     {
       "id": "kujung-117",
@@ -2078,7 +3060,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.408Z",
       "updated_at": "2026-07-10T13:02:56.061Z",
-      "mat_code": "WD-0065"
+      "mat_code": "WD-0065",
+      "plank": {
+        "file": "kujung-117.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-117.plank.jpg",
+        "size_mm": {
+          "w": 3603,
+          "h": 1659
+        },
+        "px": {
+          "w": 999,
+          "h": 460
+        },
+        "ppm": 0.277,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 11,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:25.649Z"
+      }
     },
     {
       "id": "kujung-116",
@@ -2110,7 +3110,25 @@
       "note": "접착식 시공법 · 그랜드 텍스쳐 165 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.467Z",
       "updated_at": "2026-07-10T13:02:56.091Z",
-      "mat_code": "WD-0066"
+      "mat_code": "WD-0066",
+      "plank": {
+        "file": "kujung-116.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-116.plank.jpg",
+        "size_mm": {
+          "w": 3602,
+          "h": 1653.6
+        },
+        "px": {
+          "w": 2004,
+          "h": 920
+        },
+        "ppm": 0.556,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 5,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:25.748Z"
+      }
     },
     {
       "id": "kujung-81",
@@ -2142,7 +3160,25 @@
       "note": "접착식 시공법 · 프리미엄 텍스쳐 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.545Z",
       "updated_at": "2026-07-10T13:02:56.139Z",
-      "mat_code": "WD-0067"
+      "mat_code": "WD-0067",
+      "plank": {
+        "file": "kujung-81.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-81.plank.jpg",
+        "size_mm": {
+          "w": 2404.5,
+          "h": 1162.2
+        },
+        "px": {
+          "w": 600,
+          "h": 290
+        },
+        "ppm": 0.25,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 63,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:25.862Z"
+      }
     },
     {
       "id": "kujung-80",
@@ -2174,7 +3210,25 @@
       "note": "접착식 시공법 · 프리미엄 텍스쳐 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.641Z",
       "updated_at": "2026-07-10T13:02:56.179Z",
-      "mat_code": "WD-0068"
+      "mat_code": "WD-0068",
+      "plank": {
+        "file": "kujung-80.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-80.plank.jpg",
+        "size_mm": {
+          "w": 2394,
+          "h": 1162.9
+        },
+        "px": {
+          "w": 597,
+          "h": 290
+        },
+        "ppm": 0.249,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 54,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:25.970Z"
+      }
     },
     {
       "id": "kujung-79",
@@ -2206,7 +3260,25 @@
       "note": "접착식 시공법 · 프리미엄 텍스쳐 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.710Z",
       "updated_at": "2026-07-10T13:02:56.219Z",
-      "mat_code": "WD-0069"
+      "mat_code": "WD-0069",
+      "plank": {
+        "file": "kujung-79.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-79.plank.jpg",
+        "size_mm": {
+          "w": 2404.5,
+          "h": 1162.2
+        },
+        "px": {
+          "w": 600,
+          "h": 290
+        },
+        "ppm": 0.25,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 70,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:26.067Z"
+      }
     },
     {
       "id": "kujung-78",
@@ -2238,7 +3310,25 @@
       "note": "접착식 시공법 · 프리미엄 텍스쳐 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.774Z",
       "updated_at": "2026-07-10T13:02:56.255Z",
-      "mat_code": "WD-0070"
+      "mat_code": "WD-0070",
+      "plank": {
+        "file": "kujung-78.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-78.plank.jpg",
+        "size_mm": {
+          "w": 2403.8,
+          "h": 1167.7
+        },
+        "px": {
+          "w": 597,
+          "h": 290
+        },
+        "ppm": 0.248,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 77,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:26.175Z"
+      }
     },
     {
       "id": "kujung-77",
@@ -2270,7 +3360,25 @@
       "note": "접착식 시공법 · 프리미엄 텍스쳐 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.838Z",
       "updated_at": "2026-07-10T13:02:56.282Z",
-      "mat_code": "WD-0071"
+      "mat_code": "WD-0071",
+      "plank": {
+        "file": "kujung-77.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-77.plank.jpg",
+        "size_mm": {
+          "w": 2403.9,
+          "h": 1150
+        },
+        "px": {
+          "w": 648,
+          "h": 310
+        },
+        "ppm": 0.27,
+        "quality": "low",
+        "scale_fixed": true,
+        "segs": 29,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:26.234Z"
+      }
     },
     {
       "id": "kujung-64",
@@ -2302,7 +3410,25 @@
       "note": "접착식 시공법 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.921Z",
       "updated_at": "2026-07-10T13:02:56.313Z",
-      "mat_code": "WD-0072"
+      "mat_code": "WD-0072",
+      "plank": {
+        "file": "kujung-64.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-64.plank.jpg",
+        "size_mm": {
+          "w": 2399.4,
+          "h": 948.6
+        },
+        "px": {
+          "w": 2879,
+          "h": 1138
+        },
+        "ppm": 2.151,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:26.644Z"
+      }
     },
     {
       "id": "kujung-60",
@@ -2334,7 +3460,25 @@
       "note": "접착식 시공법 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:37.991Z",
       "updated_at": "2026-07-10T13:02:56.342Z",
-      "mat_code": "WD-0073"
+      "mat_code": "WD-0073",
+      "plank": {
+        "file": "kujung-60.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-60.plank.jpg",
+        "size_mm": {
+          "w": 2400.5,
+          "h": 951.9
+        },
+        "px": {
+          "w": 2881,
+          "h": 1142
+        },
+        "ppm": 2.122,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:26.999Z"
+      }
     },
     {
       "id": "kujung-59",
@@ -2366,7 +3510,25 @@
       "note": "접착식 시공법 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:38.049Z",
       "updated_at": "2026-07-10T13:02:56.368Z",
-      "mat_code": "WD-0074"
+      "mat_code": "WD-0074",
+      "plank": {
+        "file": "kujung-59.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-59.plank.jpg",
+        "size_mm": {
+          "w": 2399.8,
+          "h": 949.7
+        },
+        "px": {
+          "w": 2880,
+          "h": 1140
+        },
+        "ppm": 2.116,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:27.379Z"
+      }
     },
     {
       "id": "kujung-54",
@@ -2398,7 +3560,25 @@
       "note": "접착식 시공법 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:38.110Z",
       "updated_at": "2026-07-10T13:02:56.393Z",
-      "mat_code": "WD-0075"
+      "mat_code": "WD-0075",
+      "plank": {
+        "file": "kujung-54.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-54.plank.jpg",
+        "size_mm": {
+          "w": 2400.1,
+          "h": 948.9
+        },
+        "px": {
+          "w": 2880,
+          "h": 1139
+        },
+        "ppm": 2.129,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 1,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:27.712Z"
+      }
     },
     {
       "id": "kujung-48",
@@ -2430,7 +3610,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:38.177Z",
       "updated_at": "2026-07-10T13:02:56.424Z",
-      "mat_code": "WD-0076"
+      "mat_code": "WD-0076",
+      "plank": {
+        "file": "kujung-48.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-48.plank.jpg",
+        "size_mm": {
+          "w": 2398.9,
+          "h": 937.5
+        },
+        "px": {
+          "w": 2879,
+          "h": 1125
+        },
+        "ppm": 1.248,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 5,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:27.944Z"
+      }
     },
     {
       "id": "kujung-47",
@@ -2462,7 +3660,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:38.244Z",
       "updated_at": "2026-07-10T13:02:56.454Z",
-      "mat_code": "WD-0077"
+      "mat_code": "WD-0077",
+      "plank": {
+        "file": "kujung-47.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-47.plank.jpg",
+        "size_mm": {
+          "w": 2403.7,
+          "h": 926
+        },
+        "px": {
+          "w": 597,
+          "h": 230
+        },
+        "ppm": 0.248,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 92,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:28.059Z"
+      }
     },
     {
       "id": "kujung-44",
@@ -2494,7 +3710,25 @@
       "note": "접착식 시공법 · 구정강 · 가로 시멀리스(행 롤+조인트)",
       "created_at": "2026-07-10T08:14:38.306Z",
       "updated_at": "2026-07-10T13:02:56.488Z",
-      "mat_code": "WD-0078"
+      "mat_code": "WD-0078",
+      "plank": {
+        "file": "kujung-44.plank.jpg",
+        "image_url": "/data/textures/wood/kujung-44.plank.jpg",
+        "size_mm": {
+          "w": 2396.2,
+          "h": 953.7
+        },
+        "px": {
+          "w": 603,
+          "h": 240
+        },
+        "ppm": 0.252,
+        "quality": "low",
+        "scale_fixed": false,
+        "segs": 85,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:28.177Z"
+      }
     },
     {
       "id": "jibokdeuk-a1501",
@@ -2526,7 +3760,25 @@
       "note": "BARAM 15 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 8행×1200mm)",
       "created_at": "2026-07-10T08:23:11.797Z",
       "updated_at": "2026-07-10T13:10:02.069Z",
-      "mat_code": "WD-0079"
+      "mat_code": "WD-0079",
+      "plank": {
+        "file": "jibokdeuk-a1501.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1501.plank.jpg",
+        "size_mm": {
+          "w": 3600,
+          "h": 1653.3
+        },
+        "px": {
+          "w": 4096,
+          "h": 1881
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 16,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:29.205Z"
+      }
     },
     {
       "id": "jibokdeuk-a1505",
@@ -2558,7 +3810,25 @@
       "note": "BARAM 15 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 8행×1200mm)",
       "created_at": "2026-07-10T08:23:11.919Z",
       "updated_at": "2026-07-10T13:10:02.442Z",
-      "mat_code": "WD-0080"
+      "mat_code": "WD-0080",
+      "plank": {
+        "file": "jibokdeuk-a1505.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1505.plank.jpg",
+        "size_mm": {
+          "w": 3600,
+          "h": 1653.3
+        },
+        "px": {
+          "w": 4096,
+          "h": 1881
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 16,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:30.085Z"
+      }
     },
     {
       "id": "jibokdeuk-a1502",
@@ -2590,7 +3860,25 @@
       "note": "BARAM 15 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 8행×1200mm)",
       "created_at": "2026-07-10T08:23:12.029Z",
       "updated_at": "2026-07-10T13:10:02.731Z",
-      "mat_code": "WD-0081"
+      "mat_code": "WD-0081",
+      "plank": {
+        "file": "jibokdeuk-a1502.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1502.plank.jpg",
+        "size_mm": {
+          "w": 3600,
+          "h": 1653.3
+        },
+        "px": {
+          "w": 4096,
+          "h": 1881
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 16,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:30.951Z"
+      }
     },
     {
       "id": "jibokdeuk-a1506",
@@ -2622,7 +3910,25 @@
       "note": "BARAM 15 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 8행×1200mm)",
       "created_at": "2026-07-10T08:23:12.154Z",
       "updated_at": "2026-07-10T13:10:03.051Z",
-      "mat_code": "WD-0082"
+      "mat_code": "WD-0082",
+      "plank": {
+        "file": "jibokdeuk-a1506.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1506.plank.jpg",
+        "size_mm": {
+          "w": 3600,
+          "h": 1653.3
+        },
+        "px": {
+          "w": 4096,
+          "h": 1881
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 16,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:31.865Z"
+      }
     },
     {
       "id": "jibokdeuk-a1503",
@@ -2654,7 +3960,25 @@
       "note": "BARAM 15 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 8행×1200mm)",
       "created_at": "2026-07-10T08:23:12.273Z",
       "updated_at": "2026-07-10T13:10:03.355Z",
-      "mat_code": "WD-0083"
+      "mat_code": "WD-0083",
+      "plank": {
+        "file": "jibokdeuk-a1503.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1503.plank.jpg",
+        "size_mm": {
+          "w": 3600,
+          "h": 1653.3
+        },
+        "px": {
+          "w": 4096,
+          "h": 1881
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 16,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:32.770Z"
+      }
     },
     {
       "id": "jibokdeuk-a1507",
@@ -2686,7 +4010,25 @@
       "note": "BARAM 15 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 8행×1200mm)",
       "created_at": "2026-07-10T08:23:12.378Z",
       "updated_at": "2026-07-10T13:10:03.656Z",
-      "mat_code": "WD-0084"
+      "mat_code": "WD-0084",
+      "plank": {
+        "file": "jibokdeuk-a1507.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1507.plank.jpg",
+        "size_mm": {
+          "w": 3600,
+          "h": 1653.3
+        },
+        "px": {
+          "w": 4096,
+          "h": 1881
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 16,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:33.630Z"
+      }
     },
     {
       "id": "jibokdeuk-a1504",
@@ -2718,7 +4060,25 @@
       "note": "BARAM 15 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 8행×1200mm)",
       "created_at": "2026-07-10T08:23:12.485Z",
       "updated_at": "2026-07-10T13:10:03.950Z",
-      "mat_code": "WD-0085"
+      "mat_code": "WD-0085",
+      "plank": {
+        "file": "jibokdeuk-a1504.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1504.plank.jpg",
+        "size_mm": {
+          "w": 3600,
+          "h": 1653.3
+        },
+        "px": {
+          "w": 4096,
+          "h": 1881
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 16,
+        "layout": "3x10",
+        "generated_at": "2026-07-12T13:52:34.538Z"
+      }
     },
     {
       "id": "jibokdeuk-a1601",
@@ -2750,7 +4110,8 @@
       "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:12.601Z",
       "updated_at": "2026-07-10T13:10:15.573Z",
-      "mat_code": "WD-0086"
+      "mat_code": "WD-0086",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "jibokdeuk-a1605",
@@ -2782,7 +4143,25 @@
       "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:12.725Z",
       "updated_at": "2026-07-10T13:10:16.160Z",
-      "mat_code": "WD-0087"
+      "mat_code": "WD-0087",
+      "plank": {
+        "file": "jibokdeuk-a1605.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1605.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:36.735Z"
+      }
     },
     {
       "id": "jibokdeuk-a1602",
@@ -2814,7 +4193,25 @@
       "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:12.826Z",
       "updated_at": "2026-07-10T13:10:16.637Z",
-      "mat_code": "WD-0088"
+      "mat_code": "WD-0088",
+      "plank": {
+        "file": "jibokdeuk-a1602.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1602.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:37.865Z"
+      }
     },
     {
       "id": "jibokdeuk-a1606",
@@ -2846,7 +4243,25 @@
       "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:12.928Z",
       "updated_at": "2026-07-10T13:10:17.112Z",
-      "mat_code": "WD-0089"
+      "mat_code": "WD-0089",
+      "plank": {
+        "file": "jibokdeuk-a1606.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1606.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:40.029Z"
+      }
     },
     {
       "id": "jibokdeuk-a1603",
@@ -2878,7 +4293,8 @@
       "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.045Z",
       "updated_at": "2026-07-10T13:10:17.542Z",
-      "mat_code": "WD-0090"
+      "mat_code": "WD-0090",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "jibokdeuk-a1607",
@@ -2910,7 +4326,25 @@
       "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.146Z",
       "updated_at": "2026-07-10T13:10:17.961Z",
-      "mat_code": "WD-0091"
+      "mat_code": "WD-0091",
+      "plank": {
+        "file": "jibokdeuk-a1607.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1607.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:41.628Z"
+      }
     },
     {
       "id": "jibokdeuk-a1604",
@@ -2942,7 +4376,25 @@
       "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.239Z",
       "updated_at": "2026-07-10T13:10:18.431Z",
-      "mat_code": "WD-0092"
+      "mat_code": "WD-0092",
+      "plank": {
+        "file": "jibokdeuk-a1604.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1604.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:42.797Z"
+      }
     },
     {
       "id": "jibokdeuk-a1608",
@@ -2974,7 +4426,25 @@
       "note": "BARAM 16 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.338Z",
       "updated_at": "2026-07-10T13:10:34.296Z",
-      "mat_code": "WD-0093"
+      "mat_code": "WD-0093",
+      "plank": {
+        "file": "jibokdeuk-a1608.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1608.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 16,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:44.066Z"
+      }
     },
     {
       "id": "jibokdeuk-a1701",
@@ -3006,7 +4476,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.434Z",
       "updated_at": "2026-07-10T13:10:34.746Z",
-      "mat_code": "WD-0094"
+      "mat_code": "WD-0094",
+      "plank": {
+        "file": "jibokdeuk-a1701.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1701.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:46.300Z"
+      }
     },
     {
       "id": "jibokdeuk-a1707",
@@ -3038,7 +4526,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.543Z",
       "updated_at": "2026-07-10T13:10:35.242Z",
-      "mat_code": "WD-0095"
+      "mat_code": "WD-0095",
+      "plank": {
+        "file": "jibokdeuk-a1707.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1707.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 15,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:48.289Z"
+      }
     },
     {
       "id": "jibokdeuk-a17012",
@@ -3070,7 +4576,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.653Z",
       "updated_at": "2026-07-10T13:10:35.737Z",
-      "mat_code": "WD-0096"
+      "mat_code": "WD-0096",
+      "plank": {
+        "file": "jibokdeuk-a17012.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a17012.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:49.338Z"
+      }
     },
     {
       "id": "jibokdeuk-c17016",
@@ -3102,7 +4626,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.803Z",
       "updated_at": "2026-07-10T13:10:36.203Z",
-      "mat_code": "WD-0097"
+      "mat_code": "WD-0097",
+      "plank": {
+        "file": "jibokdeuk-c17016.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-c17016.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:50.365Z"
+      }
     },
     {
       "id": "jibokdeuk-a1702",
@@ -3134,7 +4676,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:13.950Z",
       "updated_at": "2026-07-10T13:10:36.635Z",
-      "mat_code": "WD-0098"
+      "mat_code": "WD-0098",
+      "plank": {
+        "file": "jibokdeuk-a1702.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1702.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:51.421Z"
+      }
     },
     {
       "id": "jibokdeuk-a1708",
@@ -3166,7 +4726,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:14.070Z",
       "updated_at": "2026-07-10T13:10:37.067Z",
-      "mat_code": "WD-0099"
+      "mat_code": "WD-0099",
+      "plank": {
+        "file": "jibokdeuk-a1708.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1708.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:53.451Z"
+      }
     },
     {
       "id": "jibokdeuk-a17013",
@@ -3198,7 +4776,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:14.173Z",
       "updated_at": "2026-07-10T13:10:48.127Z",
-      "mat_code": "WD-0100"
+      "mat_code": "WD-0100",
+      "plank": {
+        "file": "jibokdeuk-a17013.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a17013.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:54.465Z"
+      }
     },
     {
       "id": "jibokdeuk-c17017",
@@ -3230,7 +4826,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:14.353Z",
       "updated_at": "2026-07-10T13:10:48.666Z",
-      "mat_code": "WD-0101"
+      "mat_code": "WD-0101",
+      "plank": {
+        "file": "jibokdeuk-c17017.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-c17017.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:55.538Z"
+      }
     },
     {
       "id": "jibokdeuk-a1703",
@@ -3262,7 +4876,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:14.493Z",
       "updated_at": "2026-07-10T13:10:49.122Z",
-      "mat_code": "WD-0102"
+      "mat_code": "WD-0102",
+      "plank": {
+        "file": "jibokdeuk-a1703.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1703.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:56.641Z"
+      }
     },
     {
       "id": "jibokdeuk-a1709",
@@ -3294,7 +4926,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:14.637Z",
       "updated_at": "2026-07-10T13:10:49.598Z",
-      "mat_code": "WD-0103"
+      "mat_code": "WD-0103",
+      "plank": {
+        "file": "jibokdeuk-a1709.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1709.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:58.715Z"
+      }
     },
     {
       "id": "jibokdeuk-a17014",
@@ -3326,7 +4976,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:14.760Z",
       "updated_at": "2026-07-10T13:10:50.103Z",
-      "mat_code": "WD-0104"
+      "mat_code": "WD-0104",
+      "plank": {
+        "file": "jibokdeuk-a17014.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a17014.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:52:59.773Z"
+      }
     },
     {
       "id": "jibokdeuk-c17018",
@@ -3358,7 +5026,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:14.948Z",
       "updated_at": "2026-07-10T13:10:50.598Z",
-      "mat_code": "WD-0105"
+      "mat_code": "WD-0105",
+      "plank": {
+        "file": "jibokdeuk-c17018.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-c17018.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 4,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:00.849Z"
+      }
     },
     {
       "id": "jibokdeuk-a1706",
@@ -3390,7 +5076,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:15.053Z",
       "updated_at": "2026-07-10T13:10:51.031Z",
-      "mat_code": "WD-0106"
+      "mat_code": "WD-0106",
+      "plank": {
+        "file": "jibokdeuk-a1706.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1706.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:01.903Z"
+      }
     },
     {
       "id": "jibokdeuk-a17011",
@@ -3422,7 +5126,25 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:15.167Z",
       "updated_at": "2026-07-10T13:10:59.758Z",
-      "mat_code": "WD-0107"
+      "mat_code": "WD-0107",
+      "plank": {
+        "file": "jibokdeuk-a17011.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a17011.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:02.956Z"
+      }
     },
     {
       "id": "jibokdeuk-c17015",
@@ -3454,7 +5176,8 @@
       "note": "BARAM 17 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:15.352Z",
       "updated_at": "2026-07-10T13:11:00.299Z",
-      "mat_code": "WD-0108"
+      "mat_code": "WD-0108",
+      "plank_status": "unsupported: no clean segments (raw=0, splits=0)"
     },
     {
       "id": "jibokdeuk-a1801",
@@ -3486,7 +5209,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:15.442Z",
       "updated_at": "2026-07-10T13:11:00.823Z",
-      "mat_code": "WD-0109"
+      "mat_code": "WD-0109",
+      "plank": {
+        "file": "jibokdeuk-a1801.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1801.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:04.465Z"
+      }
     },
     {
       "id": "jibokdeuk-a1806",
@@ -3518,7 +5259,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:15.546Z",
       "updated_at": "2026-07-10T13:11:01.283Z",
-      "mat_code": "WD-0110"
+      "mat_code": "WD-0110",
+      "plank": {
+        "file": "jibokdeuk-a1806.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1806.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:06.589Z"
+      }
     },
     {
       "id": "jibokdeuk-a18003",
@@ -3550,7 +5309,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:15.709Z",
       "updated_at": "2026-07-10T13:11:01.790Z",
-      "mat_code": "WD-0111"
+      "mat_code": "WD-0111",
+      "plank": {
+        "file": "jibokdeuk-a18003.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a18003.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:07.637Z"
+      }
     },
     {
       "id": "jibokdeuk-a1802",
@@ -3582,7 +5359,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:15.835Z",
       "updated_at": "2026-07-10T13:11:02.263Z",
-      "mat_code": "WD-0112"
+      "mat_code": "WD-0112",
+      "plank": {
+        "file": "jibokdeuk-a1802.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1802.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:09.333Z"
+      }
     },
     {
       "id": "jibokdeuk-a1807",
@@ -3614,7 +5409,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:15.974Z",
       "updated_at": "2026-07-10T13:11:02.680Z",
-      "mat_code": "WD-0113"
+      "mat_code": "WD-0113",
+      "plank": {
+        "file": "jibokdeuk-a1807.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1807.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:10.559Z"
+      }
     },
     {
       "id": "jibokdeuk-c1802",
@@ -3646,7 +5459,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:16.132Z",
       "updated_at": "2026-07-10T13:11:13.831Z",
-      "mat_code": "WD-0114"
+      "mat_code": "WD-0114",
+      "plank": {
+        "file": "jibokdeuk-c1802.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-c1802.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 17,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:11.561Z"
+      }
     },
     {
       "id": "jibokdeuk-a1804",
@@ -3678,7 +5509,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:16.256Z",
       "updated_at": "2026-07-10T13:11:14.327Z",
-      "mat_code": "WD-0115"
+      "mat_code": "WD-0115",
+      "plank": {
+        "file": "jibokdeuk-a1804.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1804.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:12.645Z"
+      }
     },
     {
       "id": "jibokdeuk-a18001",
@@ -3710,7 +5559,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:16.361Z",
       "updated_at": "2026-07-10T13:11:14.780Z",
-      "mat_code": "WD-0116"
+      "mat_code": "WD-0116",
+      "plank": {
+        "file": "jibokdeuk-a18001.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a18001.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:13.790Z"
+      }
     },
     {
       "id": "jibokdeuk-c1803",
@@ -3742,7 +5609,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:16.529Z",
       "updated_at": "2026-07-10T13:11:15.082Z",
-      "mat_code": "WD-0117"
+      "mat_code": "WD-0117",
+      "plank": {
+        "file": "jibokdeuk-c1803.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-c1803.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:14.843Z"
+      }
     },
     {
       "id": "jibokdeuk-a1805",
@@ -3774,7 +5659,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:16.649Z",
       "updated_at": "2026-07-10T13:11:15.591Z",
-      "mat_code": "WD-0118"
+      "mat_code": "WD-0118",
+      "plank": {
+        "file": "jibokdeuk-a1805.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1805.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:15.943Z"
+      }
     },
     {
       "id": "jibokdeuk-a18002",
@@ -3806,7 +5709,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:16.799Z",
       "updated_at": "2026-07-10T13:11:16.023Z",
-      "mat_code": "WD-0119"
+      "mat_code": "WD-0119",
+      "plank": {
+        "file": "jibokdeuk-a18002.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a18002.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:16.985Z"
+      }
     },
     {
       "id": "jibokdeuk-c1804",
@@ -3838,7 +5759,25 @@
       "note": "BARAM 18 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 7행×1900mm)",
       "created_at": "2026-07-10T08:23:16.962Z",
       "updated_at": "2026-07-10T13:11:16.448Z",
-      "mat_code": "WD-0120"
+      "mat_code": "WD-0120",
+      "plank": {
+        "file": "jibokdeuk-c1804.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-c1804.plank.jpg",
+        "size_mm": {
+          "w": 3800,
+          "h": 1520
+        },
+        "px": {
+          "w": 4096,
+          "h": 1638
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:18.013Z"
+      }
     },
     {
       "id": "jibokdeuk-a1901",
@@ -3870,7 +5809,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:17.065Z",
       "updated_at": "2026-07-10T13:11:27.485Z",
-      "mat_code": "WD-0121"
+      "mat_code": "WD-0121",
+      "plank": {
+        "file": "jibokdeuk-a1901.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1901.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:20.827Z"
+      }
     },
     {
       "id": "jibokdeuk-a1905",
@@ -3902,7 +5859,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:17.226Z",
       "updated_at": "2026-07-10T13:11:28.160Z",
-      "mat_code": "WD-0122"
+      "mat_code": "WD-0122",
+      "plank": {
+        "file": "jibokdeuk-a1905.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1905.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:22.141Z"
+      }
     },
     {
       "id": "jibokdeuk-a1909",
@@ -3934,7 +5909,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:17.367Z",
       "updated_at": "2026-07-10T13:11:28.745Z",
-      "mat_code": "WD-0123"
+      "mat_code": "WD-0123",
+      "plank": {
+        "file": "jibokdeuk-a1909.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1909.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 14,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:24.779Z"
+      }
     },
     {
       "id": "jibokdeuk-c1905",
@@ -3966,7 +5959,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:17.562Z",
       "updated_at": "2026-07-10T13:11:29.316Z",
-      "mat_code": "WD-0124"
+      "mat_code": "WD-0124",
+      "plank": {
+        "file": "jibokdeuk-c1905.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-c1905.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:26.044Z"
+      }
     },
     {
       "id": "jibokdeuk-a1902",
@@ -3998,7 +6009,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:17.693Z",
       "updated_at": "2026-07-10T13:11:29.907Z",
-      "mat_code": "WD-0125"
+      "mat_code": "WD-0125",
+      "plank": {
+        "file": "jibokdeuk-a1902.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1902.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:28.898Z"
+      }
     },
     {
       "id": "jibokdeuk-a1906",
@@ -4030,7 +6059,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:17.807Z",
       "updated_at": "2026-07-10T13:11:30.444Z",
-      "mat_code": "WD-0126"
+      "mat_code": "WD-0126",
+      "plank": {
+        "file": "jibokdeuk-a1906.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1906.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 9,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:31.535Z"
+      }
     },
     {
       "id": "jibokdeuk-a1910",
@@ -4062,7 +6109,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:17.937Z",
       "updated_at": "2026-07-10T13:11:31.123Z",
-      "mat_code": "WD-0127"
+      "mat_code": "WD-0127",
+      "plank": {
+        "file": "jibokdeuk-a1910.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1910.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:32.784Z"
+      }
     },
     {
       "id": "jibokdeuk-c1906",
@@ -4094,7 +6159,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:18.113Z",
       "updated_at": "2026-07-10T13:11:39.369Z",
-      "mat_code": "WD-0128"
+      "mat_code": "WD-0128",
+      "plank": {
+        "file": "jibokdeuk-c1906.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-c1906.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:34.174Z"
+      }
     },
     {
       "id": "jibokdeuk-a1903",
@@ -4126,7 +6209,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:18.232Z",
       "updated_at": "2026-07-10T13:11:39.943Z",
-      "mat_code": "WD-0129"
+      "mat_code": "WD-0129",
+      "plank": {
+        "file": "jibokdeuk-a1903.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1903.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 13,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:36.542Z"
+      }
     },
     {
       "id": "jibokdeuk-a1907",
@@ -4158,7 +6259,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:18.391Z",
       "updated_at": "2026-07-10T13:11:40.566Z",
-      "mat_code": "WD-0130"
+      "mat_code": "WD-0130",
+      "plank": {
+        "file": "jibokdeuk-a1907.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1907.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:37.805Z"
+      }
     },
     {
       "id": "jibokdeuk-a1911",
@@ -4190,7 +6309,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:18.484Z",
       "updated_at": "2026-07-10T13:11:41.120Z",
-      "mat_code": "WD-0131"
+      "mat_code": "WD-0131",
+      "plank": {
+        "file": "jibokdeuk-a1911.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1911.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 10,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:38.908Z"
+      }
     },
     {
       "id": "jibokdeuk-a1904",
@@ -4222,7 +6359,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:18.594Z",
       "updated_at": "2026-07-10T13:11:41.657Z",
-      "mat_code": "WD-0132"
+      "mat_code": "WD-0132",
+      "plank": {
+        "file": "jibokdeuk-a1904.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1904.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 13,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:41.516Z"
+      }
     },
     {
       "id": "jibokdeuk-a1908",
@@ -4254,7 +6409,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:18.746Z",
       "updated_at": "2026-07-10T13:11:42.231Z",
-      "mat_code": "WD-0133"
+      "mat_code": "WD-0133",
+      "plank": {
+        "file": "jibokdeuk-a1908.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a1908.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:44.359Z"
+      }
     },
     {
       "id": "jibokdeuk-a19001",
@@ -4286,7 +6459,25 @@
       "note": "BARAM 19 · 결 스와치→실측 플랭크 합성 플로어(토러스 시멀리스, 6행×2200mm)",
       "created_at": "2026-07-10T08:23:18.928Z",
       "updated_at": "2026-07-10T13:11:42.793Z",
-      "mat_code": "WD-0134"
+      "mat_code": "WD-0134",
+      "plank": {
+        "file": "jibokdeuk-a19001.plank.jpg",
+        "image_url": "/data/textures/wood/jibokdeuk-a19001.plank.jpg",
+        "size_mm": {
+          "w": 4400,
+          "h": 1920
+        },
+        "px": {
+          "w": 4096,
+          "h": 1787
+        },
+        "ppm": 1.5,
+        "quality": "good",
+        "scale_fixed": false,
+        "segs": 12,
+        "layout": "2x8",
+        "generated_at": "2026-07-12T13:53:45.642Z"
+      }
     }
   ]
 }

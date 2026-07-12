@@ -16,3 +16,6 @@ data/product-images/
 # 만약 데이터를 추적에서 빼고 싶다면 아래 두 줄의 주석을 해제하세요.
 # data/materials.json
 # data/changelog.json
+
+# 플랭크 합성 타일(82MB) — 시드 고정 파생물: `node tools/gen-plank-tiles.js`로 동일 재생성 가능
+data/textures/wood/*.plank.jpg

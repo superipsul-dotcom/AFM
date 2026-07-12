@@ -1891,7 +1891,15 @@ app.post('/api/wood/import', (req, res) => {
       created_at: existing ? existing.created_at : new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
-    if (existing) { Object.assign(existing, rec); rec.mat_code = existing.mat_code; } else wdb.woods.push(rec);
+    if (existing) {
+      Object.assign(existing, rec); rec.mat_code = existing.mat_code;
+      // 원본 이미지가 교체되면 기존 플랭크 타일은 무효 → 삭제 (tools/gen-plank-tiles.js 재실행으로 재생성)
+      if (img.length >= 100 && existing.plank && existing.plank.file) {
+        try { fs.unlinkSync(path.join(WOOD_DIR, existing.plank.file)); } catch (_) {}
+        delete existing.plank;
+        existing.plank_status = 'stale: 원본 교체 — gen-plank-tiles 재실행 필요';
+      }
+    } else wdb.woods.push(rec);
     ensureMatCodes(); // (v27) 신규 우드에 WD-#### 즉시 발급 (기존 코드는 불변)
     saveWood();
     return ok(res, existing ? 200 : 201, rec, `"${brand} ${name}" ${existing ? '갱신' : '등록'}`);
@@ -1902,19 +1910,28 @@ app.delete('/api/wood/:id', (req, res) => {
   const i = wdb.woods.findIndex(x => x.id === req.params.id);
   if (i < 0) return fail(res, 404, '항목을 찾을 수 없습니다.');
   const [t] = wdb.woods.splice(i, 1);
-  for (const f of [t.file, t.thumb]) { if (f) { try { fs.unlinkSync(path.join(WOOD_DIR, f)); } catch (_) {} } }
+  for (const f of [t.file, t.thumb, t.plank && t.plank.file]) { if (f) { try { fs.unlinkSync(path.join(WOOD_DIR, f)); } catch (_) {} } }
   saveWood();
   return ok(res, 200, { id: t.id, deleted: true }, '삭제되었습니다.');
 });
 
+// 우드 텍스처 소스 선택: 플랭크 합성 타일(1플랭크=1패턴·실측 격자·시멀리스) 우선, 없으면 원본 스와치
+function woodTexSource(t, wantPlank) {
+  if (wantPlank && t.plank && t.plank.file) {
+    const p = path.join(WOOD_DIR, t.plank.file);
+    if (fs.existsSync(p)) return { imagePath: p, size: t.plank.size_mm, plank: true };
+  }
+  return { imagePath: t.file ? path.join(WOOD_DIR, t.file) : '', size: t.size_mm, plank: false };
+}
+
 app.get('/api/wood/:id/skm', (req, res) => {
   const t = wdb.woods.find(x => x.id === req.params.id);
   if (!t) return fail(res, 404, '항목을 찾을 수 없습니다.');
-  const imagePath = path.join(WOOD_DIR, t.file || '');
-  if (!t.file || !fs.existsSync(imagePath)) return fail(res, 404, '텍스처 파일이 없습니다.');
+  const src = woodTexSource(t, String(req.query.plank || '1') !== '0'); // ?plank=0 → 원본 스와치
+  if (!src.imagePath || !fs.existsSync(src.imagePath)) return fail(res, 404, '텍스처 파일이 없습니다.');
   const name = codedName(t.mat_code, `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}`);
   const thumbPath = t.thumb ? path.join(WOOD_DIR, t.thumb) : null;
-  return packSkmAndSend(res, { name, imagePath, thumbPath, w_mm: t.size_mm.w, h_mm: t.size_mm.h, avg: t.avg });
+  return packSkmAndSend(res, { name, imagePath: src.imagePath, thumbPath, w_mm: src.size.w, h_mm: src.size.h, avg: t.avg });
 });
 
 /* ---------- 실제 자재 벽지 라이브러리 API — 우드와 동일 패턴 ---------- */
@@ -2015,9 +2032,11 @@ app.get('/api/textures/ruby-loader', (req, res) => {
       }
     }
     // 텍스처류 3종(스튜디오/우드/벽지) 공통 생성 — [mat_code] 태그 + 실측 mm 스케일
+    // 우드는 플랭크 합성 타일 우선(?plank=0 → 원본 스와치)
+    const wantPlank = String(req.query.plank || '1') !== '0';
     const texGroups = [
       { on: includeTex, list: tdb.textures, title: (n) => `스튜디오 텍스처 (${n}) — 실측 mm 스케일`, file: (t) => path.join(TEXTURES_DIR, t.id + '.png'), base: (t) => t.name },
-      { on: String(req.query.wood || '1') !== '0', list: wdb.woods, title: (n) => `실제 자재 (${n}) — 제조사 텍스처 · 실측 mm`, file: (t) => (t.file ? path.join(WOOD_DIR, t.file) : ''), base: (t) => `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}` },
+      { on: String(req.query.wood || '1') !== '0', list: wdb.woods, title: (n) => `실제 자재 (${n}) — 플랭크 합성 우선 · 실측 mm`, file: (t) => woodTexSource(t, wantPlank).imagePath, size: (t) => woodTexSource(t, wantPlank).size, base: (t) => `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}` },
       { on: String(req.query.wallpaper || '1') !== '0', list: wpdb.wallpapers, title: (n) => `실제 벽지 (${n}) — 제조사 텍스처(시멀리스) · 칩 스케일 mm`, file: (t) => (t.file ? path.join(WALLPAPER_DIR, t.file) : ''), base: (t) => `${t.brand} ${t.name}${t.code ? ' ' + t.code : ''}` },
     ];
     for (const g of texGroups) {
@@ -2026,10 +2045,11 @@ app.get('/api/textures/ruby-loader', (req, res) => {
       for (const t of g.list) {
         const p = g.file(t);
         if (!p || !fs.existsSync(p)) continue;
+        const sz = g.size ? g.size(t) : t.size_mm;
         const base = rq(g.base(t));
         const nm = rq(codedName(t.mat_code, g.base(t)));
         if (nm !== base) renames.push([base, nm]);
-        body.push(`begin; m = mats["${nm}"] || mats.add("${nm}"); m.texture = "${p}"; m.texture.size = [${t.size_mm.w}.mm, ${t.size_mm.h}.mm]; made += 1; rescue => e; puts "skip ${nm}: #{e}"; end`);
+        body.push(`begin; m = mats["${nm}"] || mats.add("${nm}"); m.texture = "${p}"; m.texture.size = [${sz.w}.mm, ${sz.h}.mm]; made += 1; rescue => e; puts "skip ${nm}: #{e}"; end`);
       }
     }
     const lines = [];
