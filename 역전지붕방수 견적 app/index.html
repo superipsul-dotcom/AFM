@@ -1,0 +1,2070 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>안도공간 · 역전지붕방수 견적 v4</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>
+  // classic JSX runtime (automatic runtime + UMD React = blank screen gotcha)
+  if (window.Babel) {
+    Babel.registerPreset('app-react', { presets: [[Babel.availablePresets.react, { runtime: 'classic' }]] });
+  }
+</script>
+<style>
+  :root { --navy:#1e293b; --amber:#f59e0b; }
+  html,body{ font-family:'Pretendard','Pretendard Variable',system-ui,-apple-system,'Segoe UI',sans-serif; }
+  body{ background:#f1f5f9; color:#1e293b; }
+  input,select,textarea{ font-family:inherit; }
+  .num-cell{ font-variant-numeric:tabular-nums; }
+  @media print {
+    .no-print{ display:none !important; }
+    body{ background:#fff !important; }
+    .print-area{ box-shadow:none !important; }
+    @page { size:A4; margin:12mm; }
+    .page-break{ page-break-before:always; }
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    .print-shadow{ box-shadow:none !important; border:1px solid #cbd5e1 !important; }
+  }
+  .sticky-panel{ position:sticky; top:5.2rem; max-height:calc(100vh - 6rem); overflow:auto; }
+</style>
+</head>
+<body class="bg-slate-100">
+<div id="root"></div>
+
+<!-- =========================================================
+     CALC ENGINE  (plain JS — no JSX/Babel; node test extracts this)
+     window.RoofCalc = { ITEM_DB, EQUIP_CATALOG, EQUIP_MAP, PACK_SPECS, DESCRIPTIONS,
+                         COMPANY, SITE_NOTES, ADDL_DEFS, SAMPLE_DONGSAK,
+                         newEstimate, defaultAddl, defaultSurcharges, sampleDongsak,
+                         computeEstimate(est, overrides?) }
+     v2: 부자재 순공사원가 포함이 기본 · overrides 시그니처 · finishAll · addl 객체화
+     ========================================================= -->
+<script id="calc-engine">
+;(function(){
+  var root = (typeof window !== 'undefined') ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+
+  function num(v){ var n = (typeof v === 'number') ? v : parseFloat(v); return (isNaN(n)||!isFinite(n)) ? 0 : n; }
+
+  // ---------- 회사 상수 ----------
+  var COMPANY = {
+    name:'(주)안도공간', nameHanja:'安堵空間',
+    address:'서울 성동구 성수이로 147 아이에스비즈타워, 1201호',
+    tel:'02-2088-7151', hp:'010-3246-2251, 010-9070-7304', fax:'0504-269-7304',
+    email:'contact@andospace.com',
+    // V3-5: 견적 조건 4번째 문구 추가
+    coverNotes:['1. 전체 주간공사 기준입니다.','2. 용전용수 지원 조건입니다.','3. 견적 외 공사 미 포함입니다.','4. 본 견적서는 한달간 유효합니다.']
+  };
+  var OLD_COVER_V2 = ['1. 전체 주간공사 기준입니다.','2. 용전용수 지원 조건입니다.','3. 견적 외 공사 미 포함입니다.'];
+  // V3-5: 저장분 coverNotes 가 구 기본 3줄과 정확히 일치할 때만 새 4줄로 교체 (커스텀 배열은 불변)
+  function migrateCoverNotes(arr){
+    if (!Array.isArray(arr)) return COMPANY.coverNotes.slice();
+    if (arr.length===3 && arr[0]===OLD_COVER_V2[0] && arr[1]===OLD_COVER_V2[1] && arr[2]===OLD_COVER_V2[2]) return COMPANY.coverNotes.slice();
+    return arr.slice();
+  }
+
+  // ---------- 항목 DB (SPEC §4 — 단가 그대로) · 추가공사(addl)/화단철거는 ADDL_DEFS 로 분리 ----------
+  var ITEM_DB = [
+    {"id":"d_sand","grp":"철거공사","grpSub":"기초공사","work":"바닥샌딩","name":"기존 우레탄 바닥 샌딩","unit":"m2","qty":"WP","on":"sel.sanding=예","mat":2500,"sur":"sanding","lab":15000,"sub":0},
+
+    {"id":"r_base","grp":"역전지붕공사","grpSub":"역전지붕방수","work":"1차 방수공사","name":"바탕면 정리","unit":"m2","qty":"WP","on":"sel.primer=예","mat":500,"sur":"primary","lab":1500,"sub":0},
+    {"id":"r_cb1","grp":"역전지붕공사","work":"1차 방수공사","name":"삼각면목30*30 + 실리콘취부","unit":"M","qty":"PLEN","on":"sel.cornerBead=삼각면귀 30각","mat":1450,"sur":"primary","lab":2000,"sub":0,"cat":"삼각면귀"},
+    {"id":"r_cb2","grp":"역전지붕공사","work":"1차 방수공사","name":"삼각면목: 젤리밴드 + 지정 본드","unit":"M","qty":"PLEN","on":"sel.cornerBead=젤리밴드","mat":1450,"sur":"primary","lab":2000,"sub":0,"vendor":"잡자재","cat":"삼각면귀"},
+    {"id":"r_cb3","grp":"역전지붕공사","work":"1차 방수공사","name":"삼각면목: 프로클리마 wedano 3000 + 지정 본드","unit":"M","qty":"PLEN","on":"sel.cornerBead=weldano 3000","mat":1450,"sur":"primary","lab":2000,"sub":0,"vendor":"프로클리마","cat":"삼각면귀"},
+    {"id":"r_prim","grp":"역전지붕공사","work":"1차 방수공사","name":"바닥면 접착 증강제 도포(프라이머)","unit":"m2","qty":"WP","on":"sel.primer=예","mat":1000,"sur":"primary","lab":1500,"sub":0,"vendor":"잡자재"},
+    {"id":"r_m1","grp":"역전지붕공사","work":"1차 방수공사","name":"아덱스 WPM 003 ROOFTOP","unit":"m2","qty":"WP","on":"sel.membrane=아덱스 WPM 003 ROOFTOP","mat":12925,"sur":"primary","lab":8500,"sub":0,"vendor":"잡자재","cat":"1차방수"},
+    {"id":"r_m2","grp":"역전지붕공사","work":"1차 방수공사","name":"Sikalastic 590 (20kg/2회기준)","unit":"m2","qty":"WP","on":"sel.membrane=Sikalastic 590","mat":11000,"sur":"primary","lab":8500,"sub":0,"vendor":"시카","cat":"1차방수"},
+    {"id":"r_m3","grp":"역전지붕공사","work":"1차 방수공사","name":"우레탄방수 / 상중하도 2~3mm","unit":"m2","qty":"WP","on":"sel.membrane=우레탄방수","mat":28600,"sur":"primary","lab":28000,"sub":0,"vendor":"삼화","cat":"1차방수"},
+    {"id":"r_m4","grp":"역전지붕공사","work":"1차 방수공사","name":"프로클리마 adhero 1000 1.5m*30m","unit":"m2","qty":"WP","on":"sel.membrane=adhero 1000","mat":9288.888888888889,"sur":"primary","lab":7000,"sub":0,"vendor":"프로클리마","cat":"1차방수"},
+    {"id":"r_m5","grp":"역전지붕공사","work":"1차 방수공사","name":"프로클리마 adhero 3000 1.5m*30m","unit":"m2","qty":"WP","on":"sel.membrane=adhero 3000","mat":11000,"sur":"primary","lab":7000,"sub":0,"vendor":"프로클리마","cat":"1차방수"},
+    {"id":"r_m6","grp":"역전지붕공사","work":"1차 방수공사","name":"프로클리마 weldano 3000 1.5m*50m","unit":"m2","qty":"WP","on":"sel.membrane=weldano 3000","mat":20166.666666666668,"sur":"primary","lab":7000,"sub":0,"vendor":"프로클리마","cat":"1차방수"},
+    {"id":"r_m7","grp":"역전지붕공사","work":"1차 방수공사","name":"Bituthene 3000","unit":"m2","qty":"WP","on":"sel.membrane=Bituthene 3000","mat":12155.000000000002,"sur":"primary","lab":9500,"sub":0,"vendor":"티푸스","cat":"1차방수"},
+    {"id":"r_m8","grp":"역전지붕공사","work":"1차 방수공사","name":"지정 시트방수지","unit":"m2","qty":"WP","on":"sel.membrane=지정시트","mat":14300.000000000002,"sur":"primary","lab":8500,"sub":0,"vendor":"티푸스","cat":"1차방수"},
+
+    {"id":"x200","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 200T 900*1800","unit":"m2","qty":"XPS:200T","mat":20350,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+    {"id":"x150","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 150T 900*1800","unit":"m2","qty":"XPS:150T","mat":15400.000000000002,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+    {"id":"x120","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 120T 900*1800","unit":"m2","qty":"XPS:120T","mat":12500,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+    {"id":"x100","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 100T 900*1800","unit":"m2","qty":"XPS:100T","mat":10340,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+    {"id":"x80","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 80T 900*1800","unit":"m2","qty":"XPS:80T","mat":8140.000000000001,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+    {"id":"x70","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 70T 900*1800","unit":"m2","qty":"XPS:70T","mat":7130,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+    {"id":"x50","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 50T 900*1800","unit":"m2","qty":"XPS:50T","mat":5100,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+    {"id":"xw70","grp":"역전지붕공사","work":"단열재 취부 - 벽","name":"XPS 가등급 70T 900*1800 / 연질폼 포함","unit":"m2","qty":"WALL","on":"sel.xpsWall=70T벽","mat":7130,"sur":"xpsFloor","lab":10000,"labSurKey":"xpsWallLab","sub":8200,"vendor":"부광스티로폴","cat":"XPS벽체"},
+    {"id":"xw30","grp":"역전지붕공사","work":"단열재 취부 - 벽","name":"XPS 가등급 30T 900*1800 / 연질폼 포함","unit":"m2","qty":"WALL","on":"sel.xpsWall=30T벽","mat":3050,"sur":"xpsFloor","lab":10000,"labSurKey":"xpsWallLab","sub":8200,"vendor":"부광스티로폴","cat":"XPS벽체"},
+
+    {"id":"wf_st","grp":"역전지붕공사","work":"벽체마감","name":"스테인리스 마감 / 실리콘 및 양면접착제 포함","unit":"m2","qty":"W_STAIN","mat":6500,"sur":"wallFinish","lab":10000,"sub":1000,"cat":"벽체마감"},
+    {"id":"wf_hs","grp":"역전지붕공사","work":"벽체마감","name":"함석 마감 / 실리콘 및 양면접착제 포함","unit":"m2","qty":"W_HAM","mat":4000,"sur":"wallFinish","lab":10000,"sub":1000,"cat":"벽체마감"},
+    {"id":"wf_crc","grp":"역전지붕공사","work":"벽체마감","name":"crc보드 마감(9t) / 실리콘 및 양면접착제 포함","unit":"m2","qty":"W_CRC","mat":13500,"sur":"pedestalSub","lab":35000,"sub":1000,"cat":"벽체마감"},
+
+    {"id":"vb_siga","grp":"역전지붕공사","work":"2차 투습방수시트지 깔기","name":"잡자재 SIGA Majcoat 투습방수지","unit":"m2","qty":"WP","on":"sel.vaporBarrier=SIGA","mat":6500,"sur":"sheet","lab":3000,"sub":0,"vendor":"잡자재","cat":"투습방수지"},
+    {"id":"vb_pro","grp":"역전지붕공사","work":"2차 투습방수시트지 깔기","name":"프로클리마 Mento 3000 투습방수지","unit":"m2","qty":"WP","on":"sel.vaporBarrier=프로클리마","mat":4345,"sur":"sheet","lab":3000,"sub":0,"vendor":"프로클리마","cat":"투습방수지"},
+    {"id":"tp_siga","grp":"역전지붕공사","work":"기밀테이프","name":"잡자재 SIGA 전용 기밀테이프 60mm*40m","unit":"m","qty":"TAPE","on":"sel.tape=SIGA","mat":1450,"sur":"sheet","lab":4500,"sub":0,"vendor":"잡자재","cat":"기밀테이프"},
+    {"id":"tp_pro","grp":"역전지붕공사","work":"기밀테이프","name":"프로클리마 전용 기밀테이프 60mm*30m","unit":"m","qty":"TAPE","on":"sel.tape=프로클리마","mat":1830,"sur":"sheet","lab":4500,"sub":0,"vendor":"프로클리마","cat":"기밀테이프"},
+    {"id":"sil","grp":"역전지붕공사","work":"우레탄실리콘","name":"우레탄실리콘(고탄성)","unit":"ea","qty":"N:siliconEa","mat":10000,"sur":"gravelFinish","lab":0,"sub":0,"cat":"우레탄실리콘"},
+    {"id":"db_jap","grp":"역전지붕공사","work":"배수판","name":"잡자재 배수판 500*500","unit":"m2","qty":"FLOOR","on":"sel.drainBoard=잡자재","mat":13500,"sur":"drain","lab":2500,"sub":0,"vendor":"잡자재","cat":"배수판"},
+    {"id":"db_tif","grp":"역전지붕공사","work":"배수판","name":"티푸스 배수판 500*500","unit":"m2","qty":"FLOOR","on":"sel.drainBoard=티푸스","mat":10000,"sur":"drain","lab":2200,"sub":0,"vendor":"티푸스","cat":"배수판"},
+    {"id":"fb_tif","grp":"역전지붕공사","work":"부직포","name":"티푸스 부직포 300g","unit":"m2","qty":"FLOOR","on":"sel.fabric=티푸스","mat":1727.0000000000002,"sur":"drain","lab":1000,"sub":0,"vendor":"티푸스","cat":"부직포"},
+    {"id":"fb_jap","grp":"역전지붕공사","work":"부직포","name":"잡자재 부직포 300g","unit":"m2","qty":"FLOOR","on":"sel.fabric=잡자재","mat":980,"sur":"drain","lab":1000,"sub":0,"vendor":"잡자재","cat":"부직포"},
+    {"id":"gv_ton","grp":"역전지붕공사","work":"쇄석","name":"쇄석 두께 25mm-40mm 지정 / 높이 50~70mm / 톤백","unit":"m2","qty":"GRAVEL","on":"sel.gravelPack=톤백","mat":9000,"sur":"gravelFinish","lab":8000,"sub":0,"vendor":"유신 골재","cat":"쇄석포장"},
+    {"id":"gv_small","grp":"역전지붕공사","work":"쇄석","name":"쇄석 두께 25mm-40mm 지정 / 높이 50~70mm / 소분포장","unit":"m2","qty":"GRAVEL","on":"sel.gravelPack=소분포장","mat":12000,"sur":"gravelFinish","lab":10000,"sub":0,"vendor":"유신 골재","cat":"쇄석포장"},
+    {"id":"tr_f","grp":"역전지붕공사","work":"트렌치 바닥배수","name":"바닥배수 역전지붕 용 300*300","unit":"ea","qty":"N:trenchFloorEa","mat":150000,"sur":"gravelFinish","lab":25000,"sub":0,"vendor":"티푸스","cat":"트렌치"},
+    {"id":"tr_s","grp":"역전지붕공사","work":"트렌치 측면배수","name":"측면배수 역전지붕 용 300*170*170","unit":"ea","qty":"N:trenchSideEa","mat":66000,"sur":"gravelFinish","lab":25000,"sub":0,"vendor":"잡자재","cat":"트렌치"},
+
+    {"id":"pd_jap","grp":"역전지붕공사","work":"타일 페데스탈","name":"부자재: 잡자재 사 페데스탈 및 고무","unit":"m2","qty":"TILE","on":"tileArea>0 && sel.tileSub=잡자재 사 페데스탈","mat":8750,"sur":"pedestalSub","lab":1200,"sub":0,"vendor":"잡자재","cat":"마감방식"},
+    {"id":"pd_pey","grp":"역전지붕공사","work":"타일 페데스탈","name":"부자재: 페이그란 페테스탈 및 고무 (스페인산)","unit":"m2","qty":"TILE","on":"tileArea>0 && sel.tileSub=페이그란 페데스탈","mat":2000,"sur":"pedestalSub","lab":1200,"sub":0,"vendor":"루비","cat":"마감방식"},
+    {"id":"tl_eu","grp":"역전지붕공사","work":"타일 페데스탈","name":"페데스탈 타일 마감재: 20T 유럽산 600x600","unit":"m2","qty":"TILE","on":"tileArea>0 && sel.tileFinish=20T타일(유럽산)","mat":50400,"sur":"finishMat","lab":25000,"sub":0,"vendor":"타일판매처","cat":"마감방식"},
+    {"id":"tl_cn_s","grp":"역전지붕공사","work":"타일 페데스탈","name":"페데스탈 타일 마감재: 20T 중국산 600x600(100m2 이하)","unit":"m2","qty":"TILE","on":"tileArea>0 && tileArea<=100 && sel.tileFinish=20T타일(중국산)","mat":32000,"sur":"finishMat","lab":30000,"sub":0,"vendor":"잡자재","cat":"마감방식"},
+    {"id":"tl_cn_l","grp":"역전지붕공사","work":"타일 페데스탈","name":"페데스탈 타일 마감재: 20T 중국산 600x600(100m2 이상)","unit":"m2","qty":"TILE","on":"tileArea>100 && sel.tileFinish=20T타일(중국산)","mat":32000,"sur":"finishMat","lab":29000,"sub":0,"vendor":"잡자재","cat":"마감방식"},
+    {"id":"wd_ped","grp":"역전지붕공사","work":"우드 페데스탈","name":"부자재: 페이그란 각관용 페테스탈 및 고무 (스페인산)","unit":"m2","qty":"WOOD","on":"woodArea>0","mat":12360,"sur":"pedestalSub","lab":1200,"sub":0,"vendor":"루비","cat":"페테스탈(봉)"},
+    {"id":"wd_frame","grp":"역전지붕공사","work":"우드 페데스탈","name":"부자재: 각관 시공","unit":"m2","qty":"WOOD","on":"woodArea>0","mat":25000,"sur":"pedestalSub","lab":10000,"sub":0,"cat":"각관시공"},
+    {"id":"wd_deck","grp":"역전지붕공사","work":"우드 페데스탈","name":"부자재: 합성데크","unit":"m2","qty":"WOOD","on":"woodArea>0 && sel.woodFinish=합성데크","mat":45000,"sur":"finishMat","lab":8000,"sub":0,"vendor":"대산합판","cat":"마감방식"}
+  ];
+
+  // ---------- 추가공사 정의 (V2-5: addl 객체화) — 화단철거는 철거공사 grp ----------
+  var ADDL_DEFS = [
+    {key:'acMove',    grp:'추가공사', grpSub:'기타공사', work:'에어컨 이동',            name:'에어컨 이동 (해체 및 재설치)',       unit:'식', mat:0,      lab:500000, sub:0,     surMat:0,    surLab:0},
+    {key:'insulDoor', grp:'추가공사', grpSub:'기타공사', work:'단열방화문',              name:'갑종 단열방화문',                    unit:'식', mat:700000, lab:350000, sub:15000, surMat:0,    surLab:0},
+    {key:'fireDoor',  grp:'추가공사', grpSub:'기타공사', work:'방화문',                  name:'갑종 일반방화문',                    unit:'식', mat:450000, lab:350000, sub:15000, surMat:0,    surLab:0},
+    {key:'floorFrame',grp:'추가공사', grpSub:'기타공사', work:'바닥 단 프레임',          name:'스텐 절곡',                          unit:'식', mat:300000, lab:100000, sub:15000, surMat:-0.5, surLab:-0.5},
+    {key:'raise',     grp:'추가공사', grpSub:'기타공사', work:'단 높임 공사',            name:'방화문 자리 단 높임 / 조적 및 미장', unit:'식', mat:100000, lab:250000, sub:10000, surMat:0,    surLab:0},
+    {key:'crack',     grp:'추가공사', grpSub:'기타공사', work:'구조체 파손 및 크랙 보수', name:'초속경 보수 몰탈',                   unit:'식', mat:150000, lab:250000, sub:10000, surMat:0,    surLab:0},
+    {key:'flowerbed', grp:'철거공사', grpSub:'기초공사', work:'철거',                    name:'화단철거',                           unit:'식', mat:0,      lab:400000, sub:0,     surMat:0,    surLab:0}
+  ];
+  var ADDL_MAP = {}; ADDL_DEFS.forEach(function(d){ ADDL_MAP[d.key]=d; });
+  function defaultAddl(){
+    var m = {};
+    ADDL_DEFS.forEach(function(d){
+      m[d.key] = { on:false, qty:1, mat:d.mat, lab:d.lab, sub:d.sub, surMat:d.surMat, surLab:d.surLab };
+    });
+    return m;
+  }
+
+  // ---------- 장비 카탈로그 (SPEC §4) ----------
+  var EQUIP_CATALOG = [
+    {name:'크레인(10톤) 0.5일',price:500000},{name:'크레인(10톤) 1일',price:700000},
+    {name:'크레인(25톤) 0.5일',price:600000},{name:'크레인(25톤) 1일',price:800000},
+    {name:'크레인(50톤) 0.5일',price:800000},{name:'크레인(50톤) 1일',price:1100000},
+    {name:'크레인(70톤) 0.5일',price:1100000},{name:'크레인(70톤) 1일',price:1600000},
+    {name:'크레인(80톤) 0.5일',price:1400000},{name:'크레인(80톤) 1일',price:1800000},
+    {name:'크레인(100톤) 1일',price:2200000},{name:'크레인(150톤) 1일',price:3500000},
+    {name:'크레인(200톤) 1일',price:4000000},{name:'크레인(250톤) 1일',price:5000000},
+    {name:'크레인(330톤) 1일',price:6000000},{name:'크레인(440톤) 1일',price:10000000},{name:'크레인(550톤) 1일',price:15000000},
+    {name:'스카이(1~3.5톤) 오전/오후',price:400000},{name:'스카이(1~3.5톤) 하루(8시간)',price:600000},{name:'스카이(1~3.5톤) 추가(1시간)',price:150000},{name:'스카이(1~3.5톤) 월대',price:12000000},
+    {name:'스카이(5톤/45m) 오전/오후',price:500000},{name:'스카이(5톤/45m) 하루(8시간)',price:700000},{name:'스카이(5톤/45m) 추가(1시간)',price:200000},{name:'스카이(5톤/45m) 월대',price:14000000},
+    {name:'스카이(8톤/54m) 오전/오후',price:700000},{name:'스카이(8톤/54m) 하루(8시간)',price:900000},{name:'스카이(8톤/54m) 월대',price:17000000},
+    {name:'스카이(17톤/58~65m) 오전/오후',price:900000},{name:'스카이(17톤/58~65m) 하루(8시간)',price:1200000},{name:'스카이(17톤/58~65m) 월대',price:20000000},
+    {name:'스카이(19톤/75m) 오전/오후',price:1300000},{name:'스카이(19톤/75m) 하루(8시간)',price:1800000},{name:'스카이(19톤/75m) 월대',price:28000000},
+    {name:'스카이(3톤 굴절) 오전/오후',price:600000},{name:'스카이(3톤 굴절) 하루(8시간)',price:800000},
+    {name:'스카이(5톤 굴절) 오전/오후',price:800000},{name:'스카이(5톤 굴절) 하루(8시간)',price:1000000},
+    {name:'사다리차(2~5층) 시작 1시간',price:120000},{name:'사다리차(2~5층) 추가 1시간',price:80000},{name:'사다리차(2~5층) 반나절',price:350000},{name:'사다리차(2~5층) 일대',price:550000},
+    {name:'사다리차(6~7층) 시작 1시간',price:130000},{name:'사다리차(6~7층) 추가 1시간',price:90000},{name:'사다리차(6~7층) 반나절',price:400000},{name:'사다리차(6~7층) 일대',price:600000},
+    {name:'사다리차(8~9층) 시작 1시간',price:150000},{name:'사다리차(8~9층) 추가 1시간',price:100000},{name:'사다리차(8~9층) 일대',price:650000},
+    {name:'사다리차(10~11층) 시작 1시간',price:150000},{name:'사다리차(10~11층) 추가 1시간',price:100000},{name:'사다리차(10~11층) 반나절',price:450000},{name:'사다리차(10~11층) 일대',price:650000},
+    {name:'사다리차(12~13층) 시작 1시간',price:150000},{name:'사다리차(12~13층) 추가 1시간',price:100000},{name:'사다리차(14층) 시작 1시간',price:170000},
+    {name:'사다리차(15층) 시작 1시간',price:180000},{name:'사다리차(15층) 추가 1시간',price:100000},{name:'사다리차(15층) 반나절',price:500000},{name:'사다리차(15층) 일대',price:700000},
+    {name:'사다리차(16층) 시작 1시간',price:190000},{name:'사다리차(17층) 시작 1시간',price:200000},
+    {name:'사다리차(18층) 시작 1시간',price:210000},{name:'사다리차(18층) 추가 1시간',price:120000},{name:'사다리차(18층) 반나절',price:600000},{name:'사다리차(18층) 일대',price:800000},
+    {name:'사다리차(19층) 시작 1시간',price:210000},{name:'사다리차(20층) 시작 1시간',price:230000},{name:'사다리차(21층) 시작 1시간',price:250000},{name:'사다리차(21층) 일대',price:900000},
+    {name:'사다리차(22층) 시작 1시간',price:270000},{name:'사다리차(22층) 추가 1시간',price:120000},{name:'사다리차(22층) 반나절',price:650000},
+    {name:'사다리차(23층) 시작 1시간',price:320000},{name:'사다리차(24층) 시작 1시간',price:370000},{name:'사다리차(24층) 추가 1시간',price:120000},{name:'사다리차(24층) 반나절',price:700000},{name:'사다리차(24층) 일대',price:1000000},
+    {name:'사다리차(25층) 시작 1시간',price:420000},{name:'사다리차(25층) 추가 1시간',price:120000},{name:'사다리차(25층) 반나절',price:700000}
+  ];
+  var EQUIP_MAP = {}; EQUIP_CATALOG.forEach(function(e){ EQUIP_MAP[e.name]=e.price; });
+
+  // ---------- 포장 규격표 (SPEC §6 발주서) ----------
+  var PACK_SPECS = {
+    'XPS바닥':{per:1.62,unit:'장',label:'900×1800mm 1장=1.62㎡'},
+    'XPS벽체':{per:1.62,unit:'장',label:'900×1800mm 1장=1.62㎡'},
+    '투습방수지':{per:75,unit:'롤',label:'1.5m×50m 1롤=75㎡'},
+    '기밀테이프':{per:40,unit:'롤',label:'60mm×40m 1롤=40m'},
+    '배수판':{per:0.25,unit:'장',label:'500×500mm 1장=0.25㎡'},
+    '부직포':{per:100,unit:'롤',label:'2m×50m 1롤=100㎡'},
+    '쇄석포장':{per:11.666666666666666,unit:'톤백',label:'톤백 1백=11.67㎡'},
+    '트렌치':{per:1,unit:'ea',label:'1ea'},
+    '1차방수':{per:20,unit:'롤',label:'1롤=20㎡'},
+    '삼각면귀':{per:1,unit:'m',label:'1m'},
+    '우레탄실리콘':{per:1,unit:'개',label:'1개'},
+    '페테스탈(봉)':{per:50,unit:'봉',label:'1봉=50개'},
+    '각관시공':{per:0.333,unit:'M',label:'1㎡≈3M(제수 0.333)'},
+    '마감방식':{per:1,unit:'㎡',label:'1㎡'},
+    '벽체마감':{per:1,unit:'㎡',label:'1㎡'}
+  };
+
+  // ---------- 자재소개 설명 데이터 (SPEC §7) ----------
+  var DESCRIPTIONS = {
+    roles: {
+      'XPS바닥':'방수층 상부 단열층','XPS벽체':'파라펫 벽체 단열층','투습방수지':'XPS 단열재 상부 투습방수층',
+      '기밀테이프':'투습방수지 이음부 기밀 처리','배수판':'투습방수지 상부 배수층','부직포':'배수판 상부 분리/필터층',
+      '쇄석포장':'최종 마감층 (하중재)','부자재(타일)':'마감재 하부 지지/높이조절','부자재(우드)':'각관 하부 지지/높이조절',
+      '마감재(타일)':'최종 마감층 (타일)','마감재(우드)':'최종 마감층 (우드데크)','각관':'데크 하부 구조재',
+      '1차방수':'바탕면 1차 방수층','벽체마감':'파라펫 벽체 마감층','삼각면귀':'모서리 보강/방수 취부'
+    },
+    xps: {
+      '50T':['XPS 압출법 보온판 가등급 50mm. 폐쇄기포(Closed Cell) 구조로 수분 흡수율 0.01~0.05%. 열전도율 0.027~0.031 W/m·K.','KS M 3808 가등급'],
+      '70T':['XPS 압출법 보온판 가등급 70mm. 폐쇄기포 구조로 높은 압축강도와 낮은 흡수율. 역전지붕에 최적화.','KS M 3808 가등급'],
+      '80T':['XPS 압출법 보온판 가등급 80mm. 폐쇄기포 구조, 수분 흡수율 0.01~0.05%. 높은 압축강도로 상부 하중 견디는 역전지붕 단열재.','KS M 3808 가등급'],
+      '100T':['XPS 압출법 보온판 가등급 100mm. 단열 성능 우수, 구조적 하중에 견딜 수 있는 다양한 압축강도 보유.','KS M 3808 가등급'],
+      '120T':['XPS 압출법 보온판 가등급 120mm. 두꺼워 열저항이 높으며 내습/방수성 우수. 고단열 적용.','KS M 3808 가등급'],
+      '150T':['XPS 압출법 보온판 가등급 150mm. 2겹 시공 시 단열 성능 극대화. 여름철 열 차단, 겨울철 보온 효과 탁월.','KS M 3808 가등급'],
+      '200T':['XPS 압출법 보온판 가등급 200mm. 최고 두께 단열재로 패시브하우스 수준의 단열 성능 확보.','KS M 3808 가등급']
+    },
+    mats: {
+      '투습_SIGA':['SIGA Majcoat 150 지붕용 투습/방수/방풍지 (1.5m×50m). 내부 습기 외부 배출로 결로 방지.','스위스 SIGA사'],
+      '투습_프로클리마':['프로클리마 Solitex Mento 3000 지붕용 투습방수지. 3중 멤브레인 구조, TEEE 필름 기반으로 방수+투습 동시 확보. 높은 인장력/내구성.','독일 Pro Clima사'],
+      '기밀_SIGA':['SIGA 전용 기밀테이프 60mm×40m. 겹침부 밀봉으로 기밀층 연속성 보장, 누수 방지.','스위스 SIGA사'],
+      '기밀_프로클리마':['프로클리마 TESCON VANA 60mm×30m. 방습+투습 2가지 기능. 목조/스틸/조적 전 면 접착 가능. 기밀층 연속성 보장.','독일 Pro Clima사'],
+      '배수판_잡자재':['일반 조경용 배수판. 요철부 배수공으로 효율적 배수. 단열재 하부 배수 담당.','일반 자재'],
+      '배수판_티푸스':['티푸스코리아 조경용 배수판. 효율적 배수 + 단열재 보호 역할 수행.','(주)티푸스코리아'],
+      '부직포_잡자재':['일반 KS 300g/m² 부직포 (2m×50m). 쇄석 미세 입자 침투 방지 필터 + 하부 레이어 보호.','일반 자재'],
+      '부직포_티푸스':['티푸스코리아 KS 300g/m² 부직포 (2m×50m). 쇄석 미세 입자 침투 방지 + 하부 보호.','(주)티푸스코리아'],
+      '쇄석_톤백':['톤백 방식 크레인 양중, 약 5cm 두께 쇄석 포설. 단열재 고정, UV 차단, 풍압 방지. 인건비/시간 절감.','마감: 쇄석'],
+      '쇄석_소분포장':['소분 포장 방식. 양중 장비 제약 시 적합. 수작업 비중 높아 인건비 증가.','마감: 쇄석'],
+      '타일부자재_잡자재 사 페데스탈':['잡자재 사 페데스탈. 타일 마감 시 높이 조절 및 수평 맞춤용 지지대. 배수 공간 확보.','타일 마감용'],
+      '타일부자재_페이그란 페데스탈':['페이그란 페데스탈 (스페인산). 정밀 높이 조절 가능, 내구성 우수. 타일 수평 시공 및 배수 공간 확보.','스페인 Peygran사'],
+      '우드부자재':['페이그란 각관용 페데스탈 (스페인산). 각관 프레임 지지 및 수평 조절. 슬랩 스페이서 포함 (1봉=50개).','스페인 Peygran사'],
+      '타일_20T타일(유럽산)':['20T 유럽산 600×600mm 외장 타일. 고강도, 내동해성 우수. 옥상 바닥 마감용.','마감: 타일'],
+      '타일_20T타일(중국산)':['20T 중국산 600×600mm 외장 타일. 옥상 바닥 마감용.','마감: 타일'],
+      '우드_합성데크':['합성목재 데크. 천연목 질감 + 내후성, 내수성 확보. 각관 프레임 위 설치.','마감: 합성데크'],
+      '각관':['각관 프레임 시공. 합성데크 하부 지지 구조물. 페데스탈 위 설치하여 수평 확보.','우드데크 하부 구조'],
+      '삼각면귀_삼각면귀 30각':['삼각면목 30×30 + 실리콘 취부. 파라펫 코너 각을 완만히 처리해 방수 시트의 꺾임/들뜸 방지.','코너 보강'],
+      '삼각면귀_젤리밴드':['젤리밴드 + 지정 본드. 코너부 유연 방수 보강재로 이음부 밀착 시공.','코너 보강'],
+      '삼각면귀_weldano 3000':['프로클리마 weldano 3000 + 지정 본드. 코너부 고성능 방수 보강.','독일 Pro Clima사'],
+      'membrane_아덱스 WPM 003 ROOFTOP':['ARDEX WPM 003 ROOFTOP 지붕용 도막 방수재. 바탕면 위 연속 방수막 형성.','독일 ARDEX사'],
+      'membrane_Sikalastic 590':['Sikalastic 590 (20kg/2회 기준) 도막 방수재. 자외선/기후 저항성 우수.','스위스 Sika사'],
+      'membrane_우레탄방수':['우레탄방수 상·중·하도 2~3mm. 이음매 없는 방수막.','삼화'],
+      'membrane_adhero 1000':['프로클리마 ADHERO 1000 (1.5m×30m) 자착식 방수시트.','독일 Pro Clima사'],
+      'membrane_adhero 3000':['프로클리마 ADHERO 3000 (1.5m×30m) 자착식 고성능 방수시트.','독일 Pro Clima사'],
+      'membrane_weldano 3000':['프로클리마 WELDANO 3000 (1.5m×50m) EPDM 계열 방수시트.','독일 Pro Clima사'],
+      'membrane_Bituthene 3000':['GCP Bituthene 3000 자착식 아스팔트 방수시트.','GCP'],
+      'membrane_지정시트':['지정 시트 방수지. 현장 조건에 맞춘 지정 방수시트.','티푸스']
+    }
+  };
+
+  // 특이사항 8종
+  var SITE_NOTES = [
+    '*전기,통신선의 이동작업이 필요합니다. 해당 부분은 협의 후 진행합니다.',
+    '*문,창틀이 필요 높이 미만이여서, 추가작업이 필요합니다.',
+    '*A/C 실외기, 태양광 등의 장비이동이 필요합니다. 해당 부분은 협의 후 진행합니다.',
+    '*스카이차, 크레인 등 장비사용에 어려움이 있습니다.',
+    '*현 파라펫의 구조상 벽단열작업에 어려움이 있습니다.',
+    '*콘크리트 타공이 필요합니다. 타공시 전기 배관 등이 간섭되는경우, 안도공간은 해당 구간에 대해 책임지지 않습니다.',
+    '* 타일마감의 경우, 자리를 잡는 시간동안 약간 움직일 수 있습니다. 이는 하자가 아니며, 간단히 수정볼 수 있습니다.',
+    '*조경 및 잔디, 조경용 조적턱 등은 포함되지 않았습니다.'
+  ];
+
+  function defaultSurcharges(){
+    return {
+      primary:{mat:1.2, lab:1.2},
+      sanding:{mat:0.05, lab:0.05},
+      xpsFloor:{mat:0.1},
+      xpsWallLab:{lab:0.05},
+      sheet:{mat:0.05, lab:0.05},
+      drain:{mat:0.05, lab:0.05},
+      gravelFinish:{mat:0.1, lab:0.1},
+      wallFinish:{mat:0.05, lab:0.05},
+      pedestalSub:{mat:0, lab:0},
+      finishMat:{mat:0, lab:0},
+      insulDoor:{mat:0, lab:0}, flowerbed:{mat:0, lab:0}, fireDoor:{mat:0, lab:0},
+      floorFrame:{mat:-0.5, lab:-0.5}, raise:{mat:0, lab:0}, crack:{mat:0, lab:0}
+    };
+  }
+
+  function uid(){ return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function today(){ var d=new Date(); var m=('0'+(d.getMonth()+1)).slice(-2); var day=('0'+d.getDate()).slice(-2); return d.getFullYear()+'-'+m+'-'+day; }
+
+  function newEstimate(){
+    var t = Date.now();
+    return {
+      id: uid(), createdAt:t, updatedAt:t, memo:'',
+      info:{ title:'', address:'', date:today(), manager:'', leadSource:'', customerContact:'', requestDate:'', note:'' },
+      // V2-4: 전체 마감방식 동일 — 새 견적 기본 enabled=true
+      finishAll:{ enabled:true, finish:'쇄석', wallFinish:'없음' },
+      zones:[ {label:'옥상', floor:0, parapetLen:0, parapetH:0, finish:'쇄석', wallFinish:'없음'} ],
+      sel:{ sanding:'아니오', cornerBead:'없음', siliconEa:10, primer:'아니오', ownerSupplied:'아니오',
+            membrane:'없음', xps1:'없음', xps2:'없음', xpsWall:'없음',
+            vaporBarrier:'SIGA', tape:'SIGA', drainBoard:'잡자재', fabric:'잡자재', gravelPack:'톤백',
+            trenchFloorEa:0, trenchSideEa:0,
+            tileSub:'잡자재 사 페데스탈', tileFinish:'20T타일(중국산)', woodFinish:'합성데크' },
+      temp:{ equipment:[], forkliftQty:0, waste:'없음', wasteQty:1, freight:'서울·경기' },
+      addl: defaultAddl(),
+      customItems:[],
+      surcharges: defaultSurcharges(),
+      // V2-3: 부자재 순공사원가 포함이 기본 (true)
+      rates:{ indirectMat:0.025, indirectLab:0.03, genAdmin:0.10, design:0, profit:0.10, taxInvoice:'예', subInNetCost:true },
+      siteNotes:[false,false,false,false,false,false,false,false],
+      customNotes:[],
+      siteCond:{ under100:'아니오', floors:'1-5층', craneOk:'가능', region:'서울·경기' }
+    };
+  }
+
+  // ---------- SAMPLE (동삭동) — SPEC §9 / V2 ----------
+  function sampleDongsak(){
+    var e = newEstimate();
+    e.id = 'sample-dongsak'; e.info.title='신축 역전지붕공사'; e.info.address='평택 동삭동 867-7'; e.info.manager='홍평화';
+    // 동삭동은 A구역만 crc보드 → finishAll 비활성 (구역별 마감 사용)
+    e.finishAll = { enabled:false, finish:'쇄석', wallFinish:'없음' };
+    e.zones = [
+      { label:'옥상', floor:138.7, parapetLen:52, parapetH:0.3, finish:'쇄석', wallFinish:'crc보드' },
+      { label:'2층',  floor:18.3,  parapetLen:17.3, parapetH:0.3, finish:'쇄석', wallFinish:'없음' },
+      { label:'3층',  floor:23,    parapetLen:19.1, parapetH:0.3, finish:'쇄석', wallFinish:'없음' }
+    ];
+    e.sel = Object.assign(e.sel, {
+      sanding:'아니오', cornerBead:'없음', siliconEa:10, primer:'아니오', ownerSupplied:'아니오',
+      membrane:'없음', xps1:'100T', xps2:'150T', xpsWall:'30T벽',
+      vaporBarrier:'SIGA', tape:'SIGA', drainBoard:'잡자재', fabric:'잡자재', gravelPack:'톤백',
+      trenchFloorEa:6, trenchSideEa:0
+    });
+    e.temp = { equipment:[ {name:'크레인(50톤) 0.5일', qty:1}, {name:'사다리차(6~7층) 반나절', qty:1} ],
+               forkliftQty:2, waste:'폐기물 1ton', wasteQty:1, freight:'지방' };
+    e.customItems = [
+      { work:'벽체 단열 추가', name:'XPS 가등급 100T 900*1800 / 벽체 추가단열 (연질폼 포함)', unit:'m2', qty:6,
+        matPrice:10340, matSurKey:'xpsFloor', labPrice:10000, labSurKey:'wallFinishLab', subPrice:8200, subSurKey:null },
+      { work:'벽체 단열 추가', name:'XPS 가등급 150T 900*1800 / 벽체 추가단열 (연질폼 포함)', unit:'m2', qty:6,
+        matPrice:15400.000000000002, matSurKey:'xpsFloor', labPrice:10000, labSurKey:'wallFinishLab', subPrice:8200, subSurKey:null }
+    ];
+    return e;
+  }
+
+  // ---------- V3-4: 구역별 자재선택 마이그레이션 ----------
+  // zone.sel 없으면 est.sel 딥카피로 생성. ea 3필드(siliconEa/trenchFloorEa/trenchSideEa)는 zones[0]에만 원값·나머지 0.
+  // (전 구역 동일 sel 이면 v2 와 완전 동일한 수치가 나오도록 하는 규칙 — SAMPLE grandTotal 불변의 근거)
+  function withZoneSel(est){
+    if (!est) return est;
+    var out = {}; for (var k in est) out[k] = est[k];
+    var baseSel = est.sel || {};
+    out.zones = (est.zones || []).map(function(z, i){
+      if (z && z.sel) return z; // 이미 있으면 보존
+      var s = JSON.parse(JSON.stringify(baseSel));
+      if (i !== 0){ s.siliconEa = 0; s.trenchFloorEa = 0; s.trenchSideEa = 0; }
+      var nz = {}; for (var kk in z) nz[kk] = z[kk]; nz.sel = s; return nz;
+    });
+    return out;
+  }
+
+  // ---------- 할증 조회 (직접키 → 접미사(Mat/Lab/Sub) fallback) ----------
+  function surLookup(surs, key, dim){
+    if (!key || !surs) return 0;
+    var e = surs[key];
+    if (e && e[dim] != null) return e[dim];
+    var m = /^(.*?)(Mat|Lab|Sub)$/.exec(key);
+    if (m){
+      var be = surs[m[1]]; var d = m[2].toLowerCase();
+      if (be && be[d] != null) return be[d];
+    }
+    return 0;
+  }
+
+  // ---------- 파생 수량 (finishAll enabled → 전체 구역 공통 마감) ----------
+  function computeDerived(est){
+    var zones = est.zones || [];
+    var fa = est.finishAll || {};
+    var allOn = !!fa.enabled;
+    var d = { floorSum:0, parapetLen:0, wallArea:0, waterproofArea:0, tapeLen:0,
+              gravelArea:0, tileArea:0, woodArea:0, wallStain:0, wallHam:0, wallCrc:0 };
+    zones.forEach(function(z){
+      var f=num(z.floor), pl=num(z.parapetLen), ph=num(z.parapetH);
+      var finish = allOn ? fa.finish : z.finish;
+      var wallFinish = allOn ? fa.wallFinish : z.wallFinish;
+      d.floorSum += f; d.parapetLen += pl; d.wallArea += pl*ph;
+      if (finish==='쇄석') d.gravelArea += f;
+      else if (finish==='타일') d.tileArea += f;
+      else if (finish==='우드') d.woodArea += f;
+      if (wallFinish==='스테인리스') d.wallStain += pl*ph;
+      else if (wallFinish==='함석') d.wallHam += pl*ph;
+      else if (wallFinish==='crc보드') d.wallCrc += pl*ph;
+    });
+    d.waterproofArea = d.floorSum + d.wallArea;
+    d.tapeLen = d.parapetLen * 2;
+    return d;
+  }
+
+  function resolveQtyItem(it, est, derived){
+    var code = it.qty;
+    if (code && code.indexOf('XPS:')===0){
+      var thick = code.slice(4), cnt=0;
+      if (est.sel.xps1===thick) cnt++;
+      if (est.sel.xps2===thick) cnt++;
+      if (cnt===0) return null;
+      return derived.floorSum * cnt;
+    }
+    if (code && code.indexOf('N:')===0){
+      var field = code.slice(2);
+      var v = (est.sel && est.sel[field]!=null) ? est.sel[field] : (est.temp ? est.temp[field] : 0);
+      return num(v);
+    }
+    switch(code){
+      case 'WP': return derived.waterproofArea;
+      case 'FLOOR': return derived.floorSum;
+      case 'WALL': return derived.wallArea;
+      case 'PLEN': return derived.parapetLen;
+      case 'TAPE': return derived.tapeLen;
+      case 'GRAVEL': return derived.gravelArea;
+      case 'TILE': return derived.tileArea;
+      case 'WOOD': return derived.woodArea;
+      case 'W_STAIN': return derived.wallStain;
+      case 'W_HAM': return derived.wallHam;
+      case 'W_CRC': return derived.wallCrc;
+      case 'ONE': return 1;
+      default: return 0;
+    }
+  }
+
+  function operand(t, est, derived){
+    if (t==='tileArea') return derived.tileArea;
+    if (t==='woodArea') return derived.woodArea;
+    if (t.indexOf('sel.')===0) return est.sel[t.slice(4)];
+    return t;
+  }
+  function evalClause(c, est, derived){
+    var m = /^(.+?)(<=|>=|=|>|<)(.+)$/.exec(c);
+    if (!m) return true;
+    var lhs = operand(m[1].trim(), est, derived);
+    var op = m[2], rhsRaw = m[3].trim();
+    if (op==='=') return String(lhs) === rhsRaw;
+    var rhs = parseFloat(rhsRaw), L = parseFloat(lhs);
+    if (op==='>') return L > rhs;
+    if (op==='<') return L < rhs;
+    if (op==='>=') return L >= rhs;
+    if (op==='<=') return L <= rhs;
+    return true;
+  }
+  function evalOn(onStr, est, derived){
+    if (!onStr) return true;
+    return onStr.split('&&').every(function(cl){ return evalClause(cl.trim(), est, derived); });
+  }
+
+  // ITEM_DB 행 (overrides: {mat?,lab?,sub?})
+  // matQtyOpt: V3-4 병합 경로에서 재료비 산정용 수량(지급자재 구역 제외분). 미전달 시 기존 동작(전역 ownerSupplied) 유지.
+  function makeRow(it, qty, est, surs, ov, matQtyOpt){
+    var matSur = surLookup(surs, it.sur, 'mat');
+    var labSur;
+    if (it.labSurFixed != null) labSur = it.labSurFixed;
+    else if (it.labSurKey) labSur = surLookup(surs, it.labSurKey, 'lab');
+    else labSur = surLookup(surs, it.sur, 'lab');
+    var subSur = it.subSurKey ? surLookup(surs, it.subSurKey, 'sub') : 0;
+    var mat = (ov && ov.mat != null && ov.mat !== '') ? num(ov.mat) : num(it.mat);
+    var lab = (ov && ov.lab != null && ov.lab !== '') ? num(ov.lab) : num(it.lab);
+    var sub = (ov && ov.sub != null && ov.sub !== '') ? num(ov.sub) : num(it.sub);
+    var overridden = !!(ov && ((ov.mat!=null&&ov.mat!=='') || (ov.lab!=null&&ov.lab!=='') || (ov.sub!=null&&ov.sub!=='')));
+    var matFinal = mat*(1+matSur), labFinal = lab*(1+labSur), subFinal = sub*(1+subSur);
+    var ownerZeroG = (est.sel && est.sel.ownerSupplied==='예' && it.cat && it.cat.indexOf('XPS')===0);
+    var matQ = (matQtyOpt != null) ? matQtyOpt : (ownerZeroG ? 0 : qty);
+    var matTotal = matQ*matFinal;
+    var labTotal = qty*labFinal;
+    var subTotal = qty*subFinal;
+    var ownerZero = (matQtyOpt != null) ? (matQ < qty - 1e-9) : ownerZeroG;
+    return { id:it.id, grp:it.grp, grpSub:it.grpSub, work:it.work, name:it.name, unit:it.unit,
+             qty:qty, mat:mat, lab:lab, sub:sub, matSur:matSur, labSur:labSur, subSur:subSur,
+             matFinal:matFinal, labFinal:labFinal, subFinal:subFinal,
+             matTotal:matTotal, labTotal:labTotal, subTotal:subTotal, rowTotal:matTotal+labTotal+subTotal,
+             vendor:it.vendor||null, cat:it.cat||null, ownerZero:ownerZero, overridden:overridden, custom:false };
+  }
+  // V3-4: 단일 구역 파생수량 (구역 스코프 마감으로 산정) — 병합 경로에서 사용
+  function zoneDerived(z){ return computeDerived({ zones:[z], finishAll:{enabled:false} }); }
+  function scaffRow(id, work, name, unit, qty, price){
+    var matTotal = qty*price;
+    return { id:id, grp:'가설공사', grpSub:'가설 및 장비대', work:work, name:name, unit:unit,
+             qty:qty, mat:price, lab:0, sub:0, matSur:0, labSur:0, subSur:0,
+             matFinal:price, labFinal:0, subFinal:0, matTotal:matTotal, labTotal:0, subTotal:0,
+             rowTotal:matTotal, vendor:null, cat:null, custom:false };
+  }
+
+  // ---------- computeEstimate(est, overrides?) ----------
+  // overrides = { items:{ <itemId>:{mat?,lab?,sub?} }, equip:{ <name>:price } }
+  function computeEstimate(est, overrides){
+    overrides = overrides || {};
+    var ovItems = overrides.items || {};
+    var ovEquip = overrides.equip || {};
+    var derived = computeDerived(est);
+    var surs = est.surcharges || defaultSurcharges();
+    var rates = est.rates || {};
+    var rows = [];
+
+    // 1) ITEM_DB
+    // V3-4: finishAll.enabled=false 이고 구역이 자기 sel 을 가지면 구역별 병합 경로.
+    //       그 외(finishAll.enabled=true, 또는 zone.sel 없는 레거시/샘플 원본)는 v2 전역 단일패스 그대로.
+    var faEnabled = !!(est.finishAll && est.finishAll.enabled);
+    var useMerge = !faEnabled && (est.zones||[]).some(function(z){ return z && z.sel; });
+    if (!useMerge){
+      ITEM_DB.forEach(function(it){
+        var qty = resolveQtyItem(it, est, derived);
+        if (qty == null) return;
+        if (it.on && !evalOn(it.on, est, derived)) return;
+        if (!(qty > 0)) return;
+        rows.push(makeRow(it, qty, est, surs, ovItems[it.id]));
+      });
+    } else {
+      // 구역별: 각 구역이 자기 z.sel·z.finish·z.wallFinish 로 (아이템 × 변형=아이템id) 별 수량 기여를 만들고
+      //         반올림·할증 이전에 id 로 합산해 한 행으로 병합. on 의 면적 임계(tileArea<=100 등)는 전역 derived 로 판정.
+      var contrib = {}; // itemId -> { qty, matQty }
+      (est.zones||[]).forEach(function(z){
+        var zSel = z.sel || est.sel;
+        var zEst = { sel: zSel, temp: est.temp };
+        var zDer = zoneDerived(z);
+        ITEM_DB.forEach(function(it){
+          var q = resolveQtyItem(it, zEst, zDer);
+          if (q == null) return;
+          if (it.on && !evalOn(it.on, zEst, derived)) return; // 변형·존재는 zEst/zDer(q>0)로, 임계는 전역 derived로
+          if (!(q > 0)) return;
+          var c = contrib[it.id] || (contrib[it.id] = { qty:0, matQty:0 });
+          var matZero = (zSel && zSel.ownerSupplied==='예' && it.cat && it.cat.indexOf('XPS')===0);
+          c.qty += q;
+          c.matQty += matZero ? 0 : q;
+        });
+      });
+      ITEM_DB.forEach(function(it){ // ITEM_DB 순서 유지로 병합 행 push
+        var c = contrib[it.id];
+        if (!c || !(c.qty > 0)) return;
+        rows.push(makeRow(it, c.qty, est, surs, ovItems[it.id], c.matQty));
+      });
+    }
+
+    // 2) 추가공사 (addl 객체 맵) + 화단철거
+    var addl = est.addl || {};
+    ADDL_DEFS.forEach(function(def){
+      var a = addl[def.key];
+      if (!a || !a.on) return;
+      var qty = num(a.qty);
+      if (!(qty>0)) return;
+      var mat=num(a.mat), lab=num(a.lab), sub=num(a.sub);
+      var surMat=num(a.surMat), surLab=num(a.surLab);
+      var matFinal=mat*(1+surMat), labFinal=lab*(1+surLab), subFinal=sub; // 부자재 할증 없음
+      var matTotal=qty*matFinal, labTotal=qty*labFinal, subTotal=qty*subFinal;
+      rows.push({ id:'addl_'+def.key, grp:def.grp, grpSub:def.grpSub, work:def.work, name:def.name, unit:def.unit||'식',
+                  qty:qty, mat:mat, lab:lab, sub:sub, matSur:surMat, labSur:surLab, subSur:0,
+                  matFinal:matFinal, labFinal:labFinal, subFinal:subFinal,
+                  matTotal:matTotal, labTotal:labTotal, subTotal:subTotal, rowTotal:matTotal+labTotal+subTotal,
+                  vendor:null, cat:null, custom:false, addlKey:def.key });
+    });
+
+    // 3) customItems (추가공사 직접입력)
+    (est.customItems||[]).forEach(function(ci, i){
+      var qty = num(ci.qty);
+      if (!(qty>0)) return;
+      var matSur = surLookup(surs, ci.matSurKey, 'mat');
+      var labSur = surLookup(surs, ci.labSurKey, 'lab');
+      var subSur = surLookup(surs, ci.subSurKey, 'sub');
+      var mat=num(ci.matPrice), lab=num(ci.labPrice), sub=num(ci.subPrice);
+      var matFinal=mat*(1+matSur), labFinal=lab*(1+labSur), subFinal=sub*(1+subSur);
+      var matTotal=qty*matFinal, labTotal=qty*labFinal, subTotal=qty*subFinal;
+      rows.push({ id:'ci_'+i, grp:'추가공사', grpSub:'기타공사', work:ci.work||'추가공사', name:ci.name||'', unit:ci.unit||'식',
+                  qty:qty, mat:mat, lab:lab, sub:sub, matSur:matSur, labSur:labSur, subSur:subSur,
+                  matFinal:matFinal, labFinal:labFinal, subFinal:subFinal,
+                  matTotal:matTotal, labTotal:labTotal, subTotal:subTotal, rowTotal:matTotal+labTotal+subTotal,
+                  vendor:ci.vendor||null, cat:ci.cat||null, custom:true });
+    });
+
+    // 4) 가설공사 (equip overrides 반영)
+    var temp = est.temp || {};
+    (temp.equipment||[]).forEach(function(eq, i){
+      var q = num(eq.qty); if (!(q>0)) return;
+      var base = (EQUIP_MAP[eq.name]!=null) ? EQUIP_MAP[eq.name] : num(eq.price);
+      var price = (ovEquip[eq.name]!=null && ovEquip[eq.name]!=='') ? num(ovEquip[eq.name]) : base;
+      rows.push(scaffRow('eq_'+i, '장비대', eq.name, '대', q, price));
+    });
+    if (num(temp.forkliftQty) > 0) rows.push(scaffRow('forklift','장비대','지게차','대', num(temp.forkliftQty), 80000));
+    if (temp.waste && temp.waste!=='없음'){
+      var wp = (temp.waste==='폐기물 2.5ton') ? 900000 : 550000;
+      rows.push(scaffRow('waste','장비대', temp.waste, '식', num(temp.wasteQty)||1, wp));
+    }
+    var freightPrice = (temp.freight==='지방') ? 1000000 : 500000;
+    var freightName = (temp.freight==='지방') ? '지방' : '서울, 경기권';
+    rows.push(scaffRow('freight','운임 및 경비', freightName, '식', 1, freightPrice));
+
+    // trades
+    var TR = ['철거공사','역전지붕공사','가설공사','추가공사'];
+    var trades = {}; TR.forEach(function(k){ trades[k]={mat:0,lab:0,sub:0,total:0}; });
+    rows.forEach(function(r){
+      var t = trades[r.grp]; if (!t){ t = trades[r.grp] = {mat:0,lab:0,sub:0,total:0}; }
+      t.mat += r.matTotal; t.lab += r.labTotal; t.sub += r.subTotal; t.total += r.rowTotal;
+    });
+    var tradeTotal = {mat:0,lab:0,sub:0,total:0};
+    Object.keys(trades).forEach(function(k){
+      tradeTotal.mat+=trades[k].mat; tradeTotal.lab+=trades[k].lab; tradeTotal.sub+=trades[k].sub; tradeTotal.total+=trades[k].total;
+    });
+
+    // 원가계산서 (V2-3: 부자재 순공사원가 포함이 기본)
+    var subInNet = (rates.subInNetCost != null) ? !!rates.subInNetCost : true;
+    var directMat = tradeTotal.mat;
+    var indirectMat = directMat * num(rates.indirectMat);
+    var matSubtotal = directMat + indirectMat;
+    var directLab = tradeTotal.lab;
+    var indirectLab = directLab * num(rates.indirectLab);
+    var labSubtotal = directLab + indirectLab;
+    var subTotal = tradeTotal.sub;
+    var netCost = matSubtotal + labSubtotal + (subInNet ? subTotal : 0);
+    var genAdmin = netCost * num(rates.genAdmin);
+    var design = netCost * num(rates.design);
+    var profit = netCost * num(rates.profit);
+    var constrTotal = netCost + genAdmin + design + profit;
+    var vat = (rates.taxInvoice==='예') ? constrTotal*0.1 : 0;
+    var grandTotal = constrTotal + vat;
+    var perPyeong = (derived.floorSum>0) ? constrTotal/(derived.floorSum/3.3) : 0;
+
+    var cost = { directMat, indirectMat, matSubtotal, directLab, indirectLab, labSubtotal,
+                 subTotal, subInNet, netCost, genAdmin, design, profit, constrTotal, vat, grandTotal, perPyeong };
+
+    // 발주서
+    var VENDOR_ORDER = ['부광스티로폴','티푸스','프로클리마','잡자재','유신 골재','루비','대산합판','타일판매처','시카','삼화','기타(판매처 미정)'];
+    var byVendor = {};
+    rows.forEach(function(r){
+      if (r.grp==='가설공사') return;
+      if (!(r.mat > 0)) return;
+      var v = r.vendor || '기타(판매처 미정)';
+      if (!byVendor[v]) byVendor[v] = [];
+      var pack = PACK_SPECS[r.cat] || {per:1, unit:(r.unit||'ea'), label:''};
+      var orderQty = Math.ceil(r.qty/pack.per - 1e-9);
+      byVendor[v].push({ name:r.name, cat:r.cat, pack:pack.label, qty:r.qty, orderQty:orderQty,
+                         orderUnit:pack.unit, unitPrice:r.mat, amount:r.qty*r.mat });
+    });
+    var orders = Object.keys(byVendor).sort(function(a,b){
+      var ia=VENDOR_ORDER.indexOf(a), ib=VENDOR_ORDER.indexOf(b);
+      if (ia<0) ia=999; if (ib<0) ib=999; return ia-ib;
+    }).map(function(v){
+      var items = byVendor[v];
+      var subtotal = items.reduce(function(s,i){ return s+i.amount; }, 0);
+      return { vendor:v, items:items, subtotal:subtotal };
+    });
+
+    return { derived:derived, rows:rows, trades:trades, tradeTotal:tradeTotal, cost:cost, orders:orders };
+  }
+
+  root.RoofCalc = {
+    ITEM_DB: ITEM_DB, EQUIP_CATALOG: EQUIP_CATALOG, EQUIP_MAP: EQUIP_MAP, PACK_SPECS: PACK_SPECS,
+    DESCRIPTIONS: DESCRIPTIONS, COMPANY: COMPANY, SITE_NOTES: SITE_NOTES, ADDL_DEFS: ADDL_DEFS, ADDL_MAP: ADDL_MAP,
+    SAMPLE_DONGSAK: sampleDongsak(), sampleDongsak: sampleDongsak,
+    defaultAddl: defaultAddl, defaultSurcharges: defaultSurcharges, newEstimate: newEstimate, computeEstimate: computeEstimate,
+    withZoneSel: withZoneSel, migrateCoverNotes: migrateCoverNotes
+  };
+})();
+</script>
+
+<!-- =========================================================
+     REACT APP  (classic runtime via registered preset)
+     ========================================================= -->
+<script type="text/babel" data-presets="app-react">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+const RC = window.RoofCalc;
+const COMPANY = RC.COMPANY;
+const API = '/api';
+
+// ======================================== helpers
+const round = (n) => Math.round(Number(n) || 0);
+const won  = (n) => '₩' + round(n).toLocaleString('ko-KR');
+const won0 = (n) => round(n).toLocaleString('ko-KR');
+const area = (n) => (Number(n)||0).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+const pctStr = (n) => { const v = (Number(n)||0)*100; return (Math.round(v*100)/100) + '%'; };
+const cx = (...a) => a.filter(Boolean).join(' ');
+const TRADES = ['철거공사','역전지붕공사','가설공사','추가공사'];
+const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// V3-3: 유입경로 셀렉트 옵션 (목록 외 저장값은 임시 옵션으로 보존)
+const LEAD_SOURCES = ['티푸스','잡자재','패시브협회','기타'];
+function leadSourceOpts(cur){
+  const base = [{value:'', label:'(선택)'}].concat(LEAD_SOURCES);
+  if (cur && LEAD_SOURCES.indexOf(cur)<0) return base.concat([{value:cur, label:cur+' (저장값)'}]);
+  return base;
+}
+
+// ======================================== 🎨 Design System
+function Btn({ variant='primary', size='md', className, ...p }) {
+  const base = 'inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 disabled:opacity-40 disabled:cursor-not-allowed';
+  const sizes = { xs:'px-2 py-0.5 text-[11px]', sm:'px-2.5 py-1 text-xs', md:'px-3.5 py-2 text-sm', lg:'px-5 py-2.5 text-base' };
+  const variants = {
+    primary:'bg-slate-800 text-white hover:bg-slate-700',
+    amber:'bg-amber-500 text-white hover:bg-amber-600',
+    secondary:'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50',
+    danger:'bg-white text-red-600 border border-red-300 hover:bg-red-50',
+    ghost:'bg-transparent text-slate-600 hover:bg-slate-200/60',
+  };
+  return <button className={cx(base, sizes[size], variants[variant], className)} {...p} />;
+}
+function Card({ className, children, title, right }) {
+  return (
+    <div className={cx('bg-white rounded-xl shadow-sm border border-slate-200/70', className)}>
+      {(title || right) && (
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <h3 className="font-bold text-slate-800 text-sm">{title}</h3>
+          {right}
+        </div>
+      )}
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+function Badge({ children, tone='slate' }) {
+  const tones = { slate:'bg-slate-100 text-slate-600', amber:'bg-amber-100 text-amber-700', green:'bg-emerald-100 text-emerald-700', red:'bg-red-100 text-red-600', navy:'bg-slate-800 text-white', blue:'bg-blue-100 text-blue-700' };
+  return <span className={cx('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold', tones[tone])}>{children}</span>;
+}
+function Field({ label, children, hint }) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-semibold text-slate-500 mb-1">{label}</span>
+      {children}
+      {hint && <span className="block text-[11px] text-slate-400 mt-0.5">{hint}</span>}
+    </label>
+  );
+}
+const inputCls = 'w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 bg-white';
+function TextInput({ className, ...p }) { return <input className={cx(inputCls, className)} {...p} />; }
+function NumInput({ value, onChange, step='0.01', min='0', className, ...p }) {
+  return <input type="number" step={step} min={min} className={cx(inputCls, 'num-cell text-right', className)}
+    value={value===0||value ? value : ''} onChange={e=>onChange(e.target.value==='' ? 0 : Number(e.target.value))} {...p} />;
+}
+function CommaInput({ value, onChange, className, placeholder, ...p }) {
+  return <input inputMode="numeric" placeholder={placeholder} className={cx(inputCls, 'num-cell text-right', className)}
+    value={value===0 ? '0' : (value ? Number(value).toLocaleString('ko-KR') : '')}
+    onChange={e=>{ const raw=e.target.value.replace(/[^\d.]/g,''); onChange(raw===''?0:Number(raw)); }} {...p} />;
+}
+function Sel({ value, onChange, options, className }) {
+  return (
+    <select className={cx(inputCls, 'pr-7', className)} value={value} onChange={e=>onChange(e.target.value)}>
+      {options.map((o,i)=>{ const val = (typeof o==='object')?o.value:o; const lab=(typeof o==='object')?o.label:o;
+        return <option key={i} value={val}>{lab}</option>; })}
+    </select>
+  );
+}
+function Toggle({ checked, onChange, labelOn='예', labelOff='아니오' }) {
+  return (
+    <button type="button" onClick={()=>onChange(!checked)}
+      className={cx('relative inline-flex h-6 w-24 items-center rounded-full text-xs font-semibold transition', checked?'bg-amber-500 text-white':'bg-slate-200 text-slate-500')}>
+      <span className={cx('absolute px-2 transition', checked?'left-2':'right-2')}>{checked?labelOn:labelOff}</span>
+      <span className={cx('absolute h-5 w-5 rounded-full bg-white shadow transition', checked?'right-1':'left-1')}></span>
+    </button>
+  );
+}
+function SectionTitle({ n, children, extra }) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <h2 className="flex items-center gap-2 text-sm font-extrabold text-slate-800">
+        {n && <span className="flex items-center justify-center h-6 w-6 rounded-md bg-slate-800 text-white text-xs">{n}</span>}
+        {children}
+      </h2>
+      {extra}
+    </div>
+  );
+}
+function hintFor(id){ const it = RC.ITEM_DB.find(x=>x.id===id); if(!it) return ''; return `재 ${won0(it.mat)}/노 ${won0(it.lab)}`; }
+function recGenAdmin(sc){ let r=0.10; if(sc.under100==='예') r+=0.03; if(sc.floors==='6-10층') r+=0.02; else if(sc.floors==='10층 이상') r+=0.04; if(sc.craneOk==='불가능') r+=0.05; if(sc.region==='지방') r+=0.05; return Math.round(r*1000)/1000; }
+
+// ======================================== 📐 옥상 형태 계산기
+const DIRS = { '위':[0,-1], '오른쪽':[1,0], '아래':[0,1], '왼쪽':[-1,0] };
+const DIR_ORDER = ['위','오른쪽','아래','왼쪽'];
+function turnDir(cur, t){ const i=DIR_ORDER.indexOf(cur); return t==='우회전' ? DIR_ORDER[(i+1)%4] : DIR_ORDER[(i+3)%4]; }
+function computePolygon(edges, startDir){
+  let pt=[0,0], heading=startDir; const verts=[[0,0]];
+  edges.forEach(e=>{ const v=DIRS[heading]||[1,0]; const L=Number(e.lengthMm)||0; pt=[pt[0]+v[0]*L, pt[1]+v[1]*L]; verts.push(pt); heading=turnDir(heading, e.turn); });
+  const end=pt; const closed = Math.abs(end[0])<1 && Math.abs(end[1])<1 && edges.length>=3;
+  let peri=0; edges.forEach(e=> peri += Number(e.lengthMm)||0);
+  const poly = verts.slice(0, verts.length-1);
+  let a2=0; for(let i=0;i<poly.length;i++){ const [x1,y1]=poly[i], [x2,y2]=poly[(i+1)%poly.length]; a2 += x1*y2 - x2*y1; }
+  return { verts, closed, periM: peri/1000, areaM2: Math.abs(a2)/2/1e6 };
+}
+function RoofCalcTool({ zones, onApply }) {
+  const [startDir, setStartDir] = useState('오른쪽');
+  const [edges, setEdges] = useState([
+    { lengthMm:5000, turn:'우회전' }, { lengthMm:3000, turn:'우회전' },
+    { lengthMm:5000, turn:'우회전' }, { lengthMm:3000, turn:'우회전' },
+  ]);
+  const [target, setTarget] = useState(0);
+  const res = useMemo(()=>computePolygon(edges, startDir), [edges, startDir]);
+  const svg = useMemo(()=>{
+    const vs = res.verts; if (!vs.length) return null;
+    const xs=vs.map(v=>v[0]), ys=vs.map(v=>v[1]);
+    const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+    const w=Math.max(maxX-minX,1), h=Math.max(maxY-minY,1); const pad=14, S=240;
+    const sc=Math.min((S-pad*2)/w, (S-pad*2)/h);
+    const map=(p)=>[pad+(p[0]-minX)*sc, pad+(p[1]-minY)*sc];
+    return { pts: vs.map(map).map(p=>p.join(',')).join(' '), S };
+  }, [res]);
+  const upd=(i,k,v)=>setEdges(es=>es.map((e,j)=>j===i?{...e,[k]:v}:e));
+  return (
+    <Card title="📐 옥상 형태 계산기" right={<Badge tone={res.closed?'green':'red'}>{res.closed?'✅ 폐합':'❌ 미폐합'}</Badge>}>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          <Field label="시작 방향"><Sel value={startDir} onChange={setStartDir} options={DIR_ORDER} /></Field>
+          <div className="mt-3 space-y-1.5 max-h-56 overflow-auto pr-1">
+            {edges.map((e,i)=>(
+              <div key={i} className="flex items-center gap-1.5">
+                <span className="text-xs text-slate-400 w-5">{i+1}</span>
+                <NumInput step="1" value={e.lengthMm} onChange={v=>upd(i,'lengthMm',v)} className="flex-1" />
+                <span className="text-[11px] text-slate-400">mm</span>
+                <Sel value={e.turn} onChange={v=>upd(i,'turn',v)} options={['우회전','좌회전']} className="w-24" />
+                <Btn size="sm" variant="ghost" onClick={()=>setEdges(es=>es.filter((_,j)=>j!==i))}>✕</Btn>
+              </div>
+            ))}
+          </div>
+          <Btn size="sm" variant="secondary" className="mt-2" onClick={()=>setEdges(es=>[...es,{lengthMm:1000,turn:'우회전'}])}>+ 변 추가</Btn>
+        </div>
+        <div>
+          <div className="bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center" style={{minHeight:svg?svg.S:200}}>
+            {svg && <svg width={svg.S} height={svg.S} viewBox={`0 0 ${svg.S} ${svg.S}`}>
+              <polygon points={svg.pts} fill="rgba(245,158,11,0.15)" stroke="#f59e0b" strokeWidth="2" strokeLinejoin="round" />
+            </svg>}
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-3 text-sm">
+            <div className="bg-slate-50 rounded-lg p-2"><div className="text-[11px] text-slate-400">총 둘레</div><div className="font-bold num-cell">{area(res.periM)} m</div></div>
+            <div className="bg-slate-50 rounded-lg p-2"><div className="text-[11px] text-slate-400">면적 (신발끈)</div><div className="font-bold num-cell">{area(res.areaM2)} ㎡</div></div>
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <Sel value={target} onChange={v=>setTarget(Number(v))} options={zones.map((z,i)=>({value:i, label:`${i+1}. ${z.label||'구역'}`}))} className="flex-1" />
+            <Btn size="sm" variant="amber" onClick={()=>onApply(target, res.areaM2, res.periM)}>구역에 적용</Btn>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+// ======================================== 실시간 요약 패널
+function SummaryPanel({ result, est }) {
+  const { trades, tradeTotal, cost, derived } = result;
+  const activeCount = result.rows.length;
+  const subIn = cost.subInNet;
+  return (
+    <div className="sticky-panel space-y-3">
+      <Card className="print-shadow">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-bold text-slate-500">실시간 요약</span>
+          <Badge tone="amber">활성 {activeCount}개 항목</Badge>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5 text-center mb-3">
+          <div className="bg-slate-50 rounded-lg p-1.5"><div className="text-[10px] text-slate-400">방수면적</div><div className="text-sm font-bold num-cell">{area(derived.waterproofArea)}㎡</div></div>
+          <div className="bg-slate-50 rounded-lg p-1.5"><div className="text-[10px] text-slate-400">바닥면적</div><div className="text-sm font-bold num-cell">{area(derived.floorSum)}㎡</div></div>
+          <div className="bg-slate-50 rounded-lg p-1.5"><div className="text-[10px] text-slate-400">파라펫</div><div className="text-sm font-bold num-cell">{area(derived.parapetLen)}m</div></div>
+        </div>
+        <table className="w-full text-xs num-cell">
+          <thead><tr className="text-slate-400 border-b border-slate-100"><th className="text-left font-semibold py-1">공종</th><th className="text-right font-semibold">재료</th><th className="text-right font-semibold">노무</th><th className="text-right font-semibold">부자재</th></tr></thead>
+          <tbody>
+            {TRADES.map(k=>{ const t=trades[k]; if(!t) return null; if(t.total===0 && k!=='역전지붕공사') return null;
+              return <tr key={k} className="border-b border-slate-50"><td className="py-1 text-left text-slate-600">{k.replace('공사','')}</td><td className="text-right">{won0(t.mat)}</td><td className="text-right">{won0(t.lab)}</td><td className="text-right text-slate-400">{won0(t.sub)}</td></tr>; })}
+            <tr className="font-bold text-slate-800"><td className="py-1 text-left">합계</td><td className="text-right">{won0(tradeTotal.mat)}</td><td className="text-right">{won0(tradeTotal.lab)}</td><td className="text-right text-slate-400">{won0(tradeTotal.sub)}</td></tr>
+          </tbody>
+        </table>
+      </Card>
+      <Card className="print-shadow">
+        <span className="text-xs font-bold text-slate-500 block mb-2">원가계산서</span>
+        <div className="space-y-1 text-xs num-cell">
+          {[['직접재료비', cost.directMat],['간접재료비', cost.indirectMat],['직접노무비', cost.directLab],['간접노무비', cost.indirectLab],['부자재 합계', cost.subTotal]].map(([l,v])=>(
+            <div key={l} className="flex justify-between text-slate-500"><span>{l}</span><span>{won0(v)}</span></div>
+          ))}
+          <div className="flex justify-between font-semibold text-slate-700 pt-1 border-t border-slate-100"><span>순공사원가{subIn?' (부자재 포함)':' (부자재 미산입)'}</span><span>{won0(cost.netCost)}</span></div>
+          <div className="flex justify-between text-slate-500"><span>일반관리비 {pctStr(est.rates.genAdmin)}</span><span>{won0(cost.genAdmin)}</span></div>
+          {cost.design>0 && <div className="flex justify-between text-slate-500"><span>디자인 {pctStr(est.rates.design)}</span><span>{won0(cost.design)}</span></div>}
+          <div className="flex justify-between text-slate-500"><span>회사이윤 {pctStr(est.rates.profit)}</span><span>{won0(cost.profit)}</span></div>
+          <div className="flex justify-between font-bold text-slate-800 pt-1 border-t border-slate-100"><span>공사비 합계</span><span>{won0(cost.constrTotal)}</span></div>
+          <div className="flex justify-between text-slate-500"><span>{est.rates.taxInvoice==='예'?'부가가치세 (10%)':'부가가치세 (미진행)'}</span><span>{won0(cost.vat)}</span></div>
+        </div>
+        <div className="mt-3 bg-slate-800 text-white rounded-lg p-3 text-center">
+          <div className="text-[11px] text-slate-300">★★ 총합계 ({est.rates.taxInvoice==='예'?'VAT 포함':'VAT 별도'})</div>
+          <div className="text-2xl font-extrabold num-cell tracking-tight">{won(cost.grandTotal)}</div>
+          <div className="text-[11px] text-amber-300 mt-1">평당 {won0(cost.perPyeong)} (VAT별도)</div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+// ======================================== 📝 견적입력 탭
+const ADDL_UI = [['acMove','에어컨 이동'],['insulDoor','단열방화문'],['fireDoor','일반방화문'],['floorFrame','바닥 단 프레임'],['raise','단 높임 공사'],['crack','크랙 보수'],['flowerbed','화단 철거']];
+const MEMBRANE_OPTS = ['없음','아덱스 WPM 003 ROOFTOP','Sikalastic 590','우레탄방수','adhero 1000','adhero 3000','weldano 3000','Bituthene 3000','지정시트'];
+const XPS_OPTS = ['없음','50T','70T','80T','100T','120T','150T','200T'];
+
+// ③ 자재선택 필드 묶음 (est.sel 또는 zone.sel 에 바인딩) — V3-4 로 구역별 재사용
+function MaterialSelect({ sel, onSel, showTile, showWood }){
+  sel = sel || {};
+  return (
+    <div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Field label="철거 - 바닥샌딩"><Sel value={sel.sanding} onChange={v=>onSel({sanding:v})} options={['아니오','예']} /></Field>
+        <Field label="삼각면귀 (코너비드)"><Sel value={sel.cornerBead} onChange={v=>onSel({cornerBead:v})} options={['없음','삼각면귀 30각','젤리밴드','weldano 3000']} /></Field>
+        <Field label="바닥면 프라이머 (바탕면정리+프라이머)"><Sel value={sel.primer} onChange={v=>onSel({primer:v})} options={['아니오','예']} /></Field>
+        <Field label="1차 방수 (멤브레인)" hint={sel.membrane!=='없음' ? hintFor(RC.ITEM_DB.find(x=>x.on==='sel.membrane='+sel.membrane)?.id) : ''}>
+          <Sel value={sel.membrane} onChange={v=>onSel({membrane:v})} options={MEMBRANE_OPTS} />
+        </Field>
+        <Field label="XPS 바닥 1P" hint={sel.xps1!=='없음'?`재 ${won0(RC.ITEM_DB.find(x=>x.qty==='XPS:'+sel.xps1)?.mat||0)}`:''}><Sel value={sel.xps1} onChange={v=>onSel({xps1:v})} options={XPS_OPTS} /></Field>
+        <Field label="XPS 바닥 2P" hint={sel.xps2!=='없음'?`재 ${won0(RC.ITEM_DB.find(x=>x.qty==='XPS:'+sel.xps2)?.mat||0)}`:''}><Sel value={sel.xps2} onChange={v=>onSel({xps2:v})} options={XPS_OPTS} /></Field>
+        <Field label="XPS 벽체"><Sel value={sel.xpsWall} onChange={v=>onSel({xpsWall:v})} options={['없음','30T벽','70T벽']} /></Field>
+        <Field label="단열재 지급자재 (예=재료비 0)"><Sel value={sel.ownerSupplied} onChange={v=>onSel({ownerSupplied:v})} options={['아니오','예']} /></Field>
+        <Field label="투습방수지" hint={hintFor(sel.vaporBarrier==='SIGA'?'vb_siga':'vb_pro')}><Sel value={sel.vaporBarrier} onChange={v=>onSel({vaporBarrier:v})} options={['SIGA','프로클리마']} /></Field>
+        <Field label="기밀테이프" hint={hintFor(sel.tape==='SIGA'?'tp_siga':'tp_pro')}><Sel value={sel.tape} onChange={v=>onSel({tape:v})} options={['SIGA','프로클리마']} /></Field>
+        <Field label="배수판" hint={hintFor(sel.drainBoard==='잡자재'?'db_jap':'db_tif')}><Sel value={sel.drainBoard} onChange={v=>onSel({drainBoard:v})} options={['잡자재','티푸스']} /></Field>
+        <Field label="부직포" hint={hintFor(sel.fabric==='잡자재'?'fb_jap':'fb_tif')}><Sel value={sel.fabric} onChange={v=>onSel({fabric:v})} options={['잡자재','티푸스']} /></Field>
+        <Field label="쇄석 포장" hint={hintFor(sel.gravelPack==='톤백'?'gv_ton':'gv_small')}><Sel value={sel.gravelPack} onChange={v=>onSel({gravelPack:v})} options={['톤백','소분포장']} /></Field>
+        <Field label="우레탄실리콘 (ea)"><NumInput step="1" value={sel.siliconEa} onChange={v=>onSel({siliconEa:v})} /></Field>
+        <Field label="트렌치 바닥배수 (ea)"><NumInput step="1" value={sel.trenchFloorEa} onChange={v=>onSel({trenchFloorEa:v})} /></Field>
+        <Field label="트렌치 측면배수 (ea)"><NumInput step="1" value={sel.trenchSideEa} onChange={v=>onSel({trenchSideEa:v})} /></Field>
+      </div>
+      {showTile && (
+        <div className="grid sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
+          <Field label="타일 부자재 (페데스탈)"><Sel value={sel.tileSub} onChange={v=>onSel({tileSub:v})} options={['잡자재 사 페데스탈','페이그란 페데스탈']} /></Field>
+          <Field label="타일 마감재"><Sel value={sel.tileFinish} onChange={v=>onSel({tileFinish:v})} options={['20T타일(중국산)','20T타일(유럽산)']} /></Field>
+        </div>
+      )}
+      {showWood && (
+        <div className="grid sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
+          <Field label="우드 마감재 (페데스탈+각관 자동)"><Sel value={sel.woodFinish} onChange={v=>onSel({woodFinish:v})} options={['합성데크','없음']} /></Field>
+        </div>
+      )}
+    </div>
+  );
+}
+function InputTab({ est, result, upd, updSel, updInfo, updTemp, updRates, updSiteCond, updFinishAll, zoneOps, ciOps, addlOps, applyRoof }) {
+  const [showCalc, setShowCalc] = useState(false);
+  const surKeyOpts = [{value:'',label:'없음'},'primary','sanding','xpsFloor','xpsWallLab','wallFinishLab','sheet','drain','gravelFinish','wallFinish','pedestalSub','finishMat','floorFrame','raise','crack'];
+  const fa = est.finishAll || { enabled:false, finish:'쇄석', wallFinish:'없음' };
+  return (
+    <div className="grid lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 space-y-4">
+        {/* ① 프로젝트 정보 */}
+        <Card>
+          <SectionTitle n="①">프로젝트 정보</SectionTitle>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Field label="공사명"><TextInput value={est.info.title} onChange={e=>updInfo({title:e.target.value})} placeholder="예) 신축 역전지붕공사" /></Field>
+            <Field label="현장주소"><TextInput value={est.info.address} onChange={e=>updInfo({address:e.target.value})} placeholder="예) 평택 동삭동 867-7" /></Field>
+            <Field label="담당자"><TextInput value={est.info.manager} onChange={e=>updInfo({manager:e.target.value})} /></Field>
+            <Field label="견적일자"><TextInput type="date" value={est.info.date} onChange={e=>updInfo({date:e.target.value})} /></Field>
+            <Field label="고객 연락처"><TextInput value={est.info.customerContact} onChange={e=>updInfo({customerContact:e.target.value})} /></Field>
+            <Field label="유입경로"><Sel value={est.info.leadSource||''} onChange={v=>updInfo({leadSource:v})} options={leadSourceOpts(est.info.leadSource)} /></Field>
+          </div>
+        </Card>
+
+        {/* ② 구역별 치수 */}
+        <Card>
+          <SectionTitle n="②" extra={<Btn size="sm" variant="secondary" onClick={()=>setShowCalc(s=>!s)}>📐 형태 계산기</Btn>}>구역별 치수 · 마감</SectionTitle>
+          {showCalc && <div className="mb-3"><RoofCalcTool zones={est.zones} onApply={applyRoof} /></div>}
+          {/* V2-4: 전체 마감방식 동일 */}
+          <div className="flex flex-wrap items-center gap-3 mb-3 p-2 bg-amber-50 rounded-lg">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <input type="checkbox" checked={!!fa.enabled} onChange={e=>updFinishAll({enabled:e.target.checked})} />
+              ☑️ 전체 마감방식 동일
+            </label>
+            {fa.enabled && <>
+              <div className="flex items-center gap-1"><span className="text-xs text-slate-500">마감</span><Sel value={fa.finish} onChange={v=>updFinishAll({finish:v})} options={['쇄석','타일','우드','조경']} className="w-28" /></div>
+              <div className="flex items-center gap-1"><span className="text-xs text-slate-500">벽체마감</span><Sel value={fa.wallFinish} onChange={v=>updFinishAll({wallFinish:v})} options={['없음','스테인리스','함석','crc보드']} className="w-32" /></div>
+            </>}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-[11px] text-slate-400 border-b border-slate-100">
+                <th className="text-left font-semibold py-1.5">구역명</th><th className="font-semibold">바닥(㎡)</th><th className="font-semibold">파라펫(m)</th><th className="font-semibold">높이(m)</th><th></th>
+              </tr></thead>
+              <tbody>
+                {est.zones.map((z,i)=>(
+                  <tr key={i} className="border-b border-slate-50">
+                    <td className="py-1 pr-1"><TextInput value={z.label} onChange={e=>zoneOps.set(i,'label',e.target.value)} className="min-w-[70px]" /></td>
+                    <td className="px-1"><NumInput value={z.floor} onChange={v=>zoneOps.set(i,'floor',v)} className="min-w-[68px]" /></td>
+                    <td className="px-1"><NumInput value={z.parapetLen} onChange={v=>zoneOps.set(i,'parapetLen',v)} className="min-w-[62px]" /></td>
+                    <td className="px-1"><NumInput value={z.parapetH} onChange={v=>zoneOps.set(i,'parapetH',v)} className="min-w-[56px]" /></td>
+                    <td className="pl-1"><Btn size="sm" variant="ghost" onClick={()=>zoneOps.remove(i)} disabled={est.zones.length<=1}>✕</Btn></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-3 mt-2">
+            <Btn size="sm" variant="secondary" onClick={zoneOps.add} disabled={est.zones.length>=10}>+ 구역 추가 (최대 10)</Btn>
+            <span className="text-xs text-slate-400 num-cell">방수면적 {area(result.derived.waterproofArea)}㎡ · 벽면적 {area(result.derived.wallArea)}㎡ · 기밀테이프 {area(result.derived.tapeLen)}m</span>
+          </div>
+        </Card>
+
+        {/* ③ 자재 선택 — enabled=true: 단일 / enabled=false: 구역별 카드 (V3-4) */}
+        {fa.enabled ? (
+          <Card>
+            <SectionTitle n="③">자재 선택</SectionTitle>
+            <MaterialSelect sel={est.sel} onSel={updSel} showTile={fa.finish==='타일'} showWood={fa.finish==='우드'} />
+          </Card>
+        ) : (
+          est.zones.map((z,i)=>{ const zl = z.label || ('구역'+(i+1)); return (
+            <Card key={i} className="border-l-4 border-l-amber-400">
+              <SectionTitle n="③" extra={<Badge tone="amber">구역 {i+1}</Badge>}>자재선택 — {zl}</SectionTitle>
+              <div className="grid sm:grid-cols-2 gap-3 mb-3 pb-3 border-b border-slate-100">
+                <Field label="마감"><Sel value={z.finish} onChange={v=>zoneOps.set(i,'finish',v)} options={['쇄석','타일','우드','조경']} /></Field>
+                <Field label="벽체마감"><Sel value={z.wallFinish} onChange={v=>zoneOps.set(i,'wallFinish',v)} options={['없음','스테인리스','함석','crc보드']} /></Field>
+              </div>
+              <MaterialSelect sel={z.sel||est.sel} onSel={patch=>zoneOps.setSel(i,patch)} showTile={z.finish==='타일'} showWood={z.finish==='우드'} />
+            </Card>
+          ); })
+        )}
+
+        {/* ④ 가설공사 */}
+        <Card>
+          <SectionTitle n="④">가설공사 · 장비</SectionTitle>
+          <div className="space-y-1.5 mb-3">
+            {est.temp.equipment.map((eq,i)=>(
+              <div key={i} className="flex items-center gap-2">
+                <Sel value={eq.name} onChange={v=>ciOps.setEq(i,'name',v)} options={RC.EQUIP_CATALOG.map(e=>({value:e.name,label:`${e.name} — ${won0(e.price)}`}))} className="flex-1" />
+                <NumInput step="1" value={eq.qty} onChange={v=>ciOps.setEq(i,'qty',v)} className="w-16" />
+                <span className="text-xs text-slate-400 w-24 text-right num-cell">{won0((RC.EQUIP_MAP[eq.name]||0)*(Number(eq.qty)||0))}</span>
+                <Btn size="sm" variant="ghost" onClick={()=>ciOps.removeEq(i)}>✕</Btn>
+              </div>
+            ))}
+            <Btn size="sm" variant="secondary" onClick={ciOps.addEq}>+ 장비 추가</Btn>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Field label="지게차 (대 · 80,000/대)"><NumInput step="1" value={est.temp.forkliftQty} onChange={v=>updTemp({forkliftQty:v})} /></Field>
+            <Field label="폐기물"><Sel value={est.temp.waste} onChange={v=>updTemp({waste:v})} options={['없음','폐기물 1ton','폐기물 2.5ton']} /></Field>
+            {est.temp.waste!=='없음' && <Field label="폐기물 수량"><NumInput step="1" value={est.temp.wasteQty} onChange={v=>updTemp({wasteQty:v})} /></Field>}
+            <Field label="운임 및 경비" hint="서울·경기 500,000 / 지방 1,000,000"><Sel value={est.temp.freight} onChange={v=>updTemp({freight:v})} options={['서울·경기','지방']} /></Field>
+          </div>
+        </Card>
+
+        {/* ⑤ 추가공사 (V2-5: 체크 시 인라인 수량/단가/할증 편집) */}
+        <Card>
+          <SectionTitle n="⑤">추가공사</SectionTitle>
+          <div className="space-y-2">
+            {ADDL_UI.map(([k,l])=>{ const a=est.addl[k]||{}; return (
+              <div key={k} className={cx('rounded-lg border', a.on?'border-amber-300 bg-amber-50/40':'border-slate-200')}>
+                <div className="flex items-center justify-between px-2.5 py-1.5">
+                  <span className="text-sm text-slate-700 font-medium">{l} <span className="text-[11px] text-slate-400">기본 재 {won0(RC.ADDL_MAP[k].mat)}/노 {won0(RC.ADDL_MAP[k].lab)}</span></span>
+                  <Toggle checked={!!a.on} onChange={()=>addlOps.toggle(k)} />
+                </div>
+                {a.on && (
+                  <div className="px-2.5 pb-2.5 grid grid-cols-2 md:grid-cols-6 gap-1.5">
+                    <div><span className="text-[10px] text-slate-400">수량</span><NumInput step="1" value={a.qty} onChange={v=>addlOps.set(k,'qty',v)} /></div>
+                    <div><span className="text-[10px] text-slate-400">재료단가</span><CommaInput value={a.mat} onChange={v=>addlOps.set(k,'mat',v)} /></div>
+                    <div><span className="text-[10px] text-slate-400">노무단가</span><CommaInput value={a.lab} onChange={v=>addlOps.set(k,'lab',v)} /></div>
+                    <div><span className="text-[10px] text-slate-400">부자재단가</span><CommaInput value={a.sub} onChange={v=>addlOps.set(k,'sub',v)} /></div>
+                    <div><span className="text-[10px] text-slate-400">재료할증</span><NumInput step="0.01" min="-1" value={a.surMat} onChange={v=>addlOps.set(k,'surMat',v)} /></div>
+                    <div><span className="text-[10px] text-slate-400">노무할증</span><NumInput step="0.01" min="-1" value={a.surLab} onChange={v=>addlOps.set(k,'surLab',v)} /></div>
+                    <div className="col-span-2 md:col-span-6 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-500 num-cell">→ 재 {won0(a.mat*(1+(a.surMat||0))*a.qty)} · 노 {won0(a.lab*(1+(a.surLab||0))*a.qty)} · 부 {won0((a.sub||0)*a.qty)}</span>
+                      <Btn size="xs" variant="ghost" onClick={()=>addlOps.reset(k)}>기본값 초기화</Btn>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ); })}
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-2"><span className="text-xs font-bold text-slate-500">추가공사 직접 입력</span><Btn size="sm" variant="secondary" onClick={ciOps.add}>+ 항목 추가</Btn></div>
+            {est.customItems.length===0 && <p className="text-xs text-slate-400">직접 입력한 추가공사 항목이 없습니다.</p>}
+            <div className="space-y-2">
+              {est.customItems.map((ci,i)=>(
+                <div key={i} className="border border-slate-200 rounded-lg p-2 bg-slate-50/50">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                    <TextInput placeholder="공사내용" value={ci.work} onChange={e=>ciOps.set(i,'work',e.target.value)} />
+                    <TextInput placeholder="SPEC / 자재명" value={ci.name} onChange={e=>ciOps.set(i,'name',e.target.value)} className="md:col-span-2" />
+                    <div className="flex gap-1"><TextInput placeholder="단위" value={ci.unit} onChange={e=>ciOps.set(i,'unit',e.target.value)} className="w-14" /><NumInput placeholder="수량" value={ci.qty} onChange={v=>ciOps.set(i,'qty',v)} /></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 mt-1.5">
+                    <div><span className="text-[10px] text-slate-400">재료단가</span><CommaInput value={ci.matPrice} onChange={v=>ciOps.set(i,'matPrice',v)} /><Sel value={ci.matSurKey||''} onChange={v=>ciOps.set(i,'matSurKey',v||null)} options={surKeyOpts} className="mt-1 text-xs" /></div>
+                    <div><span className="text-[10px] text-slate-400">노무단가</span><CommaInput value={ci.labPrice} onChange={v=>ciOps.set(i,'labPrice',v)} /><Sel value={ci.labSurKey||''} onChange={v=>ciOps.set(i,'labSurKey',v||null)} options={surKeyOpts} className="mt-1 text-xs" /></div>
+                    <div><span className="text-[10px] text-slate-400">부자재단가</span><CommaInput value={ci.subPrice} onChange={v=>ciOps.set(i,'subPrice',v)} /><Sel value={ci.subSurKey||''} onChange={v=>ciOps.set(i,'subSurKey',v||null)} options={surKeyOpts} className="mt-1 text-xs" /></div>
+                  </div>
+                  <div className="flex justify-end mt-1"><Btn size="sm" variant="danger" onClick={()=>ciOps.remove(i)}>삭제</Btn></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        {/* ⑥ 요율 / 할증 / 여건 / 특이사항 */}
+        <Card>
+          <SectionTitle n="⑥">요율 · 할증 · 현장여건 · 특이사항</SectionTitle>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <Field label="간접재료비율"><NumInput step="0.001" value={est.rates.indirectMat} onChange={v=>updRates({indirectMat:v})} /></Field>
+            <Field label="간접노무비율"><NumInput step="0.001" value={est.rates.indirectLab} onChange={v=>updRates({indirectLab:v})} /></Field>
+            <Field label="일반관리비율"><NumInput step="0.001" value={est.rates.genAdmin} onChange={v=>updRates({genAdmin:v})} /></Field>
+            <Field label="디자인비율"><NumInput step="0.001" value={est.rates.design} onChange={v=>updRates({design:v})} /></Field>
+            <Field label="이윤율"><NumInput step="0.001" value={est.rates.profit} onChange={v=>updRates({profit:v})} /></Field>
+            <Field label="세금계산서 발행"><Sel value={est.rates.taxInvoice} onChange={v=>updRates({taxInvoice:v})} options={['예','아니오']} /></Field>
+          </div>
+          <div className="flex items-center justify-between mt-3 p-2 bg-amber-50 rounded-lg">
+            <span className="text-xs text-slate-600">부자재 순공사원가 포함 <span className="text-slate-400">(기본 ON, OFF=구 엑셀 방식)</span></span>
+            <Toggle checked={est.rates.subInNetCost!==false} onChange={v=>updRates({subInNetCost:v})} labelOn="포함" labelOff="미산입" />
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-500 block mb-2">현장 여건 (일반관리비율 가이드)</span>
+            <div className="grid sm:grid-cols-4 gap-2">
+              <Field label="100㎡ 미만"><Sel value={est.siteCond.under100} onChange={v=>updSiteCond({under100:v})} options={['아니오','예']} /></Field>
+              <Field label="층수"><Sel value={est.siteCond.floors} onChange={v=>updSiteCond({floors:v})} options={['1-5층','6-10층','10층 이상']} /></Field>
+              <Field label="크레인"><Sel value={est.siteCond.craneOk} onChange={v=>updSiteCond({craneOk:v})} options={['가능','불가능']} /></Field>
+              <Field label="지역"><Sel value={est.siteCond.region} onChange={v=>updSiteCond({region:v})} options={['서울·경기','지방']} /></Field>
+            </div>
+            {(() => { const rr = recGenAdmin(est.siteCond); return (
+              <div className="flex items-center gap-2 mt-2"><span className="text-xs text-slate-500">권장 일반관리비율: <b className="text-amber-600">{pctStr(rr)}</b></span><Btn size="sm" variant="amber" onClick={()=>updRates({genAdmin:rr})}>권장률 적용</Btn></div>
+            ); })()}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-500 block mb-2">특이사항 (⑦ 견적 조건)</span>
+            <div className="space-y-1">
+              {RC.SITE_NOTES.map((t,i)=>(
+                <label key={i} className="flex items-start gap-2 text-xs text-slate-600">
+                  <input type="checkbox" checked={!!est.siteNotes[i]} onChange={e=>{ const arr=est.siteNotes.slice(); arr[i]=e.target.checked; upd({siteNotes:arr}); }} className="mt-0.5" />
+                  <span>{t}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-2 space-y-1">
+              {est.customNotes.map((n,i)=>(
+                <div key={i} className="flex items-center gap-1"><TextInput value={n} onChange={e=>{ const a=est.customNotes.slice(); a[i]=e.target.value; upd({customNotes:a}); }} className="text-xs" /><Btn size="sm" variant="ghost" onClick={()=>upd({customNotes:est.customNotes.filter((_,j)=>j!==i)})}>✕</Btn></div>
+              ))}
+              <Btn size="sm" variant="secondary" onClick={()=>upd({customNotes:[...est.customNotes,'']})}>+ 특이사항 추가</Btn>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="lg:col-span-1"><SummaryPanel result={result} est={est} /></div>
+    </div>
+  );
+}
+
+// ======================================== 💰 자재DB 탭 (V2-2 단가 오버라이드)
+function PriceDBTab({ overrides, setItemOv, setEquipOv, resetItemOv, resetEquipOv, resetAllOv, priceMeta, onSaveNow, mode }) {
+  const ovItems = overrides.items || {};
+  const ovEquip = overrides.equip || {};
+  const groups = useMemo(()=>{
+    const map = {};
+    RC.ITEM_DB.forEach(it=>{ const g=it.grp+' › '+it.work; (map[g]=map[g]||[]).push(it); });
+    return Object.keys(map).map(g=>({g, items:map[g]}));
+  }, []);
+  const ovCount = Object.keys(ovItems).length + Object.keys(ovEquip).length;
+  return (
+    <div className="max-w-6xl mx-auto space-y-4">
+      <Card title="💰 자재 단가 DB (오버라이드)" right={
+        <div className="flex items-center gap-2">
+          <Badge tone={ovCount?'amber':'slate'}>수정 {ovCount}건</Badge>
+          <Btn size="sm" variant="secondary" onClick={resetAllOv} disabled={!ovCount}>전체 초기화</Btn>
+          <Btn size="sm" variant="amber" onClick={onSaveNow}>지금 저장</Btn>
+        </div>}>
+        <p className="text-xs text-slate-500 mb-1">기본단가를 유지한 채 <b>오버라이드 입력칸</b>에만 값을 넣으면 계산에 반영됩니다. 비우면 기본단가 사용.
+          {mode==='server' ? ' 팀 공유(서버 저장).' : ' 로컬 저장(localStorage).'}
+          {priceMeta && priceMeta.updatedByName && <span className="ml-1">· 마지막 수정 <b>{priceMeta.updatedByName}</b></span>}
+        </p>
+        <div className="space-y-4 mt-3">
+          {groups.map(({g, items})=>(
+            <div key={g}>
+              <h4 className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">{g}</h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs num-cell mt-1">
+                  <thead><tr className="text-slate-400 border-b border-slate-100">
+                    <th className="text-left p-1">자재명</th><th className="p-1">단위</th>
+                    <th className="p-1 text-right">재료 기본</th><th className="p-1 text-right">재료 override</th>
+                    <th className="p-1 text-right">노무 기본</th><th className="p-1 text-right">노무 override</th>
+                    <th className="p-1 text-right">부자재 기본</th><th className="p-1 text-right">부자재 override</th><th className="p-1"></th>
+                  </tr></thead>
+                  <tbody>
+                    {items.map(it=>{ const ov=ovItems[it.id]||{}; const dirty=(ov.mat!=null&&ov.mat!=='')||(ov.lab!=null&&ov.lab!=='')||(ov.sub!=null&&ov.sub!=='');
+                      return (
+                        <tr key={it.id} className={cx('border-b border-slate-50', dirty&&'bg-amber-50/50')}>
+                          <td className="p-1 text-left text-slate-700 max-w-[240px]">{dirty&&<span className="text-amber-500 mr-1">●</span>}{it.name}</td>
+                          <td className="p-1 text-center text-slate-400">{it.unit}</td>
+                          <td className="p-1 text-right text-slate-400">{won0(it.mat)}</td>
+                          <td className="p-1"><CommaInput value={ov.mat??''} onChange={v=>setItemOv(it.id,'mat',v)} placeholder="—" className="w-24 py-1" /></td>
+                          <td className="p-1 text-right text-slate-400">{won0(it.lab)}</td>
+                          <td className="p-1"><CommaInput value={ov.lab??''} onChange={v=>setItemOv(it.id,'lab',v)} placeholder="—" className="w-24 py-1" /></td>
+                          <td className="p-1 text-right text-slate-400">{won0(it.sub)}</td>
+                          <td className="p-1"><CommaInput value={ov.sub??''} onChange={v=>setItemOv(it.id,'sub',v)} placeholder="—" className="w-24 py-1" /></td>
+                          <td className="p-1">{dirty&&<Btn size="xs" variant="ghost" onClick={()=>resetItemOv(it.id)}>초기화</Btn>}</td>
+                        </tr>
+                      ); })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card title="🏗 장비 단가 (가설공사)">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs num-cell">
+            <thead><tr className="text-slate-400 border-b border-slate-100"><th className="text-left p-1">장비명</th><th className="p-1 text-right">기본단가</th><th className="p-1 text-right">override</th><th className="p-1"></th></tr></thead>
+            <tbody>
+              {RC.EQUIP_CATALOG.map(eq=>{ const has=ovEquip[eq.name]!=null&&ovEquip[eq.name]!=='';
+                return (
+                  <tr key={eq.name} className={cx('border-b border-slate-50', has&&'bg-amber-50/50')}>
+                    <td className="p-1 text-left text-slate-700">{has&&<span className="text-amber-500 mr-1">●</span>}{eq.name}</td>
+                    <td className="p-1 text-right text-slate-400">{won0(eq.price)}</td>
+                    <td className="p-1"><CommaInput value={ovEquip[eq.name]??''} onChange={v=>setEquipOv(eq.name,v)} placeholder="—" className="w-28 py-1 ml-auto" /></td>
+                    <td className="p-1">{has&&<Btn size="xs" variant="ghost" onClick={()=>resetEquipOv(eq.name)}>초기화</Btn>}</td>
+                  </tr>
+                ); })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+// ======================================== 고객 제출용 공통
+function PrintBtn({ label='🖨 인쇄' }){ return <Btn variant="amber" size="sm" className="no-print" onClick={()=>window.print()}>{label}</Btn>; }
+function CustomerFrame({ children }){
+  return (
+    <div>
+      <div className="no-print max-w-6xl mx-auto mb-2 flex items-center gap-2 text-[11px] text-slate-400">
+        <Badge tone="blue">고객 제출용 문서</Badge><span>화면 미리보기입니다. 상단 [🖨 인쇄 · PDF] 버튼 → 대상에서 "PDF로 저장"을 선택하면 가로(A4) 문서로 저장됩니다.</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+function CompanyHeader(){
+  return (
+    <div className="flex items-start justify-between border-b-2 border-slate-800 pb-3 mb-4">
+      <div>
+        <div className="text-xl font-extrabold text-slate-800">{COMPANY.name} <span className="text-sm font-normal text-slate-400">{COMPANY.nameHanja}</span></div>
+        <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">{COMPANY.address}<br/>TEL {COMPANY.tel} · HP {COMPANY.hp} · FAX {COMPANY.fax} · {COMPANY.email}</div>
+      </div>
+      <div className="text-right text-[11px] text-slate-400">역전지붕방수 견적서</div>
+    </div>
+  );
+}
+function costRowsOf(est, cost){
+  return [
+    ['직접재료비', cost.directMat], [`간접재료비 (${pctStr(est.rates.indirectMat)})`, cost.indirectMat], ['재료비 소계', cost.matSubtotal],
+    ['직접노무비', cost.directLab], [`간접노무비 (${pctStr(est.rates.indirectLab)})`, cost.indirectLab], ['노무비 소계', cost.labSubtotal],
+    ['부자재 합계', cost.subTotal],
+    [`순공사원가${cost.subInNet?' (부자재 포함)':' (부자재 미산입)'}`, cost.netCost],
+    [`일반관리비 (${pctStr(est.rates.genAdmin)})`, cost.genAdmin],
+    ...(cost.design>0?[[`디자인 (${pctStr(est.rates.design)})`, cost.design]]:[]),
+    [`회사이윤 (${pctStr(est.rates.profit)})`, cost.profit],
+    ['공사비 합계', cost.constrTotal],
+    [est.rates.taxInvoice==='예'?'부가가치세 (10%)':'부가가치세 (미진행)', cost.vat],
+  ];
+}
+
+// ======================================== 📄 견적서 탭
+function QuoteTab({ est, result }){
+  const { trades, tradeTotal, cost, derived } = result;
+  const costRows = costRowsOf(est, cost);
+  return (
+    <CustomerFrame>
+    <div className="max-w-4xl mx-auto">
+      <div className="print-area bg-white rounded-xl shadow-sm p-10 mb-4 print-shadow">
+        <div className="text-center py-16">
+          <div className="text-amber-500 font-bold tracking-widest text-sm mb-4">ANDO SPACE · 역전지붕방수</div>
+          <h1 className="text-4xl font-extrabold text-slate-800 mb-2">견 적 서</h1>
+          <div className="text-lg text-slate-600 mb-10">{est.info.title || '역전지붕방수 공사'}</div>
+          <div className="inline-block text-left text-sm text-slate-600 space-y-1 mb-10">
+            <div>현장주소 : {est.info.address || '-'}</div>
+            <div>제출일자 : {est.info.date}</div>
+            <div>담당자 : {est.info.manager || '-'}</div>
+          </div>
+          <div className="text-left max-w-md mx-auto text-xs text-slate-500 space-y-1 border-t border-slate-200 pt-4">
+            {(est.coverNotes||COMPANY.coverNotes).map((n,i)=><div key={i}>{n}</div>)}
+          </div>
+          <div className="mt-10 text-sm text-slate-700 font-semibold">{COMPANY.name} {COMPANY.nameHanja}</div>
+          <div className="text-[11px] text-slate-400">{COMPANY.address} · TEL {COMPANY.tel}</div>
+        </div>
+      </div>
+      <div className="print-area page-break bg-white rounded-xl shadow-sm p-8 print-shadow">
+        <CompanyHeader />
+        <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm mb-5">
+          <div><span className="text-slate-400">공사명</span> <b className="ml-2">{est.info.title||'-'}</b></div>
+          <div><span className="text-slate-400">견적일자</span> <b className="ml-2">{est.info.date}</b></div>
+          <div><span className="text-slate-400">현장주소</span> <b className="ml-2">{est.info.address||'-'}</b></div>
+          <div><span className="text-slate-400">합계면적</span> <b className="ml-2 num-cell">{area(derived.floorSum)}㎡ (약 {area(derived.floorSum/3.3)}평)</b></div>
+        </div>
+        <h3 className="font-bold text-slate-800 text-sm mb-2">Ⅰ. 공종별 견적 요약</h3>
+        <table className="w-full text-sm num-cell mb-6 border-t-2 border-slate-800">
+          <thead><tr className="bg-slate-50 text-slate-500 text-xs"><th className="text-left p-2">공종</th><th className="text-right p-2">재료비</th><th className="text-right p-2">노무비</th><th className="text-right p-2">부자재</th><th className="text-right p-2">합계</th></tr></thead>
+          <tbody>
+            {TRADES.map(k=>{ const t=trades[k]; if(!t||t.total===0) return null;
+              return <tr key={k} className="border-b border-slate-100"><td className="text-left p-2 font-semibold text-slate-700">{k}</td><td className="text-right p-2">{won0(t.mat)}</td><td className="text-right p-2">{won0(t.lab)}</td><td className="text-right p-2">{won0(t.sub)}</td><td className="text-right p-2 font-semibold">{won0(t.total)}</td></tr>; })}
+            <tr className="bg-slate-100 font-bold"><td className="text-left p-2">합계</td><td className="text-right p-2">{won0(tradeTotal.mat)}</td><td className="text-right p-2">{won0(tradeTotal.lab)}</td><td className="text-right p-2">{won0(tradeTotal.sub)}</td><td className="text-right p-2">{won0(tradeTotal.total)}</td></tr>
+          </tbody>
+        </table>
+        <p className="text-[11px] text-slate-400 -mt-4 mb-6">※ 부자재 합계는 {cost.subInNet?'순공사원가에 포함됩니다.':'순공사원가에 미산입됩니다 (구 엑셀 방식).'}</p>
+        <h3 className="font-bold text-slate-800 text-sm mb-2">Ⅱ. 공사 원가계산서</h3>
+        <table className="w-full text-sm num-cell border-t-2 border-slate-800">
+          <tbody>
+            {costRows.map(([l,v],i)=>{ const strong = ['재료비 소계','노무비 소계'].includes(l) || l.indexOf('순공사원가')===0 || l==='공사비 합계';
+              return <tr key={i} className={cx('border-b border-slate-100', strong&&'bg-slate-50 font-semibold')}><td className="text-left p-2 text-slate-600">{l}</td><td className="text-right p-2">{won0(v)}</td></tr>; })}
+            <tr className="bg-slate-800 text-white font-bold text-base"><td className="text-left p-2.5">★★ 총합계 ({est.rates.taxInvoice==='예'?'VAT 포함':'VAT 별도'})</td><td className="text-right p-2.5">{won(cost.grandTotal)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    </CustomerFrame>
+  );
+}
+
+// ======================================== 📋 내역서 탭
+function DetailTab({ result }){
+  const groups = TRADES.map(g => ({ g, rows: result.rows.filter(r=>r.grp===g) })).filter(x=>x.rows.length>0);
+  return (
+    <CustomerFrame>
+    <div className="max-w-6xl mx-auto">
+      <div className="print-area bg-white rounded-xl shadow-sm p-6 print-shadow">
+        <CompanyHeader />
+        <h2 className="font-extrabold text-slate-800 mb-4">공사 내역서</h2>
+        {groups.map(({g,rows})=>{
+          const sum = rows.reduce((s,r)=>({mat:s.mat+r.matTotal, lab:s.lab+r.labTotal, sub:s.sub+r.subTotal, total:s.total+r.rowTotal}),{mat:0,lab:0,sub:0,total:0});
+          return (
+            <div key={g} className="mb-6">
+              <h3 className="font-bold text-white bg-slate-700 px-3 py-1.5 rounded-t-lg text-sm">{g}</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs num-cell border border-slate-200">
+                  <thead><tr className="bg-slate-50 text-slate-500">
+                    <th className="text-left p-1.5">공사내용</th><th className="text-left p-1.5">SPEC.</th><th className="p-1.5">단위</th><th className="p-1.5 text-right">수량</th>
+                    <th className="p-1.5 text-right">재료단가</th><th className="p-1.5 text-right">재료금액</th>
+                    <th className="p-1.5 text-right">노무단가</th><th className="p-1.5 text-right">노무금액</th>
+                    <th className="p-1.5 text-right">부자재단가</th><th className="p-1.5 text-right">부자재금액</th><th className="p-1.5 text-right">합계</th>
+                  </tr></thead>
+                  <tbody>
+                    {rows.map((r,i)=>(
+                      <tr key={i} className="border-t border-slate-100">
+                        <td className="p-1.5 text-left text-slate-700">{r.work}</td>
+                        <td className="p-1.5 text-left text-slate-500 max-w-[220px]">{r.name}</td>
+                        <td className="p-1.5 text-center text-slate-400">{r.unit}</td>
+                        <td className="p-1.5 text-right">{area(r.qty)}</td>
+                        <td className="p-1.5 text-right text-slate-400">{won0(r.matFinal)}</td>
+                        <td className="p-1.5 text-right">{won0(r.matTotal)}</td>
+                        <td className="p-1.5 text-right text-slate-400">{won0(r.labFinal)}</td>
+                        <td className="p-1.5 text-right">{won0(r.labTotal)}</td>
+                        <td className="p-1.5 text-right text-slate-400">{won0(r.subFinal)}</td>
+                        <td className="p-1.5 text-right">{won0(r.subTotal)}</td>
+                        <td className="p-1.5 text-right font-semibold">{won0(r.rowTotal)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-100 font-bold"><td className="p-1.5 text-left" colSpan={5}>{g} 소계</td><td className="p-1.5 text-right">{won0(sum.mat)}</td><td></td><td className="p-1.5 text-right">{won0(sum.lab)}</td><td></td><td className="p-1.5 text-right">{won0(sum.sub)}</td><td className="p-1.5 text-right">{won0(sum.total)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+    </CustomerFrame>
+  );
+}
+
+// ======================================== 📦 발주서 탭 (직원용)
+function OrderTab({ result }){
+  const { orders } = result;
+  return (
+    <div className="max-w-5xl mx-auto">
+      <div className="flex justify-end mb-3"><PrintBtn /></div>
+      <div className="print-area bg-white rounded-xl shadow-sm p-6 print-shadow">
+        <CompanyHeader />
+        <h2 className="font-extrabold text-slate-800 mb-4">자재 발주서 <span className="text-xs font-normal text-slate-400">(단가 = 할증 전 원단가)</span></h2>
+        {orders.length===0 && <p className="text-sm text-slate-400">발주할 자재 항목이 없습니다.</p>}
+        {orders.map((o,gi)=>(
+          <div key={gi} className="mb-5">
+            <div className="flex items-center justify-between bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-t-lg">
+              <h3 className="font-bold text-slate-800 text-sm">{o.vendor}</h3>
+              <span className="text-sm font-bold num-cell text-amber-700">{won(o.subtotal)}</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs num-cell border border-slate-200">
+                <thead><tr className="bg-slate-50 text-slate-500">
+                  <th className="p-1.5">No</th><th className="text-left p-1.5">자재명</th><th className="text-left p-1.5">포장규격</th><th className="p-1.5 text-right">시공수량</th><th className="p-1.5 text-right">발주수량</th><th className="p-1.5">단위</th><th className="p-1.5 text-right">원단가</th><th className="p-1.5 text-right">금액</th>
+                </tr></thead>
+                <tbody>
+                  {o.items.map((it,i)=>(
+                    <tr key={i} className="border-t border-slate-100">
+                      <td className="p-1.5 text-center text-slate-400">{i+1}</td>
+                      <td className="p-1.5 text-left text-slate-700 max-w-[240px]">{it.name}</td>
+                      <td className="p-1.5 text-left text-slate-400">{it.pack}</td>
+                      <td className="p-1.5 text-right">{area(it.qty)}</td>
+                      <td className="p-1.5 text-right font-semibold">{won0(it.orderQty)}</td>
+                      <td className="p-1.5 text-center text-slate-400">{it.orderUnit}</td>
+                      <td className="p-1.5 text-right text-slate-500">{won0(it.unitPrice)}</td>
+                      <td className="p-1.5 text-right font-semibold">{won0(it.amount)}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-100 font-bold"><td colSpan={7} className="p-1.5 text-left">소계</td><td className="p-1.5 text-right">{won0(o.subtotal)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ======================================== 📖 자재소개 (imgKey 포함)
+const MEMBRANE_IMG = { '아덱스 WPM 003 ROOFTOP':'membrane_adex','Sikalastic 590':'membrane_sika','우레탄방수':'membrane_urethane','adhero 1000':'membrane_adhero','adhero 3000':'membrane_adhero','weldano 3000':'membrane_weldano','Bituthene 3000':'membrane_bituthene','지정시트':'membrane_bituthene' };
+function buildMaterialCards(est, result){
+  const D = RC.DESCRIPTIONS; const cards = [];
+  const push = (proc, name, spec, role, desc, note, imgKey)=>cards.push({proc,name,spec,role,desc,note,imgKey});
+  const d = result.derived;
+  if (est.sel.cornerBead && est.sel.cornerBead!=='없음'){ const m=D.mats['삼각면귀_'+est.sel.cornerBead]; if(m) push('코너 보강','삼각면귀',est.sel.cornerBead,D.roles['삼각면귀'],m[0],m[1],'corner'); }
+  if (est.sel.membrane!=='없음'){ const m=D.mats['membrane_'+est.sel.membrane]; push('1차 방수','1차 방수 멤브레인', est.sel.membrane, D.roles['1차방수'], m?m[0]:'바탕면 위 1차 방수층을 형성하는 멤브레인/시트 방수재입니다.', m?m[1]:'', MEMBRANE_IMG[est.sel.membrane]); }
+  const xpsThicks = []; [est.sel.xps1, est.sel.xps2].forEach(t=>{ if(t && t!=='없음' && !xpsThicks.includes(t)) xpsThicks.push(t); });
+  xpsThicks.forEach(t=>{ const x=D.xps[t]; if(x) push('단열 - 바닥', `XPS 가등급 ${t}`, `${t} 900*1800`, D.roles['XPS바닥'], x[0], x[1], 'xps'); });
+  if (est.sel.xpsWall!=='없음'){ const t=est.sel.xpsWall.replace('벽',''); const x=D.xps[t]; if(x) push('단열 - 벽체', `XPS 가등급 ${est.sel.xpsWall}`, `${t} / 연질폼 포함`, D.roles['XPS벽체'], x[0], x[1], 'xps'); }
+  { const k='투습_'+est.sel.vaporBarrier; const m=D.mats[k]; if(m) push('2차 투습방수', '투습방수지', est.sel.vaporBarrier, D.roles['투습방수지'], m[0], m[1], est.sel.vaporBarrier==='SIGA'?'vb_siga':'vb_pro'); }
+  { const k='기밀_'+est.sel.tape; const m=D.mats[k]; if(m) push('기밀', '기밀테이프', est.sel.tape, D.roles['기밀테이프'], m[0], m[1], est.sel.tape==='SIGA'?'tape_siga':'tape_pro'); }
+  { const k='배수판_'+est.sel.drainBoard; const m=D.mats[k]; if(m) push('배수', '배수판 500*500', est.sel.drainBoard, D.roles['배수판'], m[0], m[1], 'drain'); }
+  { const k='부직포_'+est.sel.fabric; const m=D.mats[k]; if(m) push('필터', '부직포 300g', est.sel.fabric, D.roles['부직포'], m[0], m[1], 'fabric'); }
+  if (d.gravelArea>0){ const k='쇄석_'+est.sel.gravelPack; const m=D.mats[k]; if(m) push('마감 - 쇄석', '쇄석 마감', est.sel.gravelPack, D.roles['쇄석포장'], m[0], m[1], 'gravel'); }
+  if (d.tileArea>0){
+    const k='타일부자재_'+est.sel.tileSub; const m=D.mats[k]; if(m) push('마감 - 타일', '페데스탈(부자재)', est.sel.tileSub, D.roles['부자재(타일)'], m[0], m[1], est.sel.tileSub==='페이그란 페데스탈'?'ped_pey':'ped_jap');
+    const k2='타일_'+est.sel.tileFinish; const m2=D.mats[k2]; if(m2) push('마감 - 타일', '타일 마감재', est.sel.tileFinish, D.roles['마감재(타일)'], m2[0], m2[1], 'tile');
+  }
+  if (d.woodArea>0){
+    const m=D.mats['우드부자재']; if(m) push('마감 - 우드', '페이그란 각관용 페데스탈', '스페인산', D.roles['부자재(우드)'], m[0], m[1], 'ped_wood');
+    const mk=D.mats['각관']; if(mk) push('마감 - 우드', '각관 시공', '데크 하부 구조', D.roles['각관'], mk[0], mk[1], 'frame');
+    if (est.sel.woodFinish==='합성데크'){ const m2=D.mats['우드_합성데크']; if(m2) push('마감 - 우드', '합성데크', '합성데크', D.roles['마감재(우드)'], m2[0], m2[1], 'deck'); }
+  }
+  const wallImg = {'crc보드':'crc','스테인리스':'stainless','함석':'hamseok'};
+  const fa = est.finishAll||{}; const wallset = fa.enabled ? [fa.wallFinish] : est.zones.map(z=>z.wallFinish);
+  ['crc보드','스테인리스','함석'].forEach(wf=>{ if(wallset.includes(wf)) push('벽체 마감', `${wf} 마감`, `${wf} / 실리콘·양면접착제 포함`, D.roles['벽체마감'], `파라펫 벽체를 ${wf} 로 마감합니다.`, '', wallImg[wf]); });
+  return cards;
+}
+function MaterialTab({ est, result, manifest }){
+  const cards = useMemo(()=>buildMaterialCards(est, result), [est, result]);
+  const checkedNotes = RC.SITE_NOTES.filter((_,i)=>est.siteNotes[i]).concat((est.customNotes||[]).filter(Boolean));
+  const imgSrc = (k)=> (k && manifest && manifest[k]) ? ('images/materials/'+manifest[k]) : null;
+  return (
+    <CustomerFrame>
+    <div className="max-w-5xl mx-auto">
+      <div className="print-area bg-white rounded-xl shadow-sm p-6 print-shadow">
+        <CompanyHeader />
+        <h2 className="font-extrabold text-slate-800 mb-4">자재 소개</h2>
+        {cards.length===0 && <p className="text-sm text-slate-400">선택된 자재가 없습니다. 견적입력에서 자재를 선택하세요.</p>}
+        <div className="grid sm:grid-cols-2 gap-3 mb-6">
+          {cards.map((c,i)=>{ const src=imgSrc(c.imgKey); return (
+            <div key={i} className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="bg-slate-50 px-3 py-2 flex items-center justify-between">
+                <div><span className="text-[11px] text-amber-600 font-bold">{c.proc}</span><div className="font-bold text-slate-800 text-sm">{c.name}</div></div>
+                <Badge>{c.role}</Badge>
+              </div>
+              {src && <img src={src} alt={c.name} loading="lazy" className="w-full h-40 object-cover bg-slate-100" onError={e=>{e.target.style.display='none';}} />}
+              <div className="p-3 text-xs text-slate-600 space-y-1">
+                <div><span className="text-slate-400">선택 사양</span> · <b>{c.spec}</b></div>
+                <div className="text-slate-600">{c.desc}</div>
+                {c.note && <div className="text-[11px] text-slate-400">비고 : {c.note}</div>}
+              </div>
+            </div>
+          ); })}
+        </div>
+        <div className="border-t border-slate-200 pt-4">
+          <h3 className="font-bold text-slate-800 text-sm mb-2">견적 설명</h3>
+          <p className="text-xs text-slate-500 mb-3">*견적 외 공사내용은 별도로 합의 후 시공합니다.</p>
+          {checkedNotes.length>0 && <>
+            <h3 className="font-bold text-slate-800 text-sm mb-2">현장 특이사항</h3>
+            <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">{checkedNotes.map((n,i)=><li key={i}>{n}</li>)}</ul>
+          </>}
+        </div>
+      </div>
+    </div>
+    </CustomerFrame>
+  );
+}
+// ======================================== 🖨 결합 문서 빌더 (인쇄/내보내기 · 견적서→내역서→자재소개)
+function buildCombinedDoc(est, result, manifest, srcFor, opts){
+  opts = opts || {};
+  const { trades, tradeTotal, cost, derived } = result;
+  const cImg = (k)=>{ const s = srcFor ? srcFor(k) : null; return s ? `<img src="${s}" alt="" style="width:100%;height:150px;object-fit:cover;background:#f1f5f9;border-bottom:1px solid #e2e8f0" />` : ''; };
+  const summaryRows = TRADES.map(k=>{ const t=trades[k]; if(!t||t.total===0) return ''; return `<tr><td style="text-align:left;font-weight:600">${esc(k)}</td><td>${won0(t.mat)}</td><td>${won0(t.lab)}</td><td>${won0(t.sub)}</td><td style="font-weight:600">${won0(t.total)}</td></tr>`; }).join('');
+  const costRows = costRowsOf(est, cost).map(([l,v])=>{ const strong=['재료비 소계','노무비 소계'].includes(l)||String(l).indexOf('순공사원가')===0||l==='공사비 합계'; return `<tr class="${strong?'strong':''}"><td style="text-align:left">${esc(l)}</td><td>${won0(v)}</td></tr>`; }).join('');
+  // 내역서
+  // html2canvas가 하이픈 낀 영문 토큰을 셀 내 줄바꿈할 때 겹쳐 그리는 버그 회피: 공백 토큰을 nowrap 원자로
+  const tokSafe = (s)=> String(s==null?'':s).split(' ').map(w=>`<span style="white-space:nowrap">${esc(w)}</span>`).join(' ');
+  const detailGroups = TRADES.map(g=>{ const rows=result.rows.filter(r=>r.grp===g); if(!rows.length) return '';
+    const sum=rows.reduce((s,r)=>({mat:s.mat+r.matTotal,lab:s.lab+r.labTotal,sub:s.sub+r.subTotal,total:s.total+r.rowTotal}),{mat:0,lab:0,sub:0,total:0});
+    const body=rows.map(r=>`<tr><td style="text-align:left">${tokSafe(r.work)}</td><td style="text-align:left;color:#64748b">${tokSafe(r.name)}</td><td>${esc(r.unit)}</td><td>${area(r.qty)}</td><td>${won0(r.matFinal)}</td><td>${won0(r.matTotal)}</td><td>${won0(r.labFinal)}</td><td>${won0(r.labTotal)}</td><td>${won0(r.subFinal)}</td><td>${won0(r.subTotal)}</td><td style="font-weight:600">${won0(r.rowTotal)}</td></tr>`).join('');
+    return `<h3 class="grp">${esc(g)}</h3><table class="detail"><thead><tr><th style="text-align:left">공사내용</th><th style="text-align:left">SPEC.</th><th>단위</th><th>수량</th><th>재료단가</th><th>재료금액</th><th>노무단가</th><th>노무금액</th><th>부자재단가</th><th>부자재금액</th><th>합계</th></tr></thead><tbody>${body}<tr class="strong"><td colspan="5" style="text-align:left">${esc(g)} 소계</td><td>${won0(sum.mat)}</td><td></td><td>${won0(sum.lab)}</td><td></td><td>${won0(sum.sub)}</td><td>${won0(sum.total)}</td></tr></tbody></table>`;
+  }).join('');
+  // 자재소개
+  const cards = buildMaterialCards(est, result);
+  const cardHtml = cards.map(c=>`<div class="mcard">${cImg(c.imgKey)}<div class="mhead"><div><div class="mproc">${esc(c.proc)}</div><div class="mname">${esc(c.name)}</div></div><span class="mrole">${esc(c.role)}</span></div><div class="mbody"><div><span style="color:#94a3b8">선택 사양</span> · <b>${esc(c.spec)}</b></div><div>${esc(c.desc)}</div>${c.note?`<div style="color:#94a3b8;font-size:10px">비고 : ${esc(c.note)}</div>`:''}</div></div>`).join('');
+  const notes = RC.SITE_NOTES.filter((_,i)=>est.siteNotes[i]).concat((est.customNotes||[]).filter(Boolean));
+  const notesHtml = notes.length ? `<h3 class="sub">현장 특이사항</h3><ul>${notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>` : '';
+  const header = `<div class="chead"><div><div class="cname">${esc(COMPANY.name)} <span style="font-weight:400;color:#94a3b8;font-size:12px">${esc(COMPANY.nameHanja)}</span></div><div class="caddr">${esc(COMPANY.address)}<br/>TEL ${esc(COMPANY.tel)} · HP ${esc(COMPANY.hp)} · FAX ${esc(COMPANY.fax)} · ${esc(COMPANY.email)}</div></div><div style="text-align:right;color:#94a3b8;font-size:11px">역전지붕방수 견적서</div></div>`;
+  const css = `*{box-sizing:border-box}body{font-family:'Pretendard','Pretendard Variable',system-ui,-apple-system,'Segoe UI',sans-serif;color:#1e293b;margin:0;background:#fff;font-size:12px}
+  .doc{max-width:1040px;margin:0 auto;padding:22px}.page-break{page-break-before:always}
+  .chead{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #1e293b;padding-bottom:10px;margin-bottom:14px}
+  .cname{font-size:19px;font-weight:800}.caddr{font-size:11px;color:#64748b;margin-top:4px;line-height:1.5}
+  .cover{text-align:center;padding:70px 0}.cover .kick{color:#f59e0b;font-weight:700;letter-spacing:3px;font-size:12px;margin-bottom:14px}
+  .cover h1{font-size:38px;font-weight:800;margin:0 0 8px}.cover .stitle{font-size:17px;color:#475569;margin-bottom:34px}
+  .cover .info{display:inline-block;text-align:left;color:#475569;font-size:13px;line-height:1.9;margin-bottom:30px}
+  .cover .cn{max-width:420px;margin:0 auto;text-align:left;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:14px;line-height:1.8}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  table.sum{border-top:2px solid #1e293b;margin-bottom:8px;font-size:13px}table.sum th{background:#f8fafc;color:#64748b;font-size:11px;padding:6px}
+  table.sum td{padding:6px;text-align:right;border-bottom:1px solid #f1f5f9}table.sum tr:last-child td{background:#f1f5f9;font-weight:700}
+  table.cost{border-top:2px solid #1e293b;font-size:13px}table.cost td{padding:6px 8px;text-align:right;border-bottom:1px solid #f1f5f9}
+  table.cost tr.strong td{background:#f8fafc;font-weight:600}
+  .grand{background:#1e293b;color:#fff;font-weight:700;font-size:15px;display:flex;justify-content:space-between;padding:10px 12px;margin-top:0}
+  h2.t{font-weight:800;margin:0 0 12px}h3.sec{font-weight:700;font-size:13px;margin:14px 0 6px}
+  h3.grp{background:#334155;color:#fff;padding:6px 10px;border-radius:6px 6px 0 0;font-size:12px;margin:14px 0 0}
+  table.detail{border:1px solid #e2e8f0;font-size:10.5px}table.detail td,table.detail th{word-break:keep-all}table.detail th{background:#f8fafc;color:#64748b;padding:5px;border-bottom:1px solid #e2e8f0}
+  table.detail td{padding:5px;text-align:right;border-top:1px solid #f1f5f9}table.detail tr.strong td{background:#f1f5f9;font-weight:700}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.mcard{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
+  .mhead{background:#f8fafc;padding:8px 10px;display:flex;justify-content:space-between;align-items:center}
+  .mproc{color:#d97706;font-weight:700;font-size:10px}.mname{font-weight:700;font-size:13px}.mrole{background:#e2e8f0;color:#475569;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600}
+  .mbody{padding:10px;font-size:11px;color:#475569;line-height:1.6}.sub{font-weight:700;font-size:13px;margin:10px 0 4px}ul{margin:4px 0;padding-left:16px;font-size:11px;color:#475569}
+  @page{size:A4 landscape;margin:10mm}
+  @media print{@page{size:A4 landscape;margin:10mm}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}`;
+  const body = `
+  <div class="doc">
+    <div class="cover">
+      <div class="kick">ANDO SPACE · 역전지붕방수</div>
+      <h1>견 적 서</h1>
+      <div class="stitle">${esc(est.info.title||'역전지붕방수 공사')}</div>
+      <div class="info">현장주소 : ${esc(est.info.address||'-')}<br/>제출일자 : ${esc(est.info.date)}<br/>담당자 : ${esc(est.info.manager||'-')}</div>
+      <div class="cn">${(est.coverNotes||COMPANY.coverNotes).map(n=>esc(n)).join('<br/>')}</div>
+      <div style="margin-top:28px;font-weight:600;color:#334155;font-size:13px">${esc(COMPANY.name)} ${esc(COMPANY.nameHanja)}</div>
+      <div style="font-size:11px;color:#94a3b8">${esc(COMPANY.address)} · TEL ${esc(COMPANY.tel)}</div>
+    </div>
+  </div>
+  <div class="doc page-break">
+    ${header}
+    <div style="font-size:13px;margin-bottom:14px;line-height:2">공사명 <b>${esc(est.info.title||'-')}</b> &nbsp;·&nbsp; 견적일자 <b>${esc(est.info.date)}</b><br/>현장주소 <b>${esc(est.info.address||'-')}</b> &nbsp;·&nbsp; 합계면적 <b>${area(derived.floorSum)}㎡ (약 ${area(derived.floorSum/3.3)}평)</b></div>
+    <h3 class="sec">Ⅰ. 공종별 견적 요약</h3>
+    <table class="sum"><thead><tr><th style="text-align:left">공종</th><th style="text-align:right">재료비</th><th style="text-align:right">노무비</th><th style="text-align:right">부자재</th><th style="text-align:right">합계</th></tr></thead><tbody>${summaryRows}<tr><td style="text-align:left">합계</td><td>${won0(tradeTotal.mat)}</td><td>${won0(tradeTotal.lab)}</td><td>${won0(tradeTotal.sub)}</td><td>${won0(tradeTotal.total)}</td></tr></tbody></table>
+    <div style="font-size:10px;color:#94a3b8;margin-bottom:10px">※ 부자재 합계는 ${cost.subInNet?'순공사원가에 포함됩니다.':'순공사원가에 미산입됩니다 (구 엑셀 방식).'}</div>
+    <h3 class="sec">Ⅱ. 공사 원가계산서</h3>
+    <table class="cost"><tbody>${costRows}</tbody></table>
+    <div class="grand"><span>★★ 총합계 (${est.rates.taxInvoice==='예'?'VAT 포함':'VAT 별도'})</span><span>${won(cost.grandTotal)}</span></div>
+  </div>
+  <div class="doc page-break">
+    ${header}<h2 class="t">공사 내역서</h2>${detailGroups}
+  </div>
+  <div class="doc page-break">
+    ${header}<h2 class="t">자재 소개</h2><div class="mgrid">${cardHtml}</div>
+    <div style="border-top:1px solid #e2e8f0;padding-top:12px"><h3 class="sub">견적 설명</h3><div style="font-size:11px;color:#64748b">*견적 외 공사내용은 별도로 합의 후 시공합니다.</div>${notesHtml}</div>
+  </div>`;
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><title>견적서 · ${esc(est.info.title||'역전지붕방수')}</title>${opts.baseHref?`<base href="${opts.baseHref}"/>`:''}<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"/><style>${css}</style></head><body>${body}</body></html>`;
+}
+
+// ======================================== 🗂 저장목록 탭 (V2-9 작성자+메모)
+function SavedTab({ list, activeId, mode, onNew, onLoad, onDup, onDel, onSample, onMemo, onExport, onImport }){
+  const [testResult, setTestResult] = useState(null);
+  const fileRef = useRef();
+  const runTest = ()=> setTestResult(selfTest());
+  const gtOf = (it)=> (it.meta && it.meta.grandTotal!=null) ? it.meta.grandTotal : 0;
+  return (
+    <div className="max-w-4xl mx-auto space-y-4">
+      <Card title={`저장된 견적 (${list.length})`} right={<div className="flex gap-2"><Btn size="sm" variant="amber" onClick={onSample}>동삭동 샘플</Btn><Btn size="sm" onClick={onNew}>+ 새 견적</Btn></div>}>
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Btn size="sm" variant="secondary" onClick={onExport}>⬇ 현재 견적 JSON 내보내기</Btn>
+          <Btn size="sm" variant="secondary" onClick={()=>fileRef.current.click()}>⬆ JSON 가져오기</Btn>
+          <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={e=>{ const f=e.target.files[0]; if(f){ const rd=new FileReader(); rd.onload=()=>onImport(rd.result); rd.readAsText(f); } e.target.value=''; }} />
+          <span className="text-[11px] text-slate-400 self-center">{mode==='server'?'서버 팀 공유 저장':mode==='local'?'로컬(localStorage) 저장':''}</span>
+        </div>
+        {list.length===0 && <p className="text-sm text-slate-400">저장된 견적이 없습니다. [+ 새 견적] 또는 [동삭동 샘플]로 시작하세요.</p>}
+        <div className="divide-y divide-slate-100">
+          {list.map(it=>(
+            <div key={it.id} className={cx('py-2.5', it.id===activeId&&'bg-amber-50/60 -mx-4 px-4')}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-800 text-sm truncate">{it.title||'(제목 없음)'} {it.id===activeId&&<Badge tone="amber">현재</Badge>}</div>
+                  <div className="text-[11px] text-slate-400">
+                    {(it.meta&&it.meta.address)||'주소 없음'} · <b className="num-cell text-slate-600">{won(gtOf(it))}</b>
+                    <span className="ml-1">· 작성 <b className="text-slate-500">{it.creatorName||'-'}</b>{it.updaterName?` · 수정 ${it.updaterName}`:''}</span>
+                    {it.updatedAt&&<span> · {new Date(it.updatedAt).toLocaleString('ko-KR')}</span>}
+                  </div>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Btn size="sm" variant="secondary" onClick={()=>onLoad(it.id)}>불러오기</Btn>
+                  <Btn size="sm" variant="ghost" onClick={()=>onDup(it.id)}>복제</Btn>
+                  <Btn size="sm" variant="danger" onClick={()=>onDel(it.id)}>삭제</Btn>
+                </div>
+              </div>
+              <input defaultValue={it.memo||''} placeholder="메모 (특이사항) — 입력 후 포커스 이동 시 저장"
+                onBlur={e=>{ if((e.target.value||'')!==(it.memo||'')) onMemo(it.id, e.target.value); }}
+                className="mt-1.5 w-full rounded-md border border-slate-200 px-2 py-1 text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-amber-400/40" />
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="🧪 자가검증 (동삭동 샘플 · V2·V3 기대값 대조)" right={<Btn size="sm" variant="amber" onClick={runTest}>검증 실행</Btn>}>
+        {!testResult && <p className="text-sm text-slate-400">「검증 실행」을 누르면 SPEC §9 + V2 기대값과 계산 결과를 대조합니다.</p>}
+        {testResult && (
+          <div>
+            <div className={cx('font-bold mb-2', testResult.pass?'text-emerald-600':'text-red-600')}>
+              {testResult.pass?'✓ 전체 통과':'✗ 실패 있음'} — {testResult.results.filter(r=>r.ok).length}/{testResult.results.length}
+            </div>
+            <div className="max-h-80 overflow-auto text-xs num-cell space-y-0.5">
+              {testResult.results.map((r,i)=>(
+                <div key={i} className={cx('flex justify-between gap-2 px-2 py-1 rounded', r.ok?'bg-emerald-50':'bg-red-50')}>
+                  <span className={r.ok?'text-emerald-700':'text-red-700'}>{r.ok?'✓':'✗'} {r.label}</span>
+                  {!r.ok && <span className="text-red-500 shrink-0">기대 {r.exp} / 실제 {r.act}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// self-test (SPEC §9 + V2, ±1)
+function selfTest(){
+  const results = []; const T = 1.0;
+  const ap = (label, act, exp)=>results.push({label, ok: Math.abs(Number(act)-Number(exp))<=T, act: (Math.round(Number(act)*100)/100), exp});
+  const eqb = (label, act, exp)=>results.push({label, ok: act===exp, act:String(act), exp:String(exp)});
+  const clone = (o)=>JSON.parse(JSON.stringify(o));
+  const r = RC.computeEstimate(RC.SAMPLE_DONGSAK);
+  ap('derived.waterproofArea', r.derived.waterproofArea, 206.52);
+  ap('derived.wallCrc', r.derived.wallCrc, 15.6);
+  ap('trades.역전지붕 mat', r.trades['역전지붕공사'].mat, 12693491.6);
+  ap('trades.역전지붕 sub', r.trades['역전지붕공사'].sub, 233064);
+  ap('tradeTotal.total', r.tradeTotal.total, 22249517.6);
+  ap('cost.subTotal', r.cost.subTotal, 331464);
+  ap('cost.netCost (부자재 포함)', r.cost.netCost, 22828192.33);
+  ap('cost.constrTotal', r.cost.constrTotal, 27393830.796);
+  ap('cost.grandTotal (V2 기본)', r.cost.grandTotal, 30133213.8756);
+  ap('cost.perPyeong', r.cost.perPyeong, 502220.23126);
+  const bg = r.orders.find(o=>o.vendor==='부광스티로폴'); ap('orders.부광 subtotal', bg?bg.subtotal:0, 4714086);
+  const jj = r.orders.find(o=>o.vendor==='잡자재'); ap('orders.잡자재 subtotal', jj?jj.subtotal:0, 4205140);
+  const x150 = r.rows.find(x=>x.id==='x150'); ap('x150.matTotal', x150.matTotal, 3049200);
+  const wf = r.rows.find(x=>x.id==='wf_crc'); ap('wf_crc.labTotal', wf.labTotal, 546000);
+  // 레거시 subInNetCost=false
+  const eL=clone(RC.SAMPLE_DONGSAK); eL.rates.subInNetCost=false;
+  const rL=RC.computeEstimate(eL); ap('레거시 grandTotal(29,695,681)', rL.cost.grandTotal, 29695681.3956);
+  // 오버라이드
+  const rOv=RC.computeEstimate(RC.SAMPLE_DONGSAK,{items:{x150:{mat:16000}}}); ap('override x150.matFinal', rOv.rows.find(x=>x.id==='x150').matFinal, 17600);
+  // finishAll enabled
+  const e4=clone(RC.SAMPLE_DONGSAK); e4.finishAll={enabled:true,finish:'쇄석',wallFinish:'없음'};
+  const r4=RC.computeEstimate(e4); ap('finishAll 역전지붕 mat', r4.trades['역전지붕공사'].mat, 12482891.6); eqb('finishAll wf_crc 비활성', r4.rows.some(x=>x.id==='wf_crc'), false);
+  // addl crack
+  const e3=clone(RC.SAMPLE_DONGSAK); e3.addl.crack={on:true,qty:2,mat:150000,lab:250000,sub:10000,surMat:0,surLab:0};
+  const r3=RC.computeEstimate(e3); ap('addl 크랙 추가.lab', r3.trades['추가공사'].lab, 626000);
+  // VAT 아니오
+  const e1=clone(RC.SAMPLE_DONGSAK); e1.rates.taxInvoice='아니오';
+  const r1=RC.computeEstimate(e1); ap('VAT 아니오 grand=constr', r1.cost.grandTotal, 27393830.796);
+  // V3-1: 구역별 sel 회귀 (병합 경로 · ea zones[0]만) — 수치 불변
+  const eZ=RC.withZoneSel(clone(RC.SAMPLE_DONGSAK));
+  const rZ=RC.computeEstimate(eZ); ap('V3 구역별sel grandTotal 불변', rZ.cost.grandTotal, 30133213.8756);
+  eqb('V3 zones[1].sel.siliconEa=0', eZ.zones[1].sel.siliconEa, 0);
+  // V3-3: ea 구역 합산
+  const eEa=RC.withZoneSel(clone(RC.SAMPLE_DONGSAK)); eEa.zones[1].sel.siliconEa=5;
+  const silR=RC.computeEstimate(eEa).rows.find(x=>x.id==='sil'); ap('V3 ea 합산 silicon.qty=15', silR?silR.qty:0, 15); ap('V3 ea silicon.matTotal=165,000', silR?silR.matTotal:0, 165000);
+  // V3-5: coverNotes 4줄
+  eqb('V3 coverNotes 4줄', RC.COMPANY.coverNotes.length, 4);
+  return { pass: results.every(r=>r.ok), results };
+}
+
+// ======================================== 🔐 로그인/가입 (V2-10)
+function LoginScreen({ onAuth }){
+  const [tab,setTab]=useState('login');
+  const [f,setF]=useState({email:'',password:'',name:''});
+  const [err,setErr]=useState(''); const [busy,setBusy]=useState(false);
+  const set=(k,v)=>setF(o=>({...o,[k]:v}));
+  const submit=async(e)=>{
+    e && e.preventDefault(); setBusy(true); setErr('');
+    const path = tab==='login'?'/api/auth/login':'/api/auth/signup';
+    const body = tab==='login'?{email:f.email,password:f.password}:{email:f.email,password:f.password,name:f.name};
+    try{
+      const res=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const j=await res.json();
+      if(j.success && j.data && j.data.token){ onAuth(j.data.token, j.data.user); }
+      else setErr(j.message||'요청에 실패했습니다.');
+    }catch(e2){ setErr('서버 통신 오류'); }
+    setBusy(false);
+  };
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div className="h-12 w-12 rounded-xl bg-slate-800 text-white flex items-center justify-center font-extrabold text-lg mx-auto mb-2">安</div>
+          <div className="font-extrabold text-slate-800">{COMPANY.name} · 역전지붕방수 견적</div>
+          <div className="text-xs text-slate-400">직원 로그인 (팀 견적 공유)</div>
+        </div>
+        <Card>
+          <div className="flex gap-1 mb-4 bg-slate-100 rounded-lg p-1">
+            {[['login','로그인'],['signup','가입']].map(([k,l])=>(
+              <button key={k} onClick={()=>{setTab(k);setErr('');}} className={cx('flex-1 py-1.5 text-sm font-semibold rounded-md', tab===k?'bg-white shadow text-slate-800':'text-slate-500')}>{l}</button>
+            ))}
+          </div>
+          <form onSubmit={submit} className="space-y-3">
+            <Field label="이메일"><TextInput type="email" value={f.email} onChange={e=>set('email',e.target.value)} placeholder="you@andospace.com" required /></Field>
+            <Field label="비밀번호"><TextInput type="password" value={f.password} onChange={e=>set('password',e.target.value)} placeholder="8자 이상" required /></Field>
+            {tab==='signup' && <>
+              <Field label="이름 (표시명)"><TextInput value={f.name} onChange={e=>set('name',e.target.value)} required /></Field>
+            </>}
+            {err && <div className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
+            <Btn type="submit" variant="amber" size="lg" className="w-full" disabled={busy}>{busy?'처리 중…':(tab==='login'?'로그인':'가입하기')}</Btn>
+          </form>
+        </Card>
+        <p className="text-center text-[11px] text-slate-400 mt-4">서버 미접속 시 자동으로 로컬 모드로 동작합니다.</p>
+      </div>
+    </div>
+  );
+}
+// ======================================== 🚀 App
+const LS_KEY = 'ando-roof-estimates-v1';
+const LS_OVERRIDES = 'ando-roof-price-overrides-v1';
+const LS_TOKEN = 'ando-roof-token';
+const LS_MIGRATED = 'ando-roof-migrated-v2';
+const numv = (v)=>{ const n=typeof v==='number'?v:parseFloat(v); return (isNaN(n)||!isFinite(n))?0:n; };
+// V3-4: 새 zone.sel = est.sel 딥카피 (ea 3필드는 0)
+function newZoneSel(sel){ const s=JSON.parse(JSON.stringify(sel||{})); s.siliconEa=0; s.trenchFloorEa=0; s.trenchSideEa=0; return s; }
+
+function loadLocalStore(){ try{ const s=JSON.parse(localStorage.getItem(LS_KEY)); if(s&&Array.isArray(s.estimates)) return s; }catch(e){} return { estimates:[], activeId:null }; }
+function saveLocalStore(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} }
+
+// v1/v2 마이그레이션
+function migrateAddl(old){
+  const def = RC.defaultAddl();
+  if (!old || typeof old!=='object') return def;
+  const out = {};
+  Object.keys(def).forEach(k=>{
+    const o = old[k];
+    if (o==null) out[k]=def[k];
+    else if (typeof o==='string') out[k]={...def[k], on:o==='예'};
+    else if (typeof o==='object') out[k]={...def[k], ...o, on:!!o.on};
+    else out[k]=def[k];
+  });
+  return out;
+}
+function migrate(e){
+  const base = RC.newEstimate();
+  const m = Object.assign({}, base, e, {
+    info:{...base.info, ...(e.info||{})},
+    sel:{...base.sel, ...(e.sel||{})},
+    temp:{...base.temp, ...(e.temp||{})},
+    rates:{...base.rates, ...(e.rates||{})},
+    surcharges:{...base.surcharges, ...(e.surcharges||{})},
+    siteCond:{...base.siteCond, ...(e.siteCond||{})},
+    siteNotes: (e.siteNotes&&e.siteNotes.length)?e.siteNotes:base.siteNotes,
+    customNotes: e.customNotes||[],
+    customItems: e.customItems||[],
+    zones: (e.zones&&e.zones.length)?e.zones:base.zones,
+    memo: e.memo||'',
+  });
+  // V2-3: subInNetCost 없으면 true (구 엑셀 미산입은 오류였음)
+  if (m.rates.subInNetCost==null) m.rates.subInNetCost = true;
+  // V2-4: finishAll 없으면 enabled:false (기존 구역별 마감 보존)
+  m.finishAll = e.finishAll ? {...base.finishAll, ...e.finishAll} : { enabled:false, finish:'쇄석', wallFinish:'없음' };
+  // V2-5: addl 문자열→객체
+  m.addl = migrateAddl(e.addl);
+  delete m.includeSubInNet;
+  // V3-5: coverNotes — 저장분 있으면 마이그레이트(구 3줄→4줄, 커스텀 보존), 없으면 미설정→표시 시 COMPANY 기본 4줄
+  if (e.coverNotes) m.coverNotes = RC.migrateCoverNotes(e.coverNotes); else delete m.coverNotes;
+  // V3-4: 구역별 자재선택 — zone.sel 생성 (ea 3필드는 zones[0]에만)
+  return RC.withZoneSel(m);
+}
+function buildMeta(e, overrides){
+  const res = RC.computeEstimate(e, overrides||{});
+  return { grandTotal: res.cost.grandTotal, floorSum: res.derived.floorSum, address: e.info.address||'', date: e.info.date||'' };
+}
+function toLocalListItem(e, overrides){
+  return { id:e.id, title:e.info.title||'(제목 없음)', memo:e.memo||'', meta:buildMeta(e, overrides),
+           creatorName:e.creatorName||'(로컬)', updaterName:null, updatedAt:e.updatedAt, data:e };
+}
+function hasContent(e){
+  return !!(e.info.title || e.info.address || (e.zones||[]).some(z=>numv(z.floor)>0) || (e.customItems||[]).length
+    || Object.keys(e.addl||{}).some(k=>e.addl[k]&&e.addl[k].on) || (e.temp&&e.temp.equipment&&e.temp.equipment.length));
+}
+
+const STAFF_TABS = [ {k:'input',l:'📝 견적입력'},{k:'pricedb',l:'💰 자재DB'},{k:'order',l:'📦 발주서'},{k:'saved',l:'🗂 저장목록'} ];
+const CUSTOMER_TABS = [ {k:'quote',l:'📄 견적서'},{k:'detail',l:'📋 내역서'},{k:'material',l:'📖 자재소개'} ];
+const ALL_TABS = STAFF_TABS.concat(CUSTOMER_TABS);
+
+function useHashTab(){
+  const [tab, setTab] = useState(()=> (location.hash.replace(/^#\/?/,'')||'input'));
+  useEffect(()=>{ const on=()=>setTab(location.hash.replace(/^#\/?/,'')||'input'); window.addEventListener('hashchange',on); return ()=>window.removeEventListener('hashchange',on); },[]);
+  return [tab, (t)=>{ location.hash='#/'+t; }];
+}
+
+// 결합 문서 인쇄 (숨은 iframe) — 인쇄 다이얼로그에서 "PDF로 저장" 선택 시 그대로 PDF (V4-1)
+function printCombinedHTML(html){
+  const ifr = document.createElement('iframe');
+  ifr.style.position='fixed'; ifr.style.right='0'; ifr.style.bottom='0'; ifr.style.width='0'; ifr.style.height='0'; ifr.style.border='0';
+  document.body.appendChild(ifr);
+  const doc = ifr.contentWindow.document; doc.open(); doc.write(html); doc.close();
+  let removed=false; const cleanup=()=>{ if(removed) return; removed=true; setTimeout(()=>{ try{document.body.removeChild(ifr);}catch(e){} }, 300); };
+  ifr.contentWindow.onafterprint = cleanup;
+  setTimeout(()=>{ try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(e){} cleanup(); }, 450);
+}
+// V4-3: file:// 등 manifest fetch 불가 환경 폴백 (이미지 파일명 = <imgKey>.jpg 규약)
+const FALLBACK_MANIFEST = Object.fromEntries([
+  'xps','vb_siga','vb_pro','tape_siga','tape_pro','drain','fabric','gravel','silicon',
+  'trench_floor','trench_side','ped_jap','ped_pey','ped_wood','tile','deck','frame',
+  'membrane_adex','membrane_sika','membrane_urethane','membrane_adhero','membrane_weldano','membrane_bituthene',
+  'corner','crc','stainless','hamseok'
+].map(k=>[k, k+'.jpg']));
+
+function App(){
+  const [mode, setMode] = useState('booting');     // booting|local|login|server
+  const [user, setUser] = useState(null);
+  const [list, setList] = useState([]);            // 통합 목록 (로컬은 data 포함)
+  const [overrides, setOverrides] = useState({ items:{}, equip:{} });
+  const [priceMeta, setPriceMeta] = useState(null);
+  const [manifest, setManifest] = useState({});
+  const [sync, setSync] = useState('idle');        // idle|saving|saved|error
+  const [migrateOffer, setMigrateOffer] = useState(0);
+  const [tab, setTab] = useHashTab();
+  const [est, setEst] = useState(()=>RC.newEstimate());
+
+  const tokenRef = useRef(''); const estRef = useRef(est); const listRef = useRef(list);
+  const overridesRef = useRef(overrides); const modeRef = useRef(mode);
+  const saveTimer = useRef(); const ovTimer = useRef(); const saveGuard = useRef({saving:false, again:false});
+  useEffect(()=>{ estRef.current=est; },[est]);
+  useEffect(()=>{ listRef.current=list; },[list]);
+  useEffect(()=>{ overridesRef.current=overrides; },[overrides]);
+  useEffect(()=>{ modeRef.current=mode; },[mode]);
+
+  const result = useMemo(()=>RC.computeEstimate(est, overrides), [est, overrides]);
+
+  // ---- API ----
+  const handle401 = useCallback(()=>{ tokenRef.current=''; try{localStorage.removeItem(LS_TOKEN);}catch(e){} setUser(null); setList([]); setMode('login'); },[]);
+  const apiFetch = useCallback(async (path, opts={})=>{
+    const res = await fetch(API+path, { ...opts, headers:{ 'Content-Type':'application/json', ...(tokenRef.current?{Authorization:'Bearer '+tokenRef.current}:{}), ...(opts.headers||{}) } });
+    let json=null; try{ json=await res.json(); }catch(e){}
+    if (res.status===401){ handle401(); }
+    return { status:res.status, json };
+  },[handle401]);
+
+  // ---- manifest (V2-1) : 부팅 시 1회, 실패 시 조용히 무시 ----
+  useEffect(()=>{ (async()=>{ try{ const r=await fetch('images/materials/manifest.json',{cache:'no-store'}); if(r.ok){ const j=await r.json(); if(j&&typeof j==='object'&&Object.keys(j).length){ setManifest(j); return; } } }catch(e){} setManifest(FALLBACK_MANIFEST); /* V4-3: file:// 등 fetch 실패 시 내장 폴백 */ })(); },[]);
+
+  // ---- boot: 모드 판별 ----
+  useEffect(()=>{ (async()=>{
+    if (location.protocol==='file:'){ bootLocal(); return; }
+    let up=false;
+    try{ const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),4000); // DB 콜드 커넥션이 1.5s를 넘겨 로컬 모드로 오폴백하는 사례 실측 → 완화
+      const r=await fetch(API+'/health',{signal:ctrl.signal}); clearTimeout(t);
+      if(r.ok){ const j=await r.json(); up=!!(j&&j.data&&j.data.ok); }
+    }catch(e){ up=false; }
+    if(!up){ bootLocal(); return; }
+    const tok = (()=>{ try{return localStorage.getItem(LS_TOKEN)||'';}catch(e){return '';} })();
+    if(tok){ tokenRef.current=tok;
+      const me = await apiFetch('/auth/me');
+      if(me.status===200 && me.json&&me.json.data){ setUser(me.json.data.user); setMode('server'); }
+      else { tokenRef.current=''; try{localStorage.removeItem(LS_TOKEN);}catch(e){} setMode('login'); }
+    } else setMode('login');
+  })(); /* eslint-disable-next-line */ },[]);
+
+  function bootLocal(){
+    const store = loadLocalStore();
+    const found = store.estimates.find(e=>e.id===store.activeId) || store.estimates[0];
+    setEst(found ? migrate(found) : RC.newEstimate());
+    setList(store.estimates.map(e=>toLocalListItem(migrate(e), overridesRef.current)));
+    try{ const ov=JSON.parse(localStorage.getItem(LS_OVERRIDES)); if(ov&&typeof ov==='object') setOverrides({items:ov.items||{}, equip:ov.equip||{}}); }catch(e){}
+    setMode('local');
+  }
+
+  // ---- server 진입 시 데이터 로드 ----
+  useEffect(()=>{ if(mode==='server' && user){ (async()=>{
+    const l = await apiFetch('/estimates'); if(l.status===200&&l.json.data) setList(l.json.data.estimates||[]);
+    const p = await apiFetch('/prices'); if(p.status===200&&p.json.data){ const ov=p.json.data.overrides||{}; setOverrides({items:ov.items||{}, equip:ov.equip||{}}); setPriceMeta({updatedByName:p.json.data.updatedByName, updatedAt:p.json.data.updatedAt}); }
+    setEst(RC.newEstimate());
+    // 로컬 견적 업로드 제안 (1회)
+    try{ const store=loadLocalStore(); const migrated=localStorage.getItem(LS_MIGRATED); if(!migrated && store.estimates.length>0) setMigrateOffer(store.estimates.length); }catch(e){}
+  })(); } /* eslint-disable-next-line */ },[mode, user]);
+
+  const onAuth = (token, u)=>{ tokenRef.current=token; try{localStorage.setItem(LS_TOKEN, token);}catch(e){} setUser(u); setMode('server'); };
+  const logout = ()=>{ tokenRef.current=''; try{localStorage.removeItem(LS_TOKEN);}catch(e){} setUser(null); setList([]); setEst(RC.newEstimate()); setMode('login'); };
+
+  async function doMigrateUpload(){
+    const store = loadLocalStore(); let n=0;
+    for (const raw of store.estimates){ const e=migrate(raw);
+      const res = await apiFetch('/estimates', {method:'POST', body:JSON.stringify({title:e.info.title||'새 견적', memo:e.memo||'', data:e, meta:buildMeta(e, overridesRef.current)})});
+      if(res.status===201) n++;
+    }
+    try{ localStorage.setItem(LS_MIGRATED,'1'); }catch(e){}
+    setMigrateOffer(0);
+    const l = await apiFetch('/estimates'); if(l.status===200&&l.json.data) setList(l.json.data.estimates||[]);
+    alert(`${n}건을 서버로 업로드했습니다.`);
+  }
+
+  // ---- 저장 (debounced) ----
+  function saveLocalNow(){
+    const e = estRef.current;
+    const store = loadLocalStore();
+    const list2 = store.estimates.slice();
+    const i = list2.findIndex(x=>x.id===e.id);
+    if(i>=0) list2[i]=e; else list2.unshift(e);
+    const next = { estimates:list2, activeId:e.id };
+    saveLocalStore(next);
+    setList(list2.map(x=>toLocalListItem(migrate(x), overridesRef.current)).sort((a,b)=>b.updatedAt-a.updatedAt));
+    setSync('saved');
+  }
+  async function flushServerSave(){
+    const g = saveGuard.current;
+    if (g.saving){ g.again=true; return; }
+    const e = estRef.current;
+    const onServer = listRef.current.some(x=>x.id===e.id);
+    if (!onServer && !hasContent(e)){ setSync('idle'); return; } // 빈 새 견적은 서버 생성 보류
+    g.saving=true; setSync('saving');
+    try{
+      const meta = buildMeta(e, overridesRef.current);
+      if (onServer){
+        const r = await apiFetch('/estimates/'+e.id, {method:'PUT', body:JSON.stringify({title:e.info.title||'새 견적', memo:e.memo||'', data:e, meta})});
+        if(r.status===200&&r.json.data){ const it=r.json.data.estimate; setList(prev=>prev.map(x=>x.id===it.id?{...x,...it}:x)); setSync('saved'); }
+        else setSync('error');
+      } else {
+        const r = await apiFetch('/estimates', {method:'POST', body:JSON.stringify({title:e.info.title||'새 견적', memo:e.memo||'', data:e, meta})});
+        if(r.status===201&&r.json.data){ const it=r.json.data.estimate; const oldId=e.id;
+          setEst(prev=> prev.id===oldId ? {...prev, id:it.id} : prev);
+          setList(prev=> [it, ...prev.filter(x=>x.id!==it.id)]); setSync('saved');
+        } else setSync('error');
+      }
+    }catch(err){ setSync('error'); }
+    finally{ g.saving=false; if(g.again){ g.again=false; setTimeout(flushServerSave, 60); } }
+  }
+  useEffect(()=>{
+    if (mode==='booting' || mode==='login') return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(()=>{ if(modeRef.current==='local') saveLocalNow(); else if(modeRef.current==='server') flushServerSave(); }, mode==='server'?800:500);
+    return ()=>clearTimeout(saveTimer.current);
+  }, [est, mode]);
+
+  // ---- 오버라이드 저장 (자재DB) ----
+  function scheduleOverrideSave(next){
+    clearTimeout(ovTimer.current);
+    ovTimer.current = setTimeout(()=>{ persistOverrides(next); }, 700);
+  }
+  async function persistOverrides(ov){
+    if (modeRef.current==='server'){ const r=await apiFetch('/prices',{method:'PUT', body:JSON.stringify({overrides:ov})}); if(r.status===200) setPriceMeta({updatedByName:(user&&user.name)||null, updatedAt:Date.now()}); }
+    else { try{ localStorage.setItem(LS_OVERRIDES, JSON.stringify(ov)); }catch(e){} }
+  }
+  const setItemOv = (id,field,val)=>setOverrides(prev=>{ const items={...(prev.items||{})}; const cur={...(items[id]||{})}; if(val===''||val==null) delete cur[field]; else cur[field]=Number(val); if(Object.keys(cur).length) items[id]=cur; else delete items[id]; const next={...prev, items}; scheduleOverrideSave(next); return next; });
+  const setEquipOv = (name,val)=>setOverrides(prev=>{ const equip={...(prev.equip||{})}; if(val===''||val==null) delete equip[name]; else equip[name]=Number(val); const next={...prev, equip}; scheduleOverrideSave(next); return next; });
+  const resetItemOv = (id)=>setOverrides(prev=>{ const items={...(prev.items||{})}; delete items[id]; const next={...prev, items}; scheduleOverrideSave(next); return next; });
+  const resetEquipOv = (name)=>setOverrides(prev=>{ const equip={...(prev.equip||{})}; delete equip[name]; const next={...prev, equip}; scheduleOverrideSave(next); return next; });
+  const resetAllOv = ()=>{ const next={items:{},equip:{}}; setOverrides(next); scheduleOverrideSave(next); };
+  const saveOverridesNow = ()=>{ clearTimeout(ovTimer.current); persistOverrides(overridesRef.current); };
+
+  // ---- est 업데이트 헬퍼 ----
+  const upd = (o)=>setEst(e=>({...e, ...o, updatedAt:Date.now()}));
+  const updInfo = (o)=>setEst(e=>({...e, info:{...e.info,...o}, updatedAt:Date.now()}));
+  const updSel = (o)=>setEst(e=>({...e, sel:{...e.sel,...o}, updatedAt:Date.now()}));
+  const updTemp = (o)=>setEst(e=>({...e, temp:{...e.temp,...o}, updatedAt:Date.now()}));
+  const updRates = (o)=>setEst(e=>({...e, rates:{...e.rates,...o}, updatedAt:Date.now()}));
+  const updSiteCond = (o)=>setEst(e=>({...e, siteCond:{...e.siteCond,...o}, updatedAt:Date.now()}));
+  const updFinishAll = (o)=>setEst(e=>{
+    const next = {...e, finishAll:{...e.finishAll, ...o}, updatedAt:Date.now()};
+    if (o.enabled===false && e.finishAll.enabled!==false){
+      // ON→OFF: zone.sel 없는 구역만 생성 (ea zones[0]에만), 기존 sel 은 보존
+      next.zones = e.zones.map((z,i)=> z.sel ? z : {...z, sel: i===0 ? JSON.parse(JSON.stringify(e.sel)) : newZoneSel(e.sel)});
+    } else if (o.enabled===true && e.finishAll.enabled!==true){
+      // OFF→ON: est.sel = zones[0].sel 딥카피, ea 3필드는 전 구역 합 (균일이었다면 총액 불변)
+      if (e.zones[0] && e.zones[0].sel){
+        const s = JSON.parse(JSON.stringify(e.zones[0].sel));
+        let si=0, tf=0, ts=0;
+        e.zones.forEach(z=>{ const zs=z.sel||{}; si+=numv(zs.siliconEa); tf+=numv(zs.trenchFloorEa); ts+=numv(zs.trenchSideEa); });
+        s.siliconEa=si; s.trenchFloorEa=tf; s.trenchSideEa=ts;
+        next.sel = s;
+      }
+    }
+    return next;
+  });
+  const zoneOps = {
+    set:(i,k,v)=>setEst(e=>({...e, zones:e.zones.map((z,j)=>j===i?{...z,[k]:v}:z), updatedAt:Date.now()})),
+    setSel:(i,patch)=>setEst(e=>({...e, zones:e.zones.map((z,j)=>j===i?{...z, sel:{...(z.sel||e.sel), ...patch}}:z), updatedAt:Date.now()})),
+    add:()=>setEst(e=> e.zones.length>=10?e:({...e, zones:[...e.zones,{label:'구역'+(e.zones.length+1),floor:0,parapetLen:0,parapetH:0,finish:'쇄석',wallFinish:'없음', sel:newZoneSel(e.sel)}], updatedAt:Date.now()})),
+    remove:(i)=>setEst(e=>({...e, zones:e.zones.filter((_,j)=>j!==i), updatedAt:Date.now()})),
+  };
+  const ciOps = {
+    add:()=>setEst(e=>({...e, customItems:[...e.customItems,{work:'',name:'',unit:'m2',qty:0,matPrice:0,matSurKey:null,labPrice:0,labSurKey:null,subPrice:0,subSurKey:null}], updatedAt:Date.now()})),
+    set:(i,k,v)=>setEst(e=>({...e, customItems:e.customItems.map((c,j)=>j===i?{...c,[k]:v}:c), updatedAt:Date.now()})),
+    remove:(i)=>setEst(e=>({...e, customItems:e.customItems.filter((_,j)=>j!==i), updatedAt:Date.now()})),
+    addEq:()=>setEst(e=>({...e, temp:{...e.temp, equipment:[...e.temp.equipment,{name:RC.EQUIP_CATALOG[0].name,qty:1}]}, updatedAt:Date.now()})),
+    setEq:(i,k,v)=>setEst(e=>({...e, temp:{...e.temp, equipment:e.temp.equipment.map((q,j)=>j===i?{...q,[k]:v}:q)}, updatedAt:Date.now()})),
+    removeEq:(i)=>setEst(e=>({...e, temp:{...e.temp, equipment:e.temp.equipment.filter((_,j)=>j!==i)}, updatedAt:Date.now()})),
+  };
+  const addlOps = {
+    toggle:(k)=>setEst(e=>({...e, addl:{...e.addl, [k]:{...e.addl[k], on:!e.addl[k].on}}, updatedAt:Date.now()})),
+    set:(k,field,v)=>setEst(e=>({...e, addl:{...e.addl, [k]:{...e.addl[k], [field]:v}}, updatedAt:Date.now()})),
+    reset:(k)=>setEst(e=>({...e, addl:{...e.addl, [k]:{...RC.defaultAddl()[k], on:e.addl[k].on}}, updatedAt:Date.now()})),
+  };
+  const applyRoof = (idx, areaM2, periM)=>setEst(e=>({...e, zones:e.zones.map((z,j)=>j===idx?{...z, floor:Math.round(areaM2*100)/100, parapetLen:Math.round(periM*100)/100}:z), updatedAt:Date.now()}));
+
+  // ---- 저장목록 액션 ----
+  const onNew = ()=>{ setEst(RC.newEstimate()); setTab('input'); };
+  const onSample = ()=>{ const s=RC.withZoneSel(RC.sampleDongsak()); s.id='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); s.createdAt=s.updatedAt=Date.now(); setEst(s); setTab('input'); };
+  const getData = async (id)=>{
+    if (modeRef.current==='server'){ const r=await apiFetch('/estimates/'+id); if(r.status===200&&r.json.data) return {data:r.json.data.estimate.data, memo:r.json.data.estimate.memo, serverId:id}; return null; }
+    const it=listRef.current.find(x=>x.id===id); return it?{data:it.data, memo:it.memo, serverId:null}:null;
+  };
+  const onLoad = async (id)=>{ const d=await getData(id); if(!d) return; const e=migrate(d.data); if(d.serverId) e.id=d.serverId; e.memo=d.memo||e.memo; setEst(e); setTab('input'); };
+  const onDup = async (id)=>{ const d=await getData(id); if(!d) return; const e=migrate(d.data); e.id='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); e.info={...e.info, title:(e.info.title||'견적')+' (복제)'}; e.memo=d.memo||''; e.createdAt=e.updatedAt=Date.now(); setEst(e); setTab('input'); };
+  const onDel = async (id)=>{ if(!confirm('삭제하시겠습니까?')) return;
+    if (modeRef.current==='server'){ const r=await apiFetch('/estimates/'+id,{method:'DELETE'}); if(r.status!==200 && r.status!==404) return; setList(prev=>prev.filter(x=>x.id!==id)); }
+    else { const store=loadLocalStore(); const est2=store.estimates.filter(e=>e.id!==id); const next={estimates:est2, activeId: store.activeId===id?(est2[0]?est2[0].id:null):store.activeId}; saveLocalStore(next); setList(est2.map(e=>toLocalListItem(migrate(e), overridesRef.current)).sort((a,b)=>b.updatedAt-a.updatedAt)); }
+    if(estRef.current.id===id){ setEst(RC.newEstimate()); }
+  };
+  const onMemo = async (id, memo)=>{
+    if (modeRef.current==='server'){ const r=await apiFetch('/estimates/'+id,{method:'PUT', body:JSON.stringify({memo})}); if(r.status===200&&r.json.data){ const it=r.json.data.estimate; setList(prev=>prev.map(x=>x.id===it.id?{...x,...it}:x)); } }
+    else { const store=loadLocalStore(); const est2=store.estimates.map(e=>e.id===id?{...e, memo, updatedAt:Date.now()}:e); saveLocalStore({estimates:est2, activeId:store.activeId}); setList(est2.map(e=>toLocalListItem(migrate(e), overridesRef.current)).sort((a,b)=>b.updatedAt-a.updatedAt)); }
+    if(estRef.current.id===id) setEst(e=>({...e, memo}));
+  };
+  const onExport = ()=>{ const blob=new Blob([JSON.stringify(est,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(est.info.title||'견적')+'.json'; a.click(); };
+  const onImport = (text)=>{ try{ const obj=JSON.parse(text); const e=migrate(obj); e.id='e'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); e.updatedAt=Date.now(); setEst(e); setTab('input'); alert('가져오기 완료'); }catch(err){ alert('JSON 파싱 실패: '+err.message); } };
+
+  // ---- 인쇄 / PDF 저장 (V4-1: 브라우저 인쇄 다이얼로그 = 가로 A4, "PDF로 저장" 선택 시 인쇄 품질 그대로 저장) ----
+  const doPrint = ()=>{ const html=buildCombinedDoc(est, result, manifest, k=>(manifest[k]?('images/materials/'+encodeURI(manifest[k])):null), {baseHref: location.href}); printCombinedHTML(html); };
+
+  if (mode==='booting') return <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">불러오는 중…</div>;
+  if (mode==='login') return <LoginScreen onAuth={onAuth} />;
+
+  const syncLabel = { idle:'', saving:'저장 중…', saved:'● 저장됨', error:'⚠ 저장 실패' }[sync];
+  const syncTone = { idle:'text-slate-300', saving:'text-amber-500', saved:'text-emerald-500', error:'text-red-500' }[sync];
+
+  return (
+    <div className="min-h-screen app-root">
+      <header className="no-print sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-8 w-8 rounded-lg bg-slate-800 text-white flex items-center justify-center font-extrabold text-sm shrink-0">安</div>
+            <div className="min-w-0">
+              <div className="font-extrabold text-slate-800 text-sm leading-tight">{COMPANY.name} · 역전지붕방수 견적</div>
+              <div className="text-[11px] text-slate-400 truncate">{est.info.title||'(제목 없음)'} {est.info.address?`· ${est.info.address}`:''}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <Btn size="sm" variant="secondary" onClick={doPrint}>🖨 인쇄 · PDF</Btn>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] text-slate-400">총합계 ({est.rates.taxInvoice==='예'?'VAT 포함':'VAT 별도'}) {mode==='server'&&<span className={syncTone}>{syncLabel}</span>}</div>
+              <div className="text-lg font-extrabold text-slate-800 num-cell leading-none">{won(result.cost.grandTotal)}</div>
+            </div>
+            {mode==='server' && user && (
+              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                <span className="text-xs text-slate-500 font-semibold">{user.name}</span>
+                <Btn size="sm" variant="ghost" onClick={logout}>로그아웃</Btn>
+              </div>
+            )}
+          </div>
+        </div>
+        {mode==='local' && (
+          <div className="bg-amber-50 border-t border-amber-200 text-[11px] text-amber-700 px-4 py-1 text-center">
+            로컬 모드 — 서버 미접속 (npm start → http://localhost:3015 에서 실행 시 로그인·팀 공유). 데이터는 이 브라우저 localStorage 에 저장됩니다.
+          </div>
+        )}
+        {mode==='server' && migrateOffer>0 && (
+          <div className="bg-blue-50 border-t border-blue-200 text-xs text-blue-800 px-4 py-1.5 flex items-center justify-center gap-3">
+            <span>이 브라우저에 저장된 로컬 견적 {migrateOffer}건이 있습니다. 서버로 업로드할까요?</span>
+            <Btn size="xs" variant="amber" onClick={doMigrateUpload}>업로드</Btn>
+            <Btn size="xs" variant="ghost" onClick={()=>{ try{localStorage.setItem(LS_MIGRATED,'1');}catch(e){} setMigrateOffer(0); }}>나중에</Btn>
+          </div>
+        )}
+        {/* V2-8: 직원용 / 고객 제출용 내비 그룹 분리 */}
+        <nav className="max-w-7xl mx-auto px-2 flex items-center gap-2 overflow-x-auto">
+          <span className="text-[10px] font-bold text-slate-300 pl-1 shrink-0">직원용</span>
+          {STAFF_TABS.map(t=>(
+            <button key={t.k} onClick={()=>setTab(t.k)} className={cx('px-3 py-2 text-sm font-semibold whitespace-nowrap border-b-2 transition', tab===t.k?'border-amber-500 text-slate-900':'border-transparent text-slate-400 hover:text-slate-600')}>{t.l}</button>
+          ))}
+          <span className="h-5 w-px bg-slate-200 mx-1 shrink-0"></span>
+          <span className="text-[10px] font-bold text-blue-300 pl-1 shrink-0">고객 제출용</span>
+          {CUSTOMER_TABS.map(t=>(
+            <button key={t.k} onClick={()=>setTab(t.k)} className={cx('px-3 py-2 text-sm font-semibold whitespace-nowrap border-b-2 transition', tab===t.k?'border-blue-500 text-slate-900':'border-transparent text-slate-400 hover:text-slate-600')}>{t.l}</button>
+          ))}
+        </nav>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-5">
+        {tab==='input' && <InputTab est={est} result={result} upd={upd} updSel={updSel} updInfo={updInfo} updTemp={updTemp} updRates={updRates} updSiteCond={updSiteCond} updFinishAll={updFinishAll} zoneOps={zoneOps} ciOps={ciOps} addlOps={addlOps} applyRoof={applyRoof} />}
+        {tab==='pricedb' && <PriceDBTab overrides={overrides} setItemOv={setItemOv} setEquipOv={setEquipOv} resetItemOv={resetItemOv} resetEquipOv={resetEquipOv} resetAllOv={resetAllOv} priceMeta={priceMeta} onSaveNow={saveOverridesNow} mode={mode} />}
+        {tab==='quote' && <QuoteTab est={est} result={result} />}
+        {tab==='detail' && <DetailTab result={result} />}
+        {tab==='order' && <OrderTab result={result} />}
+        {tab==='material' && <MaterialTab est={est} result={result} manifest={manifest} />}
+        {tab==='saved' && <SavedTab list={list} activeId={est.id} mode={mode} onNew={onNew} onLoad={onLoad} onDup={onDup} onDel={onDel} onSample={onSample} onMemo={onMemo} onExport={onExport} onImport={onImport} />}
+      </main>
+      <footer className="no-print text-center text-[11px] text-slate-400 py-6">{COMPANY.name} · 역전지붕방수 견적 v4 · {mode==='server'?'서버 팀 공유':'로컬 저장'} · 단일 파일 앱</footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "roof-estimate-app",
+  "version": "2.0.0",
+  "private": true,
+  "description": "안도공간 역전지붕방수 견적 앱 — 서버(로그인/견적공유/단가DB) + 단일 index.html",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.mjs",
+    "test:server": "node test-server.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0"
+  }
+}
