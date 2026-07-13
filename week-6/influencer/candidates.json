@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "mission": "[홍보] 카페 안도 인스타 인플루언서 발굴",
+    "collected_at": "2026-07-13",
+    "method": "Playwright MCP + 본인 로그인 세션, instagram.com 내부 웹 API (tags/web_info, users/web_profile_info, feed/user/{username}/username)",
+    "sources": {
+      "hashtags": ["성수카페", "성수동카페", "동네카페", "분위기좋은카페", "카페추천", "디저트맛집"],
+      "competitor_tags": ["옹근달 (성수 대형 베이커리 카페 = '메종 드 성수' 대체)", "킨포크성수"],
+      "note": "my_cafe.md의 경쟁사 '메종 드 성수'·'로우키 성수'는 실계정이 없어 실존 성수 대형 카페 해시태그로 대체"
+    },
+    "er_formula": "(최근 게시물 9개 평균 좋아요 + 평균 댓글) ÷ 팔로워 × 100",
+    "caveats": [
+      "like_count=3 은 좋아요 숨김 게시물의 센티널 값으로 판정, 평균에서 제외 (hiddenLikes 필드)",
+      "상단 고정(핀) 게시물은 taken_at 정렬로 배제, 최근 9개만 사용",
+      "재누·커푸얼의 초고 ER은 저장/탐색탭 도달형 콘텐츠 특성 — 팔로워 외 도달이 커서 ER이 부풀어 보이는 구조적 이유 있음",
+      "픽철은 검증 호출에서 핀 3개 제외한 최근 9개로 수기 계산"
+    ]
+  },
+  "target_criteria": {
+    "from": "week-5/my-cafe/my_cafe.md",
+    "category": "공간 / 카페 / 디저트",
+    "followers": "5,000 ~ 50,000 (마이크로)",
+    "audience_fit": "20~30대 공간·디자인 덕후 + 성수 직장인, '조용한 2층 쇼룸 카페' 결"
+  },
+  "candidates": [
+    { "rank": 1, "username": "ssu_h_k", "name": "쑤현 | cafetour", "followers": 23004, "following": 1875, "posts": 1276, "avg_likes_9": 554, "avg_comments_9": 21.1, "er_pct": 2.5, "hidden_like_posts": 3, "bio": "카페가 좋아서 오늘도 카페를 갑니다☕️ #쑤현_지역명 검색", "found_via": ["#성수동카페"], "fit": "카페·디저트 전문 감성 사진, 지역별 검색 태그 운영 — 범위 내 최고 ER, 타깃 톤 일치", "in_range": true },
+    { "rank": 2, "username": "jaenu._", "name": "재누 | 서울여행·카페·공간", "followers": 1806, "following": 270, "posts": 128, "avg_likes_9": 599, "avg_comments_9": 46.8, "er_pct": 35.76, "hidden_like_posts": 0, "bio": "카페투어부터 감성명소까지, 서울·근교 코스 추천", "found_via": ["#성수동카페"], "fit": "'(저장) 코스 추천' 저장형 포맷 — 팔로워 1.8k인데 평균 좋아요 599 (탐색탭 도달). 성수 대형카페 게시 이력. 비용 최소 와일드카드", "in_range": false, "wildcard": "nano-高도달" },
+    { "rank": 3, "username": "picchul_", "name": "픽철 | 카페 그리고 여행", "followers": 43478, "following": 153, "posts": 2099, "avg_likes_9": 317, "avg_comments_9": 7.6, "er_pct": 0.75, "hidden_like_posts": 0, "bio": "Cafe | Space | Photographer — 지나칠 수 있는 주변의 순간", "found_via": ["#동네카페", "#분위기좋은카페", "#성수동카페"], "fit": "골목·사랑방·조용한 공간 서사 전문 사진가 — '2층 숨은 쇼룸 카페' 스토리에 최적, 사진 2차 활용 가치", "in_range": true },
+    { "rank": 4, "username": "cafe__editor", "name": "카페에디터 | 신상·가오픈카페", "followers": 52895, "following": 500, "posts": 30253, "avg_likes_9": 497, "avg_comments_9": 8.7, "er_pct": 0.96, "hidden_like_posts": 0, "bio": "SEOUL CAFE l FOOD — 신상카페 오픈 소식 전문", "found_via": ["#분위기좋은카페", "#디저트맛집"], "fit": "신규 오픈 카페 소개 전문 채널 = 오픈 4주차인 우리 상황에 정확히 부합 (기준 5만을 2.9k 초과, 예외 승인 필요)", "in_range": false, "note": "52.9k로 상한 살짝 초과" },
+    { "rank": 5, "username": "cupofpour", "name": "커푸얼 | 카페·공간", "followers": 1003, "following": 504, "posts": 102, "avg_likes_9": 137, "avg_comments_9": 26.9, "er_pct": 16.34, "hidden_like_posts": 0, "bio": "좋아하는 공간 같이 나눠요。", "found_via": ["#카페추천"], "fit": "'한적한 시간·혼자 보내는 공간' 감성이 카페 안도 결 그 자체 — 무상 초대 씨딩용 나노", "in_range": false, "wildcard": "nano-결일치" },
+    { "rank": 6, "username": "seojian_153", "name": "지안 | 손글씨 맛집 리뷰", "followers": 6245, "following": 5379, "posts": 790, "avg_likes_9": 61, "avg_comments_9": 9.9, "er_pct": 1.14, "hidden_like_posts": 0, "bio": "손글씨로 리뷰하는 맛집 (나눔손글씨 손편지체 원작자)", "found_via": ["#성수카페"], "fit": "차별화 포맷(손글씨 리뷰)이지만 선팔맞팔 팔로워라 도달 질 감점, 성수 베이커리 리뷰 이력", "in_range": true },
+    { "rank": 7, "username": "beomspoon", "name": "범스푼", "followers": 9823, "following": 5019, "posts": 1017, "avg_likes_9": 55, "avg_comments_9": 20.2, "er_pct": 0.77, "hidden_like_posts": 0, "bio": "배운돼지가 직접 가보고 쓰는 솔직한 맛집추천, 맞팔은 댓글로", "found_via": ["#옹근달(경쟁카페 태그)"], "fit": "#범스푼_성수 지역 시리즈 보유하나 맞팔 기반 팔로워 — 9.8k인데 평균 좋아요 55", "in_range": true },
+    { "rank": null, "username": "seongsu_bible", "name": "성수교과서 | 제레박의 성수동 로컬 매거진", "followers": 173228, "following": 178, "posts": 4177, "avg_likes_9": 617, "avg_comments_9": 29.1, "er_pct": 0.37, "hidden_like_posts": 1, "bio": "성수 가이드, Supporting Local Business", "found_via": ["#성수카페", "#성수동카페"], "fit": "성수 로컬 매체 그 자체 — 예산 초과 드림픽. 'Supporting Local Business' 표방이라 로컬 신생 카페 제보는 무료 소개 가능성 있음", "in_range": false, "over_budget": true },
+    { "rank": null, "username": "coffee_ddubucks", "name": "커피 뚜벅이 | 카페·공간", "followers": 105853, "following": 461, "posts": 4841, "avg_likes_9": 226, "avg_comments_9": 12.7, "er_pct": 0.23, "hidden_like_posts": 0, "bio": "전국의 카페와 커피, 바리스타를 소개 — 브랜드 프로젝트 마케팅", "found_via": ["#성수카페", "#옹근달"], "fit": "공간 중심 큐레이션, 유료 광고 상품 운영 — 예산 초과 + ER 최저", "in_range": false, "over_budget": true },
+    { "rank": null, "username": "b_taeng", "name": "방탱이 | 카페·팝업·전시", "followers": 151266, "following": 683, "posts": 1664, "avg_likes_9": 527, "avg_comments_9": 71.1, "er_pct": 0.4, "hidden_like_posts": 0, "bio": "카페와 팝업, 맛집, 숙소, 전시를 색감과 시선으로", "found_via": ["#성수동카페", "#카페추천", "#옹근달"], "fit": "성수 빵지순례 콘텐츠 보유 — 예산 초과", "in_range": false, "over_budget": true }
+  ],
+  "excluded": [
+    { "username": "wip_seongsu", "reason": "인플루언서 아님 — 실제 성수 음식점 계정 (영업시간 bio)" },
+    { "username": "meemee.arch", "reason": "929 팔로워 + 최근 9개 전부 좋아요 숨김 → ER 측정 불가" },
+    { "username": "dalda.9ri", "reason": "1,079 팔로워 + 9개 중 8개 좋아요 숨김 → 표본 1개로 판단 불가" },
+    { "username": "place_archive / _seoul.pick / knewnew.official / insight_food / datecourse123", "reason": "대형 미디어·큐레이션 계정 (마이크로 아님)" },
+    { "username": "onguendal / kinfolk.seongsu / greeker_seongsu / realcoffee_seongsu 등", "reason": "카페·브랜드 본계정 (경쟁/동종 업장)" }
+  ]
+}
