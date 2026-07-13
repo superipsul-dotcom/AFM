@@ -138,12 +138,65 @@ console.log('6) AI 브리핑 (생성 → 캐시)');
   check('GET /api/briefing → 오늘자 캐시 반환', r3.status === 200 && !!r3.json?.briefing?.content);
 }
 
-// ---------- 7. 정적 UI ----------
-console.log('7) 정적 UI');
+// ---------- 7. 주문/멤버 (안도 빈즈 bean_*) ----------
+console.log('7) 주문 내역 / 멤버 (bean_*)');
+{
+  let r = await req('GET', '/api/orders', { token });
+  check('GET /api/orders — 주문+통계', r.status === 200 && r.json.stats?.total >= 14 && Array.isArray(r.json.orders));
+  check('주문에 회원 이메일 조인', !!r.json.orders?.[0]?.email);
+  check('PAID 매출 합계 > 0', Number(r.json.stats?.paid_amount) > 0);
+
+  r = await req('GET', '/api/members', { token });
+  check('GET /api/members — 원두샵 멤버 8+', r.status === 200 && r.json.shopMembers?.length >= 8);
+  check('멤버에 주문수/구매액 집계', r.json.shopMembers?.[0]?.orders !== undefined && r.json.shopMembers?.[0]?.spent !== undefined);
+  check('대시보드 계정 목록', r.json.dashboardUsers?.length >= 1);
+}
+
+// ---------- 8. 재고관리 CRUD ----------
+console.log('8) 재고관리 (cafe_inventory CRUD)');
+{
+  let r = await req('GET', '/api/inventory', { token });
+  check('GET /api/inventory — 계산 필드 포함', r.status === 200 && r.json.items?.length >= 10 && 'days_left' in r.json.items[0] && 'need_order' in r.json.items[0]);
+
+  r = await req('POST', '/api/inventory', { token, body: { item: `e2e 테스트 원두 ${stamp}`, unit: 'kg', stock: 5, daily_usage: 1, reorder_point: 2, lead_time_days: 2, supplier: 'e2e 상사' } });
+  check('POST /api/inventory 201', r.status === 201 && r.json.item?.id > 0);
+  const invId = r.json.item?.id;
+
+  r = await req('POST', '/api/inventory', { token, body: { item: `e2e 테스트 원두 ${stamp}`, unit: 'kg', supplier: 'e2e 상사' } });
+  check('중복 품목 → 409', r.status === 409);
+
+  r = await req('PATCH', `/api/inventory/${invId}`, { token, body: { stock: 1 } });
+  check('PATCH 재고 1 → 발주필요 계산', r.status === 200 && Number(r.json.item.stock) === 1 && r.json.item.need_order === true);
+
+  r = await req('POST', `/api/inventory/${invId}/ordered`, { token, body: { added_stock: 10 } });
+  check('발주 기록 + 입고 10 → 재고 11 · 오늘 날짜', r.status === 200 && Number(r.json.item.stock) === 11 && !!r.json.item.last_ordered);
+
+  r = await req('DELETE', `/api/inventory/${invId}`, { token });
+  check('DELETE 품목', r.status === 200);
+  r = await req('DELETE', `/api/inventory/${invId}`, { token });
+  check('없는 품목 삭제 → 404', r.status === 404);
+}
+
+// ---------- 9. 채팅비서 ----------
+console.log('9) 채팅비서 (/api/chat — my_cafe.md + knowledge + run_sql)');
+{
+  let r = await req('POST', '/api/chat', { token, body: { messages: [] } });
+  check('빈 메시지 → 400', r.status === 400);
+
+  r = await req('POST', '/api/chat', { token, body: { messages: [{ role: 'user', content: '어제(최근 영업일) 카페 손님 몇 명이었어?' }] } });
+  const ans = r.json?.answer || '';
+  check('채팅 응답 200 + 내용', r.status === 200 && ans.length > 10, JSON.stringify(r.json).slice(0, 150));
+  check('DB를 실제로 조회(run_sql ≥ 1회)', Array.isArray(r.json?.sqlLog) && r.json.sqlLog.length >= 1);
+  check('답변에 명 단위 숫자', /명/.test(ans));
+}
+
+// ---------- 10. 정적 UI ----------
+console.log('10) 정적 UI');
 {
   const res = await fetch(`${BASE}/`);
   const html = await res.text();
   check('GET / → index.html (대시보드 타이틀)', res.status === 200 && html.includes('사장님 대시보드'));
+  check('탭/채팅비서/패밀리 링크 포함', html.includes('재고관리') && html.includes('운영 비서') && html.includes('afm-cafe-home'));
 }
 
 console.log(`\n===== 결과: ${passed}/${passed + failed} 통과 =====\n`);

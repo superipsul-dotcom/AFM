@@ -88,6 +88,29 @@ async function initDb() {
       created_at timestamptz not null default now()
     )`);
 
+  // 안도 빈즈(원두샵) 테이블 — bean-shop 서버와 동일 스키마 (주문/멤버 페이지가 읽음)
+  await pool.query(`
+    create table if not exists bean_users (
+      id             uuid primary key,
+      email          text unique not null,
+      password_hash  text not null,
+      avatar_url     text,
+      avatar_file_id text,
+      created_at     timestamptz not null default now()
+    )`);
+  await pool.query(`
+    create table if not exists bean_orders (
+      order_id    text primary key,
+      user_id     uuid not null,
+      order_name  text not null,
+      amount      bigint not null,
+      items       jsonb not null,
+      status      text not null default 'PENDING',
+      payment     jsonb,
+      payment_key text,
+      created_at  timestamptz not null default now()
+    )`);
+
   const { rows: [{ n }] } = await pool.query('select count(*)::int n from cafe_todos');
   if (n === 0) {
     const today = kstToday();
@@ -110,6 +133,15 @@ function ensureReady() { readyPromise ||= initDb(); return readyPromise; }
 // 앱 + 미들웨어
 // ----------------------------------------
 const app = express();
+
+// Express 4는 async 핸들러의 rejection을 못 잡는다(프로세스 크래시) →
+// 라우트 등록 시점에 자동으로 .catch(next) 래핑해서 전부 에러 미들웨어로 보낸다.
+for (const m of ['get', 'post', 'patch', 'put', 'delete']) {
+  const orig = app[m].bind(app);
+  app[m] = (route, ...handlers) => orig(route, ...handlers.map((h) =>
+    h.length >= 4 ? h : (req, res, next) => Promise.resolve(h(req, res, next)).catch(next)));
+}
+
 app.use(express.json({ limit: '1mb' }));
 
 app.use('/api', async (_req, res, next) => {
@@ -393,6 +425,263 @@ ${loadCafeContext()}
      returning *`,
     [today, content, MODEL, JSON.stringify(digest)]);
   res.json({ briefing: b, cached: false });
+});
+
+// ----------------------------------------
+// 🧾 주문 내역 / 👥 멤버 (안도 빈즈 bean_* 테이블)
+// ----------------------------------------
+app.get('/api/orders', auth, async (_req, res) => {
+  const { rows: orders } = await pool.query(
+    `select o.order_id, o.order_name, o.amount, o.status, o.items, o.payment, o.created_at,
+            u.email, u.avatar_url
+       from bean_orders o left join bean_users u on u.id = o.user_id
+      order by o.created_at desc limit 100`);
+  const { rows: [stats] } = await pool.query(
+    `select count(*)::int total,
+            count(*) filter (where status = 'PAID')::int paid_count,
+            coalesce(sum(amount) filter (where status = 'PAID'), 0)::bigint paid_amount,
+            coalesce(sum(amount) filter (where status = 'PAID' and created_at >= now() - interval '7 days'), 0)::bigint week_paid_amount
+       from bean_orders`);
+  res.json({ orders, stats });
+});
+
+app.get('/api/members', auth, async (_req, res) => {
+  const { rows: shopMembers } = await pool.query(
+    `select u.id, u.email, u.avatar_url, u.created_at,
+            count(o.order_id) filter (where o.status = 'PAID')::int orders,
+            coalesce(sum(o.amount) filter (where o.status = 'PAID'), 0)::bigint spent
+       from bean_users u left join bean_orders o on o.user_id = u.id
+      group by u.id order by u.created_at desc limit 200`);
+  const { rows: dashboardUsers } = await pool.query(
+    'select id, email, name, created_at from cafe_users order by id limit 50');
+  res.json({ shopMembers, dashboardUsers });
+});
+
+// ----------------------------------------
+// 📦 재고관리 (cafe_inventory CRUD)
+// ----------------------------------------
+const INVENTORY_SELECT = `
+  select id, item, unit, stock, daily_usage, reorder_point, lead_time_days, supplier, last_ordered, note,
+         round(stock / nullif(daily_usage, 0), 1) days_left,
+         (stock <= reorder_point or stock / nullif(daily_usage, 0) <= lead_time_days) need_order
+    from cafe_inventory`;
+
+app.get('/api/inventory', auth, async (_req, res) => {
+  const { rows } = await pool.query(`${INVENTORY_SELECT} order by need_order desc, days_left asc nulls last, item`);
+  res.json({ items: rows, today: kstToday() });
+});
+
+const numOrNull = (v) => (v === undefined || v === null || v === '' ? null : Number(v));
+function badNum(...vals) { return vals.some((v) => v !== null && (!Number.isFinite(v) || v < 0)); }
+
+app.post('/api/inventory', auth, async (req, res) => {
+  const b = req.body || {};
+  const item = (b.item || '').trim();
+  const unit = (b.unit || '').trim();
+  const supplier = (b.supplier || '').trim();
+  const stock = numOrNull(b.stock) ?? 0;
+  const daily = numOrNull(b.daily_usage) ?? 0;
+  const rp = numOrNull(b.reorder_point) ?? 0;
+  const lead = numOrNull(b.lead_time_days) ?? 1;
+  if (!item || !unit || !supplier) return res.status(400).json({ error: '품목/단위/거래처는 필수입니다.' });
+  if (badNum(stock, daily, rp, lead)) return res.status(400).json({ error: '숫자 필드가 올바르지 않습니다.' });
+  try {
+    const { rows: [row] } = await pool.query(
+      `insert into cafe_inventory (item, unit, stock, daily_usage, reorder_point, lead_time_days, supplier, note)
+       values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
+      [item, unit, stock, daily, rp, Math.round(lead), supplier, (b.note || '').trim() || null]);
+    const { rows: [full] } = await pool.query(`${INVENTORY_SELECT} where id = $1`, [row.id]);
+    res.status(201).json({ item: full });
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ error: '이미 있는 품목입니다.' });
+    throw e;
+  }
+});
+
+app.patch('/api/inventory/:id', auth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: '잘못된 id' });
+  const b = req.body || {};
+  const stock = numOrNull(b.stock), daily = numOrNull(b.daily_usage),
+        rp = numOrNull(b.reorder_point), lead = numOrNull(b.lead_time_days);
+  if (badNum(stock, daily, rp, lead)) return res.status(400).json({ error: '숫자 필드가 올바르지 않습니다.' });
+  const { rowCount } = await pool.query(
+    `update cafe_inventory set
+       stock          = coalesce($2, stock),
+       daily_usage    = coalesce($3, daily_usage),
+       reorder_point  = coalesce($4, reorder_point),
+       lead_time_days = coalesce($5, lead_time_days),
+       supplier       = coalesce(nullif(trim($6::text), ''), supplier),
+       note           = case when $7::text is null then note else nullif(trim($7::text), '') end
+     where id = $1`,
+    [id, stock, daily, rp, lead === null ? null : Math.round(lead), b.supplier ?? '', b.note ?? null]);
+  if (!rowCount) return res.status(404).json({ error: '품목을 찾을 수 없습니다.' });
+  const { rows: [full] } = await pool.query(`${INVENTORY_SELECT} where id = $1`, [id]);
+  res.json({ item: full });
+});
+
+// 발주 기록: last_ordered = 오늘(KST), 입고량이 있으면 재고에 더함
+app.post('/api/inventory/:id/ordered', auth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: '잘못된 id' });
+  const added = numOrNull(req.body?.added_stock) ?? 0;
+  if (badNum(added)) return res.status(400).json({ error: '입고량이 올바르지 않습니다.' });
+  const { rowCount } = await pool.query(
+    'update cafe_inventory set last_ordered = $2, stock = stock + $3 where id = $1',
+    [id, kstToday(), added]);
+  if (!rowCount) return res.status(404).json({ error: '품목을 찾을 수 없습니다.' });
+  const { rows: [full] } = await pool.query(`${INVENTORY_SELECT} where id = $1`, [id]);
+  res.json({ item: full });
+});
+
+app.delete('/api/inventory/:id', auth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: '잘못된 id' });
+  const { rowCount } = await pool.query('delete from cafe_inventory where id = $1', [id]);
+  if (!rowCount) return res.status(404).json({ error: '품목을 찾을 수 없습니다.' });
+  res.json({ ok: true });
+});
+
+// ----------------------------------------
+// 💬 카페 운영 채팅비서 (/api/chat)
+//   [my_cafe.md] + [knowledge/*.md — review·influencer pptx/xlsx 추출본]
+//   + [read-only run_sql 도구(운영 DB + 원두샵 DB)] → 대화형 답변
+// ----------------------------------------
+let knowledgeCache = null;
+function loadKnowledge() {
+  if (knowledgeCache !== null) return knowledgeCache;
+  try {
+    const dir = path.join(__dirname, 'knowledge');
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort();
+    knowledgeCache = files.map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n\n===== 다음 문서 =====\n\n');
+  } catch {
+    knowledgeCache = '(knowledge/ 폴더가 없습니다 — tools/extract-knowledge.mjs 를 실행하세요)';
+  }
+  return knowledgeCache;
+}
+
+// 🔒 read-only SQL (week-5 cafe-agent.mjs 검증 패턴 재사용)
+const SQL_FORBIDDEN = /\b(insert|update|delete|drop|alter|truncate|create|grant|revoke|comment|copy|merge|call|do|vacuum|reindex|refresh)\b/i;
+async function runReadOnlySql(sql) {
+  const trimmed = String(sql || '').trim().replace(/;+\s*$/, '');
+  if (trimmed.includes(';')) throw new Error('여러 SQL 문은 허용되지 않습니다 (1개의 SELECT만).');
+  if (!/^(select|with)\b/i.test(trimmed)) throw new Error('SELECT 또는 WITH 로 시작하는 조회 쿼리만 허용됩니다.');
+  if (SQL_FORBIDDEN.test(trimmed)) throw new Error('데이터를 변경하는 키워드는 사용할 수 없습니다 (읽기 전용).');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SET TRANSACTION READ ONLY');
+    await client.query("SET LOCAL statement_timeout = '8s'");
+    const r = await client.query(trimmed);
+    await client.query('COMMIT');
+    return { rowCount: r.rowCount, rows: r.rows.slice(0, 120), truncated: r.rowCount > 120 };
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+const CHAT_SCHEMA_DOC = `
+조회 가능한 DB (PostgreSQL, read-only run_sql 도구):
+
+[카페 안도 운영 DB]
+- cafe_daily_sales(date UNIQUE, customers, revenue, weather '맑음|흐림|비|폭염', note) — 일별 매출, 월요일 휴무=행 없음
+- cafe_menu_sales(date, menu, category '커피|시그니처|논커피|디저트', qty, unit_price, amount) — 무화과 바스크는 주말 한정
+- cafe_reviews(date, source '네이버|인스타|방명록', rating 1~5, content, sentiment '긍정|중립|불만') — 우리 카페 실제 리뷰
+- cafe_inventory(item, unit, stock, daily_usage, reorder_point, lead_time_days, supplier, last_ordered, note)
+- cafe_todos(title, done, due_date, source) / cafe_briefings(date, content)
+
+[안도 빈즈 — 원두 온라인 샵 DB]
+- bean_users(id uuid, email, avatar_url, created_at) — 원두샵 가입 멤버
+- bean_orders(order_id, user_id, order_name, amount 원, items jsonb [{name,grind,qty,price}], status 'PAID|PENDING', payment jsonb, created_at)
+
+팁:
+- "지난 7일"/"최근 N일"/"이번 주" 같은 표현은 특정 날짜가 아니라 기간이다 → date > CURRENT_DATE - 7 처럼 범위로 조회.
+- bean_orders.created_at 은 timestamptz → KST 날짜 비교는 (created_at at time zone 'Asia/Seoul')::date 사용.
+- 요일 extract(dow from date) 0=일…6=토 / 남은 재고일수 = stock/daily_usage / 금액은 원 단위 정수.
+- 카페 매출과 원두샵 매출은 별개다: 카페=cafe_daily_sales.revenue, 원두샵=bean_orders(status='PAID').amount.`;
+
+function chatSystem() {
+  return `너는 "카페 안도" 사장님의 운영 채팅비서야. 대시보드 우측 하단 채팅창에서 대화한다. 동업자처럼 다정하지만 숫자는 정확하게.
+오늘은 ${kstToday()} (${DOW_KO[kstDow()]}요일, KST). 월요일은 정기 휴무.
+
+━━━ ① 카페 정의서 (my_cafe.md 전문) ━━━
+${loadCafeContext()}
+
+━━━ ② 지식 베이스 — review/influencer 폴더의 pptx·xlsx 추출본 ━━━
+${loadKnowledge()}
+
+━━━ ③ 운영/원두샵 DB ━━━
+${CHAT_SCHEMA_DOC}
+
+규칙:
+1. 매출·판매·리뷰·재고·주문·멤버 등 데이터 질문은 반드시 run_sql 로 실제 값을 확인하고 답해. 추측 금지.
+2. 지식 베이스를 인용할 땐 출처를 밝혀. 특히 review 폴더 문서(경쟁 분석·VoC)는 "하버 카페" 실습 데이터 기반이므로 "우리 데이터는 아니고 실습 조사 자료 기준"이라고 한 문장 안에 명시해. 인플루언서 보고서는 카페 안도 실자료이니 그대로 인용.
+3. 모든 제안은 카페 안도의 컨셉(성수 2층 자재 쇼룸 카페·조용함·체류형)과 손익 현실(BEP 일 20명, 1인 운영)에 결이 맞아야 해. 일반론 금지.
+4. 간결한 한국어 마크다운: 결론 먼저, 6문장 안팎(목록이 더 명확하면 불릿 4~6개), 숫자는 천단위 콤마+원/명.
+5. 데이터에 없으면 솔직히 없다고 말해.`;
+}
+
+const CHAT_TOOLS = [{
+  type: 'function',
+  function: {
+    name: 'run_sql',
+    description: '카페 안도 운영 DB + 안도 빈즈(원두샵) DB에 read-only SELECT 를 실행한다. SELECT/WITH 1문만.',
+    parameters: {
+      type: 'object',
+      properties: { sql: { type: 'string', description: '실행할 단일 PostgreSQL SELECT(또는 WITH) 쿼리' } },
+      required: ['sql'],
+    },
+  },
+}];
+
+app.post('/api/chat', auth, async (req, res) => {
+  if (!OPENAI_API_KEY) return res.status(500).json({ error: '.env 에 OPENAI_API_KEY 가 없습니다.' });
+  const raw = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  const history = raw
+    .filter((m) => m && ['user', 'assistant'].includes(m.role) && typeof m.content === 'string' && m.content.trim())
+    .slice(-12)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+  if (!history.length || history[history.length - 1].role !== 'user') {
+    return res.status(400).json({ error: '마지막 메시지는 user 여야 합니다.' });
+  }
+
+  const messages = [{ role: 'system', content: chatSystem() }, ...history];
+  const sqlLog = [];
+  try {
+    for (let step = 0; step < 6; step++) {
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: JSON.stringify({ model: MODEL, temperature: 0.3, messages, tools: CHAT_TOOLS }),
+      });
+      if (!r.ok) return res.status(502).json({ error: `OpenAI ${r.status}: ${(await r.text()).slice(0, 200)}` });
+      const msg = (await r.json()).choices[0].message;
+      messages.push(msg);
+
+      const calls = msg.tool_calls || [];
+      if (!calls.length) return res.json({ answer: msg.content || '(빈 응답)', sqlLog });
+
+      for (const call of calls) {
+        let result;
+        try {
+          const { sql } = JSON.parse(call.function.arguments || '{}');
+          const out = await runReadOnlySql(sql);
+          sqlLog.push(sql.replace(/\s+/g, ' ').trim());
+          result = JSON.stringify(out);
+        } catch (e) {
+          result = JSON.stringify({ error: e.message });
+        }
+        messages.push({ role: 'tool', tool_call_id: call.id, content: result });
+      }
+    }
+    res.json({ answer: '조회가 길어져 답을 정리하지 못했어요. 질문을 조금 좁혀주세요.', sqlLog });
+  } catch (e) {
+    console.error('chat 오류:', e);
+    res.status(500).json({ error: '채팅 처리 중 오류가 발생했습니다.' });
+  }
 });
 
 // ----------------------------------------

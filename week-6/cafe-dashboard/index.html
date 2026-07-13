@@ -41,7 +41,7 @@
     }
   </script>
 
-  <!-- ===== 마크다운(브리핑 렌더) + 차트 ===== -->
+  <!-- ===== 마크다운(브리핑·채팅 렌더) + 차트 ===== -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
@@ -55,11 +55,18 @@
     .briefing-md h1, .briefing-md h2, .briefing-md h3 { font-weight: 700; margin: .4rem 0 .2rem; }
     .briefing-md p { margin: .35rem 0; }
     .briefing-md ul { margin: .35rem 0 .35rem 1.1rem; list-style: disc; }
+    .briefing-md ol { margin: .35rem 0 .35rem 1.1rem; list-style: decimal; }
     .briefing-md li { margin: .3rem 0; line-height: 1.6; }
     .briefing-md strong { color: #43331F; }
+    .briefing-md table { border-collapse: collapse; margin: .4rem 0; font-size: .8rem; }
+    .briefing-md th, .briefing-md td { border: 1px solid #5C463322; padding: .2rem .45rem; }
+    .briefing-md code { background: #F5F0E8; padding: .05rem .3rem; border-radius: .25rem; font-size: .85em; }
     .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
     .fade-up { animation: fadeUp .35s ease both; }
+    @keyframes blink { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+    .dot { animation: blink 1.2s infinite; }
+    .dot:nth-child(2) { animation-delay: .2s; } .dot:nth-child(3) { animation-delay: .4s; }
   </style>
 </head>
 <body class="font-sans text-ink">
@@ -71,13 +78,22 @@
     // ---------------- 공용 유틸 ----------------
     const TOKEN_KEY = 'cafe_ando_token';
     const USER_KEY = 'cafe_ando_user';
+    const CHAT_KEY = 'cafe_ando_chat_v1';
     const fmt = (n) => Number(n ?? 0).toLocaleString('ko-KR');
     const DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
     const mdShort = (iso) => { // '2026-07-12' → '7/12(일)'
       if (!iso) return '';
-      const [y, m, d] = iso.split('-').map(Number);
+      const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
       const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
       return `${m}/${d}(${DOW_KO[dow]})`;
+    };
+    const dt = (iso) => new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    // 패밀리 앱 링크 — 로컬 개발 시엔 로컬 포트로
+    const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+    const LINKS = {
+      home: IS_LOCAL ? 'http://localhost:3013' : 'https://afm-cafe-home.vercel.app',
+      shop: IS_LOCAL ? 'http://localhost:3014' : 'https://afm-bean-shop.vercel.app',
     };
 
     async function api(path, options = {}) {
@@ -90,7 +106,7 @@
           ...(options.headers || {}),
         },
       });
-      if (res.status === 401 && token) { // 토큰 만료 → 로그인 화면으로
+      if (res.status === 401 && token) {
         localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY);
         location.reload();
         return new Promise(() => {});
@@ -163,8 +179,12 @@
               </form>
             </div>
 
-            <p className="text-center text-xs text-walnut-light mt-4">
-              데이터 소스: Supabase(운영 DB) · Open-Meteo(날씨) · OpenAI(브리핑)
+            <div className="flex justify-center gap-2 mt-4">
+              <a href={LINKS.home} className="text-xs px-3 py-1.5 rounded-full border border-walnut/20 text-walnut hover:bg-paper transition">🏠 카페 홈</a>
+              <a href={LINKS.shop} className="text-xs px-3 py-1.5 rounded-full border border-walnut/20 text-walnut hover:bg-paper transition">🫘 원두샵 안도 빈즈</a>
+            </div>
+            <p className="text-center text-xs text-walnut-light mt-3">
+              데이터 소스: Supabase(운영 DB) · Open-Meteo(날씨) · OpenAI(브리핑·채팅비서)
             </p>
           </div>
         </div>
@@ -384,11 +404,12 @@
       );
     }
 
-    function InventoryCard({ dash }) {
+    function InventoryCard({ dash, onOpenInventory }) {
       const alerts = dash?.inventoryAlerts || [];
       const tone = (d) => d == null || d <= 1.5 ? 'bg-red-100 text-red-700' : d <= 3 ? 'bg-amber-100 text-amber-800' : 'bg-cream text-walnut';
       return (
-        <Card icon="📦" title="재고 경고" right={<span className="text-xs text-walnut-light">발주점 이하 · 리드타임 임박</span>}>
+        <Card icon="📦" title="재고 경고"
+          right={<button onClick={onOpenInventory} className="text-xs px-2.5 py-1 rounded-lg border border-walnut/20 text-walnut hover:bg-cream transition">재고관리 →</button>}>
           {alerts.length === 0 ? (
             <p className="text-sm text-sage-dark py-4 text-center">✅ 모든 재고가 안전해요</p>
           ) : (
@@ -432,8 +453,8 @@
       );
     }
 
-    // ---------------- 대시보드 ----------------
-    function Dashboard({ user, onLogout }) {
+    // ---------------- 📊 대시보드 홈 탭 ----------------
+    function DashboardHome({ onOpenInventory }) {
       const [dash, setDash] = useState(null);
       const [weather, setWeather] = useState(null);
       const [todos, setTodos] = useState([]);
@@ -468,7 +489,7 @@
       };
 
       const toggleTodo = async (t) => {
-        setTodos((ts) => ts.map((x) => x.id === t.id ? { ...x, done: !t.done } : x)); // 낙관적
+        setTodos((ts) => ts.map((x) => x.id === t.id ? { ...x, done: !t.done } : x));
         try { await api(`/api/todos/${t.id}`, { method: 'PATCH', body: JSON.stringify({ done: !t.done }) }); await loadTodos(); }
         catch (e) { setErr(e.message); await loadTodos(); }
       };
@@ -481,45 +502,508 @@
         catch (e) { setErr(e.message); }
       };
 
-      const h = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Seoul' }));
-      const greeting = h < 11 ? '좋은 아침이에요' : h < 17 ? '좋은 오후예요' : '수고 많으셨어요';
-      const dateLabel = dash ? `${dash.today.replace(/-/g, '.')} (${dash.dowKo})` : '';
+      if (!dash) return <div className="text-center py-24 text-walnut-light animate-pulse">☕ 대시보드를 내리는 중…</div>;
 
       return (
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <header className="flex flex-wrap items-center justify-between gap-3 mb-6">
-            <div>
-              <h1 className="font-serif text-2xl md:text-3xl font-extrabold text-walnut-dark">
-                ☕ {greeting}, {user.name}님!
-              </h1>
-              <p className="text-sm text-walnut-light mt-1">
-                {dateLabel}
-                {dash?.closedToday && <span className="ml-2 text-xs bg-walnut text-cream px-2 py-0.5 rounded-full align-middle">🌙 오늘은 정기 휴무일 — 정비·발주의 날</span>}
-              </p>
-            </div>
-            <button onClick={onLogout}
-              className="text-sm px-4 py-2 rounded-xl border border-walnut/20 text-walnut hover:bg-paper transition">로그아웃</button>
-          </header>
-
+        <div>
           {err && <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">{err}</div>}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <BriefingCard briefing={briefing} onGenerate={generate} generating={generating} />
+            <WeatherCard weather={weather} />
+            <TodosCard todos={todos} today={today} onToggle={toggleTodo} onAdd={addTodo} onDelete={deleteTodo} />
+            <WeekSalesCard dash={dash} />
+            <TopMenusCard dash={dash} />
+            <InventoryCard dash={dash} onOpenInventory={onOpenInventory} />
+            <ReviewsCard dash={dash} />
+          </div>
+        </div>
+      );
+    }
 
-          {!dash ? (
-            <div className="text-center py-24 text-walnut-light animate-pulse">☕ 대시보드를 내리는 중…</div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <BriefingCard briefing={briefing} onGenerate={generate} generating={generating} />
-              <WeatherCard weather={weather} />
-              <TodosCard todos={todos} today={today} onToggle={toggleTodo} onAdd={addTodo} onDelete={deleteTodo} />
-              <WeekSalesCard dash={dash} />
-              <TopMenusCard dash={dash} />
-              <InventoryCard dash={dash} />
-              <ReviewsCard dash={dash} />
+    // ---------------- 🧾 주문 내역 탭 (안도 빈즈) ----------------
+    function OrdersPage() {
+      const [data, setData] = useState(null);
+      const [err, setErr] = useState('');
+      const [open, setOpen] = useState(null); // 펼친 주문 id
+
+      useEffect(() => { api('/api/orders').then(setData).catch((e) => setErr(e.message)); }, []);
+
+      if (err) return <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">{err}</div>;
+      if (!data) return <div className="text-center py-24 text-walnut-light animate-pulse">🧾 주문 내역을 불러오는 중…</div>;
+
+      const chip = (s) => s === 'PAID'
+        ? <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-sage/20 text-sage-dark">결제완료</span>
+        : <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">대기중</span>;
+
+      return (
+        <div className="space-y-4 fade-up">
+          <div className="grid grid-cols-3 gap-3">
+            {[['총 주문', `${fmt(data.stats.total)}건`], ['누적 결제 매출', `${fmt(data.stats.paid_amount)}원`], ['최근 7일 결제', `${fmt(data.stats.week_paid_amount)}원`]].map(([k, v]) => (
+              <div key={k} className="bg-paper border border-walnut/10 rounded-2xl py-3 text-center shadow-sm">
+                <div className="text-[11px] text-walnut-light">{k}</div>
+                <div className="font-serif font-extrabold text-lg text-walnut-dark">{v}</div>
+              </div>
+            ))}
+          </div>
+
+          <Card icon="🫘" title="원두샵 주문 내역 (안도 빈즈)"
+            right={<a href={LINKS.shop} className="text-xs px-2.5 py-1 rounded-lg border border-walnut/20 text-walnut hover:bg-cream transition">원두샵 열기 →</a>}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[560px]">
+                <thead>
+                  <tr className="text-[11px] text-walnut-light border-b border-walnut/10">
+                    <th className="text-left py-2 pr-2 font-normal">일시</th>
+                    <th className="text-left py-2 pr-2 font-normal">주문</th>
+                    <th className="text-left py-2 pr-2 font-normal">회원</th>
+                    <th className="text-right py-2 pr-2 font-normal">금액</th>
+                    <th className="text-center py-2 font-normal">상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.orders.map((o) => (
+                    <React.Fragment key={o.order_id}>
+                      <tr onClick={() => setOpen(open === o.order_id ? null : o.order_id)}
+                        className="border-b border-walnut/5 hover:bg-cream cursor-pointer transition">
+                        <td className="py-2.5 pr-2 text-walnut-light whitespace-nowrap">{dt(o.created_at)}</td>
+                        <td className="py-2.5 pr-2 font-bold text-walnut-dark">{o.order_name}</td>
+                        <td className="py-2.5 pr-2 text-walnut-light">{o.email || '(탈퇴 회원)'}</td>
+                        <td className="py-2.5 pr-2 text-right font-bold whitespace-nowrap">{fmt(o.amount)}원</td>
+                        <td className="py-2.5 text-center">{chip(o.status)}</td>
+                      </tr>
+                      {open === o.order_id && (
+                        <tr className="bg-cream/60">
+                          <td colSpan="5" className="px-3 py-2.5">
+                            <ul className="text-xs space-y-1">
+                              {(o.items || []).map((it, i) => (
+                                <li key={i} className="flex justify-between">
+                                  <span>· {it.name} <span className="text-walnut-light">({it.grind} × {it.qty})</span></span>
+                                  <span>{fmt(it.price * it.qty)}원</span>
+                                </li>
+                              ))}
+                            </ul>
+                            {o.payment?.receiptUrl && (
+                              <a href={o.payment.receiptUrl} target="_blank" rel="noreferrer"
+                                className="inline-block mt-2 text-xs text-sage-dark underline">🧾 토스 영수증 보기</a>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  {data.orders.length === 0 && (
+                    <tr><td colSpan="5" className="text-center py-8 text-walnut-light">아직 주문이 없어요</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // ---------------- 👥 멤버 탭 ----------------
+    function Avatar({ url, email }) {
+      if (url) return <img src={url} alt="" className="w-8 h-8 rounded-full object-cover border border-walnut/10" />;
+      return (
+        <span className="w-8 h-8 rounded-full bg-sage/25 text-sage-dark flex items-center justify-center text-xs font-extrabold uppercase">
+          {(email || '?')[0]}
+        </span>
+      );
+    }
+
+    function MembersPage() {
+      const [data, setData] = useState(null);
+      const [err, setErr] = useState('');
+      useEffect(() => { api('/api/members').then(setData).catch((e) => setErr(e.message)); }, []);
+
+      if (err) return <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">{err}</div>;
+      if (!data) return <div className="text-center py-24 text-walnut-light animate-pulse">👥 멤버를 불러오는 중…</div>;
+
+      return (
+        <div className="space-y-4 fade-up">
+          <Card icon="🫘" title={`원두샵 가입 멤버 (${data.shopMembers.length}명)`}
+            right={<span className="text-xs text-walnut-light">안도 빈즈 · bean_users</span>}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[560px]">
+                <thead>
+                  <tr className="text-[11px] text-walnut-light border-b border-walnut/10">
+                    <th className="text-left py-2 font-normal">회원</th>
+                    <th className="text-left py-2 font-normal">가입일</th>
+                    <th className="text-right py-2 font-normal">결제 주문</th>
+                    <th className="text-right py-2 font-normal">누적 구매액</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.shopMembers.map((m) => (
+                    <tr key={m.id} className="border-b border-walnut/5 hover:bg-cream transition">
+                      <td className="py-2.5 pr-2">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar url={m.avatar_url} email={m.email} />
+                          <span className="font-bold text-walnut-dark">{m.email}</span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 text-walnut-light whitespace-nowrap">{mdShort(m.created_at)}</td>
+                      <td className="py-2.5 text-right">{fmt(m.orders)}건</td>
+                      <td className="py-2.5 text-right font-bold">{fmt(m.spent)}원</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card icon="🔐" title={`대시보드 계정 (사장님 ${data.dashboardUsers.length}명)`}
+            right={<span className="text-xs text-walnut-light">cafe_users</span>}>
+            <ul className="divide-y divide-walnut/5">
+              {data.dashboardUsers.map((u) => (
+                <li key={u.id} className="flex items-center justify-between py-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-full bg-walnut/10 text-walnut flex items-center justify-center text-sm">☕</span>
+                    <div>
+                      <div className="text-sm font-bold text-walnut-dark">{u.name}</div>
+                      <div className="text-[11px] text-walnut-light">{u.email}</div>
+                    </div>
+                  </div>
+                  <span className="text-xs text-walnut-light">{mdShort(u.created_at)} 가입</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </div>
+      );
+    }
+
+    // ---------------- 📦 재고관리 탭 ----------------
+    function InventoryPage() {
+      const [items, setItems] = useState(null);
+      const [err, setErr] = useState('');
+      const [editId, setEditId] = useState(null);
+      const [draft, setDraft] = useState({});
+      const [armDelete, setArmDelete] = useState(null);
+      const [adding, setAdding] = useState(false);
+      const [addDraft, setAddDraft] = useState({ item: '', unit: 'kg', stock: '', daily_usage: '', reorder_point: '', lead_time_days: '2', supplier: '', note: '' });
+
+      const load = useCallback(() => api('/api/inventory').then((r) => setItems(r.items)).catch((e) => setErr(e.message)), []);
+      useEffect(() => { load(); }, [load]);
+
+      const call = async (fn) => { setErr(''); try { await fn(); await load(); } catch (e) { setErr(e.message); } };
+      const startEdit = (it) => { setEditId(it.id); setDraft({ stock: it.stock, daily_usage: it.daily_usage, reorder_point: it.reorder_point, lead_time_days: it.lead_time_days, supplier: it.supplier, note: it.note || '' }); };
+      const saveEdit = (id) => call(async () => { await api(`/api/inventory/${id}`, { method: 'PATCH', body: JSON.stringify(draft) }); setEditId(null); });
+      const markOrdered = (id) => call(() => api(`/api/inventory/${id}/ordered`, { method: 'POST', body: JSON.stringify({}) }));
+      const del = (id) => {
+        if (armDelete !== id) { setArmDelete(id); setTimeout(() => setArmDelete((v) => v === id ? null : v), 2500); return; }
+        setArmDelete(null);
+        call(() => api(`/api/inventory/${id}`, { method: 'DELETE' }));
+      };
+      const addItem = () => call(async () => {
+        await api('/api/inventory', { method: 'POST', body: JSON.stringify(addDraft) });
+        setAdding(false);
+        setAddDraft({ item: '', unit: 'kg', stock: '', daily_usage: '', reorder_point: '', lead_time_days: '2', supplier: '', note: '' });
+      });
+
+      if (!items) return <div className="text-center py-24 text-walnut-light animate-pulse">📦 재고를 불러오는 중…</div>;
+      const tone = (d) => d == null || d <= 1.5 ? 'bg-red-100 text-red-700' : d <= 3 ? 'bg-amber-100 text-amber-800' : 'bg-sage/15 text-sage-dark';
+      const needCount = items.filter((i) => i.need_order).length;
+      const inp = 'w-full rounded-lg border border-walnut/20 bg-white px-2 py-1.5 text-xs outline-none focus:border-sage';
+      const setD = (k) => (e) => setDraft((d) => ({ ...d, [k]: e.target.value }));
+      const setA = (k) => (e) => setAddDraft((d) => ({ ...d, [k]: e.target.value }));
+
+      return (
+        <div className="space-y-4 fade-up">
+          {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">{err}</div>}
+
+          <Card icon="📦" title={`재고관리 (${items.length}품목 · 발주필요 ${needCount})`}
+            right={
+              <button onClick={() => setAdding((v) => !v)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-walnut text-cream font-bold hover:bg-walnut-dark transition">
+                {adding ? '닫기' : '+ 품목 추가'}
+              </button>
+            }>
+            {adding && (
+              <div className="mb-4 bg-cream rounded-xl p-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                <input className={inp} placeholder="품목명 *" value={addDraft.item} onChange={setA('item')} />
+                <input className={inp} placeholder="단위 (kg/L/개) *" value={addDraft.unit} onChange={setA('unit')} />
+                <input className={inp} type="number" step="any" placeholder="현재 재고" value={addDraft.stock} onChange={setA('stock')} />
+                <input className={inp} type="number" step="any" placeholder="일 사용량" value={addDraft.daily_usage} onChange={setA('daily_usage')} />
+                <input className={inp} type="number" step="any" placeholder="발주점" value={addDraft.reorder_point} onChange={setA('reorder_point')} />
+                <input className={inp} type="number" placeholder="입고 소요일" value={addDraft.lead_time_days} onChange={setA('lead_time_days')} />
+                <input className={inp} placeholder="거래처 *" value={addDraft.supplier} onChange={setA('supplier')} />
+                <div className="flex gap-1.5">
+                  <input className={inp} placeholder="비고" value={addDraft.note} onChange={setA('note')} />
+                  <button onClick={addItem} className="shrink-0 px-3 rounded-lg bg-sage-dark text-cream text-xs font-bold hover:bg-sage transition">추가</button>
+                </div>
+              </div>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[860px]">
+                <thead>
+                  <tr className="text-[11px] text-walnut-light border-b border-walnut/10">
+                    <th className="text-left py-2 font-normal">품목</th>
+                    <th className="text-center py-2 font-normal">남은 일수</th>
+                    <th className="text-right py-2 font-normal">재고</th>
+                    <th className="text-right py-2 font-normal">일 사용량</th>
+                    <th className="text-right py-2 font-normal">발주점</th>
+                    <th className="text-center py-2 font-normal">입고 소요</th>
+                    <th className="text-left py-2 pl-3 font-normal">거래처</th>
+                    <th className="text-center py-2 font-normal">최근 발주</th>
+                    <th className="text-right py-2 font-normal">동작</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((it) => editId === it.id ? (
+                    <tr key={it.id} className="border-b border-walnut/5 bg-cream/60">
+                      <td className="py-2 pr-2">
+                        <div className="font-bold text-walnut-dark">{it.item}</div>
+                        <input className={`${inp} mt-1`} placeholder="비고" value={draft.note} onChange={setD('note')} />
+                      </td>
+                      <td className="py-2 text-center text-walnut-light text-xs">—</td>
+                      <td className="py-2 px-1"><input className={`${inp} text-right`} type="number" step="any" value={draft.stock} onChange={setD('stock')} /></td>
+                      <td className="py-2 px-1"><input className={`${inp} text-right`} type="number" step="any" value={draft.daily_usage} onChange={setD('daily_usage')} /></td>
+                      <td className="py-2 px-1"><input className={`${inp} text-right`} type="number" step="any" value={draft.reorder_point} onChange={setD('reorder_point')} /></td>
+                      <td className="py-2 px-1"><input className={`${inp} text-center`} type="number" value={draft.lead_time_days} onChange={setD('lead_time_days')} /></td>
+                      <td className="py-2 pl-3 pr-1"><input className={inp} value={draft.supplier} onChange={setD('supplier')} /></td>
+                      <td className="py-2 text-center text-xs text-walnut-light">{it.last_ordered ? mdShort(it.last_ordered) : '—'}</td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        <button onClick={() => saveEdit(it.id)} className="text-xs px-2.5 py-1 rounded-lg bg-sage-dark text-cream font-bold mr-1">저장</button>
+                        <button onClick={() => setEditId(null)} className="text-xs px-2 py-1 rounded-lg border border-walnut/20 text-walnut">취소</button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={it.id} className="border-b border-walnut/5 hover:bg-cream transition">
+                      <td className="py-2.5 pr-2">
+                        <div className="font-bold text-walnut-dark flex items-center gap-1.5">
+                          {it.item}
+                          {it.need_order && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">발주필요</span>}
+                        </div>
+                        {it.note && <div className="text-[11px] text-walnut-light clamp2">{it.note}</div>}
+                      </td>
+                      <td className="py-2.5 text-center">
+                        <span className={`text-[11px] font-bold px-2 py-1 rounded-lg ${tone(Number(it.days_left))}`}>{it.days_left != null ? `${it.days_left}일` : '—'}</span>
+                      </td>
+                      <td className="py-2.5 text-right whitespace-nowrap">{it.stock}{it.unit}</td>
+                      <td className="py-2.5 text-right whitespace-nowrap text-walnut-light">{it.daily_usage}{it.unit}/일</td>
+                      <td className="py-2.5 text-right whitespace-nowrap text-walnut-light">{it.reorder_point}{it.unit}</td>
+                      <td className="py-2.5 text-center text-walnut-light">{it.lead_time_days}일</td>
+                      <td className="py-2.5 pl-3 text-walnut-light truncate max-w-[140px]">{it.supplier}</td>
+                      <td className="py-2.5 text-center text-xs text-walnut-light whitespace-nowrap">{it.last_ordered ? mdShort(it.last_ordered) : '—'}</td>
+                      <td className="py-2.5 text-right whitespace-nowrap">
+                        <button onClick={() => markOrdered(it.id)} title="오늘 발주 기록"
+                          className="text-xs px-2 py-1 rounded-lg border border-sage/40 text-sage-dark hover:bg-sage/10 mr-1 transition">발주함</button>
+                        <button onClick={() => startEdit(it)} className="text-xs px-2 py-1 rounded-lg border border-walnut/20 text-walnut hover:bg-cream mr-1 transition">수정</button>
+                        <button onClick={() => del(it.id)}
+                          className={`text-xs px-2 py-1 rounded-lg transition ${armDelete === it.id ? 'bg-red-600 text-white font-bold' : 'border border-walnut/20 text-walnut-light hover:text-red-600'}`}>
+                          {armDelete === it.id ? '삭제 확정' : '✕'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-[11px] text-walnut-light">발주필요 = 재고 ≤ 발주점 또는 남은 일수 ≤ 입고 소요일 · [발주함] = 최근 발주일을 오늘로 기록 (입고 시 재고를 수정하세요)</p>
+          </Card>
+        </div>
+      );
+    }
+
+    // ---------------- 💬 카페 운영 채팅비서 (플로팅) ----------------
+    const CHIPS = [
+      '리뷰 불만 중에 뭐부터 고칠까?',
+      '인플루언서 누구부터 DM 보낼까?',
+      '원두샵 이번 주 주문 어때?',
+      '오늘 발주 뭐부터 챙길까?',
+    ];
+
+    function ChatAssistant() {
+      const [open, setOpen] = useState(false);
+      const [messages, setMessages] = useState(() => {
+        try { return JSON.parse(sessionStorage.getItem(CHAT_KEY) || '[]'); } catch { return []; }
+      });
+      const [input, setInput] = useState('');
+      const [busy, setBusy] = useState(false);
+      const bodyRef = useRef(null);
+
+      useEffect(() => { sessionStorage.setItem(CHAT_KEY, JSON.stringify(messages)); }, [messages]);
+      useEffect(() => {
+        if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+      }, [messages, busy, open]);
+
+      const send = async (text) => {
+        const q = (text ?? input).trim();
+        if (!q || busy) return;
+        setInput('');
+        const next = [...messages, { role: 'user', content: q }];
+        setMessages(next);
+        setBusy(true);
+        try {
+          const r = await api('/api/chat', {
+            method: 'POST',
+            body: JSON.stringify({ messages: next.map(({ role, content }) => ({ role, content })) }),
+          });
+          setMessages((ms) => [...ms, { role: 'assistant', content: r.answer, sqlCount: (r.sqlLog || []).length }]);
+        } catch (e) {
+          setMessages((ms) => [...ms, { role: 'assistant', content: `⚠️ ${e.message}`, sqlCount: 0 }]);
+        } finally { setBusy(false); }
+      };
+
+      const onKey = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+      };
+
+      return (
+        <div>
+          {/* 패널 */}
+          {open && (
+            <div className="fixed bottom-24 right-4 md:right-6 z-50 w-[24rem] max-w-[calc(100vw-2rem)] h-[34rem] max-h-[72vh] bg-paper border border-walnut/15 rounded-2xl shadow-2xl flex flex-col fade-up overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 bg-walnut text-cream">
+                <div>
+                  <div className="font-serif font-bold">💬 카페 안도 운영 비서</div>
+                  <div className="text-[10px] opacity-80">my_cafe.md + 리뷰·경쟁·인플루언서 보고서 + 운영/원두샵 DB</div>
+                </div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => setMessages([])} title="대화 비우기"
+                    className="text-xs px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition">비우기</button>
+                  <button onClick={() => setOpen(false)} className="text-xs px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition">✕</button>
+                </div>
+              </div>
+
+              <div ref={bodyRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-cream/50">
+                {messages.length === 0 && (
+                  <div className="text-center pt-6">
+                    <div className="text-3xl mb-2">☕</div>
+                    <p className="text-sm text-walnut-light mb-4">우리 카페의 컨셉·보고서·실데이터를 다 알고 있어요.<br/>무엇이든 물어보세요, 사장님!</p>
+                    <div className="flex flex-wrap gap-1.5 justify-center px-2">
+                      {CHIPS.map((c) => (
+                        <button key={c} onClick={() => send(c)}
+                          className="text-xs px-3 py-1.5 rounded-full bg-paper border border-walnut/15 text-walnut hover:border-sage hover:text-sage-dark transition">
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {messages.map((m, i) => m.role === 'user' ? (
+                  <div key={i} className="flex justify-end">
+                    <div className="max-w-[85%] bg-walnut text-cream rounded-2xl rounded-br-sm px-3.5 py-2 text-sm whitespace-pre-wrap">{m.content}</div>
+                  </div>
+                ) : (
+                  <div key={i} className="flex justify-start">
+                    <div className="max-w-[90%] bg-paper border border-walnut/10 rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-sm">
+                      <div className="briefing-md text-[13px] leading-relaxed" dangerouslySetInnerHTML={{ __html: marked.parse(m.content || '') }} />
+                      {m.sqlCount > 0 && <div className="mt-1.5 text-[10px] text-walnut-light">🔎 DB 조회 {m.sqlCount}회</div>}
+                    </div>
+                  </div>
+                ))}
+                {busy && (
+                  <div className="flex justify-start">
+                    <div className="bg-paper border border-walnut/10 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm text-walnut-light text-sm">
+                      <span className="dot">●</span> <span className="dot">●</span> <span className="dot">●</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-2.5 border-t border-walnut/10 bg-paper flex gap-1.5">
+                <textarea rows="1" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKey}
+                  placeholder="예: 흑임자라떼 지난주 몇 잔 팔렸어?"
+                  className="flex-1 resize-none rounded-xl border border-walnut/20 bg-white px-3 py-2 text-sm outline-none focus:border-sage" />
+                <button onClick={() => send()} disabled={busy || !input.trim()}
+                  className="px-3.5 rounded-xl bg-walnut text-cream text-sm font-bold hover:bg-walnut-dark transition disabled:opacity-40">
+                  전송
+                </button>
+              </div>
             </div>
           )}
 
-          <footer className="mt-8 text-center text-[11px] text-walnut-light">
-            카페 안도 사장님 대시보드 · 데이터: Supabase(cafe_*) + Open-Meteo(성수동) · 브리핑: OpenAI · AFM week-6
+          {/* 플로팅 버튼 */}
+          <button onClick={() => setOpen((v) => !v)} title="카페 운영 비서"
+            className="fixed bottom-5 right-4 md:right-6 z-50 w-14 h-14 rounded-full bg-walnut text-cream text-2xl shadow-xl hover:bg-walnut-dark hover:scale-105 transition flex items-center justify-center">
+            {open ? '✕' : '💬'}
+          </button>
+        </div>
+      );
+    }
+
+    // ---------------- 셸: 헤더 + 패밀리 네비 + 탭 ----------------
+    const TABS = [
+      { key: 'home', label: '📊 대시보드' },
+      { key: 'orders', label: '🧾 주문 내역' },
+      { key: 'members', label: '👥 멤버' },
+      { key: 'inventory', label: '📦 재고관리' },
+    ];
+
+    function useHashTab() {
+      const get = () => {
+        const h = location.hash.replace(/^#\/?/, '');
+        return TABS.some((t) => t.key === h) ? h : 'home';
+      };
+      const [tab, setTab] = useState(get);
+      useEffect(() => {
+        const on = () => setTab(get());
+        window.addEventListener('hashchange', on);
+        return () => window.removeEventListener('hashchange', on);
+      }, []);
+      const go = (t) => { location.hash = t === 'home' ? '/' : `/${t}`; };
+      return [tab, go];
+    }
+
+    function Shell({ user, onLogout }) {
+      const [tab, go] = useHashTab();
+      const h = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Seoul' }));
+      const greeting = h < 11 ? '좋은 아침이에요' : h < 17 ? '좋은 오후예요' : '수고 많으셨어요';
+      const now = new Date();
+      const kstDateStr = now.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
+      const isMonday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getDay() === 1;
+
+      return (
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <header className="mb-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h1 className="font-serif text-2xl md:text-3xl font-extrabold text-walnut-dark">
+                  ☕ {greeting}, {user.name}님!
+                </h1>
+                <p className="text-sm text-walnut-light mt-1">
+                  {kstDateStr}
+                  {isMonday && <span className="ml-2 text-xs bg-walnut text-cream px-2 py-0.5 rounded-full align-middle">🌙 오늘은 정기 휴무일 — 정비·발주의 날</span>}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href={LINKS.home}
+                  className="text-sm px-3.5 py-2 rounded-xl border border-walnut/20 bg-paper text-walnut font-bold hover:bg-cream transition">
+                  🏠 카페 홈
+                </a>
+                <a href={LINKS.shop}
+                  className="text-sm px-3.5 py-2 rounded-xl border border-walnut/20 bg-paper text-walnut font-bold hover:bg-cream transition">
+                  🫘 원두샵
+                </a>
+                <button onClick={onLogout}
+                  className="text-sm px-3.5 py-2 rounded-xl border border-walnut/20 text-walnut-light hover:bg-paper transition">로그아웃</button>
+              </div>
+            </div>
+
+            <nav className="mt-4 flex gap-1 bg-paper border border-walnut/10 rounded-2xl p-1 shadow-sm overflow-x-auto">
+              {TABS.map((t) => (
+                <button key={t.key} onClick={() => go(t.key)}
+                  className={`flex-1 min-w-fit px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition ${
+                    tab === t.key ? 'bg-walnut text-cream shadow' : 'text-walnut-light hover:text-walnut hover:bg-cream'}`}>
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+          </header>
+
+          {tab === 'home' && <DashboardHome onOpenInventory={() => go('inventory')} />}
+          {tab === 'orders' && <OrdersPage />}
+          {tab === 'members' && <MembersPage />}
+          {tab === 'inventory' && <InventoryPage />}
+
+          <footer className="mt-8 mb-16 text-center text-[11px] text-walnut-light">
+            카페 안도 사장님 대시보드 · 데이터: Supabase(cafe_* + bean_*) + Open-Meteo(성수동) · AI: OpenAI(브리핑·채팅비서) · AFM week-6
           </footer>
+
+          <ChatAssistant />
         </div>
       );
     }
@@ -535,7 +1019,7 @@
         setUser(null);
       };
       if (!token || !user) return <AuthView onAuthed={setUser} />;
-      return <Dashboard user={user} onLogout={logout} />;
+      return <Shell user={user} onLogout={logout} />;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
