@@ -1,0 +1,17 @@
+{
+  "name": "cafe-dashboard",
+  "version": "1.0.0",
+  "description": "카페 안도 사장님 대시보드 — Auth(JWT) + Supabase DB + 날씨 API + AI 오늘의 브리핑 (PORT 3016)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  }
+}

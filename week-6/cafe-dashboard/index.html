@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>카페 안도 · 사장님 대시보드</title>
+
+  <!-- ===== Tailwind (Play CDN) + 카페 안도 브랜드 팔레트 ===== -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:  '#F5F0E8',
+            paper:  '#FFFDF9',
+            walnut: { DEFAULT: '#5C4633', dark: '#43331F', light: '#7A6350' },
+            sage:   { DEFAULT: '#8A9A7B', dark: '#6F7F60', light: '#A9B79C' },
+            ink:    '#4A3B2E',
+          },
+          fontFamily: {
+            serif: ['"Nanum Myeongjo"', '"Noto Serif KR"', 'Georgia', 'serif'],
+            sans:  ['system-ui', '"Apple SD Gothic Neo"', '"Malgun Gothic"', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- ===== React 18 UMD + Babel standalone ===== -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ 백지 방지: automatic JSX 런타임이 react/jsx-runtime(UMD 미제공)을 찾다 죽는다 → classic 강제
+    if (window.Babel && Babel.availablePresets && Babel.availablePresets.react) {
+      Babel.registerPreset('classic-react', {
+        presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+      });
+    }
+  </script>
+
+  <!-- ===== 마크다운(브리핑 렌더) + 차트 ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    html, body { background: #F5F0E8; }
+    ::selection { background: #8A9A7B33; }
+    .briefing-md h1, .briefing-md h2, .briefing-md h3 { font-weight: 700; margin: .4rem 0 .2rem; }
+    .briefing-md p { margin: .35rem 0; }
+    .briefing-md ul { margin: .35rem 0 .35rem 1.1rem; list-style: disc; }
+    .briefing-md li { margin: .3rem 0; line-height: 1.6; }
+    .briefing-md strong { color: #43331F; }
+    .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .fade-up { animation: fadeUp .35s ease both; }
+  </style>
+</head>
+<body class="font-sans text-ink">
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="classic-react">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ---------------- 공용 유틸 ----------------
+    const TOKEN_KEY = 'cafe_ando_token';
+    const USER_KEY = 'cafe_ando_user';
+    const fmt = (n) => Number(n ?? 0).toLocaleString('ko-KR');
+    const DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
+    const mdShort = (iso) => { // '2026-07-12' → '7/12(일)'
+      if (!iso) return '';
+      const [y, m, d] = iso.split('-').map(Number);
+      const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+      return `${m}/${d}(${DOW_KO[dow]})`;
+    };
+
+    async function api(path, options = {}) {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const res = await fetch(path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(options.headers || {}),
+        },
+      });
+      if (res.status === 401 && token) { // 토큰 만료 → 로그인 화면으로
+        localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY);
+        location.reload();
+        return new Promise(() => {});
+      }
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `요청 실패 (${res.status})`);
+      return body;
+    }
+
+    // ---------------- 로그인 / 회원가입 ----------------
+    function AuthView({ onAuthed }) {
+      const [mode, setMode] = useState('login');
+      const [form, setForm] = useState({ name: '', email: '', password: '', ownerCode: '' });
+      const [err, setErr] = useState('');
+      const [busy, setBusy] = useState(false);
+      const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+      const submit = async (e) => {
+        e.preventDefault();
+        setErr(''); setBusy(true);
+        try {
+          const path = mode === 'login' ? '/api/auth/login' : '/api/auth/signup';
+          const { token, user } = await api(path, { method: 'POST', body: JSON.stringify(form) });
+          localStorage.setItem(TOKEN_KEY, token);
+          localStorage.setItem(USER_KEY, JSON.stringify(user));
+          onAuthed(user);
+        } catch (e2) { setErr(e2.message); }
+        finally { setBusy(false); }
+      };
+
+      const input = 'w-full rounded-xl border border-walnut/20 bg-white px-4 py-2.5 outline-none focus:border-sage focus:ring-2 focus:ring-sage/30 transition';
+
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="w-full max-w-md fade-up">
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-3">☕</div>
+              <h1 className="font-serif text-3xl font-extrabold text-walnut-dark">카페 안도</h1>
+              <p className="mt-2 text-sm text-walnut-light">사장님 전용 운영 대시보드 — 잠시 숨 고르며, 숫자는 한눈에.</p>
+            </div>
+
+            <div className="bg-paper rounded-2xl shadow-sm border border-walnut/10 p-6">
+              <div className="grid grid-cols-2 gap-1 bg-cream rounded-xl p-1 mb-5">
+                {['login', 'signup'].map((m) => (
+                  <button key={m} onClick={() => { setMode(m); setErr(''); }}
+                    className={`py-2 rounded-lg text-sm font-bold transition ${mode === m ? 'bg-walnut text-cream shadow' : 'text-walnut-light hover:text-walnut'}`}>
+                    {m === 'login' ? '로그인' : '회원가입'}
+                  </button>
+                ))}
+              </div>
+
+              <form onSubmit={submit} className="space-y-3">
+                {mode === 'signup' && (
+                  <input className={input} placeholder="이름 (예: 안도 사장)" value={form.name} onChange={set('name')} />
+                )}
+                <input className={input} type="email" placeholder="이메일" value={form.email} onChange={set('email')} autoComplete="username" />
+                <input className={input} type="password" placeholder="비밀번호 (6자 이상)" value={form.password} onChange={set('password')}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+                {mode === 'signup' && (
+                  <div>
+                    <input className={input} placeholder="사장님 코드" value={form.ownerCode} onChange={set('ownerCode')} />
+                    <p className="mt-1.5 text-xs text-walnut-light">🔒 사장님만 가입할 수 있어요. 코드는 서버 환경변수(OWNER_CODE)로 관리됩니다.</p>
+                  </div>
+                )}
+                {err && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{err}</div>}
+                <button disabled={busy}
+                  className="w-full py-3 rounded-xl bg-walnut text-cream font-bold hover:bg-walnut-dark transition disabled:opacity-50">
+                  {busy ? '확인 중…' : mode === 'login' ? '대시보드 열기' : '사장님으로 가입'}
+                </button>
+              </form>
+            </div>
+
+            <p className="text-center text-xs text-walnut-light mt-4">
+              데이터 소스: Supabase(운영 DB) · Open-Meteo(날씨) · OpenAI(브리핑)
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // ---------------- 카드 프레임 ----------------
+    function Card({ title, icon, right, children, className = '' }) {
+      return (
+        <section className={`bg-paper rounded-2xl shadow-sm border border-walnut/10 p-5 fade-up ${className}`}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-serif font-bold text-walnut-dark flex items-center gap-2">
+              <span>{icon}</span>{title}
+            </h2>
+            {right}
+          </div>
+          {children}
+        </section>
+      );
+    }
+
+    // ---------------- AI 브리핑 ----------------
+    function BriefingCard({ briefing, onGenerate, generating }) {
+      return (
+        <Card icon="🤖" title="오늘의 카페 브리핑"
+          className="lg:col-span-2"
+          right={briefing && (
+            <button onClick={() => onGenerate(true)} disabled={generating}
+              className="text-xs px-3 py-1.5 rounded-lg border border-walnut/20 text-walnut hover:bg-cream transition disabled:opacity-50">
+              {generating ? '작성 중…' : '↺ 다시 생성'}
+            </button>
+          )}>
+          {!briefing && !generating && (
+            <div className="text-center py-8">
+              <p className="text-sm text-walnut-light mb-4">운영 DB · 날씨 · 할일을 AI가 종합해 오늘의 한 수를 정리해드려요.</p>
+              <button onClick={() => onGenerate(false)}
+                className="px-5 py-3 rounded-xl bg-sage-dark text-cream font-bold hover:bg-sage transition">
+                ✨ 오늘의 브리핑 생성하기
+              </button>
+            </div>
+          )}
+          {generating && !briefing && (
+            <div className="text-center py-10 text-walnut-light text-sm animate-pulse">☕ 데이터를 우려내는 중… (매출·날씨·재고·리뷰 종합)</div>
+          )}
+          {briefing && (
+            <div>
+              <div className="briefing-md text-[15px] leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: marked.parse(briefing.content || '') }} />
+              <p className="mt-3 text-[11px] text-walnut-light border-t border-walnut/10 pt-2">
+                {briefing.model} · {new Date(briefing.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} 생성 · 근거: 운영 DB + Open-Meteo + 할일
+              </p>
+            </div>
+          )}
+        </Card>
+      );
+    }
+
+    // ---------------- 날씨 ----------------
+    function WeatherCard({ weather }) {
+      if (!weather) return <Card icon="🌤️" title="오늘 날씨 (성수동)"><p className="text-sm text-walnut-light py-6 text-center">날씨를 불러오지 못했어요.</p></Card>;
+      const t = weather.today;
+      return (
+        <Card icon="🌤️" title="오늘 날씨 (성수동)">
+          <div className="flex items-center gap-4">
+            <div className="text-5xl">{t.emoji}</div>
+            <div>
+              <div className="font-bold text-lg text-walnut-dark">
+                {t.label}{t.heatwave && <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full align-middle">🥵 폭염주의</span>}
+              </div>
+              <div className="text-sm text-walnut-light">
+                최고 <b className="text-red-700">{Math.round(t.tmax)}°</b> · 최저 <b className="text-sage-dark">{Math.round(t.tmin)}°</b> · 강수 {t.precipProb}%
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-1 overflow-x-auto pb-1">
+            {weather.hourly.map((h) => (
+              <div key={h.time} className="flex flex-col items-center min-w-[44px] bg-cream rounded-lg py-2">
+                <span className="text-[10px] text-walnut-light">{h.time}</span>
+                <span className="text-sm my-0.5">{h.emoji}</span>
+                <span className="text-xs font-bold">{h.temp}°</span>
+                <span className={`text-[10px] ${h.precipProb >= 40 ? 'text-blue-600 font-bold' : 'text-walnut-light'}`}>{h.precipProb}%</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-walnut-light">Open-Meteo · {weather.location}</p>
+        </Card>
+      );
+    }
+
+    // ---------------- 할일 ----------------
+    function TodosCard({ todos, today, onToggle, onAdd, onDelete }) {
+      const [title, setTitle] = useState('');
+      const [due, setDue] = useState('');
+      const submit = async (e) => {
+        e.preventDefault();
+        if (!title.trim()) return;
+        await onAdd(title.trim(), due || null);
+        setTitle(''); setDue('');
+      };
+      const dueBadge = (t) => {
+        if (!t.due_date || t.done) return null;
+        if (t.due_date < today) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-bold shrink-0">지남</span>;
+        if (t.due_date === today) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold shrink-0">오늘</span>;
+        return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cream text-walnut-light shrink-0">{mdShort(t.due_date)}</span>;
+      };
+      return (
+        <Card icon="📋" title="오늘 할일" right={<span className="text-xs text-walnut-light">{todos.filter((t) => !t.done).length}개 남음</span>}>
+          <ul className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+            {todos.map((t) => (
+              <li key={t.id} className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-cream transition">
+                <input type="checkbox" checked={t.done} onChange={() => onToggle(t)}
+                  className="w-4 h-4 accent-[#6F7F60] cursor-pointer shrink-0" />
+                <span className={`text-sm flex-1 ${t.done ? 'line-through text-walnut-light/60' : ''}`}>{t.title}</span>
+                {dueBadge(t)}
+                <button onClick={() => onDelete(t)} title="삭제"
+                  className="opacity-0 group-hover:opacity-100 text-walnut-light hover:text-red-600 text-xs px-1 transition shrink-0">✕</button>
+              </li>
+            ))}
+            {todos.length === 0 && <li className="text-sm text-walnut-light text-center py-4">할일이 없어요 — 오늘도 안도의 하루 ☕</li>}
+          </ul>
+          <form onSubmit={submit} className="mt-3 flex gap-1.5">
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="할일 추가…"
+              className="flex-1 min-w-0 rounded-lg border border-walnut/20 bg-white px-3 py-2 text-sm outline-none focus:border-sage" />
+            <input type="date" value={due} onChange={(e) => setDue(e.target.value)}
+              className="w-[8.5rem] rounded-lg border border-walnut/20 bg-white px-2 py-2 text-xs outline-none focus:border-sage" />
+            <button className="px-3 rounded-lg bg-walnut text-cream text-sm font-bold hover:bg-walnut-dark transition">+</button>
+          </form>
+        </Card>
+      );
+    }
+
+    // ---------------- 이번 주 매출 (Chart.js) ----------------
+    function WeekSalesCard({ dash }) {
+      const canvasRef = useRef(null);
+      const chartRef = useRef(null);
+      useEffect(() => {
+        if (!dash || !canvasRef.current) return;
+        if (chartRef.current) chartRef.current.destroy();
+        chartRef.current = new Chart(canvasRef.current, {
+          type: 'bar',
+          data: {
+            labels: dash.weekSales.map((d) => mdShort(d.date)),
+            datasets: [{
+              data: dash.weekSales.map((d) => d.revenue),
+              backgroundColor: dash.weekSales.map((d) => d.date === dash.refDate ? '#5C4633' : '#8A9A7B'),
+              borderRadius: 8,
+            }],
+          },
+          options: {
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (c) => ` ${fmt(c.raw)}원 · 손님 ${fmt(dash.weekSales[c.dataIndex].customers)}명`,
+                },
+              },
+            },
+            scales: {
+              y: { ticks: { callback: (v) => `${Math.round(v / 10000)}만` }, grid: { color: '#5C463311' } },
+              x: { grid: { display: false } },
+            },
+            maintainAspectRatio: false,
+          },
+        });
+        return () => { chartRef.current?.destroy(); chartRef.current = null; };
+      }, [dash]);
+
+      if (!dash) return null;
+      const { totals, lastDay } = dash;
+      const delta = totals.prev_week_rev ? ((totals.week_rev - totals.prev_week_rev) / totals.prev_week_rev) * 100 : null;
+      const dayDelta = lastDay?.prev_same_dow ? ((lastDay.revenue - lastDay.prev_same_dow) / lastDay.prev_same_dow) * 100 : null;
+      const DeltaTag = ({ v }) => v == null ? null : (
+        <span className={`text-xs font-bold ${v >= 0 ? 'text-sage-dark' : 'text-red-700'}`}>
+          {v >= 0 ? '▲' : '▼'} {Math.abs(v).toFixed(1)}%
+        </span>
+      );
+      return (
+        <Card icon="📈" title="이번 주 매출 (최근 7영업일)" className="lg:col-span-2"
+          right={<span className="text-xs text-walnut-light">월요일 휴무 · 진한 막대 = 최근 영업일</span>}>
+          <div className="grid grid-cols-3 gap-3 mb-3 text-center">
+            <div className="bg-cream rounded-xl py-2.5">
+              <div className="text-[11px] text-walnut-light">주간 합계</div>
+              <div className="font-bold text-walnut-dark">{fmt(totals.week_rev)}원 <DeltaTag v={delta} /></div>
+            </div>
+            <div className="bg-cream rounded-xl py-2.5">
+              <div className="text-[11px] text-walnut-light">최근 영업일 {mdShort(dash.refDate)}</div>
+              <div className="font-bold text-walnut-dark">{fmt(lastDay.revenue)}원 <DeltaTag v={dayDelta} /></div>
+            </div>
+            <div className="bg-cream rounded-xl py-2.5">
+              <div className="text-[11px] text-walnut-light">일평균 손님 (BEP 20명)</div>
+              <div className={`font-bold ${totals.week_avg_customers >= 20 ? 'text-sage-dark' : 'text-red-700'}`}>{totals.week_avg_customers}명</div>
+            </div>
+          </div>
+          <div className="h-52"><canvas ref={canvasRef} /></div>
+        </Card>
+      );
+    }
+
+    // ---------------- 인기 메뉴 / 재고 / 리뷰 ----------------
+    function TopMenusCard({ dash }) {
+      const medals = ['🥇', '🥈', '🥉'];
+      return (
+        <Card icon="🏆" title="인기 메뉴 TOP3" right={<span className="text-xs text-walnut-light">최근 7일 판매량</span>}>
+          <ul className="space-y-2.5">
+            {(dash?.topMenus || []).map((m, i) => (
+              <li key={m.menu} className="flex items-center gap-3 bg-cream rounded-xl px-3 py-2.5">
+                <span className="text-2xl">{medals[i]}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm text-walnut-dark truncate">{m.menu}</div>
+                  <div className="text-[11px] text-walnut-light">{m.category} · {fmt(m.amount)}원</div>
+                </div>
+                <div className="font-serif font-extrabold text-lg text-sage-dark shrink-0">{fmt(m.qty)}<span className="text-xs font-sans text-walnut-light">개</span></div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      );
+    }
+
+    function InventoryCard({ dash }) {
+      const alerts = dash?.inventoryAlerts || [];
+      const tone = (d) => d == null || d <= 1.5 ? 'bg-red-100 text-red-700' : d <= 3 ? 'bg-amber-100 text-amber-800' : 'bg-cream text-walnut';
+      return (
+        <Card icon="📦" title="재고 경고" right={<span className="text-xs text-walnut-light">발주점 이하 · 리드타임 임박</span>}>
+          {alerts.length === 0 ? (
+            <p className="text-sm text-sage-dark py-4 text-center">✅ 모든 재고가 안전해요</p>
+          ) : (
+            <ul className="space-y-2">
+              {alerts.map((a) => (
+                <li key={a.item} className="flex items-center gap-2.5 border border-walnut/10 rounded-xl px-3 py-2">
+                  <span className={`text-[11px] font-bold px-2 py-1 rounded-lg shrink-0 ${tone(Number(a.days_left))}`}>
+                    {a.days_left != null ? `${a.days_left}일` : '—'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-walnut-dark truncate">{a.item}</div>
+                    <div className="text-[11px] text-walnut-light truncate">
+                      재고 {a.stock}{a.unit} · 발주점 {a.reorder_point}{a.unit} · 입고 {a.lead_time_days}일 · {a.supplier}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      );
+    }
+
+    function ReviewsCard({ dash }) {
+      const dot = { 긍정: 'bg-sage', 중립: 'bg-amber-400', 불만: 'bg-red-500' };
+      return (
+        <Card icon="💬" title="최근 리뷰">
+          <ul className="space-y-2.5">
+            {(dash?.recentReviews || []).map((r, i) => (
+              <li key={i} className="bg-cream rounded-xl px-3 py-2.5">
+                <div className="flex items-center gap-2 text-[11px] text-walnut-light mb-1">
+                  <span className={`w-2 h-2 rounded-full ${dot[r.sentiment] || 'bg-walnut-light'}`}></span>
+                  <span className="text-amber-500 tracking-tight">{'★'.repeat(r.rating)}<span className="text-walnut/20">{'★'.repeat(5 - r.rating)}</span></span>
+                  <span>{r.source}</span><span>·</span><span>{mdShort(r.date)}</span>
+                </div>
+                <p className="text-[13px] leading-snug clamp2">{r.content}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      );
+    }
+
+    // ---------------- 대시보드 ----------------
+    function Dashboard({ user, onLogout }) {
+      const [dash, setDash] = useState(null);
+      const [weather, setWeather] = useState(null);
+      const [todos, setTodos] = useState([]);
+      const [today, setToday] = useState('');
+      const [briefing, setBriefing] = useState(null);
+      const [generating, setGenerating] = useState(false);
+      const [err, setErr] = useState('');
+
+      const loadTodos = useCallback(async () => {
+        const r = await api('/api/todos');
+        setTodos(r.todos); setToday(r.today);
+      }, []);
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const [d, b] = await Promise.all([api('/api/dashboard'), api('/api/briefing')]);
+            setDash(d); setBriefing(b.briefing);
+            await loadTodos();
+            api('/api/weather').then(setWeather).catch(() => setWeather(null));
+          } catch (e) { setErr(e.message); }
+        })();
+      }, [loadTodos]);
+
+      const generate = async (force) => {
+        setGenerating(true); setErr('');
+        try {
+          const r = await api('/api/briefing/generate', { method: 'POST', body: JSON.stringify({ force }) });
+          setBriefing(r.briefing);
+        } catch (e) { setErr(e.message); }
+        finally { setGenerating(false); }
+      };
+
+      const toggleTodo = async (t) => {
+        setTodos((ts) => ts.map((x) => x.id === t.id ? { ...x, done: !t.done } : x)); // 낙관적
+        try { await api(`/api/todos/${t.id}`, { method: 'PATCH', body: JSON.stringify({ done: !t.done }) }); await loadTodos(); }
+        catch (e) { setErr(e.message); await loadTodos(); }
+      };
+      const addTodo = async (title, due_date) => {
+        try { await api('/api/todos', { method: 'POST', body: JSON.stringify({ title, due_date }) }); await loadTodos(); }
+        catch (e) { setErr(e.message); }
+      };
+      const deleteTodo = async (t) => {
+        try { await api(`/api/todos/${t.id}`, { method: 'DELETE' }); await loadTodos(); }
+        catch (e) { setErr(e.message); }
+      };
+
+      const h = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'Asia/Seoul' }));
+      const greeting = h < 11 ? '좋은 아침이에요' : h < 17 ? '좋은 오후예요' : '수고 많으셨어요';
+      const dateLabel = dash ? `${dash.today.replace(/-/g, '.')} (${dash.dowKo})` : '';
+
+      return (
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <header className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div>
+              <h1 className="font-serif text-2xl md:text-3xl font-extrabold text-walnut-dark">
+                ☕ {greeting}, {user.name}님!
+              </h1>
+              <p className="text-sm text-walnut-light mt-1">
+                {dateLabel}
+                {dash?.closedToday && <span className="ml-2 text-xs bg-walnut text-cream px-2 py-0.5 rounded-full align-middle">🌙 오늘은 정기 휴무일 — 정비·발주의 날</span>}
+              </p>
+            </div>
+            <button onClick={onLogout}
+              className="text-sm px-4 py-2 rounded-xl border border-walnut/20 text-walnut hover:bg-paper transition">로그아웃</button>
+          </header>
+
+          {err && <div className="mb-4 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">{err}</div>}
+
+          {!dash ? (
+            <div className="text-center py-24 text-walnut-light animate-pulse">☕ 대시보드를 내리는 중…</div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <BriefingCard briefing={briefing} onGenerate={generate} generating={generating} />
+              <WeatherCard weather={weather} />
+              <TodosCard todos={todos} today={today} onToggle={toggleTodo} onAdd={addTodo} onDelete={deleteTodo} />
+              <WeekSalesCard dash={dash} />
+              <TopMenusCard dash={dash} />
+              <InventoryCard dash={dash} />
+              <ReviewsCard dash={dash} />
+            </div>
+          )}
+
+          <footer className="mt-8 text-center text-[11px] text-walnut-light">
+            카페 안도 사장님 대시보드 · 데이터: Supabase(cafe_*) + Open-Meteo(성수동) · 브리핑: OpenAI · AFM week-6
+          </footer>
+        </div>
+      );
+    }
+
+    // ---------------- 루트 ----------------
+    function App() {
+      const [user, setUser] = useState(() => {
+        try { return JSON.parse(localStorage.getItem(USER_KEY) || 'null'); } catch { return null; }
+      });
+      const token = localStorage.getItem(TOKEN_KEY);
+      const logout = () => {
+        localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY);
+        setUser(null);
+      };
+      if (!token || !user) return <AuthView onAuthed={setUser} />;
+      return <Dashboard user={user} onLogout={logout} />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

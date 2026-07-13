@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node",
+      "config": { "includeFiles": ["index.html", "my_cafe.md"], "maxDuration": 60 }
+    }
+  ],
+  "routes": [{ "src": "/(.*)", "dest": "server.js" }]
+}
