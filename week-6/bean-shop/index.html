@@ -452,6 +452,15 @@
     }
 
     // ========================================
+    // 🔗 카페 안도 패밀리 링크 (로컬 개발 시엔 로컬 포트로)
+    // ========================================
+    const IS_LOCAL_HOST = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    const FAMILY = {
+      home: IS_LOCAL_HOST ? 'http://localhost:3013' : 'https://afm-cafe-home.vercel.app',
+      dash: IS_LOCAL_HOST ? 'http://localhost:3016' : 'https://afm-cafe-dashboard.vercel.app',
+    };
+
+    // ========================================
     // 🔀 해시 라우터
     // ========================================
     const RouterContext = createContext({ path: '/', navigate: () => {} });
@@ -926,6 +935,10 @@
 
               {/* 우측 액션 */}
               <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+                {/* 카페 안도 패밀리 — 카페 홈 · 사장님 대시보드 */}
+                <a href={FAMILY.home} title="카페 안도 홈" className="hidden lg:inline text-sm font-medium text-mocha hover:text-espresso transition-colors">🏠 카페 홈</a>
+                <a href={FAMILY.dash} title="사장님 대시보드" className="hidden lg:inline text-sm font-medium text-mocha hover:text-espresso transition-colors">📊 대시보드</a>
+                <span className="hidden lg:inline text-sand2">·</span>
                 <Link to="/" className={cx('hidden sm:inline', navClass(path === '/'))}>홈</Link>
                 <Link to="/cart" aria-label="장바구니" className="relative grid place-items-center w-11 h-11 rounded-full hover:bg-cream2 transition-colors">
                   <span className="text-xl">🛒</span>

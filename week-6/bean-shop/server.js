@@ -1,20 +1,24 @@
 // ============================================================
-// 안도 빈즈 · ANDO BEANS — 인증 서버 (server.js)
+// 안도 빈즈 · ANDO BEANS — 인증/주문 서버 (server.js)
 // 이메일/비밀번호 회원가입·로그인 + JWT Bearer 인증
-// 정적 서빙(index.html) + /api/auth/{signup,login,me}
+// 정적 서빙(index.html) + /api/auth/{signup,login,me} + 주문/결제
 //
-// 데이터는 인메모리(Map)에 저장됩니다 → 서버 재시작 시 초기화.
-// 사용자 저장/조회는 findUserByEmail / findUserById / createUser
-// 로 분리해 두었으니 나중에 DB(Supabase 등)로 교체하기 쉽습니다.
+// 저장소: Supabase PostgreSQL (bean_users / bean_orders)
+//   - 예전 인메모리(Map) 버전에서 같은 헬퍼 시그니처로 교체 (2026-07-13)
+//   - 카페 안도 사장님 대시보드(week-6/cafe-dashboard)가 같은 테이블을 읽어
+//     주문 내역/가입 멤버를 보여준다.
 // ============================================================
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { Pool, types } = require('pg');
+
+types.setTypeParser(1082, (v) => v); // DATE → 문자열 그대로
 
 // ----- 설정 (환경변수는 trailing newline 방지를 위해 .trim()) -----
 const PORT = (process.env.PORT || '3014').trim();
@@ -34,31 +38,84 @@ const IMAGEKIT_PRIVATE_KEY = (process.env.IMAGEKIT_PRIVATE_KEY || '').trim();
 const IMAGEKIT_URL_ENDPOINT = (process.env.IMAGEKIT_URL_ENDPOINT || '').trim();
 
 // ============================================================
-// 인메모리 저장소 (key = 소문자 정규화 이메일)
-// 내부 레코드: { id, email, passwordHash, createdAt }
+// Supabase PostgreSQL 저장소 (bean_users / bean_orders)
+// 헬퍼 시그니처는 인메모리 시절과 동일하되 전부 async.
 // ============================================================
-const usersByEmail = new Map();
+const DATABASE_URL = (process.env.DATABASE_URL || '').trim();
+const pool = DATABASE_URL
+  ? new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false }, max: 3 })
+  : null;
 
-function findUserByEmail(email) {
-  return usersByEmail.get(email) || null;
+async function initDb() {
+  await pool.query(`
+    create table if not exists bean_users (
+      id             uuid primary key,
+      email          text unique not null,
+      password_hash  text not null,
+      avatar_url     text,
+      avatar_file_id text,
+      created_at     timestamptz not null default now()
+    )`);
+  await pool.query(`
+    create table if not exists bean_orders (
+      order_id    text primary key,
+      user_id     uuid not null,
+      order_name  text not null,
+      amount      bigint not null,
+      items       jsonb not null,
+      status      text not null default 'PENDING',
+      payment     jsonb,
+      payment_key text,
+      created_at  timestamptz not null default now()
+    )`);
+}
+let readyPromise = null;
+function ensureReady() { readyPromise ||= initDb(); return readyPromise; }
+
+// DB row → 내부 레코드 (기존 camelCase 필드명 유지)
+function rowToUser(r) {
+  return r ? {
+    id: r.id, email: r.email, passwordHash: r.password_hash,
+    avatarUrl: r.avatar_url, avatarFileId: r.avatar_file_id, createdAt: r.created_at,
+  } : null;
+}
+function rowToOrder(r) {
+  return r ? {
+    orderId: r.order_id, userId: r.user_id, orderName: r.order_name,
+    amount: Number(r.amount), // bigint 는 문자열로 오므로 숫자로 (금액 대조에 필수)
+    items: r.items, status: r.status, payment: r.payment,
+    paymentKey: r.payment_key, createdAt: r.created_at,
+  } : null;
 }
 
-function findUserById(id) {
-  for (const user of usersByEmail.values()) {
-    if (user.id === id) return user;
-  }
-  return null;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function findUserByEmail(email) {
+  const { rows: [r] } = await pool.query('select * from bean_users where email = $1', [email]);
+  return rowToUser(r);
 }
 
-function createUser({ email, passwordHash }) {
-  const user = {
-    id: crypto.randomUUID(),
-    email,
-    passwordHash,
-    createdAt: new Date().toISOString(),
-  };
-  usersByEmail.set(email, user);
-  return user;
+async function findUserById(id) {
+  if (!UUID_RE.test(String(id))) return null; // 옛 토큰 등 잘못된 id는 조회 없이 무효 처리
+  const { rows: [r] } = await pool.query('select * from bean_users where id = $1', [id]);
+  return rowToUser(r);
+}
+
+async function createUser({ email, passwordHash }) {
+  const id = crypto.randomUUID();
+  const { rows: [r] } = await pool.query(
+    'insert into bean_users (id, email, password_hash) values ($1,$2,$3) returning *',
+    [id, email, passwordHash],
+  );
+  return rowToUser(r);
+}
+
+async function saveUserAvatar(id, url, fileId) {
+  const { rows: [r] } = await pool.query(
+    'update bean_users set avatar_url = $2, avatar_file_id = $3 where id = $1 returning *',
+    [id, url, fileId],
+  );
+  return rowToUser(r);
 }
 
 // passwordHash 등 민감 정보를 제거한 공개용 user 객체
@@ -67,11 +124,29 @@ function toPublicUser(user) {
 }
 
 // ============================================================
-// 주문 저장소 (key = orderId) — 인메모리, 서버 재시작 시 초기화
+// 주문 저장소 (bean_orders 테이블)
 // 레코드: { orderId, userId, orderName, amount, items, status, createdAt, payment?, paymentKey? }
 // status: 'PENDING'(주문 생성) → 'PAID'(토스 승인 완료)
 // ============================================================
-const ordersById = new Map();
+async function insertOrder(o) {
+  await pool.query(
+    `insert into bean_orders (order_id, user_id, order_name, amount, items, status)
+     values ($1,$2,$3,$4,$5,$6)`,
+    [o.orderId, o.userId, o.orderName, o.amount, JSON.stringify(o.items), o.status],
+  );
+}
+
+async function getOrderById(orderId) {
+  const { rows: [r] } = await pool.query('select * from bean_orders where order_id = $1', [orderId]);
+  return rowToOrder(r);
+}
+
+async function markOrderPaid(orderId, payment, paymentKey) {
+  await pool.query(
+    `update bean_orders set status = 'PAID', payment = $2, payment_key = $3 where order_id = $1`,
+    [orderId, JSON.stringify(payment), paymentKey],
+  );
+}
 
 // orderId: 토스 제약(영문·숫자·- _ / 6~64자)을 만족하는 충분히 유니크한 값
 // 'ando_' + UUID(하이픈 제거, 32자) = 37자 → 안전
@@ -142,8 +217,24 @@ function authMiddleware(req, res, next) {
 // 앱 초기화 & 미들웨어
 // ============================================================
 const app = express();
+
+// Express 4는 async 핸들러의 rejection을 못 잡는다(프로세스 크래시) →
+// 라우트 등록 시점에 자동으로 .catch(next) 래핑해서 에러 미들웨어로 보낸다.
+for (const m of ['get', 'post', 'patch', 'put', 'delete']) {
+  const orig = app[m].bind(app);
+  app[m] = (route, ...handlers) => orig(route, ...handlers.map((h) =>
+    h.length >= 4 ? h : (req, res, next) => Promise.resolve(h(req, res, next)).catch(next)));
+}
+
 app.use(express.json());
-app.use(express.static(path.join(__dirname))); // index.html(및 이후 정적파일) 서빙
+app.use('/images', express.static(path.join(__dirname, 'images'))); // 제품/히어로 사진
+
+// 모든 /api 요청 전에 DB 준비 (서버리스: 인스턴스당 1회)
+app.use('/api', async (_req, res, next) => {
+  if (!pool) return fail(res, 503, '서버 설정 오류: DATABASE_URL이 설정되지 않았습니다');
+  try { await ensureReady(); next(); }
+  catch (e) { console.error('[initDb] error:', e); fail(res, 503, 'DB 초기화에 실패했습니다'); }
+});
 
 // ============================================================
 // 인증 API
@@ -174,17 +265,18 @@ app.post('/api/auth/signup', async (req, res) => {
     }
 
     // 이메일 중복
-    if (findUserByEmail(normEmail)) {
+    if (await findUserByEmail(normEmail)) {
       return fail(res, 409, '이미 가입된 이메일입니다');
     }
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    const user = createUser({ email: normEmail, passwordHash });
+    const user = await createUser({ email: normEmail, passwordHash });
     const token = signToken(user);
 
     // 가입 즉시 로그인 상태 → token 함께 반환
     return ok(res, 201, { token, user: toPublicUser(user) }, '회원가입이 완료되었습니다');
   } catch (err) {
+    if (err && err.code === '23505') return fail(res, 409, '이미 가입된 이메일입니다'); // 동시 가입 레이스
     console.error('[signup] error:', err);
     return fail(res, 500, '회원가입 처리 중 오류가 발생했습니다');
   }
@@ -203,7 +295,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const normEmail = String(email).trim().toLowerCase();
-    const user = findUserByEmail(normEmail);
+    const user = await findUserByEmail(normEmail);
 
     // 이메일 없음 / 비밀번호 불일치 → 동일한 401 (어느 쪽인지 노출 금지)
     const match = user ? await bcrypt.compare(String(password), user.passwordHash) : false;
@@ -220,9 +312,9 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // [GET] /api/auth/me — Bearer 토큰 필요 → 200 { user }
-app.get('/api/auth/me', authMiddleware, (req, res) => {
-  // 토큰을 그대로 믿지 않고 저장소에서 재조회 (삭제된 계정/재시작 후 무효 세션은 401)
-  const user = findUserById(req.user.userId);
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  // 토큰을 그대로 믿지 않고 저장소에서 재조회 (삭제된 계정/무효 세션은 401)
+  const user = await findUserById(req.user.userId);
   if (!user) {
     return fail(res, 401, '유효하지 않은 세션입니다. 다시 로그인해 주세요');
   }
@@ -253,8 +345,8 @@ app.get('/api/imagekit/auth', authMiddleware, (req, res) => {
 });
 
 // [PUT] /api/auth/avatar — 업로드 완료된 ImageKit URL을 프로필에 저장 (인증 필요)
-app.put('/api/auth/avatar', authMiddleware, (req, res) => {
-  const user = findUserById(req.user.userId);
+app.put('/api/auth/avatar', authMiddleware, async (req, res) => {
+  const user = await findUserById(req.user.userId);
   if (!user) {
     return fail(res, 401, '유효하지 않은 세션입니다. 다시 로그인해 주세요');
   }
@@ -263,9 +355,8 @@ app.put('/api/auth/avatar', authMiddleware, (req, res) => {
   if (!url || typeof url !== 'string' || !IMAGEKIT_URL_ENDPOINT || !url.startsWith(IMAGEKIT_URL_ENDPOINT)) {
     return fail(res, 400, '올바른 프로필 이미지 URL이 아닙니다');
   }
-  user.avatarUrl = url;
-  user.avatarFileId = typeof fileId === 'string' ? fileId : null;
-  return ok(res, 200, { user: toPublicUser(user) }, '프로필 사진이 변경되었습니다');
+  const updated = await saveUserAvatar(user.id, url, typeof fileId === 'string' ? fileId : null);
+  return ok(res, 200, { user: toPublicUser(updated) }, '프로필 사진이 변경되었습니다');
 });
 
 // ============================================================
@@ -275,7 +366,7 @@ app.put('/api/auth/avatar', authMiddleware, (req, res) => {
 // [POST] /api/orders — 주문 생성 (인증 필요)
 // body: { items:[{id,name,grind,qty,price}], amount } → 201 { orderId, orderName, amount }
 // ⚠️ amount는 서버가 저장해 두고, 결제 승인 때 successUrl 금액과 대조하는 "정답값"이 된다.
-app.post('/api/orders', authMiddleware, (req, res) => {
+app.post('/api/orders', authMiddleware, async (req, res) => {
   const { items, amount } = req.body || {};
 
   // 검증: items = 비어있지 않은 배열
@@ -296,9 +387,8 @@ app.post('/api/orders', authMiddleware, (req, res) => {
     amount,
     items,
     status: 'PENDING',
-    createdAt: new Date().toISOString(),
   };
-  ordersById.set(orderId, order);
+  await insertOrder(order);
 
   return ok(res, 201, { orderId, orderName, amount }, '주문이 생성되었습니다');
 });
@@ -320,7 +410,7 @@ app.post('/api/payments/confirm', async (req, res) => {
     }
 
     // 저장된 주문 조회 (없으면 404)
-    const order = ordersById.get(String(orderId));
+    const order = await getOrderById(String(orderId));
     if (!order) {
       return fail(res, 404, '주문 정보를 찾을 수 없습니다');
     }
@@ -372,10 +462,9 @@ app.post('/api/payments/confirm', async (req, res) => {
       receiptUrl: (tossData.receipt && tossData.receipt.url) || null,
       orderName: tossData.orderName || order.orderName,
     };
+    await markOrderPaid(order.orderId, payment, paymentKey);
     order.status = 'PAID';
     order.payment = payment;
-    order.paymentKey = paymentKey;
-    ordersById.set(order.orderId, order);
 
     return ok(res, 200, { order: toPublicOrder(order), payment }, '결제가 완료되었습니다');
   } catch (err) {
