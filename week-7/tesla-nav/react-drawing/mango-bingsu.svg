@@ -1,0 +1,283 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="480" viewBox="0 0 400 480" role="img" aria-labelledby="mbTitle mbDesc">
+  <title id="mbTitle">망고빙수</title>
+  <desc id="mbDesc">우유 빙수 산 위에 망고 큐브와 망고 소스, 바닐라 아이스크림과 민트를 올린 망고빙수 일러스트</desc>
+
+  <defs>
+    <!-- ───────── 배경 ───────── -->
+    <linearGradient id="mb-bg" x1="0" y1="0" x2=".35" y2="1">
+      <stop offset="0" stop-color="#FFFAF1"/>
+      <stop offset="1" stop-color="#FFE5C4"/>
+    </linearGradient>
+    <radialGradient id="mb-glow" cx=".5" cy=".43" r=".54">
+      <stop offset="0" stop-color="#FFCE74" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#FFCE74" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- ───────── 빙수(우유얼음) ───────── -->
+    <linearGradient id="mb-ice" x1=".25" y1=".05" x2=".82" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".45" stop-color="#FBFDFF"/>
+      <stop offset="1" stop-color="#D9E7F6"/>
+    </linearGradient>
+    <radialGradient id="mb-iceShade" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#AECBE9" stop-opacity=".8"/>
+      <stop offset="1" stop-color="#AECBE9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="mb-iceLight" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- ───────── 망고 소스 ───────── -->
+    <radialGradient id="mb-sauce" gradientUnits="userSpaceOnUse" cx="176" cy="154" r="142">
+      <stop offset="0" stop-color="#FFE096"/>
+      <stop offset=".42" stop-color="#FFC257"/>
+      <stop offset=".8" stop-color="#FDA636"/>
+      <stop offset="1" stop-color="#F79025"/>
+    </radialGradient>
+
+    <!-- ───────── 아이스크림 ───────── -->
+    <linearGradient id="mb-scoop" x1=".25" y1=".1" x2=".8" y2="1">
+      <stop offset="0" stop-color="#FFFBEE"/>
+      <stop offset=".5" stop-color="#FDF1D6"/>
+      <stop offset="1" stop-color="#EFDCAF"/>
+    </linearGradient>
+
+    <!-- ───────── 유리볼 ───────── -->
+    <linearGradient id="mb-glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".62"/>
+      <stop offset=".18" stop-color="#D7E9F8" stop-opacity=".34"/>
+      <stop offset=".5" stop-color="#FFFFFF" stop-opacity=".14"/>
+      <stop offset=".84" stop-color="#D7E9F8" stop-opacity=".36"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity=".66"/>
+    </linearGradient>
+
+    <!-- ───────── 스푼 ───────── -->
+    <linearGradient id="mb-spoon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F6E2A6"/>
+      <stop offset=".5" stop-color="#E3C069"/>
+      <stop offset="1" stop-color="#C99F45"/>
+    </linearGradient>
+
+    <filter id="mb-blur" x="-45%" y="-45%" width="190%" height="190%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <filter id="mb-blurS" x="-45%" y="-45%" width="190%" height="190%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <filter id="mb-cubeShadow" x="-45%" y="-45%" width="190%" height="190%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#C06C16" flood-opacity=".3"/>
+    </filter>
+
+    <!-- 망고 큐브 -->
+    <g id="mb-cube">
+      <path d="M0 -12.5 11 -6.2 11 6.2 0 12.5 -11 6.2 -11 -6.2Z"
+            fill="#FFAF3C" stroke="#FFAF3C" stroke-width="3.4" stroke-linejoin="round"/>
+      <path d="M0 -12.5 11 -6.2 0 0 -11 -6.2Z"
+            fill="#FFDC82" stroke="#FFDC82" stroke-width="3.4" stroke-linejoin="round"/>
+      <path d="M0 0 11 -6.2 11 6.2 0 12.5Z"
+            fill="#F0851D" stroke="#F0851D" stroke-width="3.4" stroke-linejoin="round"/>
+      <path d="M-6.6 -6.1 -1.6 -3.2 -1.6 2.4 -6.6 -0.5Z" fill="#FFFFFF" opacity=".26"/>
+    </g>
+
+    <path id="mb-moundPath"
+          d="M88 302
+             A24 24 0 0 1 92 262 A22 22 0 0 1 103 225 A26 26 0 0 1 121 192
+             A21 21 0 0 1 147 165 A25 25 0 0 1 181 149 A22 22 0 0 1 219 149
+             A26 26 0 0 1 253 165 A21 21 0 0 1 279 192 A24 24 0 0 1 297 225
+             A22 22 0 0 1 308 262 A25 25 0 0 1 312 302
+             C313 314 306 322 294 322 L106 322 C94 322 87 314 88 302 Z"/>
+
+    <path id="mb-bowlPath"
+          d="M92 296 A108 20 0 0 1 308 296 C304 350 266 392 200 392 C134 392 96 350 92 296 Z"/>
+
+    <!-- 소스 본체(돔을 감싸는 스마일 경계) + 흘러내린 줄기 -->
+    <path id="mb-sauceBody"
+          d="M104 96 H296 V154
+             C290 168 284 166 278 178
+             C271 191 264 190 258 202
+             C251 214 242 212 234 220
+             C226 227 217 224 208 228
+             C199 231 190 227 182 220
+             C173 212 165 212 156 202
+             C147 191 138 192 130 180
+             C122 167 110 168 104 156 Z"/>
+    <path id="mb-drip1" d="M118 172C118 213.6 116.8 224 126 224C135.2 224 134 213.6 134 172Z"/>
+    <path id="mb-drip2" d="M149 196C149 222.9 148 232 156 232C164 232 163 222.9 163 196Z"/>
+    <path id="mb-drip3" d="M177.5 216C177.5 251 176.2 262 186 262C195.8 262 194.5 251 194.5 216Z"/>
+    <path id="mb-drip4" d="M207 222C207 242.9 206 252 214 252C222 252 221 242.9 221 222Z"/>
+    <path id="mb-drip5" d="M236 206C236 243.6 234.8 254 244 254C253.2 254 252 243.6 252 206Z"/>
+    <path id="mb-drip6" d="M265.5 180C265.5 205.6 264.5 214 272 214C279.5 214 278.5 205.6 278.5 180Z"/>
+
+    <clipPath id="mb-moundClip"><use href="#mb-moundPath"/></clipPath>
+    <clipPath id="mb-bowlClip"><use href="#mb-bowlPath"/></clipPath>
+    <clipPath id="mb-sauceClip">
+      <use href="#mb-sauceBody"/>
+      <use href="#mb-drip1"/><use href="#mb-drip2"/><use href="#mb-drip3"/>
+      <use href="#mb-drip4"/><use href="#mb-drip5"/><use href="#mb-drip6"/>
+    </clipPath>
+    <!-- 아이스크림 스쿱: 사방이 울퉁불퉁해야 '푸딩'이 아니라 '스쿱'으로 읽힘 -->
+    <path id="mb-scoopPath"
+          d="M200 91 A18 18 0 0 1 225 101 A16 16 0 0 1 235 126
+             A17 17 0 0 1 224 151 A19 19 0 0 1 200 161 A16 16 0 0 1 176 150
+             A18 18 0 0 1 165 126 A17 17 0 0 1 176 102 A16 16 0 0 1 200 91 Z"/>
+    <clipPath id="mb-scoopClip"><use href="#mb-scoopPath"/></clipPath>
+  </defs>
+
+  <!-- ═════════ 배경 ═════════ -->
+  <rect width="400" height="480" rx="28" fill="url(#mb-bg)"/>
+  <circle cx="200" cy="228" r="196" fill="url(#mb-glow)"/>
+  <g fill="#FFFFFF" opacity=".5">
+    <circle cx="58" cy="92" r="4"/><circle cx="342" cy="70" r="3"/>
+    <circle cx="76" cy="386" r="3.5"/><circle cx="330" cy="404" r="4"/>
+    <circle cx="46" cy="248" r="2.5"/><circle cx="358" cy="286" r="3"/>
+  </g>
+
+  <ellipse cx="200" cy="446" rx="118" ry="13" fill="#C98A4E" opacity=".22" filter="url(#mb-blurS)"/>
+
+  <!-- ═════════ 스푼(뒤) ═════════ -->
+  <g>
+    <path d="M280 216 344 137" stroke="#B98F3C" stroke-width="9" stroke-linecap="round" opacity=".35"/>
+    <path d="M280 216 344 137" stroke="url(#mb-spoon)" stroke-width="7" stroke-linecap="round"/>
+    <ellipse cx="350" cy="129" rx="10" ry="7.5" transform="rotate(-51 350 129)" fill="url(#mb-spoon)"/>
+    <path d="M296 202 336 152" stroke="#FFF6DC" stroke-width="1.8" stroke-linecap="round" opacity=".75"/>
+  </g>
+
+  <!-- ═════════ 뒤쪽 망고 큐브 ═════════ -->
+  <g opacity=".9">
+    <use href="#mb-cube" transform="translate(104 266) rotate(-24) scale(.82)"/>
+    <use href="#mb-cube" transform="translate(300 258) rotate(21) scale(.8)"/>
+  </g>
+
+  <!-- ═════════ 볼 안의 빙수 ═════════ -->
+  <use href="#mb-bowlPath" fill="url(#mb-ice)"/>
+  <g clip-path="url(#mb-bowlClip)">
+    <ellipse cx="322" cy="336" rx="58" ry="86" fill="url(#mb-iceShade)" filter="url(#mb-blur)"/>
+    <ellipse cx="200" cy="404" rx="96" ry="34" fill="url(#mb-iceShade)" filter="url(#mb-blur)" opacity=".85"/>
+    <ellipse cx="140" cy="336" rx="34" ry="52" fill="url(#mb-iceLight)" filter="url(#mb-blur)"/>
+    <g stroke="#CBDFF2" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".75">
+      <path d="M124 336C132 329 144 328 152 334"/>
+      <path d="M232 380C240 373 252 372 260 378"/>
+      <path d="M150 384C158 377 169 376 176 381"/>
+      <path d="M254 320C262 313 273 312 280 317"/>
+      <path d="M186 348C194 341 205 340 212 345"/>
+    </g>
+  </g>
+
+  <!-- ═════════ 빙수 산 ═════════ -->
+  <use href="#mb-moundPath" fill="url(#mb-ice)"/>
+  <g clip-path="url(#mb-moundClip)">
+    <ellipse cx="322" cy="248" rx="62" ry="120" fill="url(#mb-iceShade)" filter="url(#mb-blur)"/>
+    <ellipse cx="200" cy="338" rx="120" ry="44" fill="url(#mb-iceShade)" filter="url(#mb-blur)" opacity=".8"/>
+    <ellipse cx="146" cy="212" rx="42" ry="72" fill="url(#mb-iceLight)" filter="url(#mb-blur)"/>
+    <g stroke="#CFE1F2" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".7">
+      <path d="M118 246C126 238 138 236 146 242"/>
+      <path d="M152 276C160 268 172 266 180 272"/>
+      <path d="M244 268C252 260 264 258 272 264"/>
+      <path d="M170 212C177 205 187 204 194 209"/>
+      <path d="M96 288C104 281 114 280 121 285"/>
+      <path d="M272 296C280 289 291 288 298 293"/>
+      <path d="M196 300C204 293 215 292 222 297"/>
+    </g>
+  </g>
+
+  <!-- ═════════ 망고 소스(빙수 곡면을 타고 흐름) ═════════ -->
+  <g clip-path="url(#mb-moundClip)">
+    <g fill="url(#mb-sauce)">
+      <use href="#mb-sauceBody"/>
+      <use href="#mb-drip1"/><use href="#mb-drip2"/><use href="#mb-drip3"/>
+      <use href="#mb-drip4"/><use href="#mb-drip5"/><use href="#mb-drip6"/>
+    </g>
+    <g clip-path="url(#mb-sauceClip)">
+      <ellipse cx="158" cy="168" rx="44" ry="14" transform="rotate(-28 158 168)" fill="#FFE7AE" opacity=".7" filter="url(#mb-blurS)"/>
+      <ellipse cx="248" cy="182" rx="24" ry="8" transform="rotate(38 248 182)" fill="#FFE7AE" opacity=".38" filter="url(#mb-blurS)"/>
+      <ellipse cx="200" cy="150" rx="70" ry="22" fill="#D9660E" opacity=".3" filter="url(#mb-blur)"/>
+    </g>
+  </g>
+
+  <!-- ═════════ 빙수 위 망고 큐브 ═════════ -->
+  <g filter="url(#mb-cubeShadow)">
+    <use href="#mb-cube" transform="translate(133 210) rotate(-19)"/>
+    <use href="#mb-cube" transform="translate(266 206) rotate(16) scale(.98)"/>
+    <use href="#mb-cube" transform="translate(163 254) rotate(9) scale(1.02)"/>
+    <use href="#mb-cube" transform="translate(240 258) rotate(-14)"/>
+    <use href="#mb-cube" transform="translate(114 262) rotate(24) scale(.88)"/>
+    <use href="#mb-cube" transform="translate(290 266) rotate(-21) scale(.88)"/>
+    <use href="#mb-cube" transform="translate(200 286) rotate(7) scale(1.05)"/>
+    <use href="#mb-cube" transform="translate(211 234) rotate(-5) scale(.9)"/>
+  </g>
+
+  <!-- ═════════ 아이스크림 + 민트 ═════════ -->
+  <g>
+    <ellipse cx="200" cy="159" rx="34" ry="8" fill="#C4761E" opacity=".24" filter="url(#mb-blurS)"/>
+    <use href="#mb-scoopPath" fill="url(#mb-scoop)"/>
+    <g clip-path="url(#mb-scoopClip)">
+      <ellipse cx="236" cy="148" rx="30" ry="34" fill="#D9B97B" opacity=".5" filter="url(#mb-blurS)"/>
+      <ellipse cx="184" cy="110" rx="18" ry="13" transform="rotate(-24 184 110)" fill="#FFFFFF" opacity=".85" filter="url(#mb-blurS)"/>
+      <!-- 스쿱 특유의 말린 자국 -->
+      <path d="M214 103C228 110 232 124 226 137C221 147 210 152 199 151" stroke="#E7CE9A" stroke-width="2.6" fill="none" opacity=".65" stroke-linecap="round"/>
+      <path d="M206 116C214 121 216 129 212 137" stroke="#E7CE9A" stroke-width="2" fill="none" opacity=".45" stroke-linecap="round"/>
+    </g>
+    <!-- 아이스크림 위 소스 -->
+    <path d="M176 100C186 92 214 92 224 101C230 106 226 113 218 111C209 109 204 116 194 114C185 112 178 114 175 108C173 104 174 102 176 100Z" fill="url(#mb-sauce)"/>
+    <path d="M182 108C181 118 186 124 184 130C183 136 190 137 192 131C194 124 189 118 190 111Z" fill="url(#mb-sauce)"/>
+    <path d="M216 110C216 119 221 124 219 130C217 136 224 138 226 131C228 124 223 118 224 112Z" fill="url(#mb-sauce)"/>
+
+    <!-- 민트(정중앙 새싹처럼 보이지 않게 어깨 쪽으로) -->
+    <g transform="rotate(19 200 94) translate(13 -1)">
+      <path d="M200 96C200 84 202 76 207 69" stroke="#3E9E62" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+      <path d="M200 82C182 74 172 56 176 42C192 48 202 66 200 82Z" fill="#4FB472"/>
+      <path d="M200 82C190 68 181 55 176 42" stroke="#2E7F4C" stroke-width="1.2" fill="none" opacity=".55"/>
+      <path d="M204 78C219 72 231 58 229 46C213 50 202 64 204 78Z" fill="#63C687"/>
+      <path d="M204 78C212 67 222 56 229 46" stroke="#2E7F4C" stroke-width="1.2" fill="none" opacity=".45"/>
+    </g>
+  </g>
+
+  <!-- ═════════ 볼 안에 가라앉은 망고 + 소스 ═════════ -->
+  <g clip-path="url(#mb-bowlClip)">
+    <ellipse cx="200" cy="392" rx="72" ry="20" fill="#FFB13A" opacity=".38" filter="url(#mb-blur)"/>
+    <g filter="url(#mb-cubeShadow)">
+      <use href="#mb-cube" transform="translate(147 344) rotate(-18) scale(.85)"/>
+      <use href="#mb-cube" transform="translate(207 362) rotate(8) scale(.9)"/>
+      <use href="#mb-cube" transform="translate(259 340) rotate(15) scale(.82)"/>
+      <use href="#mb-cube" transform="translate(186 334) rotate(-6) scale(.76)"/>
+    </g>
+  </g>
+
+  <!-- ═════════ 유리볼 ═════════ -->
+  <g>
+    <path d="M92 296 A108 20 0 0 0 308 296 C304 350 266 392 200 392 C134 392 96 350 92 296 Z"
+          fill="url(#mb-glass)"/>
+    <path d="M186 388C184 402 182 412 182 418C182 421 176 422 166 424C154 426 150 429 150 431
+             C150 435 172 438 200 438C228 438 250 435 250 431C250 429 246 426 234 424
+             C224 422 218 421 218 418C218 412 216 402 214 388Z"
+          fill="url(#mb-glass)" stroke="#A9C9E0" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M92 296C96 350 134 392 200 392C266 392 304 350 308 296" fill="none" stroke="#A9C9E0" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M92 296 A108 20 0 0 0 308 296" fill="none" stroke="#A9C9E0" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M92 296 A108 20 0 0 1 308 296" fill="none" stroke="#C3DCEE" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+    <path d="M112 312C116 344 130 368 148 380" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" fill="none" opacity=".8"/>
+    <path d="M288 314C286 340 278 358 268 370" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" fill="none" opacity=".5"/>
+    <ellipse cx="200" cy="434" rx="42" ry="4" fill="#FFFFFF" opacity=".5"/>
+  </g>
+
+  <!-- ═════════ 앞쪽 망고 큐브(림 위) ═════════ -->
+  <g filter="url(#mb-cubeShadow)">
+    <use href="#mb-cube" transform="translate(101 296) rotate(-28) scale(.9)"/>
+    <use href="#mb-cube" transform="translate(154 306) rotate(11) scale(.95)"/>
+    <use href="#mb-cube" transform="translate(248 304) rotate(-9) scale(.95)"/>
+    <use href="#mb-cube" transform="translate(302 294) rotate(26) scale(.9)"/>
+  </g>
+
+  <!-- ═════════ 테이블 위 큐브 ═════════ -->
+  <g filter="url(#mb-cubeShadow)">
+    <use href="#mb-cube" transform="translate(96 432) rotate(-14) scale(.78)"/>
+    <use href="#mb-cube" transform="translate(308 438) rotate(19) scale(.72)"/>
+  </g>
+
+  <!-- ═════════ 반짝임 ═════════ -->
+  <g fill="#FFFFFF">
+    <path d="M312 96C313 106 316 109 326 110C316 111 313 114 312 124C311 114 308 111 298 110C308 109 311 106 312 96Z" opacity=".9"/>
+    <path d="M84 156C85 163 87 165 94 166C87 167 85 169 84 176C83 169 81 167 74 166C81 165 83 163 84 156Z" opacity=".75"/>
+    <path d="M340 232C341 238 342 239 348 240C342 241 341 242 340 248C339 242 338 241 332 240C338 239 339 238 340 232Z" opacity=".6"/>
+  </g>
+</svg>

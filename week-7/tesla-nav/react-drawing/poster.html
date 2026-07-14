@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  카페 안도 · 여름 한정 신메뉴 「망고빙수」 포스터 (A4 / 인쇄용)
+  ═══════════════════════════════════════════════════════════════════════
+
+  ⚠️ 목업 고지
+     · 「망고빙수」 메뉴와 가격 「13,500원」은 이 포스터를 위한 **목업용 가상 데이터**이며,
+       my_cafe.md 의 실제 메뉴판에 존재하지 않는 신메뉴 제안입니다.
+     · 그 외 상호 / 위치 / 영업시간 / 인스타그램 / 브랜드 컬러는
+       /Users/pyounghwahong/AFM/week-5/my-cafe/my_cafe.md 의 실제 값을 그대로 사용했습니다.
+     · 리뷰 · 평점 · 수상내역 등 검증되지 않은 신뢰 지표는 일절 넣지 않았습니다.
+
+  사진: photos/*.jpg (상대경로 참조 · base64 인라인 없음)
+  실행: python3 -m http.server → http://localhost:8000/poster.html
+  ═══════════════════════════════════════════════════════════════════════
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>카페 안도 · 여름 한정 망고빙수 포스터</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🍧</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@200..900&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ babel-standalone(8.x)의 'react' 프리셋 기본값은 automatic runtime이라
+    //    `import { jsx } from "react/jsx-runtime"` 를 뱉는다 → UMD React 조합에선
+    //    "Cannot use import statement outside a module" → 흰 화면.
+    //    data-presets="react" 만으로는 못 막는다. classic runtime을 고정해 등록한다.
+    Babel.registerPreset('classic-react', {
+      presets: [[Babel.availablePresets['react'], { runtime: 'classic' }]],
+    });
+  </script>
+
+  <style>
+    /* ══════════════════════════════════════════════════════════════════
+       브랜드 토큰 — my_cafe.md 실제 값 + 사진 실측값
+       ══════════════════════════════════════════════════════════════════ */
+    :root {
+      --cream:     #F5F0E8;   /* 브랜드 · 크림 화이트 */
+      --walnut:    #5C4633;   /* 브랜드 · 월넛 브라운 */
+      --sage:      #8A9A7B;   /* 브랜드 · 세이지 그린 (도형/괘선 전용) */
+      --sage-ink:  #5C6B4F;   /* 파생 — 세이지 원본은 크림 위 대비 2.6:1이라 본문 불가 → 명도만 낮춘 텍스트용 */
+      --mango:     #D2831A;   /* photos/bingsu-hero.jpg 망고 큐브 실측 */
+      --ink-soft:  rgba(92, 70, 51, .74);
+      --ink-faint: rgba(92, 70, 51, .52);
+
+      --sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+      --serif: 'Noto Serif KR', 'Apple SD Gothic Neo', serif;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       포스터 캔버스 — A4 고정(210×297mm). 화면에선 transform: scale()로 축소 미리보기,
+       인쇄 시엔 scale을 풀어 1:1로 떨어진다.
+       ══════════════════════════════════════════════════════════════════ */
+    .poster {
+      width: 210mm;
+      height: 297mm;
+      background: var(--cream);
+      color: var(--walnut);
+      font-family: var(--sans);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      transform-origin: top left;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* 크림 종이에 얹는 아주 옅은 웜 비네트 — 라임스톤 질감 암시 */
+    .poster::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(120% 80% at 50% 8%, rgba(228, 156, 106, .10), transparent 62%);
+    }
+
+    /* ── 헤더 ─────────────────────────────────────────────────────── */
+    .p-head { padding: 46px 56px 0; }
+    .p-head-row { display: flex; align-items: baseline; justify-content: space-between; }
+    .wordmark { font-size: 13px; font-weight: 800; letter-spacing: .26em; color: var(--walnut); }
+    .head-right { font-size: 11.5px; font-weight: 600; letter-spacing: .08em; color: var(--sage-ink); }
+    .hairline { height: 1px; background: var(--walnut); opacity: .34; margin-top: 15px; }
+
+    /* ── 타이틀 블록 ───────────────────────────────────────────────── */
+    .p-title { padding: 30px 56px 0; }
+    .kicker {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 700; letter-spacing: .15em; color: var(--sage-ink);
+    }
+    .kicker .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mango); display: block; }
+    .display {
+      font-family: var(--serif);
+      font-weight: 800;
+      font-size: 84px;
+      line-height: 1;
+      letter-spacing: -.035em;
+      margin: 16px 0 0;
+      color: var(--walnut);
+    }
+    .latin { margin-top: 14px; font-size: 10.5px; font-weight: 700; letter-spacing: .36em; color: var(--sage-ink); }
+
+    /* ── 본문(사진) 영역 ──────────────────────────────────────────── */
+    .p-body { flex: 1; min-height: 0; display: flex; gap: 32px; padding: 26px 56px 0; }
+
+    /* ── 사진 프레임 공통 ─────────────────────────────────────────
+       사진 3장이 전부 3:4이고 패널도 3:4에 가까워서 object-fit:cover로는
+       크롭이 0이 된다(= 피사체가 프레임 안에서 작게 남고 여백만 커짐).
+       그래서 이미지를 프레임보다 크게 잡고 직접 밀어넣는다.
+         --zw : 프레임 대비 이미지 너비   --zx/--zy : 이동(프레임 기준 %)
+       ※ top/left %는 컨테이닝 블록(=프레임) 기준으로 풀리므로 프레임이
+         커져도 비율이 유지된다. 배경색은 실측값이라 어긋나도 티가 안 난다. */
+    .ph { position: relative; overflow: hidden; margin: 0; }
+    .ph img {
+      position: absolute;
+      /* ⚠️ Tailwind CDN Preflight의 `img { max-width:100% }` 가 --zw(>100%)를 프레임 폭으로
+         되돌려버려서 프레임 가장자리에 배경색이 드러난다. 반드시 풀어줄 것. */
+      max-width: none;
+      width: var(--zw, 100%);
+      height: auto;
+      left: var(--zx, 0);
+      top: var(--zy, 0);
+      display: block;
+    }
+
+    /* 히어로 — 아치. 브랜드 로고 아이디어(한옥 처마 곡선 = 안도의 'ㅇ')를 형태로 가져왔고,
+       빙수 산의 원뿔 실루엣과도 맞아떨어진다. 아치가 잘라내는 건 사진 위쪽 빈 배경뿐.
+       119%로 당겨서 민트~유리 굽이 아치를 꽉 채우게 하고, 아래 테이블 소품(스푼·부스러기)은
+       프레임 밖으로 밀어낸다. */
+    .hero {
+      width: 500px; flex: none;
+      --zw: 119%; --zx: -9.5%; --zy: -5%;
+      border-radius: 250px 250px 14px 14px;
+      background: #E49C6A;                    /* photos/bingsu-hero.jpg 배경 실측색 */
+      /* ⚠️ box-shadow 금지: Chrome 인쇄 래스터라이저가 blur와 음수 spread를 날려버려서
+         반투명 그림자가 '불투명 사각형'으로 찍힌다(캡션·가격을 덮음). 화면에선 멀쩡해 보여
+         PDF로 뽑기 전엔 안 보이는 함정. 종이엔 그림자가 의미도 없으니 아예 뺀다. */
+    }
+
+    /* 사이드 — 작은 악센트 2컷 + 캡션 + 가격 */
+    .side { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .thumb { width: 100%; height: 198px; border-radius: 10px; }
+    .thumb + .thumb { margin-top: 18px; }
+    /* 디테일컷: 크림 지면 위 유일한 다크 톤 앵커라 어두운 배경·보케를 일부러 남긴다.
+       (더 당기면 히어로와 똑같은 밝은 망고컷이 되어 두 컷이 중복된다) */
+    .thumb--detail { --zw: 130%; --zx: 0%; --zy: -10%; background: #121413; }
+    /* 오버헤드컷: 볼이 프레임을 채우도록. 배경(#E3D7C1)이 브랜드 크림과 거의 같아 지면에 녹아든다 */
+    .thumb--top { --zw: 139%; --zx: -10%; --zy: -5.5%; background: #E3D7C1; }
+
+    .caption {
+      font-size: 12.5px; line-height: 1.9; color: var(--ink-soft);
+      margin: 22px 0 0; word-break: keep-all;
+    }
+    .caption + .caption { margin-top: 12px; color: var(--ink-faint); }
+
+    .price-wrap { margin-top: auto; }
+    .price-rule { height: 2px; background: var(--mango); width: 34px; margin-bottom: 12px; }
+    .price { font-family: var(--serif); font-weight: 700; font-size: 33px; letter-spacing: -.02em; color: var(--walnut); }
+    .price .won { font-size: 16px; font-weight: 500; margin-left: 3px; }
+
+    /* ── 푸터 — 월넛 바 ───────────────────────────────────────────── */
+    .p-foot {
+      height: 146px; flex: none;
+      background: var(--walnut);
+      color: var(--cream);
+      padding: 0 56px;
+      margin-top: 30px;
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+      position: relative; z-index: 1;
+    }
+    .foot-brand { font-size: 15px; font-weight: 700; letter-spacing: .01em; }
+    .foot-brand .sep { opacity: .45; margin: 0 6px; }
+    .foot-brand .en { font-weight: 600; letter-spacing: .16em; font-size: 12px; opacity: .8; }
+    .foot-concept { font-family: var(--serif); font-size: 13px; margin-top: 9px; color: rgba(245, 240, 232, .84); }
+    .foot-sub { font-size: 11px; margin-top: 7px; color: rgba(245, 240, 232, .56); }
+    .foot-right { text-align: right; }
+    .foot-line { font-size: 12px; line-height: 1.85; color: rgba(245, 240, 232, .88); }
+    .foot-line b { font-weight: 700; }
+    .foot-line .dim { color: rgba(245, 240, 232, .55); }
+    .foot-line.insta { margin-top: 6px; font-weight: 700; letter-spacing: .04em; color: #C9D6BB; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       인쇄 — @page A4 + scale 해제로 1:1
+       ══════════════════════════════════════════════════════════════════ */
+    @page { size: A4; margin: 0; }
+
+    @media print {
+      html, body { margin: 0; padding: 0; background: #fff; }
+      .no-print { display: none !important; }
+      .stage { padding: 0 !important; display: block !important; background: #fff !important; min-height: 0 !important; }
+      .poster-wrap { width: auto !important; height: auto !important; box-shadow: none !important; }
+      .poster { transform: none !important; box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="classic-react">
+    const { useState, useEffect, useLayoutEffect, useRef, useCallback } = React;
+
+    // ========================================
+    // 🎨 디자인 시스템
+    // ========================================
+
+    function Button({ variant = 'primary', size = 'md', className = '', children, ...rest }) {
+      const base = 'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition ' +
+                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#2E2A26] ' +
+                   'focus-visible:ring-[#8A9A7B] disabled:opacity-40 disabled:cursor-not-allowed';
+      const variants = {
+        primary: 'bg-[#F5F0E8] text-[#3A2C20] hover:bg-white',
+        ghost: 'text-[#F5F0E8]/70 hover:text-[#F5F0E8] hover:bg-white/10',
+      };
+      const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm' };
+      return (
+        <button type="button" className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} {...rest}>
+          {children}
+        </button>
+      );
+    }
+
+    function SegControl({ value, onChange, options, label }) {
+      return (
+        <div role="group" aria-label={label} className="inline-flex rounded-lg bg-white/10 p-0.5">
+          {options.map((opt) => {
+            const active = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onChange(opt.value)}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  active ? 'bg-[#F5F0E8] text-[#3A2C20]' : 'text-[#F5F0E8]/60 hover:text-[#F5F0E8]'
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 훅 — 뷰포트에 맞춘 미리보기 배율
+    // ========================================
+
+    const TOOLBAR_H = 60;
+    const STAGE_PAD = 48;
+
+    function useViewport() {
+      const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
+      useEffect(() => {
+        const onResize = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, []);
+      return vp;
+    }
+
+    // ========================================
+    // 📄 포스터 — A4 고정 캔버스
+    // ========================================
+    //
+    // 사진 배치 의도
+    //  · hero   : 굽 유리볼 정면컷. 3:4 원본이 500×약700 아치에 거의 무손실로 앉는다.
+    //             아치가 잘라내는 건 피사체가 아니라 위쪽 빈 피치색 배경뿐이라 안전.
+    //  · detail : 어두운 배경 매크로 → 크림 지면 위에서 유일한 다크 톤 앵커.
+    //  · top    : 오버헤드컷. 배경 #E3D7C1이 브랜드 크림과 거의 같아 지면에 조용히 녹아든다.
+    //             (다크 → 소프트 → 가격 순의 톤 사다리)
+    //
+    const Poster = React.forwardRef(function Poster({ scale }, ref) {
+      return (
+        <article
+          ref={ref}
+          className="poster"
+          style={{ transform: `scale(${scale})` }}
+          aria-label="카페 안도 여름 한정 신메뉴 망고빙수 포스터"
+        >
+          {/* ── 헤더 ── */}
+          <header className="p-head">
+            <div className="p-head-row">
+              <span className="wordmark">CAFE ANDO</span>
+              <span className="head-right">성수동 연무장길 · 2F</span>
+            </div>
+            <div className="hairline" />
+          </header>
+
+          {/* ── 타이틀 ── */}
+          <div className="p-title">
+            <span className="kicker"><i className="dot" aria-hidden="true" />여름 한정 신메뉴</span>
+            <h1 className="display">망고빙수</h1>
+            <div className="latin">MANGO BINGSU</div>
+          </div>
+
+          {/* ── 사진 ── */}
+          <div className="p-body">
+            <figure className="ph hero">
+              <img
+                src="photos/bingsu-hero.jpg"
+                alt="굽 달린 유리볼에 소복하게 담긴 우유얼음 빙수. 망고 큐브와 바닐라 아이스크림 한 스쿱, 민트 잎이 올라가 있고 망고 시럽이 흘러내린다."
+              />
+            </figure>
+
+            <aside className="side">
+              <figure className="ph thumb thumb--detail">
+                <img src="photos/bingsu-detail.jpg" alt="물방울이 맺힌 망고 과육과 우유얼음을 가까이서 찍은 사진." />
+              </figure>
+              <figure className="ph thumb thumb--top">
+                <img src="photos/bingsu-top.jpg" alt="흰 볼에 담긴 망고빙수를 위에서 내려다본 사진." />
+              </figure>
+
+              <p className="caption">곱게 간 우유얼음 위에<br />망고 과육을 가득 올렸습니다.</p>
+              <p className="caption">계단 끝 2층 창가에서<br />천천히 녹여 드세요.</p>
+
+              <div className="price-wrap">
+                <div className="price-rule" aria-hidden="true" />
+                <div className="price">13,500<span className="won">원</span></div>
+              </div>
+            </aside>
+          </div>
+
+          {/* ── 푸터 ── */}
+          <footer className="p-foot">
+            <div>
+              <div className="foot-brand">카페 안도<span className="sep">·</span><span className="en">CAFE ANDO</span></div>
+              <div className="foot-concept">“잠시 숨 고르며 안도(安堵)하는 공간”</div>
+              <div className="foot-sub">인테리어 회사 안도공간이 만든 자재 쇼룸 겸 카페</div>
+            </div>
+            <div className="foot-right">
+              <div className="foot-line"><b>화–일</b> 10:00–21:00 <span className="dim">· 월요일 휴무</span></div>
+              <div className="foot-line">서울 성동구 성수동 연무장길 안쪽 골목, 2층</div>
+              <div className="foot-line insta">@cafe.ando_</div>
+            </div>
+          </footer>
+        </article>
+      );
+    });
+
+    // ========================================
+    // 🧭 툴바
+    // ========================================
+
+    function Toolbar({ zoom, onZoom, scale }) {
+      return (
+        <header
+          className="no-print sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-white/10 bg-[#241F1B]/95 px-4 backdrop-blur"
+          style={{ height: TOOLBAR_H }}
+        >
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-bold text-[#F5F0E8]">카페 안도 · 여름 한정 망고빙수 포스터</h1>
+            <p className="truncate text-[11px] text-[#F5F0E8]/45">A4 210×297mm · 미리보기 {Math.round(scale * 100)}%</p>
+          </div>
+          <div className="flex flex-none items-center gap-2">
+            <SegControl
+              label="미리보기 배율"
+              value={zoom}
+              onChange={onZoom}
+              options={[{ value: 'fit', label: '맞춤' }, { value: 'full', label: '100%' }]}
+            />
+            <Button onClick={() => window.print()}>🖨 인쇄 / PDF</Button>
+          </div>
+        </header>
+      );
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+
+    function App() {
+      const posterRef = useRef(null);
+      const [zoom, setZoom] = useState('fit');
+      // A4의 실제 픽셀 크기(210mm = 793.7px @96dpi)는 브라우저가 계산하게 두고 측정한다.
+      const [natural, setNatural] = useState({ w: 794, h: 1123 });
+      const vp = useViewport();
+
+      useLayoutEffect(() => {
+        const el = posterRef.current;
+        if (el) setNatural({ w: el.offsetWidth, h: el.offsetHeight });
+      }, []);
+
+      const fitScale = Math.min(
+        1,
+        (vp.w - STAGE_PAD) / natural.w,
+        (vp.h - TOOLBAR_H - STAGE_PAD) / natural.h
+      );
+      const scale = zoom === 'full' ? 1 : Math.max(0.2, fitScale);
+
+      return (
+        <div className="min-h-screen bg-[#2E2A26]">
+          <Toolbar zoom={zoom} onZoom={setZoom} scale={scale} />
+          <main className="stage flex justify-center p-6">
+            {/* scale된 요소는 레이아웃 박스가 그대로라 래퍼로 실제 차지 크기를 잡아준다 */}
+            <div
+              className="poster-wrap shadow-2xl shadow-black/50"
+              style={{ width: natural.w * scale, height: natural.h * scale }}
+            >
+              <Poster ref={posterRef} scale={scale} />
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>망고빙수 SVG 드로잉 · React 쇼케이스</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    // ⚠️ babel-standalone(8.x)의 'react' 프리셋 기본값은 automatic runtime이라
+    //    `import { jsx } from "react/jsx-runtime"` 를 뱉는다 → UMD React 조합에선
+    //    "Cannot use import statement outside a module" → 흰 화면.
+    //    classic runtime(React.createElement)을 고정한 프리셋을 등록해서 사용한다.
+    Babel.registerPreset('classic-react', {
+      presets: [[Babel.availablePresets['react'], { runtime: 'classic' }]],
+    });
+  </script>
+  <style>
+    /* Tailwind 유틸리티로 표현할 수 없는 것만 여기에 */
+    body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Malgun Gothic", sans-serif; }
+
+    /* 드로잉 뒤 도트 그리드 — SVG의 둥근 모서리가 보이도록 */
+    .canvas-grid {
+      background-color: #FFFDF8;
+      background-image: radial-gradient(#EBD9BC 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+
+    @keyframes mb-fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .mb-fade-in { animation: mb-fade-in .4s ease-out both; }
+
+    @keyframes mb-toast-in {
+      from { opacity: 0; transform: translate(-50%, 12px); }
+      to   { opacity: 1; transform: translate(-50%, 0); }
+    }
+    .mb-toast { animation: mb-toast-in .25s ease-out both; }
+  </style>
+</head>
+<body class="bg-amber-50">
+  <div id="root"></div>
+
+  <!-- 위에서 등록한 classic-react 프리셋 사용 = classic JSX runtime 강제 (automatic이면 흰 화면) -->
+  <script type="text/babel" data-presets="classic-react">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useRef, useMemo, useEffect, useCallback } = React;
+
+    // ========================================
+    // ⚙️ 설정 (파트 / 소스 프리셋)
+    // ========================================
+
+    // 소스 프리셋 — stops는 #mb-sauce radialGradient의 4개 stop 색.
+    // 'mango'는 원본 SVG의 값과 정확히 동일해야 함 (기본값).
+    const SAUCE_PRESETS = [
+      { id: 'mango',      label: '망고',     emoji: '🥭', stops: ['#FFE096', '#FFC257', '#FDA636', '#F79025'] },
+      { id: 'strawberry', label: '딸기',     emoji: '🍓', stops: ['#FFD6E0', '#FF93AC', '#F5537B', '#D92A59'] },
+      { id: 'melon',      label: '멜론',     emoji: '🍈', stops: ['#EAF8BC', '#C6E97B', '#96CF4C', '#6DAE2C'] },
+      { id: 'blueberry',  label: '블루베리', emoji: '🫐', stops: ['#D3C2F2', '#A183E4', '#7355C9', '#4E339F'] },
+      { id: 'choco',      label: '초코',     emoji: '🍫', stops: ['#DDB183', '#B67C48', '#8B5327', '#5E3417'] },
+    ];
+
+    const PART_LIST = [
+      { key: 'scoop',      label: '아이스크림 스쿱', emoji: '🍦', desc: '바닐라 스쿱 + 위에 뿌린 소스' },
+      { key: 'mint',       label: '민트 잎',        emoji: '🌿', desc: '스쿱 어깨에 얹은 새싹' },
+      { key: 'spoon',      label: '금색 스푼',       emoji: '🥄', desc: '볼 뒤로 뻗은 티스푼' },
+      { key: 'tableCubes', label: '테이블 위 큐브',  emoji: '🧊', desc: '볼 바깥에 떨어진 망고 2조각' },
+      { key: 'sparkle',    label: '반짝임',         emoji: '✨', desc: '배경 점 + 별 하이라이트' },
+    ];
+
+    const DEFAULT_PARTS = { scoop: true, mint: true, spoon: true, tableCubes: true, sparkle: true };
+    const DEFAULT_SIZE = 400;
+
+    // ========================================
+    // 🎨 디자인 시스템 (프레젠테이션 전용)
+    // ========================================
+
+    function Button({ variant = 'primary', size = 'md', disabled = false, onClick, className = '', children, ...rest }) {
+      const base = 'inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition ' +
+                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-amber-400 ' +
+                   'disabled:opacity-40 disabled:cursor-not-allowed';
+      const variants = {
+        primary:   'bg-amber-500 text-white shadow-sm hover:bg-amber-600 active:bg-amber-700',
+        secondary: 'bg-white text-stone-700 border border-stone-200 shadow-sm hover:bg-stone-50 active:bg-stone-100',
+        danger:    'bg-rose-500 text-white shadow-sm hover:bg-rose-600 active:bg-rose-700',
+        ghost:     'bg-transparent text-stone-600 hover:bg-stone-100 active:bg-stone-200',
+      };
+      const sizes = { sm: 'text-xs px-3 py-1.5', md: 'text-sm px-4 py-2.5', lg: 'text-base px-6 py-3' };
+      return (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onClick}
+          className={`${base} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`}
+          {...rest}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Card({ className = '', children, ...rest }) {
+      return (
+        <div className={`bg-white rounded-2xl shadow-sm border border-stone-200/70 ${className}`} {...rest}>
+          {children}
+        </div>
+      );
+    }
+
+    function Badge({ tone = 'amber', className = '', children }) {
+      const tones = {
+        amber: 'bg-amber-100 text-amber-800',
+        stone: 'bg-stone-100 text-stone-600',
+      };
+      return (
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${tones[tone] || tones.amber} ${className}`}>
+          {children}
+        </span>
+      );
+    }
+
+    /** 접근성 스위치 (role="switch" + 키보드 지원은 button 기본 동작) */
+    function Toggle({ checked, onChange, label, description, emoji, className = '' }) {
+      return (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={checked}
+          onClick={() => onChange(!checked)}
+          className={`w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-xl transition
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
+                      ${checked ? 'bg-amber-50/80 hover:bg-amber-100/80' : 'bg-stone-50 hover:bg-stone-100'} ${className}`}
+        >
+          <span aria-hidden="true" className={`text-xl leading-none transition ${checked ? '' : 'grayscale opacity-40'}`}>{emoji}</span>
+          <span className="flex-1 min-w-0">
+            <span className={`block text-sm font-semibold ${checked ? 'text-stone-800' : 'text-stone-400'}`}>{label}</span>
+            {description && (
+              <span className={`block text-xs mt-0.5 truncate ${checked ? 'text-stone-500' : 'text-stone-400'}`}>{description}</span>
+            )}
+          </span>
+          <span
+            aria-hidden="true"
+            className={`shrink-0 w-10 h-6 rounded-full p-0.5 transition-colors ${checked ? 'bg-amber-500' : 'bg-stone-300'}`}
+          >
+            <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0'}`} />
+          </span>
+        </button>
+      );
+    }
+
+    function Slider({ label, value, min, max, step = 1, unit = '', onChange }) {
+      return (
+        <label className="block">
+          <span className="flex items-baseline justify-between mb-2">
+            <span className="text-sm font-semibold text-stone-700">{label}</span>
+            <span className="text-xs font-mono text-stone-500 tabular-nums">{value}{unit}</span>
+          </span>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="w-full h-2 accent-amber-500 cursor-pointer"
+            aria-label={label}
+          />
+        </label>
+      );
+    }
+
+    // ========================================
+    // 🥭 MangoBingsu — 원본 mango-bingsu.svg 인라인 (도형/좌표 원본 유지)
+    //    · defs의 mb-* id는 url(#...) 참조 키라 절대 변경 금지
+    //    · #mb-sauce의 stop 색만 props로 주입
+    // ========================================
+    function MangoBingsu({ parts = DEFAULT_PARTS, sauce = SAUCE_PRESETS[0].stops, size = DEFAULT_SIZE, svgRef }) {
+      const { mint, scoop, spoon, tableCubes, sparkle } = parts;
+
+      return (
+        <svg
+          ref={svgRef}
+          xmlns="http://www.w3.org/2000/svg"
+          width="400"
+          height="480"
+          viewBox="0 0 400 480"
+          role="img"
+          aria-labelledby="mbTitle mbDesc"
+          style={{ width: size + 'px', maxWidth: '100%', height: 'auto', display: 'block' }}
+        >
+          <title id="mbTitle">망고빙수</title>
+          <desc id="mbDesc">우유 빙수 산 위에 망고 큐브와 망고 소스, 바닐라 아이스크림과 민트를 올린 망고빙수 일러스트</desc>
+
+          <defs>
+            {/* ───────── 배경 ───────── */}
+            <linearGradient id="mb-bg" x1="0" y1="0" x2=".35" y2="1">
+              <stop offset="0" stopColor="#FFFAF1" />
+              <stop offset="1" stopColor="#FFE5C4" />
+            </linearGradient>
+            <radialGradient id="mb-glow" cx=".5" cy=".43" r=".54">
+              <stop offset="0" stopColor="#FFCE74" stopOpacity=".55" />
+              <stop offset="1" stopColor="#FFCE74" stopOpacity="0" />
+            </radialGradient>
+
+            {/* ───────── 빙수(우유얼음) ───────── */}
+            <linearGradient id="mb-ice" x1=".25" y1=".05" x2=".82" y2="1">
+              <stop offset="0" stopColor="#FFFFFF" />
+              <stop offset=".45" stopColor="#FBFDFF" />
+              <stop offset="1" stopColor="#D9E7F6" />
+            </linearGradient>
+            <radialGradient id="mb-iceShade" cx=".5" cy=".5" r=".5">
+              <stop offset="0" stopColor="#AECBE9" stopOpacity=".8" />
+              <stop offset="1" stopColor="#AECBE9" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="mb-iceLight" cx=".5" cy=".5" r=".5">
+              <stop offset="0" stopColor="#FFFFFF" stopOpacity=".95" />
+              <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+            </radialGradient>
+
+            {/* ───────── 망고 소스 (색상만 state 주입) ───────── */}
+            <radialGradient id="mb-sauce" gradientUnits="userSpaceOnUse" cx="176" cy="154" r="142">
+              <stop offset="0" stopColor={sauce[0]} />
+              <stop offset=".42" stopColor={sauce[1]} />
+              <stop offset=".8" stopColor={sauce[2]} />
+              <stop offset="1" stopColor={sauce[3]} />
+            </radialGradient>
+
+            {/* ───────── 아이스크림 ───────── */}
+            <linearGradient id="mb-scoop" x1=".25" y1=".1" x2=".8" y2="1">
+              <stop offset="0" stopColor="#FFFBEE" />
+              <stop offset=".5" stopColor="#FDF1D6" />
+              <stop offset="1" stopColor="#EFDCAF" />
+            </linearGradient>
+
+            {/* ───────── 유리볼 ───────── */}
+            <linearGradient id="mb-glass" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#FFFFFF" stopOpacity=".62" />
+              <stop offset=".18" stopColor="#D7E9F8" stopOpacity=".34" />
+              <stop offset=".5" stopColor="#FFFFFF" stopOpacity=".14" />
+              <stop offset=".84" stopColor="#D7E9F8" stopOpacity=".36" />
+              <stop offset="1" stopColor="#FFFFFF" stopOpacity=".66" />
+            </linearGradient>
+
+            {/* ───────── 스푼 ───────── */}
+            <linearGradient id="mb-spoon" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#F6E2A6" />
+              <stop offset=".5" stopColor="#E3C069" />
+              <stop offset="1" stopColor="#C99F45" />
+            </linearGradient>
+
+            <filter id="mb-blur" x="-45%" y="-45%" width="190%" height="190%">
+              <feGaussianBlur stdDeviation="10" />
+            </filter>
+            <filter id="mb-blurS" x="-45%" y="-45%" width="190%" height="190%">
+              <feGaussianBlur stdDeviation="4" />
+            </filter>
+            <filter id="mb-cubeShadow" x="-45%" y="-45%" width="190%" height="190%">
+              <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" floodColor="#C06C16" floodOpacity=".3" />
+            </filter>
+
+            {/* 망고 큐브 */}
+            <g id="mb-cube">
+              <path d="M0 -12.5 11 -6.2 11 6.2 0 12.5 -11 6.2 -11 -6.2Z"
+                    fill="#FFAF3C" stroke="#FFAF3C" strokeWidth="3.4" strokeLinejoin="round" />
+              <path d="M0 -12.5 11 -6.2 0 0 -11 -6.2Z"
+                    fill="#FFDC82" stroke="#FFDC82" strokeWidth="3.4" strokeLinejoin="round" />
+              <path d="M0 0 11 -6.2 11 6.2 0 12.5Z"
+                    fill="#F0851D" stroke="#F0851D" strokeWidth="3.4" strokeLinejoin="round" />
+              <path d="M-6.6 -6.1 -1.6 -3.2 -1.6 2.4 -6.6 -0.5Z" fill="#FFFFFF" opacity=".26" />
+            </g>
+
+            <path id="mb-moundPath"
+                  d="M88 302
+                     A24 24 0 0 1 92 262 A22 22 0 0 1 103 225 A26 26 0 0 1 121 192
+                     A21 21 0 0 1 147 165 A25 25 0 0 1 181 149 A22 22 0 0 1 219 149
+                     A26 26 0 0 1 253 165 A21 21 0 0 1 279 192 A24 24 0 0 1 297 225
+                     A22 22 0 0 1 308 262 A25 25 0 0 1 312 302
+                     C313 314 306 322 294 322 L106 322 C94 322 87 314 88 302 Z" />
+
+            <path id="mb-bowlPath"
+                  d="M92 296 A108 20 0 0 1 308 296 C304 350 266 392 200 392 C134 392 96 350 92 296 Z" />
+
+            {/* 소스 본체(돔을 감싸는 스마일 경계) + 흘러내린 줄기 */}
+            <path id="mb-sauceBody"
+                  d="M104 96 H296 V154
+                     C290 168 284 166 278 178
+                     C271 191 264 190 258 202
+                     C251 214 242 212 234 220
+                     C226 227 217 224 208 228
+                     C199 231 190 227 182 220
+                     C173 212 165 212 156 202
+                     C147 191 138 192 130 180
+                     C122 167 110 168 104 156 Z" />
+            <path id="mb-drip1" d="M118 172C118 213.6 116.8 224 126 224C135.2 224 134 213.6 134 172Z" />
+            <path id="mb-drip2" d="M149 196C149 222.9 148 232 156 232C164 232 163 222.9 163 196Z" />
+            <path id="mb-drip3" d="M177.5 216C177.5 251 176.2 262 186 262C195.8 262 194.5 251 194.5 216Z" />
+            <path id="mb-drip4" d="M207 222C207 242.9 206 252 214 252C222 252 221 242.9 221 222Z" />
+            <path id="mb-drip5" d="M236 206C236 243.6 234.8 254 244 254C253.2 254 252 243.6 252 206Z" />
+            <path id="mb-drip6" d="M265.5 180C265.5 205.6 264.5 214 272 214C279.5 214 278.5 205.6 278.5 180Z" />
+
+            <clipPath id="mb-moundClip"><use href="#mb-moundPath" /></clipPath>
+            <clipPath id="mb-bowlClip"><use href="#mb-bowlPath" /></clipPath>
+            <clipPath id="mb-sauceClip">
+              <use href="#mb-sauceBody" />
+              <use href="#mb-drip1" /><use href="#mb-drip2" /><use href="#mb-drip3" />
+              <use href="#mb-drip4" /><use href="#mb-drip5" /><use href="#mb-drip6" />
+            </clipPath>
+            {/* 아이스크림 스쿱: 사방이 울퉁불퉁해야 '푸딩'이 아니라 '스쿱'으로 읽힘 */}
+            <path id="mb-scoopPath"
+                  d="M200 91 A18 18 0 0 1 225 101 A16 16 0 0 1 235 126
+                     A17 17 0 0 1 224 151 A19 19 0 0 1 200 161 A16 16 0 0 1 176 150
+                     A18 18 0 0 1 165 126 A17 17 0 0 1 176 102 A16 16 0 0 1 200 91 Z" />
+            <clipPath id="mb-scoopClip"><use href="#mb-scoopPath" /></clipPath>
+          </defs>
+
+          {/* ═════════ 배경 ═════════ */}
+          <rect width="400" height="480" rx="28" fill="url(#mb-bg)" />
+          <circle cx="200" cy="228" r="196" fill="url(#mb-glow)" />
+          {sparkle && (
+            <g fill="#FFFFFF" opacity=".5">
+              <circle cx="58" cy="92" r="4" /><circle cx="342" cy="70" r="3" />
+              <circle cx="76" cy="386" r="3.5" /><circle cx="330" cy="404" r="4" />
+              <circle cx="46" cy="248" r="2.5" /><circle cx="358" cy="286" r="3" />
+            </g>
+          )}
+
+          <ellipse cx="200" cy="446" rx="118" ry="13" fill="#C98A4E" opacity=".22" filter="url(#mb-blurS)" />
+
+          {/* ═════════ 스푼(뒤) ═════════ */}
+          {spoon && (
+            <g>
+              <path d="M280 216 344 137" stroke="#B98F3C" strokeWidth="9" strokeLinecap="round" opacity=".35" />
+              <path d="M280 216 344 137" stroke="url(#mb-spoon)" strokeWidth="7" strokeLinecap="round" />
+              <ellipse cx="350" cy="129" rx="10" ry="7.5" transform="rotate(-51 350 129)" fill="url(#mb-spoon)" />
+              <path d="M296 202 336 152" stroke="#FFF6DC" strokeWidth="1.8" strokeLinecap="round" opacity=".75" />
+            </g>
+          )}
+
+          {/* ═════════ 뒤쪽 망고 큐브 ═════════ */}
+          <g opacity=".9">
+            <use href="#mb-cube" transform="translate(104 266) rotate(-24) scale(.82)" />
+            <use href="#mb-cube" transform="translate(300 258) rotate(21) scale(.8)" />
+          </g>
+
+          {/* ═════════ 볼 안의 빙수 ═════════ */}
+          <use href="#mb-bowlPath" fill="url(#mb-ice)" />
+          <g clipPath="url(#mb-bowlClip)">
+            <ellipse cx="322" cy="336" rx="58" ry="86" fill="url(#mb-iceShade)" filter="url(#mb-blur)" />
+            <ellipse cx="200" cy="404" rx="96" ry="34" fill="url(#mb-iceShade)" filter="url(#mb-blur)" opacity=".85" />
+            <ellipse cx="140" cy="336" rx="34" ry="52" fill="url(#mb-iceLight)" filter="url(#mb-blur)" />
+            <g stroke="#CBDFF2" strokeWidth="2.4" strokeLinecap="round" fill="none" opacity=".75">
+              <path d="M124 336C132 329 144 328 152 334" />
+              <path d="M232 380C240 373 252 372 260 378" />
+              <path d="M150 384C158 377 169 376 176 381" />
+              <path d="M254 320C262 313 273 312 280 317" />
+              <path d="M186 348C194 341 205 340 212 345" />
+            </g>
+          </g>
+
+          {/* ═════════ 빙수 산 ═════════ */}
+          <use href="#mb-moundPath" fill="url(#mb-ice)" />
+          <g clipPath="url(#mb-moundClip)">
+            <ellipse cx="322" cy="248" rx="62" ry="120" fill="url(#mb-iceShade)" filter="url(#mb-blur)" />
+            <ellipse cx="200" cy="338" rx="120" ry="44" fill="url(#mb-iceShade)" filter="url(#mb-blur)" opacity=".8" />
+            <ellipse cx="146" cy="212" rx="42" ry="72" fill="url(#mb-iceLight)" filter="url(#mb-blur)" />
+            <g stroke="#CFE1F2" strokeWidth="2.4" strokeLinecap="round" fill="none" opacity=".7">
+              <path d="M118 246C126 238 138 236 146 242" />
+              <path d="M152 276C160 268 172 266 180 272" />
+              <path d="M244 268C252 260 264 258 272 264" />
+              <path d="M170 212C177 205 187 204 194 209" />
+              <path d="M96 288C104 281 114 280 121 285" />
+              <path d="M272 296C280 289 291 288 298 293" />
+              <path d="M196 300C204 293 215 292 222 297" />
+            </g>
+          </g>
+
+          {/* ═════════ 망고 소스(빙수 곡면을 타고 흐름) ═════════ */}
+          <g clipPath="url(#mb-moundClip)">
+            <g fill="url(#mb-sauce)">
+              <use href="#mb-sauceBody" />
+              <use href="#mb-drip1" /><use href="#mb-drip2" /><use href="#mb-drip3" />
+              <use href="#mb-drip4" /><use href="#mb-drip5" /><use href="#mb-drip6" />
+            </g>
+            <g clipPath="url(#mb-sauceClip)">
+              <ellipse cx="158" cy="168" rx="44" ry="14" transform="rotate(-28 158 168)" fill="#FFE7AE" opacity=".7" filter="url(#mb-blurS)" />
+              <ellipse cx="248" cy="182" rx="24" ry="8" transform="rotate(38 248 182)" fill="#FFE7AE" opacity=".38" filter="url(#mb-blurS)" />
+              <ellipse cx="200" cy="150" rx="70" ry="22" fill="#D9660E" opacity=".3" filter="url(#mb-blur)" />
+            </g>
+          </g>
+
+          {/* ═════════ 빙수 위 망고 큐브 ═════════ */}
+          <g filter="url(#mb-cubeShadow)">
+            <use href="#mb-cube" transform="translate(133 210) rotate(-19)" />
+            <use href="#mb-cube" transform="translate(266 206) rotate(16) scale(.98)" />
+            <use href="#mb-cube" transform="translate(163 254) rotate(9) scale(1.02)" />
+            <use href="#mb-cube" transform="translate(240 258) rotate(-14)" />
+            <use href="#mb-cube" transform="translate(114 262) rotate(24) scale(.88)" />
+            <use href="#mb-cube" transform="translate(290 266) rotate(-21) scale(.88)" />
+            <use href="#mb-cube" transform="translate(200 286) rotate(7) scale(1.05)" />
+            <use href="#mb-cube" transform="translate(211 234) rotate(-5) scale(.9)" />
+          </g>
+
+          {/* ═════════ 아이스크림 + 민트 ═════════ */}
+          <g>
+            {scoop && (
+              <>
+                <ellipse cx="200" cy="159" rx="34" ry="8" fill="#C4761E" opacity=".24" filter="url(#mb-blurS)" />
+                <use href="#mb-scoopPath" fill="url(#mb-scoop)" />
+                <g clipPath="url(#mb-scoopClip)">
+                  <ellipse cx="236" cy="148" rx="30" ry="34" fill="#D9B97B" opacity=".5" filter="url(#mb-blurS)" />
+                  <ellipse cx="184" cy="110" rx="18" ry="13" transform="rotate(-24 184 110)" fill="#FFFFFF" opacity=".85" filter="url(#mb-blurS)" />
+                  {/* 스쿱 특유의 말린 자국 */}
+                  <path d="M214 103C228 110 232 124 226 137C221 147 210 152 199 151" stroke="#E7CE9A" strokeWidth="2.6" fill="none" opacity=".65" strokeLinecap="round" />
+                  <path d="M206 116C214 121 216 129 212 137" stroke="#E7CE9A" strokeWidth="2" fill="none" opacity=".45" strokeLinecap="round" />
+                </g>
+                {/* 아이스크림 위 소스 */}
+                <path d="M176 100C186 92 214 92 224 101C230 106 226 113 218 111C209 109 204 116 194 114C185 112 178 114 175 108C173 104 174 102 176 100Z" fill="url(#mb-sauce)" />
+                <path d="M182 108C181 118 186 124 184 130C183 136 190 137 192 131C194 124 189 118 190 111Z" fill="url(#mb-sauce)" />
+                <path d="M216 110C216 119 221 124 219 130C217 136 224 138 226 131C228 124 223 118 224 112Z" fill="url(#mb-sauce)" />
+              </>
+            )}
+
+            {/* 민트(정중앙 새싹처럼 보이지 않게 어깨 쪽으로) */}
+            {mint && (
+              <g transform="rotate(19 200 94) translate(13 -1)">
+                <path d="M200 96C200 84 202 76 207 69" stroke="#3E9E62" strokeWidth="2.6" strokeLinecap="round" fill="none" />
+                <path d="M200 82C182 74 172 56 176 42C192 48 202 66 200 82Z" fill="#4FB472" />
+                <path d="M200 82C190 68 181 55 176 42" stroke="#2E7F4C" strokeWidth="1.2" fill="none" opacity=".55" />
+                <path d="M204 78C219 72 231 58 229 46C213 50 202 64 204 78Z" fill="#63C687" />
+                <path d="M204 78C212 67 222 56 229 46" stroke="#2E7F4C" strokeWidth="1.2" fill="none" opacity=".45" />
+              </g>
+            )}
+          </g>
+
+          {/* ═════════ 볼 안에 가라앉은 망고 + 소스 ═════════ */}
+          <g clipPath="url(#mb-bowlClip)">
+            <ellipse cx="200" cy="392" rx="72" ry="20" fill="#FFB13A" opacity=".38" filter="url(#mb-blur)" />
+            <g filter="url(#mb-cubeShadow)">
+              <use href="#mb-cube" transform="translate(147 344) rotate(-18) scale(.85)" />
+              <use href="#mb-cube" transform="translate(207 362) rotate(8) scale(.9)" />
+              <use href="#mb-cube" transform="translate(259 340) rotate(15) scale(.82)" />
+              <use href="#mb-cube" transform="translate(186 334) rotate(-6) scale(.76)" />
+            </g>
+          </g>
+
+          {/* ═════════ 유리볼 ═════════ */}
+          <g>
+            <path d="M92 296 A108 20 0 0 0 308 296 C304 350 266 392 200 392 C134 392 96 350 92 296 Z"
+                  fill="url(#mb-glass)" />
+            <path d="M186 388C184 402 182 412 182 418C182 421 176 422 166 424C154 426 150 429 150 431
+                     C150 435 172 438 200 438C228 438 250 435 250 431C250 429 246 426 234 424
+                     C224 422 218 421 218 418C218 412 216 402 214 388Z"
+                  fill="url(#mb-glass)" stroke="#A9C9E0" strokeWidth="2.2" strokeLinejoin="round" />
+            <path d="M92 296C96 350 134 392 200 392C266 392 304 350 308 296" fill="none" stroke="#A9C9E0" strokeWidth="2.6" strokeLinecap="round" />
+            <path d="M92 296 A108 20 0 0 0 308 296" fill="none" stroke="#A9C9E0" strokeWidth="2.6" strokeLinecap="round" />
+            <path d="M92 296 A108 20 0 0 1 308 296" fill="none" stroke="#C3DCEE" strokeWidth="2" strokeLinecap="round" opacity=".7" />
+            <path d="M112 312C116 344 130 368 148 380" stroke="#FFFFFF" strokeWidth="6" strokeLinecap="round" fill="none" opacity=".8" />
+            <path d="M288 314C286 340 278 358 268 370" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" fill="none" opacity=".5" />
+            <ellipse cx="200" cy="434" rx="42" ry="4" fill="#FFFFFF" opacity=".5" />
+          </g>
+
+          {/* ═════════ 앞쪽 망고 큐브(림 위) ═════════ */}
+          <g filter="url(#mb-cubeShadow)">
+            <use href="#mb-cube" transform="translate(101 296) rotate(-28) scale(.9)" />
+            <use href="#mb-cube" transform="translate(154 306) rotate(11) scale(.95)" />
+            <use href="#mb-cube" transform="translate(248 304) rotate(-9) scale(.95)" />
+            <use href="#mb-cube" transform="translate(302 294) rotate(26) scale(.9)" />
+          </g>
+
+          {/* ═════════ 테이블 위 큐브 ═════════ */}
+          {tableCubes && (
+            <g filter="url(#mb-cubeShadow)">
+              <use href="#mb-cube" transform="translate(96 432) rotate(-14) scale(.78)" />
+              <use href="#mb-cube" transform="translate(308 438) rotate(19) scale(.72)" />
+            </g>
+          )}
+
+          {/* ═════════ 반짝임 ═════════ */}
+          {sparkle && (
+            <g fill="#FFFFFF">
+              <path d="M312 96C313 106 316 109 326 110C316 111 313 114 312 124C311 114 308 111 298 110C308 109 311 106 312 96Z" opacity=".9" />
+              <path d="M84 156C85 163 87 165 94 166C87 167 85 169 84 176C83 169 81 167 74 166C81 165 83 163 84 156Z" opacity=".75" />
+              <path d="M340 232C341 238 342 239 348 240C342 241 341 242 340 248C339 242 338 241 332 240C338 239 339 238 340 232Z" opacity=".6" />
+            </g>
+          )}
+        </svg>
+      );
+    }
+
+    // ========================================
+    // 🧩 공통 컴포넌트
+    // ========================================
+
+    function Header({ visibleCount, totalCount }) {
+      return (
+        <header className="border-b border-stone-200/80 bg-white/70 backdrop-blur sticky top-0 z-20">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <span aria-hidden="true" className="text-2xl sm:text-3xl">🥭</span>
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl font-bold text-stone-800 truncate">망고빙수 SVG 드로잉</h1>
+                <p className="text-xs text-stone-500 truncate">순수 SVG 일러스트 · React 인라인 렌더링</p>
+              </div>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Badge tone="stone">400 × 480</Badge>
+              <Badge tone="amber">파트 {visibleCount}/{totalCount}</Badge>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    function Toast({ message }) {
+      if (!message) return null;
+      return (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-toast fixed bottom-6 left-1/2 z-50 px-4 py-2.5 rounded-full bg-stone-800 text-white text-sm font-semibold shadow-lg"
+        >
+          {message}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 ShowcasePage — 상태 + 비즈니스 로직
+    // ========================================
+    function ShowcasePage() {
+      const [parts, setParts] = useState(DEFAULT_PARTS);
+      const [sauceId, setSauceId] = useState(SAUCE_PRESETS[0].id);
+      const [size, setSize] = useState(DEFAULT_SIZE);
+      const [toast, setToast] = useState('');
+      const svgRef = useRef(null);
+
+      const preset = useMemo(
+        () => SAUCE_PRESETS.find((p) => p.id === sauceId) || SAUCE_PRESETS[0],
+        [sauceId]
+      );
+      const visibleCount = useMemo(() => PART_LIST.filter((p) => parts[p.key]).length, [parts]);
+      const isDefault =
+        visibleCount === PART_LIST.length && sauceId === SAUCE_PRESETS[0].id && size === DEFAULT_SIZE;
+
+      // 토스트 자동 소멸
+      useEffect(() => {
+        if (!toast) return;
+        const t = setTimeout(() => setToast(''), 2200);
+        return () => clearTimeout(t);
+      }, [toast]);
+
+      const togglePart = useCallback((key) => {
+        setParts((prev) => ({ ...prev, [key]: !prev[key] }));
+      }, []);
+
+      const handleReset = useCallback(() => {
+        setParts(DEFAULT_PARTS);
+        setSauceId(SAUCE_PRESETS[0].id);
+        setSize(DEFAULT_SIZE);
+        setToast('기본 상태로 되돌렸어요');
+      }, []);
+
+      /** 현재 화면에 렌더된 SVG DOM을 그대로 직렬화 → Blob 다운로드 */
+      const handleDownload = useCallback(() => {
+        const el = svgRef.current;
+        if (!el) return;
+
+        // 원본 크기(400×480)로 저장 — 미리보기용 인라인 style은 제거
+        const clone = el.cloneNode(true);
+        clone.removeAttribute('style');
+        clone.setAttribute('width', '400');
+        clone.setAttribute('height', '480');
+
+        const source =
+          '<?xml version="1.0" encoding="UTF-8"?>\n' +
+          new XMLSerializer().serializeToString(clone);
+
+        const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `mango-bingsu-${sauceId}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setToast(`${a.download} 저장 완료`);
+      }, [sauceId]);
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          <Header visibleCount={visibleCount} totalCount={PART_LIST.length} />
+
+          <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 lg:gap-8 items-start">
+
+              {/* ───────── 캔버스 ───────── */}
+              <Card className="canvas-grid p-4 sm:p-8 overflow-hidden lg:sticky lg:top-24">
+                <div className="flex justify-center items-center min-h-[320px] overflow-auto">
+                  <div className="mb-fade-in drop-shadow-xl">
+                    <MangoBingsu parts={parts} sauce={preset.stops} size={size} svgRef={svgRef} />
+                  </div>
+                </div>
+              </Card>
+
+              {/* ───────── 컨트롤 ───────── */}
+              <div className="space-y-5">
+
+                {/* 파트 토글 */}
+                <Card className="p-4 sm:p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-bold text-stone-800">파트 켜고 끄기</h2>
+                    <Badge tone="stone">{visibleCount}/{PART_LIST.length}</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {PART_LIST.map((p) => (
+                      <Toggle
+                        key={p.key}
+                        emoji={p.emoji}
+                        label={p.label}
+                        description={p.desc}
+                        checked={!!parts[p.key]}
+                        onChange={() => togglePart(p.key)}
+                      />
+                    ))}
+                  </div>
+                </Card>
+
+                {/* 소스 색상 */}
+                <Card className="p-4 sm:p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-bold text-stone-800">소스 색상</h2>
+                    <span className="text-xs text-stone-400 font-mono">#mb-sauce</span>
+                  </div>
+                  <div
+                    role="radiogroup"
+                    aria-label="소스 색상 프리셋"
+                    className="grid grid-cols-5 gap-2"
+                  >
+                    {SAUCE_PRESETS.map((p) => {
+                      const active = p.id === sauceId;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          aria-label={p.label + ' 소스'}
+                          onClick={() => setSauceId(p.id)}
+                          className={`group flex flex-col items-center gap-1.5 py-2 rounded-xl border transition
+                                      focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400
+                                      ${active
+                                        ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-300'
+                                        : 'border-stone-200 bg-white hover:bg-stone-50'}`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="w-7 h-7 rounded-full border border-black/10 shadow-inner"
+                            style={{
+                              background: `radial-gradient(circle at 35% 30%, ${p.stops[0]}, ${p.stops[1]} 42%, ${p.stops[2]} 80%, ${p.stops[3]})`,
+                            }}
+                          />
+                          <span className={`text-[11px] font-semibold ${active ? 'text-amber-700' : 'text-stone-500'}`}>
+                            {p.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {preset.stops.map((c) => (
+                      <code key={c} className="text-[10px] font-mono text-stone-500 bg-stone-100 rounded px-1.5 py-0.5">
+                        {c}
+                      </code>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* 크기 */}
+                <Card className="p-4 sm:p-5">
+                  <Slider
+                    label="미리보기 크기"
+                    value={size}
+                    min={180}
+                    max={560}
+                    step={10}
+                    unit="px"
+                    onChange={setSize}
+                  />
+                  <p className="mt-2 text-xs text-stone-400">
+                    벡터라 어떤 크기에서도 선명해요. 저장 파일은 항상 원본 400×480입니다.
+                  </p>
+                </Card>
+
+                {/* 액션 */}
+                <div className="flex gap-2">
+                  <Button variant="primary" className="flex-1" onClick={handleDownload}>
+                    <span aria-hidden="true">⬇</span> SVG 다운로드
+                  </Button>
+                  <Button variant="secondary" onClick={handleReset} disabled={isDefault}>
+                    초기화
+                  </Button>
+                </div>
+
+                <p className="text-xs text-stone-400 leading-relaxed px-1">
+                  다운로드는 지금 화면에 보이는 상태를 그대로 직렬화합니다 — 꺼둔 파트는 파일에도 없고, 소스 색도 선택한 프리셋으로 저장돼요.
+                </p>
+              </div>
+            </div>
+          </main>
+
+          <footer className="border-t border-stone-200/80 py-6 text-center">
+            <p className="text-xs text-stone-400">
+              🥭 mango-bingsu.svg · 유리볼 + 우유빙수 + 망고소스 + 큐브 20여 개 + 스쿱 + 민트 + 스푼
+            </p>
+          </footer>
+
+          <Toast message={toast} />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+    function App() {
+      return <ShowcasePage />;
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
