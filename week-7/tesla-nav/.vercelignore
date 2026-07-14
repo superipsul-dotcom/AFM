@@ -1,0 +1,9 @@
+# 개인키는 어떤 경우에도 Vercel로 올라가면 안 된다.
+# vercel.json의 includeFiles가 공개키만 명시하고 있어 이미 막혀 있지만,
+# 업로드 단계에서 한 겹 더 차단한다.
+keys/private-key.pem
+
+.env
+.env.local
+node_modules
+test.mjs

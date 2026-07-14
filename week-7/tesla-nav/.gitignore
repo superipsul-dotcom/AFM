@@ -1,0 +1,11 @@
+# 테슬라 개인키 — 절대 커밋 금지.
+# 이 키는 파트너 등록 시 테슬라에 공개키로 등록되며, 유출되면 차량 명령 서명 권한이 넘어간다.
+keys/private-key.pem
+
+# 공개키(keys/com.tesla.3p.public-key.pem)는 어차피 공개 호스팅되므로 커밋해도 무방하다.
+# 다만 개인키와 쌍이므로 같이 두고, 재발급 시 함께 교체할 것.
+
+.env
+.env.local
+node_modules/
+.vercel
