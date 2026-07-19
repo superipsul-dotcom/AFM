@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>썸네일 B안 — 옐로 팝 (컷아웃 스티커)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=block">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    position: relative;
+    background:
+      radial-gradient(1200px 850px at 66% 42%, #ffe45c 0%, transparent 65%),
+      radial-gradient(1600px 1100px at 30% 80%, #ffd400 20%, transparent 80%),
+      linear-gradient(150deg, #ffd400 0%, #f7c500 60%, #eab800 100%);
+  }
+  /* 방사형 집중선 */
+  .rays {
+    position: absolute; inset: -400px; z-index: 1; opacity: 0.10;
+    background: repeating-conic-gradient(from 0deg at 72% 45%,
+      #000 0deg 4deg, transparent 4deg 14deg);
+  }
+  /* 인물 뒤 빨간 원형 버스트 */
+  .burst {
+    position: absolute; right: -240px; bottom: -420px; z-index: 2;
+    width: 1340px; height: 1340px; border-radius: 50%;
+    background: radial-gradient(circle at 42% 32%, #ff4d42 0%, #e5202e 55%, #c81422 100%);
+    box-shadow: 0 0 0 22px rgba(255, 255, 255, 0.85), 0 30px 80px rgba(0, 0, 0, 0.25);
+  }
+  /* 인물: 흰 스티커 테두리 컷아웃 */
+  .person {
+    position: absolute; right: -110px; bottom: -120px; z-index: 3;
+    height: 1240px;
+    filter:
+      drop-shadow(7px 0 0 #fff) drop-shadow(-7px 0 0 #fff)
+      drop-shadow(0 7px 0 #fff) drop-shadow(0 -7px 0 #fff)
+      drop-shadow(-24px 30px 40px rgba(0, 0, 0, 0.38));
+  }
+  /* 좌상단 배지 */
+  .badge {
+    position: absolute; top: 46px; left: 52px; z-index: 6;
+    background: #111; color: #ffd400;
+    border-radius: 14px; padding: 14px 30px;
+    font-size: 36px; font-weight: 800; letter-spacing: -0.01em;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+    transform: rotate(-1.5deg);
+  }
+  .badge b { color: #fff; }
+  /* 헤드라인 */
+  .headline {
+    position: absolute; left: 56px; top: 260px; z-index: 5;
+    font-family: 'Black Han Sans', 'Pretendard Variable', sans-serif;
+    font-weight: 400; color: #111; line-height: 1.08;
+    letter-spacing: 0;
+    text-shadow: 0 5px 0 rgba(255, 255, 255, 0.55), 0 16px 34px rgba(0, 0, 0, 0.18);
+  }
+  .headline .l1 { font-size: 190px; }
+  .headline .l2 { font-size: 190px; }
+  .headline .red { color: #e5202e; text-shadow: 0 5px 0 #fff, 0 14px 30px rgba(229, 32, 46, 0.35); }
+  /* 승인 스탬프 (인물 컷아웃 이음새를 덮는 위치) */
+  .stamp {
+    position: absolute; left: 950px; top: 800px; z-index: 5;
+    border: 7px solid #e5202e; color: #e5202e; border-radius: 18px;
+    padding: 14px 34px; font-size: 62px; font-weight: 900; letter-spacing: 0.01em;
+    background: rgba(255, 255, 255, 0.82);
+    transform: rotate(-6deg);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+  }
+  .stamp small { font-size: 40px; font-weight: 800; }
+  /* 화살표 (텍스트 → 승인 스탬프) */
+  .arrow {
+    position: absolute; left: 560px; top: 870px; z-index: 4;
+    transform: rotate(-10deg);
+  }
+  .arrow .shaft {
+    width: 240px; height: 46px; background: #111; border-radius: 12px;
+    box-shadow: 0 8px 0 rgba(255, 255, 255, 0.5);
+  }
+  .arrow .head {
+    position: absolute; right: -66px; top: -29px;
+    border-left: 84px solid #111;
+    border-top: 52px solid transparent;
+    border-bottom: 52px solid transparent;
+    filter: drop-shadow(0 8px 0 rgba(255, 255, 255, 0.5));
+  }
+  /* 쇼핑 이모지 소품 */
+  .cart {
+    position: absolute; left: 790px; top: 62px; z-index: 2;
+    font-size: 120px; transform: rotate(12deg);
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.22));
+  }
+</style>
+</head>
+<body>
+  <div class="rays"></div>
+  <div class="cart">🛒</div>
+  <div class="burst"></div>
+  <img class="person" src="assets/person-cutout.png" alt="">
+  <div class="badge">클로드 <b>페이블 5</b>한테 쇼핑 시켰더니</div>
+
+  <div class="headline">
+    <div class="l1">진짜 <span class="red">결제</span>까지</div>
+    <div class="l2">해버림;;</div>
+  </div>
+
+  <div class="stamp">💳 19,800원 <small>승인완료</small></div>
+
+  <div class="arrow"><div class="shaft"></div><div class="head"></div></div>
+</body>
+</html>

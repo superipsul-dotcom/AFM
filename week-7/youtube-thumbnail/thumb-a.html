@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>썸네일 A안 — 다크 시네마틱 (원본 오마주)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    position: relative;
+    background:
+      radial-gradient(1100px 700px at 78% 68%, rgba(120, 150, 170, 0.16), transparent 60%),
+      radial-gradient(900px 600px at 12% 18%, rgba(190, 150, 90, 0.12), transparent 55%),
+      linear-gradient(160deg, #23201c 0%, #171411 45%, #0e0c0a 100%);
+  }
+  /* 비네트 */
+  .vignette {
+    position: absolute; inset: 0; z-index: 6; pointer-events: none;
+    box-shadow: inset 0 0 320px 90px rgba(0, 0, 0, 0.62);
+  }
+  /* Claude 스케치 워터마크 */
+  .watermark {
+    position: absolute; top: -70px; right: -30px; z-index: 1;
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 320px; font-weight: 400; letter-spacing: 0.01em;
+    color: transparent; -webkit-text-stroke: 2.5px rgba(205, 198, 185, 0.30);
+    transform: rotate(-1deg);
+  }
+  /* 좌상단 배지 */
+  .badge {
+    position: absolute; top: 42px; left: 46px; z-index: 7;
+    border: 3px solid rgba(245, 242, 234, 0.95);
+    background: rgba(15, 13, 11, 0.55);
+    border-radius: 999px; padding: 12px 30px;
+    color: #f5f2ea; font-size: 32px; font-weight: 700; letter-spacing: 0.01em;
+  }
+  /* 인물 (컷아웃 → 다크 씬에 자연 합성) */
+  .person-glow {
+    position: absolute; left: 60px; bottom: 40px; z-index: 2;
+    width: 700px; height: 900px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(215, 170, 110, 0.20), transparent 70%);
+  }
+  .person {
+    position: absolute; left: -60px; bottom: -85px; z-index: 3;
+    height: 1310px;
+    filter: brightness(1.02) saturate(0.96) drop-shadow(0 30px 70px rgba(0, 0, 0, 0.65));
+  }
+  /* 헤드라인 */
+  .headline {
+    position: absolute; top: 128px; right: 64px; z-index: 5;
+    text-align: right; line-height: 1.16;
+    font-weight: 900; color: #ffffff;
+    text-shadow: 0 6px 16px rgba(0, 0, 0, 0.85), 0 18px 50px rgba(0, 0, 0, 0.6);
+  }
+  .headline .l1 { font-size: 168px; letter-spacing: -0.015em; }
+  .headline .l2 { font-size: 168px; letter-spacing: -0.02em; }
+  .hl {
+    display: inline-block; position: relative; color: #fff;
+    padding: 0 26px 8px; margin-left: 10px;
+    background: linear-gradient(100deg, #d3480f 0%, #ef6a1a 55%, #d94e12 100%);
+    clip-path: polygon(1.5% 7%, 99% 0%, 100% 91%, 2.5% 100%);
+    transform: rotate(-1.6deg) translateY(-4px);
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  }
+  /* 쿠팡 결제 UI 목업 */
+  .pay-card {
+    position: absolute; right: -36px; bottom: -64px; z-index: 4;
+    width: 780px; background: #ffffff; border-radius: 20px;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7), 0 0 90px rgba(255, 255, 255, 0.12);
+    transform: rotate(-1.2deg);
+    overflow: hidden;
+  }
+  .pay-head {
+    display: flex; align-items: center; gap: 24px;
+    padding: 22px 30px 18px; border-bottom: 1.5px solid #eceae6;
+  }
+  .cp-logo { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; }
+  .cp-logo b:nth-child(1) { color: #e5322d; } .cp-logo b:nth-child(2) { color: #f47b20; }
+  .cp-logo b:nth-child(3) { color: #f9a51a; } .cp-logo b:nth-child(4) { color: #6fb92c; }
+  .cp-logo b:nth-child(5) { color: #00a0e9; } .cp-logo b:nth-child(6) { color: #2e3192; }
+  .cp-logo b:nth-child(7) { color: #e5322d; }
+  .pay-title { font-size: 27px; font-weight: 800; color: #111; }
+  .pay-body { display: flex; gap: 26px; padding: 24px 30px 40px; }
+  .prod { width: 210px; }
+  .prod-img {
+    width: 210px; height: 200px; border-radius: 14px;
+    background: linear-gradient(160deg, #f4f3f1, #e8e6e2);
+    display: flex; align-items: center; justify-content: center; font-size: 104px;
+  }
+  .prod-name { margin-top: 14px; font-size: 20px; color: #333; font-weight: 600; }
+  .prod-price { margin-top: 6px; font-size: 27px; color: #111; font-weight: 800; }
+  .prod-ship { margin-top: 4px; font-size: 17px; color: #888; }
+  /* 비밀번호 키패드 */
+  .keypad {
+    flex: 1; border: 1.5px solid #e8e6e2; border-radius: 18px;
+    padding: 20px 26px; text-align: center;
+    box-shadow: 0 0 70px 16px rgba(255, 255, 255, 0.55), 0 8px 30px rgba(0, 0, 0, 0.10);
+  }
+  .keypad .lock { font-size: 26px; }
+  .keypad .t { font-size: 24px; font-weight: 800; color: #111; margin-top: 2px; }
+  .keypad .s { font-size: 15px; color: #999; margin-top: 4px; }
+  .dots { margin: 14px 0 16px; font-size: 15px; letter-spacing: 12px; color: #111; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .grid span {
+    height: 46px; border: 1.2px solid #eceae6; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 600; color: #333; background: #fdfdfc;
+  }
+  .pay-total {
+    display: flex; justify-content: flex-end; align-items: baseline; gap: 14px;
+    padding: 0 30px 26px; margin-top: -14px;
+  }
+  .pay-total .lbl { font-size: 19px; color: #666; font-weight: 600; }
+  .pay-total .amt { font-size: 30px; color: #111; font-weight: 900; }
+</style>
+</head>
+<body>
+  <div class="watermark">Claude</div>
+  <div class="person-glow"></div>
+  <img class="person" src="assets/person-cutout.png" alt="">
+  <div class="badge">클로드 페이블 5</div>
+
+  <div class="headline">
+    <div class="l1">쿠팡 <span class="hl">결제</span></div>
+    <div class="l2">AI가 해버렸다</div>
+  </div>
+
+  <div class="pay-card">
+    <div class="pay-head">
+      <div class="cp-logo"><b>c</b><b>o</b><b>u</b><b>p</b><b>a</b><b>n</b><b>g</b></div>
+      <div class="pay-title">주문/결제</div>
+    </div>
+    <div class="pay-body">
+      <div class="prod">
+        <div class="prod-img">🎧</div>
+        <div class="prod-name">무선 블루투스 이어폰</div>
+        <div class="prod-price">19,800원</div>
+        <div class="prod-ship">배송비 0원</div>
+      </div>
+      <div class="keypad">
+        <div class="lock">🔒</div>
+        <div class="t">결제를 진행합니다</div>
+        <div class="s">본인 명의 계좌 비밀번호 입력</div>
+        <div class="dots">●●●●●●</div>
+        <div class="grid">
+          <span>1</span><span>2</span><span>3</span>
+          <span>4</span><span>5</span><span>6</span>
+          <span>7</span><span>8</span><span>9</span>
+          <span></span><span>0</span><span>⌫</span>
+        </div>
+      </div>
+    </div>
+    <div class="pay-total"><span class="lbl">총 결제금액</span><span class="amt">19,800원</span></div>
+  </div>
+
+  <div class="vignette"></div>
+</body>
+</html>

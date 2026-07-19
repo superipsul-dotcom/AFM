@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>A/B 비교 시트</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1920px; height: 1240px; overflow: hidden; }
+  body {
+    font-family: 'Pretendard Variable', Pretendard, sans-serif;
+    background: #16181d; color: #f2f3f5; padding: 44px 56px;
+  }
+  h1 { font-size: 40px; font-weight: 800; }
+  h1 small { font-size: 22px; font-weight: 500; color: #9aa1ad; margin-left: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; margin-top: 30px; }
+  .col .label { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; }
+  .tag {
+    font-size: 26px; font-weight: 800; padding: 6px 18px; border-radius: 10px;
+  }
+  .tag.a { background: #e8531f; color: #fff; }
+  .tag.b { background: #ffd400; color: #111; }
+  .label .name { font-size: 25px; font-weight: 700; }
+  .col img.big { width: 100%; border-radius: 14px; display: block; }
+  .row2 { display: flex; align-items: flex-start; gap: 22px; margin-top: 16px; }
+  .row2 img.small { width: 300px; height: 170px; border-radius: 8px; display: block; }
+  .row2 .cap { font-size: 17px; color: #9aa1ad; line-height: 1.55; padding-top: 4px; }
+  .row2 .cap b { color: #f2f3f5; }
+</style>
+</head>
+<body>
+  <h1>유튜브 썸네일 A/B <small>디자인 엔지니어 — "쿠팡 결제, AI가 해버렸다" (1920×1080)</small></h1>
+  <div class="grid">
+    <div class="col">
+      <div class="label"><span class="tag a">A안</span><span class="name">다크 시네마틱 — 원본 오마주</span></div>
+      <img class="big" src="out/thumb-a.png">
+      <div class="row2">
+        <img class="small" src="out/preview-300x170-a.png">
+        <div class="cap"><b>300×170 미리보기.</b> 채널 톤 유지, 신뢰감·스토리형.<br>결제 UI 목업이 "진짜 사고"라는 디테일을 전달.</div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="label"><span class="tag b">B안</span><span class="name">옐로 팝 — 컷아웃 스티커</span></div>
+      <img class="big" src="out/thumb-b.png">
+      <div class="row2">
+        <img class="small" src="out/preview-300x170-b.png">
+        <div class="cap"><b>300×170 미리보기.</b> 피드에서 발색 최강, 밈 토널리티.<br>승인완료 스탬프 한 방으로 사건 요약.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
