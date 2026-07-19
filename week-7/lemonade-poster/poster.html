@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>카페 안도 — 크러시드 레모네이드 포스터 (1080×1350)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── 팔레트 3색: 그래파이트/크림(브랜드) + 포인트 레몬 옐로 1개 ── */
+  :root {
+    --ink:    #0A0A0B;
+    --cream:  #F5F0E8;
+    --lemon:  #FFD400;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #222; }
+  .stage {
+    position: relative; width: 1080px; height: 1350px;
+    background: var(--ink); color: var(--cream); overflow: hidden;
+    font-family: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .en { font-family: "Space Grotesk", "Pretendard Variable", sans-serif; }
+
+  /* ── 레이어 1: 초대형 아웃라인 (이미지 뒤) ── */
+  .crush-outline {
+    position: absolute; top: 430px; left: 50%; transform: translateX(-50%);
+    font-size: 218px; font-weight: 700; letter-spacing: .04em; line-height: 1;
+    color: transparent; -webkit-text-stroke: 1.5px rgba(245,240,232,.2);
+    white-space: nowrap;
+  }
+
+  /* ── 레이어 2: 히어로 (순흑 배경 → lighten으로 캔버스에 융합) ── */
+  .hero {
+    position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
+    height: 1120px; width: auto;
+    mix-blend-mode: lighten;
+  }
+
+  /* ── 레이어 3: 타이포 ── */
+  .specbar {
+    position: absolute; top: 44px; left: 72px; right: 72px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; font-weight: 500; letter-spacing: .22em;
+    color: rgba(245,240,232,.62); text-transform: uppercase;
+  }
+  .specbar .dot { color: var(--lemon); }
+  .specline { position: absolute; top: 78px; left: 72px; right: 72px; border-top: 1px solid rgba(245,240,232,.14); }
+
+  .copy { position: absolute; top: 118px; left: 72px; line-height: 1.14; letter-spacing: -.045em; }
+  .copy .l { font-size: 116px; font-weight: 900; }
+  .copy .sour { color: var(--lemon); }
+  .copy-sub {
+    position: absolute; top: 408px; left: 72px;
+    font-size: 21px; font-weight: 500; color: rgba(245,240,232,.8); letter-spacing: -.01em;
+  }
+  .copy-label {
+    position: absolute; top: 452px; left: 72px;
+    font-size: 14px; font-weight: 600; letter-spacing: .26em; color: rgba(245,240,232,.5);
+  }
+
+  /* NEW 스티커 */
+  .badge {
+    position: absolute; top: 132px; right: 82px; width: 132px; height: 132px;
+    background: var(--lemon); color: var(--ink); border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transform: rotate(9deg);
+  }
+  .badge .b1 { font-size: 34px; font-weight: 700; letter-spacing: .04em; }
+  .badge .b2 { font-size: 11px; font-weight: 600; letter-spacing: .18em; margin-top: 3px; }
+
+  /* ── 하단 좌측: 메뉴명 + 가격 + 기간 ── */
+  .product { position: absolute; left: 72px; bottom: 128px; }
+  .product .p-label { font-size: 14px; font-weight: 600; letter-spacing: .26em; color: rgba(245,240,232,.55); }
+  .product .p-name { margin-top: 12px; font-size: 46px; font-weight: 800; letter-spacing: -.02em; line-height: 1.22; }
+  .product .p-price { margin-top: 18px; font-size: 96px; font-weight: 500; letter-spacing: -.02em; line-height: 1; color: var(--lemon); }
+  .product .p-price .won { font-size: 44px; font-weight: 400; margin-right: 2px; }
+  .product .p-period {
+    margin-top: 22px; display: inline-block; padding: 9px 16px;
+    border: 1px solid rgba(245,240,232,.5); border-radius: 999px;
+    font-size: 15px; font-weight: 600; letter-spacing: .12em; color: rgba(245,240,232,.85);
+  }
+
+  /* ── 하단 우측: 한 줄 이유 ── */
+  .reason {
+    position: absolute; right: 72px; bottom: 132px; text-align: right;
+    font-size: 15px; line-height: 1.8; color: rgba(245,240,232,.6); letter-spacing: .02em;
+    word-break: keep-all;
+  }
+  .reason .em { color: var(--cream); font-weight: 700; }
+
+  /* ── 푸터 ── */
+  .footer {
+    position: absolute; left: 72px; right: 72px; bottom: 44px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-top: 16px; border-top: 1px solid rgba(245,240,232,.14);
+    font-size: 12.5px; font-weight: 500; letter-spacing: .18em; color: rgba(245,240,232,.55);
+  }
+
+  .edge {
+    position: absolute; right: 24px; top: 560px; transform: rotate(90deg); transform-origin: right top;
+    font-size: 11px; font-weight: 500; letter-spacing: .32em; color: rgba(245,240,232,.32); white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="crush-outline en">CRUSH!</div>
+  <img class="hero" src="assets/hero-1.png" alt="크러시드 레모네이드">
+
+  <div class="specbar en">
+    <span>Cafe Ando — New Menu</span>
+    <span>Summer <span class="dot">/</span> 2026</span>
+    <span>安堵 <span class="dot">№②</span></span>
+  </div>
+  <div class="specline"></div>
+
+  <div class="copy">
+    <div class="l">여름을 깨는,</div>
+    <div class="l">가장 <span class="sour">신</span> 방법.</div>
+  </div>
+  <div class="copy-sub">빙삭기로 곱게 간 얼음에, 착즙 레몬을 그대로.</div>
+  <div class="copy-label en">SUMMER, CRUSHED</div>
+
+  <div class="badge en"><span class="b1">NEW</span><span class="b2">7.20 OUT</span></div>
+
+  <div class="product">
+    <div class="p-label en">CRUSHED LEMONADE</div>
+    <div class="p-name">크러시드<br>레모네이드</div>
+    <div class="p-price en"><span class="won">₩</span>6,500</div>
+    <div class="p-period en">7.20 – 8.31 여름 한정</div>
+  </div>
+
+  <div class="reason">
+    망고빙수 시즌에만 돌아가는<br>
+    <span class="em">빙삭기가 만드는 여름 한정</span> —<br>
+    끝나면 내년 여름까지 없습니다.
+  </div>
+
+  <div class="footer en">
+    <span>@cafe.ando_</span>
+    <span>Yeonmujang-gil, Seongsu 2F</span>
+    <span>Tue – Sun 10:00 – 21:00</span>
+  </div>
+
+  <div class="edge en">CAFE ANDO SUMMER LIMITED — CRUSHED LEMONADE №02</div>
+
+</div>
+</body>
+</html>
