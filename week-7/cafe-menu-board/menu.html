@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>카페 안도 — MENU (1080×1350)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ── 팔레트 3색: 그래파이트 / 크림(브랜드) / 세이지(브랜드) ── */
+  :root {
+    --ink:   #0A0A0B;                 /* Tesla graphite */
+    --cream: #F5F0E8;                 /* 카페 안도 크림 화이트 */
+    --sage:  #8A9A7B;                 /* 카페 안도 세이지 그린 = 시그니처 강조색 */
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #222; }
+  .stage {
+    position: relative; width: 1080px; height: 1350px;
+    background: var(--ink); color: var(--cream); overflow: hidden;
+    font-family: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .en { font-family: "Space Grotesk", "Pretendard Variable", sans-serif; }
+
+  .hairline { border-top: 1px solid rgba(245,240,232,.14); }
+  .pad { padding-left: 64px; padding-right: 64px; }
+
+  /* ── 스펙 바 (Tesla) ── */
+  .specbar {
+    position: absolute; top: 44px; left: 64px; right: 64px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; font-weight: 500; letter-spacing: .22em;
+    color: rgba(245,240,232,.62); text-transform: uppercase;
+  }
+  .specbar .dot { color: var(--sage); }
+  .specline { position: absolute; top: 78px; left: 64px; right: 64px; }
+
+  /* ── 워드마크 (포스트모던 레이어링) ── */
+  .menu-outline {
+    position: absolute; top: 24px; right: -28px;
+    font-size: 236px; font-weight: 700; letter-spacing: .01em; line-height: 1;
+    color: transparent; -webkit-text-stroke: 1.5px rgba(245,240,232,.16);
+  }
+  .wordmark { position: absolute; top: 108px; left: 62px; line-height: 1; }
+  .wordmark .ko { font-size: 148px; font-weight: 900; letter-spacing: -.045em; }
+  .wordmark .period { color: var(--sage); }
+  .wordmark-sub {
+    position: absolute; top: 286px; left: 64px;
+    font-size: 18px; font-weight: 500; color: rgba(245,240,232,.72); letter-spacing: .01em;
+  }
+  .wordmark-sub .en { font-weight: 600; letter-spacing: .14em; color: var(--cream); }
+
+  /* ── 시그니처 히어로 ── */
+  .sig { position: absolute; top: 356px; left: 64px; right: 64px; height: 512px; }
+  .sig-photo {
+    position: absolute; top: 0; left: 0; width: 424px; height: 512px;
+    border-radius: 26px; overflow: hidden;
+    border: 1px solid rgba(245,240,232,.16); background: var(--ink);
+  }
+  .sig-photo img {
+    width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%;
+    mix-blend-mode: lighten;   /* 순흑 배경을 캔버스에 녹인다 */
+  }
+  .sig-no {
+    position: absolute; left: 350px; top: -34px; z-index: 3;
+    font-size: 108px; font-weight: 700; line-height: 1;
+    color: transparent; -webkit-text-stroke: 1.5px rgba(138,154,123,.85);
+  }
+  .sig-ring {
+    position: absolute; left: -22px; bottom: -26px; width: 130px; height: 130px;
+    border: 1px solid rgba(138,154,123,.55); border-radius: 50%;
+  }
+  .sig-info { position: absolute; left: 496px; top: 8px; right: 0; }
+  .sig-label {
+    display: flex; align-items: center; gap: 14px;
+    font-size: 14px; font-weight: 600; letter-spacing: .28em; color: var(--sage);
+  }
+  .sig-label .line { flex: 1; border-top: 1px solid rgba(138,154,123,.45); }
+  .sig-name { margin-top: 22px; font-size: 62px; font-weight: 800; letter-spacing: -.03em; }
+  .sig-en { margin-top: 12px; font-size: 19px; font-weight: 600; letter-spacing: .16em; color: rgba(245,240,232,.6); }
+  .sig-desc { margin-top: 24px; font-size: 19px; line-height: 1.72; color: rgba(245,240,232,.78); word-break: keep-all; }
+  .sig-price-row { margin-top: 26px; display: flex; align-items: flex-end; gap: 18px; }
+  .sig-price { font-size: 72px; font-weight: 500; letter-spacing: -.02em; line-height: 1; }
+  .sig-price .won { font-size: 34px; font-weight: 400; color: var(--sage); margin-right: 4px; }
+  .sig-badge {
+    margin-bottom: 10px; padding: 7px 14px; border: 1px solid var(--sage); border-radius: 999px;
+    font-size: 14px; font-weight: 600; letter-spacing: .1em; color: var(--sage);
+  }
+  .sig-specs { margin-top: 30px; border-top: 1px solid rgba(245,240,232,.14); }
+  .sig-specs .row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 11px 0; border-bottom: 1px solid rgba(245,240,232,.14);
+    font-size: 14.5px; letter-spacing: .12em;
+  }
+  .sig-specs .k { color: rgba(245,240,232,.5); font-weight: 500; }
+  .sig-specs .v { font-weight: 600; color: rgba(245,240,232,.85); }
+  .sig2 {
+    display: flex; align-items: baseline; margin-top: 27px;
+    font-size: 20px; font-weight: 600;
+  }
+  .sig2 .no { color: var(--sage); font-size: 14px; font-weight: 600; letter-spacing: .18em; margin-right: 12px; }
+  .sig2 .leader { flex: 1; border-bottom: 1px dotted rgba(245,240,232,.3); margin: 0 12px 5px; }
+  .sig2 .price { font-weight: 500; font-size: 21px; }
+  .sig2 .mark { color: var(--sage); }
+
+  /* ── 카테고리 그리드 ── */
+  .cats {
+    position: absolute; top: 934px; left: 64px; right: 64px;
+    display: grid; grid-template-columns: 1fr 1fr; column-gap: 72px; row-gap: 40px;
+  }
+  .cat-head { display: flex; align-items: baseline; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(245,240,232,.2); }
+  .cat-head .no { font-size: 14px; font-weight: 600; color: var(--sage); letter-spacing: .1em; }
+  .cat-head .en-name { font-size: 20px; font-weight: 600; letter-spacing: .2em; }
+  .cat-head .ko-name { margin-left: auto; font-size: 14px; color: rgba(245,240,232,.5); font-weight: 500; letter-spacing: .3em; }
+  .item { display: flex; align-items: baseline; margin-top: 17px; font-size: 21px; font-weight: 500; }
+  .item .mark { color: var(--sage); font-size: 15px; margin-left: 3px; }
+  .item .note { font-size: 13.5px; color: rgba(245,240,232,.45); margin-left: 10px; letter-spacing: .02em; }
+  .item .leader { flex: 1; border-bottom: 1px dotted rgba(245,240,232,.3); margin: 0 12px 5px; }
+  .item .price { font-weight: 500; font-size: 21px; letter-spacing: .01em; }
+
+  /* ── 푸터 ── */
+  .footer { position: absolute; left: 64px; right: 64px; bottom: 44px; }
+  .foot-tagline { text-align: center; font-size: 16.5px; color: var(--sage); font-weight: 600; letter-spacing: .02em; margin-bottom: 18px; word-break: keep-all; }
+  .foot-grid {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-top: 16px; border-top: 1px solid rgba(245,240,232,.14);
+    font-size: 13px; font-weight: 500; letter-spacing: .16em; color: rgba(245,240,232,.6);
+  }
+  .foot-notes { margin-top: 12px; display: flex; justify-content: space-between; font-size: 12.5px; color: rgba(245,240,232,.42); letter-spacing: .04em; }
+  .foot-notes .mark { color: var(--sage); }
+
+  /* ── 포스트모던 세로 텍스트 ── */
+  .edge {
+    position: absolute; right: 20px; top: 968px; transform: rotate(90deg); transform-origin: right top;
+    font-size: 11px; font-weight: 500; letter-spacing: .34em; color: rgba(245,240,232,.3); white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- 스펙 바 -->
+  <div class="specbar en">
+    <span>Cafe Ando — Seongsu 2F</span>
+    <span>Summer Menu <span class="dot">/</span> Jul 2026</span>
+    <span>安堵 <span class="dot">№①</span></span>
+  </div>
+  <div class="specline hairline"></div>
+
+  <!-- 워드마크 -->
+  <div class="menu-outline en">MENU</div>
+  <div class="wordmark"><span class="ko">안도<span class="period">.</span></span></div>
+  <div class="wordmark-sub">
+    <span class="en">SHOWROOM CAFE</span>&nbsp;&nbsp;—&nbsp;&nbsp;잠시 숨 고르며 안도(安堵)하는, 자재 쇼룸 겸 카페
+  </div>
+
+  <!-- 시그니처 -->
+  <div class="sig">
+    <div class="sig-photo"><img src="assets/hero-2.png" alt="흑임자 크림라떼"></div>
+    <div class="sig-no en">01</div>
+    <div class="sig-ring"></div>
+    <div class="sig-info">
+      <div class="sig-label en"><span>SIGNATURE — №01</span><span class="line"></span></div>
+      <div class="sig-name">흑임자 크림라떼</div>
+      <div class="sig-en en">BLACK SESAME CREAM LATTE</div>
+      <div class="sig-desc">직접 볶아 간 흑임자에 쫀쫀한 크림 폼.<br>첫 모금은 고소하게, 끝맛은 달지 않게.</div>
+      <div class="sig-price-row">
+        <div class="sig-price en"><span class="won">₩</span>6,500</div>
+        <div class="sig-badge">포토 메뉴</div>
+      </div>
+      <div class="sig-specs en">
+        <div class="row"><span class="k">TEMP</span><span class="v">ICED / HOT</span></div>
+        <div class="row"><span class="k">CAFFEINE</span><span class="v">ZERO</span></div>
+        <div class="row"><span class="k">SWEETNESS</span><span class="v">●●○○○</span></div>
+      </div>
+      <div class="sig2">
+        <span class="no en">№02</span><span>무화과 바스크 치즈케이크<span class="mark">‡</span></span>
+        <span class="leader"></span><span class="price en">7,000</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 카테고리 -->
+  <div class="cats">
+    <div class="cat">
+      <div class="cat-head en"><span class="no">01</span><span class="en-name">COFFEE</span><span class="ko-name">커피</span></div>
+      <div class="item"><span>아메리카노<span class="mark">*</span></span><span class="leader"></span><span class="price en">4,500</span></div>
+      <div class="item"><span>카페라떼</span><span class="leader"></span><span class="price en">5,500</span></div>
+    </div>
+    <div class="cat">
+      <div class="cat-head en"><span class="no">02</span><span class="en-name">NON-COFFEE</span><span class="ko-name">논커피</span></div>
+      <div class="item"><span>쑥 라떼</span><span class="leader"></span><span class="price en">6,000</span></div>
+      <div class="item"><span>수제 자몽에이드</span><span class="leader"></span><span class="price en">6,500</span></div>
+    </div>
+    <div class="cat">
+      <div class="cat-head en"><span class="no">03</span><span class="en-name">DESSERT</span><span class="ko-name">디저트</span></div>
+      <div class="item"><span>소금빵<span class="mark">†</span></span><span class="leader"></span><span class="price en">3,800</span></div>
+    </div>
+    <div class="cat">
+      <div class="cat-head en"><span class="no">04</span><span class="en-name">SUMMER LTD.</span><span class="ko-name">여름 한정</span></div>
+      <div class="item"><span>망고빙수</span><span class="note">7–8월</span><span class="leader"></span><span class="price en">13,500</span></div>
+    </div>
+  </div>
+
+  <!-- 푸터 -->
+  <div class="footer">
+    <div class="foot-tagline">커피 마시러 왔다가, 우리 집 마루 자재를 정하고 가는 카페.</div>
+    <div class="foot-grid en">
+      <span>TUE – SUN 10:00 – 21:00 · MON CLOSED</span>
+      <span>@cafe.ando_</span>
+      <span>YEONMUJANG-GIL, SEONGSU</span>
+    </div>
+    <div class="foot-notes">
+      <span><span class="mark">*</span> 싱글오리진 +500&nbsp;&nbsp;&nbsp;<span class="mark">†</span> 매일 오전 30개&nbsp;&nbsp;&nbsp;<span class="mark">‡</span> 주말 한정 20개</span>
+      <span class="en">SPEC — 12PY · 14 SEATS · LO-FI ≤60dB · CEDARWOOD</span>
+    </div>
+  </div>
+
+  <div class="edge en">ANDOSPACE LIVING PORTFOLIO — MATERIAL SAMPLE WALL INSIDE</div>
+
+</div>
+</body>
+</html>
