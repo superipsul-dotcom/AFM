@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>홍평화 명함 — 안도공간</title>
+<style>
+  @font-face { font-family: Pretendard; src: url(assets/fonts/Pretendard-Regular.woff2) format('woff2'); font-weight: 400; }
+  @font-face { font-family: Pretendard; src: url(assets/fonts/Pretendard-SemiBold.woff2) format('woff2'); font-weight: 600; }
+  @font-face { font-family: Pretendard; src: url(assets/fonts/Pretendard-Bold.woff2) format('woff2'); font-weight: 700; }
+
+  :root {
+    --ink: #111111;
+    --paper: #ffffff;
+    --coal: #0a0a0a;
+    --braun: #F6A800; /* Braun ET66 amber */
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    background: #ECEAE5;
+    font-family: Pretendard, 'Apple SD Gothic Neo', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ================= card faces — designed at 1000×600px = 90×54mm ================= */
+  .card { width: 1000px; height: 600px; position: relative; overflow: hidden; flex: none; }
+  .card.front { background: var(--paper); color: var(--ink); }
+  .card.back  { background: var(--coal);  color: #ffffff; }
+  .dot { display: inline-block; border-radius: 50%; background: var(--braun); }
+
+  /* ---------- front ---------- */
+  .front header { position: absolute; left: 80px; top: 78px; }
+  .front h1 { font-size: 46px; font-weight: 600; letter-spacing: -0.012em; }
+  .front .meta { margin-top: 15px; font-size: 23px; font-weight: 400; color: rgba(17,17,17,.55); }
+
+  .hero { position: absolute; left: 80px; bottom: 188px; }
+  .hero .pre  { font-size: 34px; font-weight: 400; color: rgba(17,17,17,.62); letter-spacing: .005em; }
+  .hero .main { margin-top: 12px; font-size: 96px; font-weight: 700; letter-spacing: -0.022em; line-height: 1; }
+  .hero .dot  { width: 20px; height: 20px; margin-left: 12px; }
+
+  .front footer { position: absolute; left: 80px; bottom: 78px; display: flex; gap: 46px; font-size: 23px; font-weight: 400; }
+  .front footer b { font-weight: 600; color: rgba(17,17,17,.42); margin-right: 11px; }
+
+  /* ---------- back ---------- */
+  .slogan { position: absolute; left: 80px; top: 98px; }
+  .slogan .ko  { font-size: 46px; font-weight: 600; letter-spacing: .004em; }
+  .slogan .dot { width: 13px; height: 13px; margin-left: 9px; }
+  .slogan .en  { margin-top: 18px; font-size: 21px; font-weight: 400; color: rgba(255,255,255,.42); letter-spacing: .03em; }
+
+  .back footer { position: absolute; left: 80px; right: 80px; bottom: 78px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .wm  { font-size: 22px; font-weight: 600; letter-spacing: .34em; }
+  .url { margin-top: 12px; font-size: 21px; color: rgba(255,255,255,.5); }
+  .qr { width: 176px; height: 176px; background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  .qr img { width: 132px; height: 132px; display: block; }
+
+  /* ================= view modes ================= */
+  body[data-view="preview"] { display: flex; flex-direction: column; gap: 44px; align-items: center; padding: 44px; }
+  body[data-view="preview"] .card, body[data-view="share"] .card { box-shadow: 0 22px 60px rgba(0,0,0,.16); }
+  body[data-view="single"] { background: none; }
+  body[data-view="single"] .card.hide { display: none; }
+  body[data-view="share"] { display: flex; gap: 40px; padding: 50px; }
+
+  body[data-view="print"] { background: #fff; }
+  body[data-view="print"] .sheet { position: relative; overflow: hidden; }
+  body[data-view="print"] .sheet + .sheet { break-before: page; }
+  body[data-view="print"] .card { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+
+  <!-- ═══════════ FRONT ═══════════ -->
+  <div class="card front">
+    <header>
+      <h1>홍평화</h1>
+      <p class="meta">안도공간 대표 &middot; Pyounghwa Hong</p>
+    </header>
+
+    <div class="hero">
+      <p class="pre">공간을 설계하는</p>
+      <p class="main">원목 목수<span class="dot"></span></p>
+    </div>
+
+    <footer>
+      <span><b>T</b>010 3246 2251</span>
+      <span><b>E</b>pyounghwa@andospace.com</span>
+    </footer>
+  </div>
+
+  <!-- ═══════════ BACK ═══════════ -->
+  <div class="card back">
+    <div class="slogan">
+      <p class="ko">점, 선, 면, 그리고 결<span class="dot"></span></p>
+      <p class="en">Dot, Line, Plane &mdash; and Grain.</p>
+    </div>
+
+    <footer>
+      <div>
+        <p class="wm">ANDO SPACE</p>
+        <p class="url">www.andospace.com</p>
+      </div>
+      <div class="qr"><img src="assets/qr.svg" alt="www.andospace.com QR"></div>
+    </footer>
+  </div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const side = q.get('side'), mode = q.get('mode');
+
+  if (mode === 'print' || mode === 'print-bleed') {
+    document.body.dataset.view = 'print';
+    if (side) document.querySelectorAll('.card').forEach(c => { if (!c.classList.contains(side)) c.remove(); });
+    const bleed = mode === 'print-bleed' ? 2 : 0;              // mm each side
+    const W = 90 + bleed * 2, H = 54 + bleed * 2;              // page size mm
+    const s = (90 / 25.4 * 96) / 1000;                          // 1000px design → 90mm
+    document.querySelectorAll('.card').forEach(c => {
+      const sh = document.createElement('div');
+      sh.className = 'sheet';
+      sh.style.width = W + 'mm'; sh.style.height = H + 'mm';
+      sh.style.background = c.classList.contains('front') ? '#ffffff' : '#0a0a0a';
+      c.replaceWith(sh); sh.appendChild(c);
+      c.style.transform = `translate(${bleed}mm, ${bleed}mm) scale(${s})`;
+    });
+    const st = document.createElement('style');
+    st.textContent = `@page { size: ${W}mm ${H}mm; margin: 0; }`;
+    document.head.appendChild(st);
+  } else if (side === 'share') {
+    document.body.dataset.view = 'share';
+  } else if (side) {
+    document.body.dataset.view = 'single';
+    document.querySelectorAll('.card').forEach(c => { if (!c.classList.contains(side)) c.classList.add('hide'); });
+  } else {
+    document.body.dataset.view = 'preview';
+  }
+  if (q.get('bw')) document.documentElement.style.filter = 'grayscale(1)';
+</script>
+</body>
+</html>
