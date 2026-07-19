@@ -4860,6 +4860,276 @@
       );
     }
 
+    // (v29) ☑️ 공정 선택 위저드 — 1단계 공종 체크 → 공종별 스텝에서 자재 체크(수량 편집) → [완료] 일괄 행 추가.
+    //   스케치업/실측 물량(takeoff)이 있으면 자동 선택: 공종 = takeoff.trade(+resolve trade),
+    //   자재 = ①코드 resolve 연결 카탈로그 ②카탈로그 code=자재코드 ③동명(공백무시) 매칭 — 수량도 물량값 합산으로 프리필.
+    function ProcessWizardModal({ isOpen, onClose, siteId, onComplete }) {
+      const [loading, setLoading] = useState(false);
+      const [catalog, setCatalog] = useState([]);
+      const [hint, setHint] = useState({ trades: [], count: 0 });
+      const [checkedTrades, setCheckedTrades] = useState([]);
+      const [sel, setSel] = useState({}); // { [catalogId]: { qty, hinted } }
+      const [step, setStep] = useState(0); // 0=공종 선택, 1..N=선택 공종 순서대로
+      const [q, setQ] = useState('');
+      const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, '');
+      const tradeOrder = (t) => { const i = TRADE_MASTER.indexOf(t); return i === -1 ? 999 : i; };
+
+      useEffect(() => {
+        if (!isOpen) return;
+        let alive = true;
+        setLoading(true); setStep(0); setQ(''); setSel({}); setCheckedTrades([]); setHint({ trades: [], count: 0 });
+        (async () => {
+          let cat = [];
+          try { cat = (await api.listCatalog({ limit: 1000 })) || []; } catch (e) { cat = []; }
+          let takeoff = [];
+          if (siteId) { try { takeoff = (await api.listTakeoff(siteId)) || []; } catch (e) { takeoff = []; } }
+          let resolved = {};
+          const codes = Array.from(new Set(takeoff.map((t) => t.material_code).filter(Boolean)));
+          if (codes.length) { try { resolved = (await api.resolveMaterialCodes(codes)) || {}; } catch (e) { resolved = {}; } }
+          if (!alive) return;
+          const byCode = new Map(), byName = new Map(), byId = new Map();
+          cat.forEach((c) => {
+            byId.set(String(c.id), c);
+            if (c.code) byCode.set(String(c.code).trim(), c);
+            if (!byName.has(norm(c.name))) byName.set(norm(c.name), c);
+          });
+          const preSel = {}; const preTrades = new Set();
+          takeoff.forEach((t) => {
+            if (t.trade) preTrades.add(t.trade);
+            const rv = t.material_code ? resolved[t.material_code] : null;
+            if (rv && rv.trade) preTrades.add(rv.trade);
+            const c = (rv && rv.catalog && byId.get(String(rv.catalog.id)))
+              || (t.material_code && byCode.get(String(t.material_code).trim()))
+              || byName.get(norm(t.name)) || null;
+            if (c) {
+              const prevQty = preSel[c.id] ? Number(preSel[c.id].qty) || 0 : 0;
+              const qty = Math.round((prevQty + (Number(t.qty) || 0)) * 100) / 100;
+              preSel[c.id] = { qty: String(qty || 1), hinted: true };
+              if (c.trade) preTrades.add(c.trade);
+            }
+          });
+          const tradesWithItems = new Set(cat.map((c) => c.trade).filter(Boolean));
+          setCatalog(cat);
+          setSel(preSel);
+          setCheckedTrades(Array.from(preTrades).filter((t) => tradesWithItems.has(t)));
+          setHint({ trades: Array.from(preTrades), count: Object.keys(preSel).length });
+          setLoading(false);
+        })();
+        return () => { alive = false; };
+      }, [isOpen, siteId]);
+
+      const byTrade = useMemo(() => {
+        const m = new Map();
+        catalog.forEach((c) => { const k = c.trade || '기타공사'; if (!m.has(k)) m.set(k, []); m.get(k).push(c); });
+        return Array.from(m.entries()).sort((a, b) => tradeOrder(a[0]) - tradeOrder(b[0]) || String(a[0]).localeCompare(String(b[0])));
+      }, [catalog]);
+      const stepTrades = useMemo(
+        () => [...checkedTrades].sort((a, b) => tradeOrder(a) - tradeOrder(b) || String(a).localeCompare(String(b))),
+        [checkedTrades]
+      );
+      const picks = useMemo(
+        () => catalog.filter((c) => sel[c.id]).map((c) => ({ c, qty: Number(sel[c.id].qty) || 1 })),
+        [catalog, sel]
+      );
+      const totalSum = picks.reduce((s, p) => s + p.qty * ((Number(p.c.material_price) || 0) + (Number(p.c.labor_price) || 0) + (Number(p.c.sub_price) || 0)), 0);
+      const selCountOfTrade = (t) => catalog.filter((c) => (c.trade || '기타공사') === t && sel[c.id]).length;
+
+      const toggleTrade = (t) => setCheckedTrades((arr) => (arr.includes(t) ? arr.filter((x) => x !== t) : [...arr, t]));
+      const toggleItem = (c) => setSel((m) => {
+        const n = { ...m };
+        if (n[c.id]) delete n[c.id]; else n[c.id] = { qty: '1' };
+        return n;
+      });
+      const setQty = (c, v) => setSel((m) => (m[c.id] ? { ...m, [c.id]: { ...m[c.id], qty: v } } : m));
+
+      const goNext = () => {
+        if (step === 0) {
+          // 공종 확정 시 선택 해제된 공종의 자재 체크는 정리
+          const keep = new Set(checkedTrades);
+          setSel((m) => {
+            const n = {};
+            Object.keys(m).forEach((id) => {
+              const c = catalog.find((x) => String(x.id) === String(id));
+              if (c && keep.has(c.trade || '기타공사')) n[id] = m[id];
+            });
+            return n;
+          });
+        }
+        setQ('');
+        setStep((s) => s + 1);
+      };
+      const goPrev = () => { setQ(''); setStep((s) => Math.max(0, s - 1)); };
+      const finish = () => {
+        const sorted = [...picks].sort((a, b) => tradeOrder(a.c.trade) - tradeOrder(b.c.trade) || String(a.c.name).localeCompare(String(b.c.name)));
+        onComplete(sorted);
+        onClose();
+      };
+
+      if (!isOpen) return null;
+      const isLast = step > stepTrades.length; // 마지막 = 요약(완료) 단계
+      const curTrade = step > 0 && step <= stepTrades.length ? stepTrades[step - 1] : null;
+      const curItems = curTrade ? (byTrade.find(([t]) => t === curTrade) || [null, []])[1] : [];
+      const nq = norm(q);
+      const filtered = nq ? curItems.filter((c) => norm(`${c.name}${c.product_name || ''}${c.vendor || ''}${c.grp || ''}`).includes(nq)) : curItems;
+      const selectAllFiltered = (on) => setSel((m) => {
+        const n = { ...m };
+        filtered.forEach((c) => { if (on) { if (!n[c.id]) n[c.id] = { qty: '1' }; } else delete n[c.id]; });
+        return n;
+      });
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title="☑️ 공정 선택하기" size="xl">
+          <div className="space-y-3">
+            {/* 진행 표시 */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <button type="button" onClick={() => setStep(0)}
+                className={`px-2.5 py-1 rounded-full border ${step === 0 ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                1. 공종 선택{checkedTrades.length > 0 && ` (${checkedTrades.length})`}
+              </button>
+              {stepTrades.map((t, i) => (
+                <React.Fragment key={t}>
+                  <span className="text-slate-300">›</span>
+                  <button type="button" onClick={() => { setQ(''); setStep(i + 1); }}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border ${step === i + 1 ? 'text-white border-transparent' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                    style={step === i + 1 ? { backgroundColor: tradeHex(t) } : undefined}>
+                    {t}{selCountOfTrade(t) > 0 && <b>{selCountOfTrade(t)}</b>}
+                  </button>
+                </React.Fragment>
+              ))}
+            </div>
+
+            {loading ? (
+              <div className="p-10 text-center text-sm text-slate-400">카탈로그·물량을 불러오는 중…</div>
+            ) : step === 0 ? (
+              <>
+                {hint.count > 0 || hint.trades.length > 0 ? (
+                  <div className="px-3 py-2 rounded-xl bg-blue-50 border border-blue-100 text-xs text-blue-700">
+                    📐 스케치업/실측 물량과 일치하는 <b>공종 {checkedTrades.length}개 · 자재 {hint.count}건</b>을 자동 선택했습니다. (수량도 물량값 반영)
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">견적에 넣을 공종을 체크하고 [다음]을 누르세요. 공종별로 자재를 고른 뒤 마지막에 [완료]하면 한 번에 행이 추가됩니다.</p>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[48vh] overflow-y-auto pr-1">
+                  {byTrade.map(([t, items]) => {
+                    const on = checkedTrades.includes(t);
+                    const hinted = hint.trades.includes(t);
+                    return (
+                      <button type="button" key={t} onClick={() => toggleTrade(t)}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition ${on ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+                        <input type="checkbox" readOnly checked={on} className="w-4 h-4 accent-blue-600 pointer-events-none" />
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: tradeHex(t) }}></span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-medium text-slate-700 truncate">{t} {hinted && <span title="스케치업/실측 물량에 있는 공종">📐</span>}</span>
+                          <span className="block text-[11px] text-slate-400">{fmtNum(items.length)}개 항목{selCountOfTrade(t) > 0 ? ` · 선택 ${selCountOfTrade(t)}` : ''}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : curTrade ? (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-white shrink-0 self-start" style={{ backgroundColor: tradeHex(curTrade) }}>
+                    {curTrade} <span className="font-normal opacity-80">{step}/{stepTrades.length}</span>
+                  </span>
+                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="이 공종에서 품목·제품·업체 검색"
+                    className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                  <div className="flex gap-1.5 shrink-0">
+                    <button type="button" onClick={() => selectAllFiltered(true)} className="text-[11px] px-2 py-1 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">전체 선택</button>
+                    <button type="button" onClick={() => selectAllFiltered(false)} className="text-[11px] px-2 py-1 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">해제</button>
+                  </div>
+                </div>
+                <div className="border border-slate-100 rounded-xl overflow-hidden">
+                  {filtered.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-slate-400">검색 결과가 없습니다.</div>
+                  ) : (
+                    <ul className="divide-y divide-slate-100 max-h-[44vh] overflow-y-auto">
+                      {filtered.map((c) => {
+                        const on = !!sel[c.id];
+                        const sum = (Number(c.material_price) || 0) + (Number(c.labor_price) || 0) + (Number(c.sub_price) || 0);
+                        return (
+                          <li key={c.id}>
+                            <div role="button" tabIndex={0} onClick={() => toggleItem(c)}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleItem(c); } }}
+                              className={`w-full text-left px-3 py-2.5 transition cursor-pointer ${on ? 'bg-blue-50/70' : 'hover:bg-slate-50'}`}>
+                              <div className="flex items-center gap-2.5">
+                                <input type="checkbox" readOnly checked={on} className="w-4 h-4 accent-blue-600 pointer-events-none shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="font-medium text-slate-800 truncate">
+                                      {c.name} {c.unit && <span className="text-[11px] text-slate-400 font-normal">/{c.unit}</span>}
+                                      {sel[c.id] && sel[c.id].hinted && <span title="스케치업/실측 물량 자동 선택" className="ml-1">📐</span>}
+                                    </span>
+                                    <span className="font-bold text-slate-700 shrink-0">{fmtNum(sum)}원</span>
+                                  </div>
+                                  <p className="mt-0.5 text-[11px] text-slate-400 truncate">
+                                    재 {fmtNum(c.material_price)} · 노 {fmtNum(c.labor_price)} · 부 {fmtNum(c.sub_price)}
+                                    {c.product_name ? ` · ${c.product_name}` : (c.grp ? ` · ${c.grp}` : '')}{c.vendor ? ` · ${c.vendor}` : ''}
+                                  </p>
+                                </div>
+                                {on && (
+                                  <span className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                    <input type="number" min="0" step="0.01" value={sel[c.id].qty}
+                                      onChange={(e) => setQty(c, e.target.value)}
+                                      className="w-20 px-2 py-1 rounded-lg border border-slate-300 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                                    <span className="text-[11px] text-slate-400">{c.unit || '수량'}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* 완료 단계 — 선택 요약 */
+              <div className="space-y-2">
+                <p className="text-sm text-slate-600">아래 <b>{picks.length}개</b> 항목이 견적 행으로 추가됩니다. (공종별 그룹 정렬)</p>
+                <div className="border border-slate-100 rounded-xl overflow-hidden max-h-[46vh] overflow-y-auto">
+                  {picks.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-slate-400">선택된 자재가 없습니다. 이전 단계에서 체크해 주세요.</div>
+                  ) : (
+                    <ul className="divide-y divide-slate-100">
+                      {[...picks].sort((a, b) => tradeOrder(a.c.trade) - tradeOrder(b.c.trade) || String(a.c.name).localeCompare(String(b.c.name))).map(({ c, qty }) => (
+                        <li key={c.id} className="px-3 py-2 flex items-center justify-between gap-2 text-sm">
+                          <span className="min-w-0 flex items-center gap-2">
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium text-white shrink-0" style={{ backgroundColor: tradeHex(c.trade) }}>{c.trade}</span>
+                            <span className="truncate text-slate-700">{c.name}</span>
+                          </span>
+                          <span className="shrink-0 text-slate-500">{fmtNum(qty)}{c.unit || ''} · <b className="text-slate-700">{fmtNum(Math.round(qty * ((Number(c.material_price) || 0) + (Number(c.labor_price) || 0) + (Number(c.sub_price) || 0))))}원</b></span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 푸터 */}
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-slate-500">
+                선택 <b className="text-slate-700">{picks.length}</b>개
+                {picks.length > 0 && <> · 합계(부가세 전) <b className="text-slate-700">{fmtNum(Math.round(totalSum))}원</b></>}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={onClose}>취소</Button>
+                {step > 0 && <Button variant="secondary" onClick={goPrev}>◀ 이전</Button>}
+                {!isLast ? (
+                  <Button onClick={goNext} disabled={loading || (step === 0 && checkedTrades.length === 0)}>다음 ▶</Button>
+                ) : (
+                  <Button onClick={finish} disabled={picks.length === 0}>✅ 완료 ({picks.length}개 추가)</Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
     // ══════════════════════════════════════════════════════════════
     // (v24) 카드 연동(CODEF) — KB국민카드 등 승인내역 → 현장 비용 배분
     //   비밀번호는 서버/DB에 저장되지 않음(CODEF connectedId 방식). 키 미설정 시 모의(mock) 모드.
@@ -5818,6 +6088,7 @@
       const [saving, setSaving] = useState(false);
       const [picker, setPicker] = useState({ open: false, targetIdx: null });
       const [takeoffOpen, setTakeoffOpen] = useState(false); // v8 물량 불러오기 모달
+      const [wizardOpen, setWizardOpen] = useState(false); // (v29) ☑️ 공정 선택 위저드
       const setItem = (idx, patch) => setItems((arr) => arr.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
       const addRow = () => setItems((arr) => [...arr, mk()]);
       const delRow = (idx) => setItems((arr) => (arr.length <= 1 ? [mk()] : arr.filter((_, i) => i !== idx)));
@@ -5855,7 +6126,8 @@
           const hasPrice = !!(rv && rv.price != null);
           if (hasPrice) priced++;
           return {
-            _k: uid(), trade: t.trade || '', name: t.name || '', spec: t.spec || '', unit: t.unit || '',
+            // (v29) 공종 자동 선택: takeoff.trade 없으면 자재코드 resolve 의 공종으로 폴백
+            _k: uid(), trade: t.trade || (rv && rv.trade) || '', name: t.name || '', spec: t.spec || '', unit: t.unit || '',
             qty: String(t.qty != null ? t.qty : ''),
             material_price: hasPrice ? String(rv.price) : '',
             labor_price: rv && rv.catalog && Number(rv.catalog.labor_price) ? String(Number(rv.catalog.labor_price)) : '',
@@ -5867,6 +6139,21 @@
         toast(priced > 0
           ? `물량 ${picked.length}개를 견적 행으로 추가했습니다 · 단가 자동 적용 ${priced}건`
           : `물량 ${picked.length}개를 견적 행으로 추가했습니다. 단가를 입력하세요.`, 'success');
+      };
+      // (v29) 공정 선택 위저드 완료 → 체크된 카탈로그 항목(수량 포함) 일괄 행 추가. 최초 빈 행 1개뿐이면 대체.
+      const addWizardRows = (picks) => {
+        if (!picks || !picks.length) return;
+        const rows = picks.map(({ c, qty }) => ({
+          _k: uid(), trade: c.trade || '', name: c.name || '', unit: c.unit || '',
+          spec: c.product_name || c.grp || '', qty: String(qty || 1),
+          material_price: ps(c.material_price), labor_price: ps(c.labor_price), sub_price: ps(c.sub_price),
+          memo: '', catalog_id: c.id != null ? c.id : null,
+        }));
+        setItems((arr) => {
+          const blank = arr.length === 1 && !(arr[0].name || '').trim() && !(arr[0].trade || '') && !(arr[0].material_price || '');
+          return [...(blank ? [] : arr), ...rows];
+        });
+        toast(`☑️ 공정 선택으로 ${rows.length}개 행을 추가했습니다.`, 'success');
       };
       const parseItem = (it, i) => {
         const m = Math.round(Number(it.material_price) || 0), l = Math.round(Number(it.labor_price) || 0), s = Math.round(Number(it.sub_price) || 0);
@@ -6052,6 +6339,7 @@
               <h3 className="text-sm font-bold text-slate-700">견적 항목 <span className="text-[11px] font-normal text-slate-400">공종별 그룹 · 재료/노무/부자재 3분할</span></h3>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="ghost" onClick={saveDraftManual}>💾 임시저장</Button>
+                <Button size="sm" onClick={() => setWizardOpen(true)}>☑️ 공정 선택하기</Button> {/* v29 */}
                 <Button size="sm" variant="secondary" onClick={() => setTakeoffOpen(true)}>📐 물량 불러오기</Button>
                 <Button size="sm" variant="secondary" onClick={() => setPicker({ open: true, targetIdx: null })}>📚 단가 카탈로그</Button>
                 <Button size="sm" variant="secondary" onClick={addRow}>+ 행 추가</Button>
@@ -6179,6 +6467,9 @@
             trades={trades} mode={picker.targetIdx == null ? 'append' : 'replace'} onPick={pickCatalog} />
           <TakeoffPickerModal isOpen={takeoffOpen} onClose={() => setTakeoffOpen(false)}
             siteId={site && site.id} onAdd={addTakeoffRows} />
+          {/* (v29) ☑️ 공정 선택 위저드 — 물량(스케치업 CSV) 있으면 공종·자재 자동 선택 */}
+          <ProcessWizardModal isOpen={wizardOpen} onClose={() => setWizardOpen(false)}
+            siteId={site && site.id} onComplete={addWizardRows} />
           {isSaved && (
             <ShareModal isOpen={shareOpen} onClose={() => setShareOpen(false)} kind="estimate"
               id={initial.id} title={header.title}
