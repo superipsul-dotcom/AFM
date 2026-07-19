@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>안도마켓 🥕 · 우리동네 중고거래</title>
+  <meta name="description" content="성수동 우리동네 중고거래, 안도마켓. 이웃과 함께 나누고 거래해요." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%A5%95%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // 당근 오렌지 테마 (반드시 tailwind CDN 이후 실행)
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            carrot: '#FF6F0F',
+            carrotDark: '#E85F00',
+            carrotSoft: '#FFF1E6',
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Apple SD Gothic Neo"', 'Pretendard', '"Malgun Gothic"', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- React 18 + ReactDOM (UMD, development) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+  <!-- Babel Standalone + CLASSIC-runtime 프리셋 (automatic-runtime 백지렌더 gotcha 회피) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+    Babel.registerPreset('app-react', {
+      presets: [[Babel.availablePresets.react, { runtime: 'classic' }]],
+    });
+  </script>
+
+  <style>
+    html, body { background: #f3f4f6; }
+    * { -webkit-tap-highlight-color: transparent; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    .toast-in { animation: toastIn .22s ease both; }
+    @keyframes riseIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .rise-in { animation: riseIn .28s cubic-bezier(.22,.61,.36,1) both; }
+  </style>
+</head>
+<body class="font-sans text-gray-900 antialiased">
+  <div id="root"></div>
+  <noscript>이 페이지를 보려면 자바스크립트를 켜주세요.</noscript>
+
+  <script type="text/babel" data-presets="app-react">
+    // ========================================
+    // React Hooks
+    // ========================================
+    const { useState, useEffect, useRef, useMemo, useCallback, useContext, createContext } = React;
+
+    // ========================================
+    // 상수
+    // ========================================
+    const API_BASE = '';                    // 같은 오리진, 상대경로 /api/...
+    const TOKEN_KEY = 'dg_token';
+    const USER_KEY = 'dg_user';
+    const DEFAULT_HOOD = '성수동';
+    const CATEGORIES = ['디지털기기', '가구/인테리어', '생활가전', '생활/주방', '의류', '도서', '취미/게임', '기타'];
+    const CAT_EMOJI = {
+      '디지털기기': '📱', '가구/인테리어': '🛋️', '생활가전': '🔌', '생활/주방': '🍳',
+      '의류': '👕', '도서': '📚', '취미/게임': '🎮', '기타': '📦',
+    };
+
+    // ========================================
+    // 유틸
+    // ========================================
+    const cx = (...c) => c.filter(Boolean).join(' ');
+
+    const formatPrice = (n) => Number(n) === 0 ? '나눔 🧡' : Number(n || 0).toLocaleString('ko-KR') + '원';
+
+    function timeAgo(iso) {
+      if (!iso) return '';
+      const s = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (s < 60) return '방금 전';
+      const m = Math.floor(s / 60); if (m < 60) return m + '분 전';
+      const h = Math.floor(m / 60); if (h < 24) return h + '시간 전';
+      const d = Math.floor(h / 24); if (d < 30) return d + '일 전';
+      const mo = Math.floor(d / 30); if (mo < 12) return mo + '개월 전';
+      return Math.floor(mo / 12) + '년 전';
+    }
+
+    const msgTime = (iso) => {
+      try { return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); }
+      catch (e) { return ''; }
+    };
+
+    // ImageKit URL 변환 (썸네일 리사이즈)
+    const imgTr = (url, tr) => url ? url + (url.includes('?') ? '&' : '?') + 'tr=' + tr : url;
+
+    // localStorage 인증 헬퍼
+    const getToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } };
+    const getStoredUser = () => { try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch (e) { return null; } };
+    const setAuth = (token, user) => {
+      try { localStorage.setItem(TOKEN_KEY, token); localStorage.setItem(USER_KEY, JSON.stringify(user)); } catch (e) {}
+    };
+    const clearAuth = () => {
+      try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); } catch (e) {}
+    };
+    const goLogin = () => { if (!window.location.hash.startsWith('#/login')) window.location.hash = '/login'; };
+
+    // ========================================
+    // 📡 공용 API 헬퍼 — JSON 헤더, 토큰 자동첨부, ok:false throw, 401 자동 로그아웃
+    // ========================================
+    async function api(path, { method = 'GET', body, auth = false, silent = false } = {}) {
+      const token = getToken();
+      if (auth && !token) { if (!silent) goLogin(); throw new Error('로그인이 필요해요.'); }
+
+      const headers = {};
+      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+
+      let res;
+      try {
+        res = await fetch(API_BASE + path, {
+          method, headers, body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+      } catch (e) {
+        throw new Error('네트워크 연결을 확인해 주세요.');
+      }
+
+      let json = null;
+      try { json = await res.json(); } catch (e) {}
+
+      if (res.status === 401) {
+        clearAuth();
+        window.dispatchEvent(new CustomEvent('dg:unauthorized'));
+        if (!silent) goLogin();
+        throw new Error((json && json.error) || '다시 로그인해 주세요.');
+      }
+      if (!res.ok || !json || json.ok !== true) {
+        throw new Error((json && json.error) || ('요청에 실패했어요 (' + res.status + ')'));
+      }
+      return json;
+    }
+
+    // ========================================
+    // 🎨 디자인 시스템 (순수 프레젠테이션)
+    // ========================================
+    function Spinner({ className = 'w-5 h-5' }) {
+      return <span className={cx('inline-block border-2 border-gray-200 border-t-carrot rounded-full animate-spin align-[-2px]', className)} aria-label="로딩 중" />;
+    }
+
+    function Button({ variant = 'primary', size = 'md', className = '', disabled, children, ...rest }) {
+      const base = 'inline-flex items-center justify-center gap-1.5 font-semibold rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-carrot/40 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.98] select-none';
+      const sizes = { sm: 'text-sm px-3 py-1.5', md: 'text-[15px] px-4 py-2.5', lg: 'text-base px-5 py-3.5' };
+      const variants = {
+        primary: 'bg-carrot text-white hover:bg-carrotDark',
+        secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50',
+        danger: 'bg-white text-red-600 border border-red-200 hover:bg-red-50',
+        ghost: 'bg-transparent text-gray-500 hover:bg-gray-100',
+      };
+      return (
+        <button disabled={disabled} className={cx(base, sizes[size], variants[variant], className)} {...rest}>
+          {children}
+        </button>
+      );
+    }
+
+    function Input({ label, error, className = '', ...rest }) {
+      return (
+        <label className={cx('block', className)}>
+          {label && <span className="block text-sm font-medium text-gray-700 mb-1.5">{label}</span>}
+          <input
+            className={cx(
+              'w-full bg-white border rounded-lg px-4 py-3 text-[15px] placeholder:text-gray-400 focus:outline-none focus-visible:ring-2',
+              error ? 'border-red-300 focus-visible:ring-red-300/40' : 'border-gray-300 focus-visible:ring-carrot/30'
+            )}
+            {...rest}
+          />
+          {error && <span className="block text-xs text-red-600 mt-1.5">{error}</span>}
+        </label>
+      );
+    }
+
+    function Textarea({ label, className = '', ...rest }) {
+      return (
+        <label className={cx('block', className)}>
+          {label && <span className="block text-sm font-medium text-gray-700 mb-1.5">{label}</span>}
+          <textarea
+            className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-[15px] placeholder:text-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-carrot/30 resize-none leading-relaxed"
+            {...rest}
+          />
+        </label>
+      );
+    }
+
+    function StatusBadge({ status, className = '' }) {
+      if (status === 'reserved')
+        return <span className={cx('text-[11px] font-bold text-white bg-green-500 rounded px-1.5 py-0.5', className)}>예약중</span>;
+      if (status === 'sold')
+        return <span className={cx('text-[11px] font-bold text-white bg-gray-500 rounded px-1.5 py-0.5', className)}>거래완료</span>;
+      return null;
+    }
+
+    // 프로필 사진 없음 → 닉네임 첫 글자 이니셜 원(회색)
+    function InitialAvatar({ name, className = '' }) {
+      const ch = (name && name.trim()) ? name.trim()[0] : '?';
+      return (
+        <span className={cx('rounded-full bg-gray-300 text-gray-600 grid place-items-center font-bold shrink-0 select-none', className)} aria-hidden="true">
+          {ch}
+        </span>
+      );
+    }
+
+    function EmptyState({ emoji = '🥕', text, sub }) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center py-24 px-6">
+          <div className="text-5xl mb-3">{emoji}</div>
+          <p className="text-gray-600 font-medium">{text}</p>
+          {sub && <p className="text-sm text-gray-400 mt-1">{sub}</p>}
+        </div>
+      );
+    }
+
+    function SkeletonRows({ n = 6 }) {
+      return (
+        <div className="divide-y divide-gray-100">
+          {Array.from({ length: n }).map((_, i) => (
+            <div key={i} className="flex gap-3 p-4 animate-pulse">
+              <div className="w-24 h-24 rounded-lg bg-gray-200 shrink-0" />
+              <div className="flex-1 space-y-2 py-1">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div className="h-4 bg-gray-200 rounded w-1/3 mt-5" />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // 상품 썸네일 (첫 이미지 or 카테고리 이모지 폴백, sold 오버레이)
+    function ProductThumb({ images, category, status, className = '' }) {
+      const [failed, setFailed] = useState(false);
+      const url = (images && images.length && !failed) ? imgTr(images[0], 'w-400,h-400,fo-auto') : null;
+      return (
+        <div className={cx('relative rounded-lg overflow-hidden bg-gray-100 shrink-0', className)}>
+          {url ? (
+            <img src={url} alt="" onError={() => setFailed(true)} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full grid place-items-center text-3xl">{CAT_EMOJI[category] || '📦'}</div>
+          )}
+          {status === 'sold' && (
+            <div className="absolute inset-0 bg-black/50 grid place-items-center">
+              <span className="text-white text-[11px] font-bold">거래완료</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🔔 토스트 (전역)
+    // ========================================
+    const ToastContext = createContext(() => {});
+    const useToast = () => useContext(ToastContext);
+
+    function ToastProvider({ children }) {
+      const [msg, setMsg] = useState(null);
+      const timer = useRef(null);
+      const toast = useCallback((m) => {
+        setMsg(m);
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setMsg(null), 2200);
+      }, []);
+      useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+      return (
+        <ToastContext.Provider value={toast}>
+          {children}
+          {msg && (
+            <div className="fixed bottom-24 left-0 right-0 z-[60] flex justify-center px-6 pointer-events-none">
+              <div className="pointer-events-auto bg-gray-900/95 text-white text-sm px-4 py-2.5 rounded-full shadow-lg toast-in max-w-[90%] text-center">
+                {msg}
+              </div>
+            </div>
+          )}
+        </ToastContext.Provider>
+      );
+    }
+
+    // ========================================
+    // 🔀 해시 라우터
+    // ========================================
+    const RouterContext = createContext({ path: '/', navigate: () => {} });
+    const useRouter = () => useContext(RouterContext);
+
+    function getPath() {
+      let h = window.location.hash.replace(/^#/, '');
+      const qi = h.indexOf('?');
+      if (qi !== -1) h = h.slice(0, qi);
+      return h || '/';
+    }
+
+    function Router({ children }) {
+      const [path, setPath] = useState(getPath());
+      useEffect(() => {
+        const onHash = () => setPath(getPath());
+        window.addEventListener('hashchange', onHash);
+        if (!window.location.hash) window.location.replace('#/');
+        return () => window.removeEventListener('hashchange', onHash);
+      }, []);
+      useEffect(() => { window.scrollTo({ top: 0, behavior: 'auto' }); }, [path]);
+      const navigate = useCallback((to) => { window.location.hash = to; }, []);
+      return <RouterContext.Provider value={{ path, navigate }}>{children}</RouterContext.Provider>;
+    }
+
+    function matchRoute(pattern, path) {
+      const pp = pattern.split('/').filter(Boolean);
+      const ph = path.split('/').filter(Boolean);
+      if (pp.length !== ph.length) return null;
+      const params = {};
+      for (let i = 0; i < pp.length; i++) {
+        if (pp[i][0] === ':') params[pp[i].slice(1)] = decodeURIComponent(ph[i]);
+        else if (pp[i] !== ph[i]) return null;
+      }
+      return params;
+    }
+
+    function Routes({ children }) {
+      const { path } = useRouter();
+      let matched = null;
+      React.Children.forEach(children, (child) => {
+        if (matched || !child) return;
+        const params = matchRoute(child.props.path, path);
+        if (params) matched = React.cloneElement(child.props.element, { params });
+      });
+      return matched || <NotFoundPage />;
+    }
+    function Route() { return null; }
+
+    function Link({ to, className = '', children, ...rest }) {
+      const { navigate } = useRouter();
+      const onClick = (e) => { e.preventDefault(); navigate(to); };
+      return <a href={'#' + to} onClick={onClick} className={className} {...rest}>{children}</a>;
+    }
+
+    // ========================================
+    // 🔐 인증 (JWT · localStorage)
+    // ========================================
+    const AuthContext = createContext(null);
+    const useAuth = () => useContext(AuthContext);
+
+    function AuthProvider({ children }) {
+      const [user, setUser] = useState(() => getStoredUser());
+      const [token, setToken] = useState(() => getToken());
+
+      // api()가 401로 강제 로그아웃 시 React 상태 동기화
+      useEffect(() => {
+        const onUnauth = () => { setUser(null); setToken(null); };
+        window.addEventListener('dg:unauthorized', onUnauth);
+        return () => window.removeEventListener('dg:unauthorized', onUnauth);
+      }, []);
+
+      // 마운트 시 저장 토큰으로 세션 검증/갱신 (조용히 · 실패해도 강제이동 안 함)
+      useEffect(() => {
+        if (!token) return;
+        let alive = true;
+        api('/api/auth/me', { auth: true, silent: true })
+          .then((j) => { if (alive) { setUser(j.user); try { localStorage.setItem(USER_KEY, JSON.stringify(j.user)); } catch (e) {} } })
+          .catch(() => { if (alive) { setUser(null); setToken(null); } });
+        return () => { alive = false; };
+      }, []);
+
+      const login = useCallback(async (email, password) => {
+        const j = await api('/api/auth/login', { method: 'POST', body: { email, password } });
+        setAuth(j.token, j.user); setToken(j.token); setUser(j.user);
+        return j.user;
+      }, []);
+
+      const signup = useCallback(async (payload) => {
+        const j = await api('/api/auth/signup', { method: 'POST', body: payload });
+        setAuth(j.token, j.user); setToken(j.token); setUser(j.user);
+        return j.user;
+      }, []);
+
+      const logout = useCallback(() => { clearAuth(); setToken(null); setUser(null); }, []);
+
+      return (
+        <AuthContext.Provider value={{ user, token, login, signup, logout }}>
+          {children}
+        </AuthContext.Provider>
+      );
+    }
+
+    // ========================================
+    // 🧩 공통 레이아웃 · 조각
+    // ========================================
+    function TopNav({ title, back, right }) {
+      const { navigate } = useRouter();
+      const goBack = () => { if (window.history.length > 1) window.history.back(); else navigate('/'); };
+      return (
+        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100 h-14 flex items-center px-2 gap-1">
+          {back && (
+            <button onClick={goBack} aria-label="뒤로" className="w-10 h-10 grid place-items-center text-2xl text-gray-700 rounded-full hover:bg-gray-100">←</button>
+          )}
+          <h1 className="font-bold text-[17px] text-gray-900 flex-1 truncate px-1">{title}</h1>
+          {right}
+        </div>
+      );
+    }
+
+    function TabBar() {
+      const { path } = useRouter();
+      const tabs = [
+        { to: '/', icon: '🏠', label: '홈' },
+        { to: '/chats', icon: '💬', label: '채팅' },
+        { to: '/me', icon: '👤', label: '마이' },
+      ];
+      return (
+        <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
+          <nav className="w-full max-w-[430px] bg-white border-t border-gray-200 grid grid-cols-3">
+            {tabs.map((t) => {
+              const active = path === t.to;
+              return (
+                <Link key={t.to} to={t.to} className={cx('flex flex-col items-center justify-center py-2 gap-0.5 text-[11px]', active ? 'text-carrot' : 'text-gray-400')}>
+                  <span className="text-xl leading-none">{t.icon}</span>
+                  <span className={active ? 'font-semibold' : ''}>{t.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      );
+    }
+
+    // 상품 리스트 행 (당근 스타일: 좌 썸네일 · 우 정보)
+    function ProductRow({ p }) {
+      return (
+        <Link to={'/product/' + p.id} className="flex gap-3 p-4 active:bg-gray-50">
+          <ProductThumb images={p.images} category={p.category} status={p.status} className="w-24 h-24" />
+          <div className="flex-1 min-w-0 flex flex-col">
+            <h3 className="text-[15px] text-gray-900 leading-snug line-clamp-2">{p.title}</h3>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">
+              {p.neighborhood ? p.neighborhood + ' · ' : ''}{timeAgo(p.created_at)}
+            </p>
+            <div className="mt-auto flex items-center gap-1.5 pt-1">
+              {p.status !== 'selling' && <StatusBadge status={p.status} />}
+              <span className="font-bold text-gray-900">{formatPrice(p.price)}</span>
+            </div>
+          </div>
+          {p.favorite_count > 0 && (
+            <div className="self-end text-xs text-gray-400 flex items-center gap-0.5 shrink-0">🤍 {p.favorite_count}</div>
+          )}
+        </Link>
+      );
+    }
+
+    // 채팅방 리스트 행
+    function ChatRow({ room }) {
+      const other = room.other || {};
+      const prod = room.product || {};
+      const lm = room.last_message;
+      return (
+        <Link to={'/chat/' + room.id} className="flex gap-3 p-4 items-center active:bg-gray-50">
+          <InitialAvatar name={other.nickname} className="w-12 h-12 text-base" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-gray-900 truncate">{other.nickname || '상대방'}</span>
+              {lm && <span className="text-xs text-gray-400 shrink-0">{timeAgo(lm.created_at)}</span>}
+            </div>
+            <p className="text-sm text-gray-500 truncate">{lm ? lm.content : '대화를 시작해보세요'}</p>
+          </div>
+          <ProductThumb images={prod.images} category={null} status={prod.status} className="w-12 h-12" />
+        </Link>
+      );
+    }
+
+    // 상세 이미지 슬라이드 (좌우 버튼 + 도트)
+    function ImageSlider({ images, category, status }) {
+      const [idx, setIdx] = useState(0);
+      const list = images || [];
+      const n = list.length;
+      const [failed, setFailed] = useState({});
+      const go = (d) => setIdx((i) => (i + d + n) % n);
+      const cur = list[idx];
+      const showImg = cur && !failed[idx];
+      return (
+        <div className="relative aspect-square bg-gray-100 select-none">
+          {showImg ? (
+            <img src={imgTr(cur, 'w-800')} alt="" onError={() => setFailed((f) => ({ ...f, [idx]: true }))} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full grid place-items-center text-7xl">{CAT_EMOJI[category] || '📦'}</div>
+          )}
+          {status === 'sold' && (
+            <div className="absolute inset-0 bg-black/50 grid place-items-center">
+              <span className="text-white text-lg font-bold border-2 border-white rounded-lg px-4 py-2">거래완료</span>
+            </div>
+          )}
+          {n > 1 && (
+            <React.Fragment>
+              <button onClick={() => go(-1)} aria-label="이전" className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 text-white grid place-items-center text-xl backdrop-blur-sm">‹</button>
+              <button onClick={() => go(1)} aria-label="다음" className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 text-white grid place-items-center text-xl backdrop-blur-sm">›</button>
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                {list.map((_, i) => (
+                  <span key={i} className={cx('w-2 h-2 rounded-full transition-colors', i === idx ? 'bg-white' : 'bg-white/50')} />
+                ))}
+              </div>
+            </React.Fragment>
+          )}
+        </div>
+      );
+    }
+
+    function MessageBubble({ m, mine }) {
+      return (
+        <div className={cx('flex items-end gap-1.5', mine ? 'justify-end' : 'justify-start')}>
+          {mine && <span className="text-[10px] text-gray-400 mb-0.5 shrink-0">{msgTime(m.created_at)}</span>}
+          <div className={cx('max-w-[72%] px-3.5 py-2 text-[14px] leading-snug break-words whitespace-pre-wrap',
+            mine ? 'bg-carrot text-white rounded-2xl rounded-br-md' : 'bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md')}>
+            {m.content}
+          </div>
+          {!mine && <span className="text-[10px] text-gray-400 mb-0.5 shrink-0">{msgTime(m.created_at)}</span>}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 홈 (/#/)
+    // ========================================
+    function HomePage() {
+      const { user } = useAuth();
+      const { navigate } = useRouter();
+      const toast = useToast();
+      const [category, setCategory] = useState('전체');
+      const [q, setQ] = useState('');
+      const [showSearch, setShowSearch] = useState(false);
+      const [products, setProducts] = useState(null);
+      const [error, setError] = useState(null);
+      const hood = (user && user.neighborhood) || DEFAULT_HOOD;
+
+      useEffect(() => {
+        let alive = true;
+        setError(null);
+        const t = setTimeout(async () => {
+          try {
+            const p = new URLSearchParams();
+            if (category !== '전체') p.set('category', category);
+            if (q.trim()) p.set('q', q.trim());
+            const qs = p.toString();
+            const j = await api('/api/products' + (qs ? '?' + qs : ''));
+            if (alive) setProducts(j.products || []);
+          } catch (e) {
+            if (alive) { setError(e.message); setProducts([]); }
+          }
+        }, 250);
+        return () => { alive = false; clearTimeout(t); };
+      }, [category, q]);
+
+      const goWrite = () => {
+        if (!getToken()) { toast('로그인이 필요해요'); navigate('/login'); return; }
+        navigate('/write');
+      };
+
+      return (
+        <div className="pb-24">
+          {/* 헤더: 동네명 + 검색 토글 */}
+          <div className="sticky top-0 z-30 bg-white border-b border-gray-100">
+            <div className="h-14 flex items-center px-4 gap-2">
+              <button className="flex items-center gap-1 text-lg font-bold text-gray-900">
+                {hood} <span className="text-xs text-gray-400">▾</span>
+              </button>
+              <div className="flex-1" />
+              <button onClick={() => setShowSearch((s) => !s)} aria-label="검색" className="w-10 h-10 grid place-items-center text-xl rounded-full hover:bg-gray-100">🔍</button>
+            </div>
+            {showSearch && (
+              <div className="px-4 pb-3">
+                <input
+                  autoFocus
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="어떤 물건을 찾으세요?"
+                  aria-label="상품 검색"
+                  className="w-full bg-gray-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-carrot/40"
+                />
+              </div>
+            )}
+            <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
+              {['전체', ...CATEGORIES].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  aria-pressed={category === c}
+                  className={cx('shrink-0 px-3 py-1.5 rounded-full text-sm border transition-colors',
+                    category === c ? 'bg-carrot text-white border-carrot' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300')}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 리스트 */}
+          {error ? <EmptyState emoji="⚠️" text="상품을 불러오지 못했어요" sub={error} />
+            : products === null ? <SkeletonRows />
+            : products.length === 0 ? <EmptyState emoji="🥕" text="아직 등록된 상품이 없어요" sub="첫 상품을 등록해보세요" />
+            : <div className="divide-y divide-gray-100">{products.map((p) => <ProductRow key={p.id} p={p} />)}</div>}
+
+          {/* 글쓰기 FAB */}
+          <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
+            <div className="w-full max-w-[430px] relative">
+              <button
+                onClick={goWrite}
+                className="pointer-events-auto absolute right-4 bottom-20 h-14 pl-4 pr-5 rounded-full bg-carrot text-white font-bold shadow-lg flex items-center gap-1.5 active:scale-95 transition-transform hover:bg-carrotDark"
+              >
+                <span className="text-lg">✏️</span> 글쓰기
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 로그인 (/#/login)
+    // ========================================
+    function LoginPage() {
+      const { login } = useAuth();
+      const { navigate } = useRouter();
+      const toast = useToast();
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(false);
+
+      const submit = async (e) => {
+        e.preventDefault();
+        if (loading) return;
+        if (!email.trim() || !password) { setError('이메일과 비밀번호를 입력해 주세요'); return; }
+        setError(null); setLoading(true);
+        try {
+          await login(email.trim(), password);
+          toast('로그인했어요 🥕');
+          navigate('/');
+        } catch (err) { setError(err.message); }
+        finally { setLoading(false); }
+      };
+
+      return (
+        <div>
+          <TopNav title="로그인" back />
+          <form onSubmit={submit} className="p-5 space-y-4">
+            <div className="text-center py-6">
+              <div className="text-5xl">🥕</div>
+              <h1 className="mt-3 text-xl font-bold">안도마켓</h1>
+              <p className="text-sm text-gray-500 mt-1">우리동네 중고거래</p>
+            </div>
+            <Input label="이메일" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" disabled={loading} />
+            <Input label="비밀번호" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호" autoComplete="current-password" disabled={loading} />
+            {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2" role="alert">{error}</p>}
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>{loading ? '로그인 중…' : '로그인'}</Button>
+            <p className="text-center text-sm text-gray-500">아직 회원이 아니신가요? <Link to="/signup" className="text-carrot font-semibold">회원가입</Link></p>
+          </form>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 회원가입 (/#/signup)
+    // ========================================
+    function SignupPage() {
+      const { signup } = useAuth();
+      const { navigate } = useRouter();
+      const toast = useToast();
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [nickname, setNickname] = useState('');
+      const [neighborhood, setNeighborhood] = useState('');
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(false);
+
+      const submit = async (e) => {
+        e.preventDefault();
+        if (loading) return;
+        if (!email.trim() || !password || !nickname.trim() || !neighborhood.trim()) { setError('모든 항목을 입력해 주세요'); return; }
+        if (password.length < 6) { setError('비밀번호는 6자 이상이어야 해요'); return; }
+        setError(null); setLoading(true);
+        try {
+          await signup({ email: email.trim(), password, nickname: nickname.trim(), neighborhood: neighborhood.trim() });
+          toast('가입 완료! 환영해요 🥕');
+          navigate('/');
+        } catch (err) { setError(err.message); }
+        finally { setLoading(false); }
+      };
+
+      return (
+        <div>
+          <TopNav title="회원가입" back />
+          <form onSubmit={submit} className="p-5 space-y-4">
+            <div className="text-center py-4">
+              <div className="text-5xl">🥕</div>
+              <h1 className="mt-2 text-xl font-bold">안도마켓 시작하기</h1>
+            </div>
+            <Input label="이메일" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" disabled={loading} />
+            <Input label="비밀번호" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="6자 이상" autoComplete="new-password" disabled={loading} />
+            <Input label="닉네임" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="당근이" disabled={loading} />
+            <Input label="동네" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} placeholder="성수동" disabled={loading} />
+            {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2" role="alert">{error}</p>}
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>{loading ? '가입 중…' : '회원가입'}</Button>
+            <p className="text-center text-sm text-gray-500">이미 회원이신가요? <Link to="/login" className="text-carrot font-semibold">로그인</Link></p>
+          </form>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 상품 상세 (/#/product/:id)
+    // ========================================
+    function ProductDetailPage({ params }) {
+      const id = params.id;
+      const { navigate } = useRouter();
+      const { user } = useAuth();
+      const toast = useToast();
+      const [product, setProduct] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [busy, setBusy] = useState(false);
+      const goBack = () => { if (window.history.length > 1) window.history.back(); else navigate('/'); };
+
+      const load = useCallback(async () => {
+        setLoading(true);
+        try { const j = await api('/api/products/' + id); setProduct(j.product); setError(null); }
+        catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+      }, [id]);
+
+      useEffect(() => { load(); }, [load]);
+
+      const isOwner = user && product && product.seller && user.id === product.seller.id;
+
+      const toggleFav = async () => {
+        if (!getToken()) { toast('로그인이 필요해요'); navigate('/login'); return; }
+        try {
+          const j = await api('/api/products/' + id + '/favorite', { method: 'POST', auth: true });
+          setProduct((p) => ({ ...p, is_favorite: j.is_favorite, favorite_count: j.favorite_count }));
+        } catch (e) { toast(e.message); }
+      };
+
+      const startChat = async () => {
+        if (!getToken()) { toast('로그인이 필요해요'); navigate('/login'); return; }
+        setBusy(true);
+        try {
+          const j = await api('/api/products/' + id + '/chat', { method: 'POST', auth: true });
+          navigate('/chat/' + j.room.id);
+        } catch (e) { toast(e.message); }
+        finally { setBusy(false); }
+      };
+
+      const changeStatus = async (status) => {
+        try {
+          await api('/api/products/' + id + '/status', { method: 'PATCH', body: { status }, auth: true });
+          setProduct((p) => ({ ...p, status }));
+          toast('상태를 변경했어요');
+        } catch (e) { toast(e.message); }
+      };
+
+      const del = async () => {
+        if (!window.confirm('상품을 삭제할까요?')) return;
+        try { await api('/api/products/' + id, { method: 'DELETE', auth: true }); toast('삭제했어요'); navigate('/'); }
+        catch (e) { toast(e.message); }
+      };
+
+      if (loading) {
+        return (
+          <div>
+            <div className="aspect-square bg-gray-200 animate-pulse" />
+            <div className="p-4 space-y-3">
+              <div className="h-5 bg-gray-200 rounded w-2/3 animate-pulse" />
+              <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse" />
+              <div className="h-20 bg-gray-200 rounded animate-pulse mt-4" />
+            </div>
+          </div>
+        );
+      }
+      if (error || !product) {
+        return (
+          <div>
+            <TopNav title="" back />
+            <EmptyState emoji="😢" text="상품을 찾을 수 없어요" sub={error} />
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen pb-28">
+          <div className="relative">
+            <ImageSlider images={product.images} category={product.category} status={product.status} />
+            <button onClick={goBack} aria-label="뒤로" className="absolute top-3 left-3 w-10 h-10 rounded-full bg-black/35 text-white grid place-items-center text-2xl backdrop-blur-sm">←</button>
+          </div>
+
+          {/* 판매자 */}
+          <div className="flex items-center gap-3 p-4 border-b border-gray-100">
+            <InitialAvatar name={product.seller.nickname} className="w-11 h-11 text-base" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 truncate">{product.seller.nickname}</p>
+              <p className="text-xs text-gray-400">{product.seller.neighborhood}</p>
+            </div>
+          </div>
+
+          {/* 정보 */}
+          <div className="p-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              {product.status !== 'selling' && <StatusBadge status={product.status} />}
+              <h1 className="text-xl font-bold text-gray-900">{product.title}</h1>
+            </div>
+            <p className="text-sm text-gray-400 mt-1">{product.category} · {timeAgo(product.created_at)}</p>
+            <p className="mt-4 text-[15px] text-gray-800 whitespace-pre-wrap leading-relaxed">{product.description}</p>
+            <p className="mt-6 text-xs text-gray-400">관심 {product.favorite_count} · 조회 {product.view_count}</p>
+          </div>
+
+          {/* 하단 고정바 */}
+          <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
+            <div className="w-full max-w-[430px] bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-3">
+              {isOwner ? (
+                <React.Fragment>
+                  <select
+                    value={product.status}
+                    onChange={(e) => changeStatus(e.target.value)}
+                    aria-label="판매 상태"
+                    className="border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-carrot/30"
+                  >
+                    <option value="selling">판매중</option>
+                    <option value="reserved">예약중</option>
+                    <option value="sold">거래완료</option>
+                  </select>
+                  <div className="flex-1" />
+                  <Button variant="secondary" size="sm" onClick={() => navigate('/edit/' + id)}>수정</Button>
+                  <Button variant="danger" size="sm" onClick={del}>삭제</Button>
+                </React.Fragment>
+              ) : (
+                <React.Fragment>
+                  <button onClick={toggleFav} aria-label="관심" aria-pressed={!!product.is_favorite} className="w-11 h-11 grid place-items-center text-2xl shrink-0 active:scale-90 transition-transform">
+                    {product.is_favorite ? '❤️' : '🤍'}
+                  </button>
+                  <div className="h-8 w-px bg-gray-200" />
+                  <div className="flex-1 font-bold text-gray-900 truncate">{formatPrice(product.price)}</div>
+                  <Button onClick={startChat} disabled={busy}>{busy ? '연결 중…' : '채팅하기'}</Button>
+                </React.Fragment>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 글쓰기 · 수정 (/#/write · /#/edit/:id)
+    // ========================================
+    function WritePage({ params }) {
+      const editId = params && params.id;
+      const isEdit = !!editId;
+      const { navigate } = useRouter();
+      const { user } = useAuth();
+      const toast = useToast();
+      const [title, setTitle] = useState('');
+      const [category, setCategory] = useState('');
+      const [price, setPrice] = useState('');
+      const [desc, setDesc] = useState('');
+      const [images, setImages] = useState([]);
+      const [uploading, setUploading] = useState(false);
+      const [submitting, setSubmitting] = useState(false);
+      const [loadingEdit, setLoadingEdit] = useState(isEdit);
+      const fileRef = useRef(null);
+
+      // 로그인 가드
+      useEffect(() => {
+        if (!getToken()) { toast('로그인이 필요해요'); navigate('/login'); }
+      }, []);
+
+      // 수정 모드: 기존 상품 로드 + 소유권 확인
+      useEffect(() => {
+        if (!isEdit) return;
+        let alive = true;
+        (async () => {
+          try {
+            const j = await api('/api/products/' + editId);
+            if (!alive) return;
+            const p = j.product;
+            if (!user || (p.seller && p.seller.id !== user.id)) { toast('수정 권한이 없어요'); navigate('/product/' + editId); return; }
+            setTitle(p.title); setCategory(p.category); setPrice(String(p.price)); setDesc(p.description); setImages(p.images || []);
+          } catch (e) { toast(e.message); navigate('/'); }
+          finally { if (alive) setLoadingEdit(false); }
+        })();
+        return () => { alive = false; };
+      }, [editId]);
+
+      const onPick = async (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = '';
+        if (!files.length) return;
+        const room = 3 - images.length;
+        if (room <= 0) { toast('사진은 최대 3장이에요'); return; }
+        setUploading(true);
+        try {
+          for (const file of files.slice(0, room)) {
+            if (!file.type || !file.type.startsWith('image/')) { toast('이미지 파일만 올릴 수 있어요'); continue; }
+            if (file.size > 5 * 1024 * 1024) { toast('5MB 이하 이미지만 올릴 수 있어요'); continue; }
+            // 장당 서명 새로 발급
+            const auth = await api('/api/imagekit/auth', { auth: true });
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('fileName', file.name);
+            fd.append('publicKey', auth.publicKey);
+            fd.append('token', auth.token);
+            fd.append('expire', auth.expire);
+            fd.append('signature', auth.signature);
+            fd.append('folder', '/danggeun');
+            fd.append('useUniqueFileName', 'true');
+            const r = await fetch('https://upload.imagekit.io/api/v1/files/upload', { method: 'POST', body: fd });
+            let jj = null;
+            try { jj = await r.json(); } catch (er) {}
+            if (!r.ok || !jj || !jj.url) throw new Error((jj && jj.message) || '이미지 업로드에 실패했어요');
+            setImages((prev) => prev.length < 3 ? [...prev, jj.url] : prev);
+          }
+        } catch (err) { toast(err.message || '업로드에 실패했어요'); }
+        finally { setUploading(false); }
+      };
+
+      const submit = async () => {
+        if (submitting || uploading) return;
+        if (!title.trim()) return toast('제목을 입력해 주세요');
+        if (!category) return toast('카테고리를 선택해 주세요');
+        if (!desc.trim()) return toast('설명을 입력해 주세요');
+        const priceNum = price === '' ? 0 : parseInt(price, 10);
+        if (isNaN(priceNum) || priceNum < 0) return toast('가격을 올바르게 입력해 주세요');
+        setSubmitting(true);
+        try {
+          const body = { title: title.trim(), price: priceNum, description: desc.trim(), category, images };
+          const j = isEdit
+            ? await api('/api/products/' + editId, { method: 'PUT', body, auth: true })
+            : await api('/api/products', { method: 'POST', body, auth: true });
+          toast(isEdit ? '수정했어요' : '등록했어요 🥕');
+          navigate('/product/' + j.product.id);
+        } catch (e) { toast(e.message); }
+        finally { setSubmitting(false); }
+      };
+
+      return (
+        <div className="pb-8">
+          <TopNav
+            title={isEdit ? '상품 수정' : '내 물건 팔기'}
+            back
+            right={<button onClick={submit} disabled={submitting || uploading} className="text-carrot font-semibold text-sm px-3 py-2 disabled:opacity-40">{submitting ? '저장 중…' : '완료'}</button>}
+          />
+          {loadingEdit ? (
+            <div className="p-10 flex justify-center"><Spinner className="w-6 h-6" /></div>
+          ) : (
+            <div className="p-4 space-y-5">
+              {/* 사진 (최대 3장) */}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                <label className={cx('shrink-0 w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 grid place-items-center text-gray-400 cursor-pointer',
+                  (uploading || images.length >= 3) && 'opacity-50 pointer-events-none')}>
+                  <div className="text-center leading-tight">
+                    <div className="text-xl">📷</div>
+                    <div className="text-[11px]">{images.length}/3</div>
+                  </div>
+                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onPick} />
+                </label>
+                {images.map((url, i) => (
+                  <div key={i} className="relative shrink-0 w-20 h-20">
+                    <img src={imgTr(url, 'w-200,h-200,fo-auto')} alt="" className="w-full h-full object-cover rounded-lg" />
+                    <button type="button" onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))} aria-label="사진 삭제" className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-800 text-white text-xs grid place-items-center">✕</button>
+                    {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] text-center rounded-b-lg">대표</span>}
+                  </div>
+                ))}
+                {uploading && <div className="shrink-0 w-20 h-20 rounded-lg bg-gray-100 grid place-items-center"><Spinner /></div>}
+              </div>
+
+              <Input label="제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="상품 제목" />
+
+              <div>
+                <span className="block text-sm font-medium text-gray-700 mb-2">카테고리</span>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map((c) => (
+                    <button key={c} type="button" onClick={() => setCategory(c)} aria-pressed={category === c}
+                      className={cx('px-3 py-1.5 rounded-full text-sm border transition-colors',
+                        category === c ? 'bg-carrot text-white border-carrot' : 'bg-white text-gray-600 border-gray-300')}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Input label="가격" type="number" inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="가격을 입력하세요 (0 = 나눔)" />
+                <p className="text-xs text-gray-400 mt-1">{price === '' ? '비워두면 나눔으로 등록돼요' : formatPrice(parseInt(price, 10) || 0)}</p>
+              </div>
+
+              <Textarea label="자세한 설명" rows={6} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={'올릴 상품에 대한 설명을 적어주세요.\n(사용감, 구매 시기 등)'} />
+
+              <Button className="w-full" size="lg" onClick={submit} disabled={submitting || uploading}>{submitting ? '저장 중…' : (isEdit ? '수정 완료' : '작성 완료')}</Button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 채팅방 목록 (5초 폴링) — 채팅 탭 & 마이 채팅탭 공용
+    // ========================================
+    function ChatRoomsList() {
+      const [rooms, setRooms] = useState(null);
+      const [error, setError] = useState(null);
+
+      useEffect(() => {
+        let alive = true;
+        const fetchRooms = async () => {
+          try { const j = await api('/api/chats', { auth: true }); if (alive) { setRooms(j.rooms || []); setError(null); } }
+          catch (e) { if (alive && rooms === null) setError(e.message); }
+        };
+        fetchRooms();
+        const t = setInterval(fetchRooms, 5000);
+        return () => { alive = false; clearInterval(t); };
+      }, []);
+
+      if (error && rooms === null) return <EmptyState emoji="⚠️" text="채팅을 불러오지 못했어요" sub={error} />;
+      if (rooms === null) return <SkeletonRows n={4} />;
+      if (!rooms.length) return <EmptyState emoji="💬" text="아직 채팅이 없어요" sub="관심 있는 상품에 채팅을 걸어보세요" />;
+      return <div className="divide-y divide-gray-100">{rooms.map((r) => <ChatRow key={r.id} room={r} />)}</div>;
+    }
+
+    // ========================================
+    // 📄 채팅 목록 (/#/chats)
+    // ========================================
+    function ChatListPage() {
+      const { navigate } = useRouter();
+      const toast = useToast();
+      useEffect(() => { if (!getToken()) { toast('로그인이 필요해요'); navigate('/login'); } }, []);
+      if (!getToken()) return null;
+      return (
+        <div className="pb-24">
+          <TopNav title="채팅" />
+          <ChatRoomsList />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 📄 채팅방 (/#/chat/:roomId · 2.5초 폴링, after 커서 증분)
+    // ========================================
+    function ChatRoomPage({ params }) {
+      const roomId = params.roomId;
+      const { navigate } = useRouter();
+      const { user } = useAuth();
+      const toast = useToast();
+      const [meta, setMeta] = useState(null);
+      const [messages, setMessages] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [text, setText] = useState('');
+      const [sending, setSending] = useState(false);
+      const lastId = useRef(0);
+      const inFlight = useRef(false);
+      const errShown = useRef(false);
+      const endRef = useRef(null);
+      const goBack = () => { if (window.history.length > 1) window.history.back(); else navigate('/chats'); };
+
+      useEffect(() => { if (!getToken()) { toast('로그인이 필요해요'); navigate('/login'); } }, []);
+
+      // 방 요약(상품·상대) — /chats 에서 조회
+      useEffect(() => {
+        let alive = true;
+        (async () => {
+          try {
+            const j = await api('/api/chats', { auth: true });
+            if (!alive) return;
+            const r = (j.rooms || []).find((x) => String(x.id) === String(roomId));
+            if (r) setMeta(r);
+          } catch (e) { /* 요약 실패는 무시 (메시지는 별도 폴링) */ }
+        })();
+        return () => { alive = false; };
+      }, [roomId]);
+
+      // 메시지 폴링 (after 커서 증분)
+      useEffect(() => {
+        let alive = true;
+        const fetchMsgs = async () => {
+          if (inFlight.current) return;
+          inFlight.current = true;
+          try {
+            const qs = lastId.current ? ('?after=' + lastId.current) : '';
+            const j = await api('/api/chats/' + roomId + '/messages' + qs, { auth: true });
+            if (!alive) return;
+            const incoming = j.messages || [];
+            if (incoming.length) {
+              lastId.current = incoming[incoming.length - 1].id;
+              setMessages((prev) => [...prev, ...incoming]);
+            }
+            errShown.current = false;
+          } catch (e) {
+            if (alive && !errShown.current) { errShown.current = true; toast(e.message); }
+          } finally {
+            inFlight.current = false;
+            if (alive) setLoading(false);
+          }
+        };
+        fetchMsgs();
+        const t = setInterval(fetchMsgs, 2500);
+        return () => { alive = false; clearInterval(t); };
+      }, [roomId]);
+
+      // 새 메시지 오면 하단 고정
+      useEffect(() => {
+        if (endRef.current) endRef.current.scrollIntoView({ behavior: 'auto', block: 'end' });
+      }, [messages.length]);
+
+      const send = async (e) => {
+        e.preventDefault();
+        const content = text.trim();
+        if (!content || sending) return;
+        setSending(true);
+        try {
+          const j = await api('/api/chats/' + roomId + '/messages', { method: 'POST', body: { content }, auth: true });
+          setMessages((prev) => [...prev, j.message]);
+          lastId.current = Math.max(lastId.current, j.message.id);
+          setText('');
+        } catch (err) { toast(err.message); }
+        finally { setSending(false); }
+      };
+
+      return (
+        <div className="min-h-screen pb-24">
+          {/* 상단: 뒤로 + 상품 요약 */}
+          <div className="sticky top-0 z-30 bg-white border-b border-gray-100">
+            <div className="h-14 flex items-center px-2 gap-1">
+              <button onClick={goBack} aria-label="뒤로" className="w-10 h-10 grid place-items-center text-2xl text-gray-700 rounded-full hover:bg-gray-100">←</button>
+              <p className="font-bold text-gray-900 truncate flex-1 px-1">{meta ? (meta.other && meta.other.nickname) || '채팅' : '채팅'}</p>
+            </div>
+            {meta && meta.product && (
+              <Link to={'/product/' + meta.product.id} className="flex items-center gap-3 px-4 py-2 bg-gray-50 border-t border-gray-100 active:bg-gray-100">
+                <ProductThumb images={meta.product.images} category={null} status={meta.product.status} className="w-11 h-11" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800 truncate">{meta.product.title}</p>
+                  <p className="text-sm font-bold text-gray-900">{formatPrice(meta.product.price)}</p>
+                </div>
+                {meta.product.status !== 'selling' && <StatusBadge status={meta.product.status} />}
+              </Link>
+            )}
+          </div>
+
+          {/* 메시지 */}
+          <div className="px-4 py-4 space-y-2">
+            {loading ? (
+              <div className="flex justify-center py-10"><Spinner className="w-6 h-6" /></div>
+            ) : messages.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">첫 메시지를 보내보세요 👋</p>
+            ) : (
+              messages.map((m) => <MessageBubble key={m.id} m={m} mine={user && m.sender_id === user.id} />)
+            )}
+            <div ref={endRef} />
+          </div>
+
+          {/* 입력바 */}
+          <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center">
+            <form onSubmit={send} className="w-full max-w-[430px] bg-white border-t border-gray-200 px-3 py-2.5 flex items-center gap-2">
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="메시지를 입력하세요"
+                aria-label="메시지 입력"
+                className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-carrot/40"
+              />
+              <button type="submit" disabled={!text.trim() || sending} aria-label="전송" className="w-10 h-10 shrink-0 rounded-full bg-carrot text-white grid place-items-center disabled:opacity-40 active:scale-90 transition-transform">➤</button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 마이 상품/관심 리스트 (공용)
+    // ========================================
+    function MyProductList({ endpoint, emptyEmoji, emptyText }) {
+      const [products, setProducts] = useState(null);
+      const [error, setError] = useState(null);
+      useEffect(() => {
+        let alive = true;
+        (async () => {
+          try { const j = await api(endpoint, { auth: true }); if (alive) { setProducts(j.products || []); setError(null); } }
+          catch (e) { if (alive) { setError(e.message); setProducts([]); } }
+        })();
+        return () => { alive = false; };
+      }, [endpoint]);
+      if (error) return <EmptyState emoji="⚠️" text="불러오지 못했어요" sub={error} />;
+      if (products === null) return <SkeletonRows n={4} />;
+      if (!products.length) return <EmptyState emoji={emptyEmoji} text={emptyText} />;
+      return <div className="divide-y divide-gray-100">{products.map((p) => <ProductRow key={p.id} p={p} />)}</div>;
+    }
+
+    // ========================================
+    // 📄 마이 (/#/me)
+    // ========================================
+    function MyPage() {
+      const { user, logout } = useAuth();
+      const { navigate } = useRouter();
+      const toast = useToast();
+      const [tab, setTab] = useState('selling');
+
+      useEffect(() => { if (!getToken()) { toast('로그인이 필요해요'); navigate('/login'); } }, []);
+
+      if (!getToken()) return null;
+      if (!user) return <div className="p-4"><SkeletonRows n={3} /></div>;
+
+      const doLogout = () => { logout(); toast('로그아웃했어요'); navigate('/'); };
+      const tabs = [['selling', '판매상품'], ['favorites', '관심목록'], ['chats', '채팅']];
+
+      return (
+        <div className="pb-24">
+          <TopNav title="나의 안도마켓" />
+          <div className="flex items-center gap-3 p-5 border-b border-gray-100">
+            <InitialAvatar name={user.nickname} className="w-16 h-16 text-2xl" />
+            <div className="flex-1 min-w-0">
+              <p className="text-lg font-bold text-gray-900 truncate">{user.nickname}</p>
+              <p className="text-sm text-gray-500 truncate">{user.email}</p>
+              <p className="text-xs text-gray-400 mt-0.5">📍 {user.neighborhood}</p>
+            </div>
+            <Button variant="secondary" size="sm" onClick={doLogout}>로그아웃</Button>
+          </div>
+
+          <div className="flex border-b border-gray-100 sticky top-14 bg-white z-20">
+            {tabs.map(([k, label]) => (
+              <button key={k} onClick={() => setTab(k)} aria-pressed={tab === k}
+                className={cx('flex-1 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
+                  tab === k ? 'border-carrot text-carrot' : 'border-transparent text-gray-400')}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'selling' && <MyProductList endpoint="/api/me/products" emptyEmoji="📦" emptyText="등록한 상품이 없어요" />}
+          {tab === 'favorites' && <MyProductList endpoint="/api/me/favorites" emptyEmoji="🤍" emptyText="관심 목록이 비어 있어요" />}
+          {tab === 'chats' && <ChatRoomsList />}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 404
+    // ========================================
+    function NotFoundPage() {
+      return (
+        <div>
+          <TopNav title="" back />
+          <EmptyState emoji="🧭" text="페이지를 찾을 수 없어요" sub="주소를 다시 확인해 주세요" />
+          <div className="px-6"><Link to="/" className="text-carrot font-semibold">← 홈으로</Link></div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🚀 App
+    // ========================================
+    function Shell() {
+      const { path } = useRouter();
+      const showTab = ['/', '/chats', '/me'].includes(path);
+      return (
+        <div className="max-w-[430px] mx-auto min-h-screen bg-white shadow-xl relative overflow-x-hidden">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/product/:id" element={<ProductDetailPage />} />
+            <Route path="/write" element={<WritePage />} />
+            <Route path="/edit/:id" element={<WritePage />} />
+            <Route path="/chats" element={<ChatListPage />} />
+            <Route path="/chat/:roomId" element={<ChatRoomPage />} />
+            <Route path="/me" element={<MyPage />} />
+          </Routes>
+          {showTab && <TabBar />}
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <Router>
+          <ToastProvider>
+            <AuthProvider>
+              <Shell />
+            </AuthProvider>
+          </ToastProvider>
+        </Router>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
