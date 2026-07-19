@@ -1,0 +1,95 @@
+/* The Row 인스타 광고 카드 — 공통 스타일 (BRAND.md 규칙 적용) */
+:root {
+  --ivory: #edeae4;   /* 메인1: 캠페인 스튜디오 배경 */
+  --ink: #1c1b1b;     /* 메인2: 사이트 버튼/텍스트 실측값 */
+  --camel: #a98e64;   /* 보조1: 캠페인 코트 컬러 */
+  --grey: #6a6a6a;    /* 사이트 보조 텍스트 실측값 */
+  --sans: "Helvetica Neue", "Apple SD Gothic Neo", sans-serif; /* ≈ Basic Commercial */
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: #fff; }
+.card {
+  position: relative;
+  width: 1080px;
+  height: 1080px;
+  overflow: hidden;
+  background: var(--ivory);
+  font-family: var(--sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+.card img.bleed {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 워드마크: 얇은 대문자 + 초광폭 자간 (로고 실측 재현) */
+.wordmark {
+  font-weight: 300;
+  font-size: 30px;
+  letter-spacing: 0.55em;
+  text-indent: 0.55em; /* letter-spacing 우측 잔여분 보정 */
+  white-space: nowrap;
+}
+.wordmark .gap { display: inline-block; width: 0.9em; }
+
+/* 배치 유틸 */
+.top-center { position: absolute; top: 76px; left: 0; right: 0; text-align: center; }
+.bottom-center { position: absolute; bottom: 84px; left: 0; right: 0; text-align: center; }
+
+/* 카피/보조 텍스트 */
+.kicker {
+  font-weight: 300;
+  font-size: 15px;
+  letter-spacing: 0.42em;
+  text-indent: 0.42em;
+  color: var(--camel);
+  text-transform: uppercase;
+}
+.copy {
+  font-weight: 300;
+  font-size: 46px;
+  letter-spacing: 0.015em;
+  line-height: 1.3;
+}
+.copy-sub {
+  font-weight: 300;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  color: var(--grey);
+}
+.hairline {
+  width: 1px;
+  height: 52px;
+  background: rgba(28, 27, 27, 0.45);
+  margin: 26px auto;
+}
+.hairline.h-short { height: 34px; }
+
+/* CTA: 채운 버튼 금지 → 헤어라인 텍스트/보더만 */
+.cta-line {
+  font-weight: 300;
+  font-size: 16px;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+}
+.cta-line .dot { color: var(--camel); padding: 0 0.2em; }
+.cta-box {
+  display: inline-block;
+  border: 1px solid var(--ink);
+  padding: 21px 54px;
+  font-weight: 300;
+  font-size: 17px;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+}
+.url {
+  font-weight: 300;
+  font-size: 13px;
+  letter-spacing: 0.38em;
+  text-indent: 0.38em;
+  color: var(--camel);
+}

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>The Row — 모바일 피드 미리보기</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width:1440px; height:1000px; background:#fafafa;
+    font-family:"Helvetica Neue","Apple SD Gothic Neo",sans-serif; color:#1c1b1b;
+    display:flex; align-items:center; justify-content:center; gap:90px;
+  }
+  h1 { position:absolute; top:34px; left:0; right:0; text-align:center;
+       font-size:14px; font-weight:400; letter-spacing:.3em; color:#6a6a6a; text-transform:uppercase; }
+  /* 인스타 광고 포스트 목업 (375px = 모바일 실측 폭) */
+  .phone { width:375px; background:#fff; border:1px solid #e2e2e2; border-radius:4px; overflow:hidden; }
+  .ph-head { display:flex; align-items:center; gap:10px; padding:10px 12px; }
+  .avatar { width:32px; height:32px; border-radius:50%; background:#edeae4; border:1px solid #d8d7d5;
+            display:flex; align-items:center; justify-content:center; font-size:9px; letter-spacing:.12em; }
+  .ph-name { font-size:13px; font-weight:600; line-height:1.25; }
+  .ph-sp { font-size:11px; color:#6a6a6a; }
+  .ph-img { width:375px; height:375px; display:block; }
+  .ph-cta { display:flex; justify-content:space-between; align-items:center;
+            padding:11px 12px; font-size:13px; font-weight:600; border-bottom:1px solid #efefef; }
+  .ph-icons { padding:10px 12px 4px; font-size:16px; letter-spacing:.45em; color:#262626; }
+  .ph-cap { padding:2px 12px 14px; font-size:12.5px; color:#262626; }
+  .ph-cap b { font-weight:600; }
+  /* 4장 소형 그리드 (250px) */
+  .grid { display:grid; grid-template-columns:repeat(2,250px); gap:22px; }
+  .cell img { width:250px; height:250px; display:block; border:1px solid #e6e4df; }
+  .cell figcaption { margin-top:7px; font-size:11px; letter-spacing:.14em; color:#6a6a6a; text-align:center; }
+</style>
+</head>
+<body>
+  <h1>The Row — Mobile Feed Preview · 1080×1080</h1>
+  <div class="phone">
+    <div class="ph-head">
+      <div class="avatar">TR</div>
+      <div><div class="ph-name">therow</div><div class="ph-sp">Sponsored</div></div>
+    </div>
+    <img class="ph-img" src="../cards/main.png" alt="">
+    <div class="ph-cta">컬렉션 보기 <span>›</span></div>
+    <div class="ph-icons">♡&nbsp;◌&nbsp;➤</div>
+    <div class="ph-cap"><b>therow</b>&nbsp; Luxury, spoken softly. — Summer 2026</div>
+  </div>
+  <div class="grid">
+    <figure class="cell"><img src="../cards/main.png"><figcaption>MAIN</figcaption></figure>
+    <figure class="cell"><img src="../cards/carousel-1.png"><figcaption>CAROUSEL 1 · HOOK</figcaption></figure>
+    <figure class="cell"><img src="../cards/carousel-2.png"><figcaption>CAROUSEL 2 · BODY</figcaption></figure>
+    <figure class="cell"><img src="../cards/carousel-3.png"><figcaption>CAROUSEL 3 · CTA</figcaption></figure>
+  </div>
+</body>
+</html>
