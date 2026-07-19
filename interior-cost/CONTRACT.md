@@ -1399,3 +1399,34 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 > - **통합 (Playwright 관통)**: 관리탭 [⟳ 동기화] URL 실호출(3011, 277자재)→WD-0001 단가 45,000 인라인 저장→실플러그인 CSV 임포트(v2 뱃지·코드 자재 3종·WD-0001=자재 매칭·PT:DE:DEW340=프리픽스 규칙 도장공사)→물량 6건→견적 행 추가 시 재료비 45,000 자동 주입(행 270,000·합계 297,000 VAT포함). 임시팀 CASCADE 정리 잔존 0.
 > - **수정 1건**: mat-codes 응답이 ok() 래퍼(`{success,data:{items}}`)라 임포터 payloadItems가 래핑/비래핑 모두 수용하도록 보강(스펙 27-2에 주석).
 > - 플러그인 스냅샷 `interior-cost/sketchup-plugin/ando_estimator25.rb` (캐노니컬=설치본, README 참조).
+
+---
+
+# v28 — 나의 정보(프로필/아바타) · 직원 인증(관리자 승인) · 💬 AI 채팅 (2026-07-19)
+
+## 28-1 interior-cost DB (전부 ADD COLUMN IF NOT EXISTS, 멱등)
+- `interior_users` +9컬럼: `job_title`/`phone`/`bio`/`avatar_path` TEXT DEFAULT '', `approval_status` TEXT DEFAULT 'none'(`none|pending|approved|rejected`), `approval_requested_at`/`approved_at` TIMESTAMPTZ, `approved_by` BIGINT REFERENCES interior_users(SET NULL), `staff_id` BIGINT REFERENCES interior_staff(SET NULL).
+- 부팅 backfill: `role='admin' AND approval_status='none'` → approved(멱등). 가입 시 첫 유저(admin)는 approved 로 INSERT.
+
+## 28-2 REST — 프로필/아바타 (인증 필수)
+- `GET /api/me/profile` → `{profile}` (팀명·`avatar_url`(서명 1h) 포함) · `PATCH /api/me/profile` `{name?,job_title?,phone?,bio?}` 부분수정(이름 비우기 400). **인증 상태면 interior_staff 동기화**: staff_id 있으면 name/role(=직함)/phone/email 갱신(개명 UNIQUE 충돌 시 이름만 유지), staff_id 없고 이름 있으면(가입 자동인증 admin) upsert+링크 자동.
+- `POST /api/me/avatar/sign-upload` `{file_name}` → `{upload_url, storage_path}` (`avatars/u{userId}/{ts}_{safe}`, 미설정 503) · `POST /api/me/avatar` `{storage_path}`(본인 프리픽스 검증, 이전 객체 삭제) → `{avatar_url}` · `DELETE /api/me/avatar`.
+
+## 28-3 REST — 직원 인증
+- `POST /api/me/approval-request` — pending 전환 + 팀 admin 알림(type `approval_request`). 이름 없으면 400, approved 면 400, pending/rejected 재요청 허용(재알림).
+- `GET /api/admin/approvals?status=all|pending|…` (requireAdmin) → `{items:[profile]}` pending 우선 정렬.
+- `POST /api/admin/approvals/:userId/approve` — **upsertStaffForUser**(같은 팀 동명 staff 재사용·정보갱신·active=TRUE, 없으면 INSERT, 전역 UNIQUE 충돌 시 `이름#uid`) → approved+staff_id 링크 + 본인 알림(type `approval_result`). approved 재실행 허용(링크 자가복구). 이름 없으면 400.
+- `POST /api/admin/approvals/:userId/reject` `{reason?}` — rejected + staff 링크 해제 + **staff active=FALSE**(인증 취소 겸용) + 사유 알림.
+
+## 28-4 REST — 💬 AI 채팅
+- `POST /api/chat` `{messages:[{role:'user'|'assistant',content}…]}`(최근 12개, 마지막 user) → `{reply, queries}`.
+- gpt-4o + `run_sql` 도구 루프(최대 6회): **BEGIN READ ONLY + statement_timeout 8s**, SELECT/WITH 단일문만, 결과 200행/12KB 캡. 하드 차단: password_hash/share_token류/connected_id/invite_code/interior_teams/pg_* + `interior_users`·`interior_card_accounts` SELECT * 금지(count(*) 허용). 시스템 프롬프트에 KST 오늘·teamId 스코프 강제·26테이블 스키마·도메인 힌트(물량=takeoff/estimate_items, 판매처=orders/costs/catalog.vendor, 공간·부위=ILIKE)·답변 규칙(근거 병기).
+
+## 28-5 UI
+- **헤더 ProfileArea**: 아바타(사진 or 이니셜 hsl 해시색)+이름/직함 버튼, 인증 ✓(초록)/대기(노랑) 배지 → **나의 정보 모달**(사진/캐릭터 업로드·기본으로·이름/직함/연락처/소개·인증 상태 카드+[승인 요청]). 데모(오프라인) 미노출.
+- **관리 › 🪪 직원 인증**(admin 전용 서브탭): 승인 대기/인증된 직원/미신청·반려 그룹, [✅ 승인]·[반려(사유)]·[인증 취소]. onChanged→reloadMasters 로 담당자 콤보 즉시 갱신.
+- **💬 ChatWidget**: 우하단 FAB(z-40) + 380×560 패널(모바일 calc 폭), 제안 칩 3개, sessionStorage 40개 보존, "📊 데이터 조회 N회" 표기. `!demoMode` 에서만 마운트.
+
+## 검증 (2026-07-19)
+- **백엔드 e2e 38/38** (PORT 3210, 임시팀 격리·잔존 0): admin 자동인증/프로필 왕복/승인 흐름(알림 2종·staff 등록·GET /api/staff 노출)/개명 동기화/반려·재요청/이름없음 400/인증취소→staff 비활성→재승인 재활성/아바타(서명 업로드→PUT→저장→서명 URL→타인경로 400→삭제)/채팅(400·401·빈팀 0건 응답·실팀 현장명·비용총액 1,710만원 멀티턴·queries≥1).
+- **Playwright 관통**: 로그인→헤더 아바타 ✓ 배지→나의 정보 모달 저장(→담당자 자동 등록 curl 확인)→💬 패널 질문("담당자 누구야?" → 방금 등록된 박유아이/대표 응답, 조회 1회)→관리›직원 인증 렌더. 임시팀 2개 모두 정리 잔존 0.

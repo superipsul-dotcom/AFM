@@ -1120,6 +1120,25 @@ async function initDB() {
   // takeoff 에 자재 코드(빈값=비코드 행) — DLP-TAKEOFF v2 CSV 의 material_code 컬럼 저장.
   await pool.query(`ALTER TABLE interior_takeoff ADD COLUMN IF NOT EXISTS material_code TEXT NOT NULL DEFAULT ''`);
 
+  // ====================================================================
+  // (v28) 나의 정보(프로필·아바타) + 직원 인증(관리자 승인) — interior_users 확장
+  //   흐름: 프로필 작성 → 승인요청(pending, admin 알림) → admin 승인 → interior_staff 자동 upsert
+  //   + staff_id 링크 → 담당자 콤보(PM/시공책임/디자이너 등)에 이름 노출.
+  //   전부 ADD COLUMN IF NOT EXISTS → v1~v27 데이터 100% 보존, 멱등.
+  //   (컬럼이 이미 있으면 REFERENCES 는 건너뜀 — schedule_id 와 동일한 관례, 앱 레벨 보완)
+  // ====================================================================
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS job_title TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS avatar_path TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS approval_status TEXT NOT NULL DEFAULT 'none'`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS approval_requested_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS approved_by BIGINT REFERENCES interior_users(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS staff_id BIGINT REFERENCES interior_staff(id) ON DELETE SET NULL`);
+  // admin 은 자동 인증(상태가 none 인 행만 → 멱등, pending/rejected 로 바꾼 경우는 존중)
+  await pool.query(`UPDATE interior_users SET approval_status='approved', approved_at=now() WHERE role='admin' AND approval_status='none'`);
+
   // (v25) 매뉴얼 시드 — 전체 0건일 때만 노션 43건을 가장 오래된 팀에 적재
   await seedManualsIfEmpty();
 
@@ -1395,11 +1414,12 @@ app.post('/api/auth/signup', async (req, res) => {
     // (v21) 첫 가입자 = 관리자: 그 팀 유저 수가 0이면 admin, 아니면 member.
     const cnt = await pool.query('SELECT COUNT(*)::int AS n FROM interior_users WHERE team_id=$1', [team.id]);
     const role = cnt.rows[0].n === 0 ? 'admin' : 'member';
+    // (v28) 첫 가입자(admin)는 자동 인증 — 이후 [나의 정보] 저장 시 담당자 마스터에 자동 등록됨.
     const { rows } = await pool.query(
-      `INSERT INTO interior_users (email, password_hash, name, team_id, role)
-       VALUES ($1,$2,$3,$4,$5)
+      `INSERT INTO interior_users (email, password_hash, name, team_id, role, approval_status, approved_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
        RETURNING id, email, name, team_id, role`,
-      [email, hash, name, team.id, role]
+      [email, hash, name, team.id, role, role === 'admin' ? 'approved' : 'none', role === 'admin' ? new Date() : null]
     );
     const userRow = { ...rows[0], team_name: team.name };
     const token = signToken(userRow);
@@ -8053,6 +8073,502 @@ app.delete('/api/materials/:id', async (req, res) => {
   } catch (err) {
     console.error('DELETE /api/materials/:id 오류:', err.message);
     res.status(500).json({ success: false, message: '자재를 삭제하지 못했습니다.' });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════
+// (v28) 나의 정보(프로필/아바타) · 직원 인증(관리자 승인) · 💬 AI 채팅
+//   프로필/승인: interior_users 확장 컬럼. 승인 시 interior_staff 자동 upsert → 담당자 콤보 노출.
+//   아바타: v20 Supabase Storage 서명 업로드 재사용(avatars/u{userId}/…, 본인 프리픽스 검증).
+//   채팅: gpt-4o + run_sql(READ ONLY 트랜잭션·단일 SELECT·민감컬럼 차단·팀 스코프 프롬프트 강제).
+// ════════════════════════════════════════════════════════════════
+
+const PROFILE_COLS =
+  'id, email, name, job_title, phone, bio, team_id, role, avatar_path, approval_status, approval_requested_at, approved_at, staff_id';
+
+function rowToProfile(row) {
+  return {
+    id: Number(row.id),
+    email: row.email,
+    name: row.name || '',
+    job_title: row.job_title || '',
+    phone: row.phone || '',
+    bio: row.bio || '',
+    team_id: Number(row.team_id),
+    team_name: row.team_name == null ? undefined : row.team_name,
+    role: row.role || 'member',
+    avatar_path: row.avatar_path || '',
+    approval_status: row.approval_status || 'none',
+    approval_requested_at: row.approval_requested_at || null,
+    approved_at: row.approved_at || null,
+    staff_id: row.staff_id == null ? null : Number(row.staff_id),
+  };
+}
+
+// 사용자 → 담당자(직원) 마스터 upsert: 같은 팀 동명 행 재사용(정보 갱신+활성), 없으면 생성.
+//   interior_staff.name 전역 UNIQUE(v1 유산) — 타 팀 동명 충돌 시 "#유저id" 접미사로 회피. staffId 반환.
+async function upsertStaffForUser(u, teamId) {
+  const name = (u.name || '').trim();
+  const ex = await pool.query(
+    `SELECT id FROM interior_staff WHERE team_id=$1 AND name=$2 ORDER BY id ASC LIMIT 1`,
+    [teamId, name]
+  );
+  if (ex.rows.length) {
+    const staffId = Number(ex.rows[0].id);
+    await pool.query(
+      `UPDATE interior_staff SET role=COALESCE(NULLIF($1,''), role), phone=COALESCE(NULLIF($2,''), phone), email=$3, active=TRUE WHERE id=$4`,
+      [u.job_title || '', u.phone || '', u.email, staffId]
+    );
+    return staffId;
+  }
+  try {
+    const ins = await pool.query(
+      `INSERT INTO interior_staff (name, role, phone, email, team_id) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+      [name, u.job_title || '', u.phone || '', u.email, teamId]
+    );
+    return Number(ins.rows[0].id);
+  } catch (e) {
+    if (e.code === '23505') {
+      const ins2 = await pool.query(
+        `INSERT INTO interior_staff (name, role, phone, email, team_id) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [`${name}#${u.id}`, u.job_title || '', u.phone || '', u.email, teamId]
+      );
+      return Number(ins2.rows[0].id);
+    }
+    throw e;
+  }
+}
+
+// 아바타 서명 URL 부착(1시간). 스토리지 미설정/실패 시 빈 문자열 — 요청은 계속.
+async function withAvatarUrl(profile) {
+  profile.avatar_url = '';
+  if (profile.avatar_path && storageConfigured()) {
+    try { profile.avatar_url = await signDownloadUrl(profile.avatar_path, 3600); } catch (_) { /* 무시 */ }
+  }
+  return profile;
+}
+
+// GET /api/me/profile — 내 프로필(팀명·아바타 URL 포함)
+app.get('/api/me/profile', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT u.id,u.email,u.name,u.job_title,u.phone,u.bio,u.team_id,u.role,u.avatar_path,
+              u.approval_status,u.approval_requested_at,u.approved_at,u.staff_id,t.name AS team_name
+         FROM interior_users u JOIN interior_teams t ON t.id=u.team_id WHERE u.id=$1`,
+      [req.userId]
+    );
+    if (rows.length === 0) return res.status(401).json({ error: '인증이 필요합니다' });
+    res.json({ profile: await withAvatarUrl(rowToProfile(rows[0])) });
+  } catch (err) {
+    console.error('GET /api/me/profile 오류:', err.message);
+    res.status(500).json({ success: false, message: '프로필을 불러오지 못했습니다.' });
+  }
+});
+
+// PATCH /api/me/profile {name?, job_title?, phone?, bio?} — 부분 수정(빈 문자열로 비우기 가능, 이름만 비우기 금지).
+//   인증된 직원(staff_id 링크)이면 담당자 마스터 행도 함께 동기화(동명 충돌 시 이름만 유지).
+app.patch('/api/me/profile', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const pick = (k, max) => (typeof b[k] === 'string' ? b[k].trim().slice(0, max) : undefined);
+    const name = pick('name', 60);
+    const jobTitle = pick('job_title', 60);
+    const phone = pick('phone', 40);
+    const bio = pick('bio', 500);
+    if (name !== undefined && !name) {
+      return res.status(400).json({ success: false, message: '이름은 비울 수 없습니다.' });
+    }
+    const { rows } = await pool.query(
+      `UPDATE interior_users SET
+         name = COALESCE($1, name), job_title = COALESCE($2, job_title),
+         phone = COALESCE($3, phone), bio = COALESCE($4, bio)
+       WHERE id=$5 RETURNING ${PROFILE_COLS}`,
+      [name === undefined ? null : name, jobTitle === undefined ? null : jobTitle,
+       phone === undefined ? null : phone, bio === undefined ? null : bio, req.userId]
+    );
+    if (rows.length === 0) return res.status(401).json({ error: '인증이 필요합니다' });
+    const me = rows[0];
+    if (me.approval_status === 'approved') {
+      if (me.staff_id) {
+        try {
+          await pool.query(
+            `UPDATE interior_staff SET name=$1, role=$2, phone=$3, email=$4 WHERE id=$5 AND team_id=$6`,
+            [me.name, me.job_title, me.phone, me.email, me.staff_id, req.teamId]
+          );
+        } catch (e) {
+          if (e.code === '23505') {
+            // interior_staff.name 전역 UNIQUE(v1 유산) — 개명이 기존 담당자명과 충돌하면 이름은 두고 나머지만 동기화
+            await pool.query(
+              `UPDATE interior_staff SET role=$1, phone=$2, email=$3 WHERE id=$4 AND team_id=$5`,
+              [me.job_title, me.phone, me.email, me.staff_id, req.teamId]
+            );
+          } else throw e;
+        }
+      } else if ((me.name || '').trim()) {
+        // 인증됐지만 담당자 링크가 없는 경우(가입 시 자동 인증된 admin 등) — 저장 시 자동 등록
+        try {
+          const sid = await upsertStaffForUser(me, req.teamId);
+          await pool.query('UPDATE interior_users SET staff_id=$1 WHERE id=$2', [sid, req.userId]);
+          me.staff_id = sid;
+        } catch (e) {
+          console.warn('⚠️  담당자 자동 등록 실패(요청은 계속):', e.message);
+        }
+      }
+    }
+    res.json({ profile: await withAvatarUrl(rowToProfile(me)) });
+  } catch (err) {
+    console.error('PATCH /api/me/profile 오류:', err.message);
+    res.status(500).json({ success: false, message: '프로필을 저장하지 못했습니다.' });
+  }
+});
+
+// POST /api/me/approval-request — 직원 인증 승인 요청(pending 전환 + 팀 admin 알림). 재요청 허용(재알림).
+app.post('/api/me/approval-request', async (req, res) => {
+  try {
+    const q = await pool.query(`SELECT ${PROFILE_COLS} FROM interior_users WHERE id=$1`, [req.userId]);
+    if (q.rows.length === 0) return res.status(401).json({ error: '인증이 필요합니다' });
+    const u = q.rows[0];
+    if (!(u.name || '').trim()) {
+      return res.status(400).json({ success: false, message: '이름을 먼저 입력하고 저장해 주세요.' });
+    }
+    if (u.approval_status === 'approved') {
+      return res.status(400).json({ success: false, message: '이미 인증된 직원입니다.' });
+    }
+    const upd = await pool.query(
+      `UPDATE interior_users SET approval_status='pending', approval_requested_at=now()
+       WHERE id=$1 RETURNING ${PROFILE_COLS}`,
+      [req.userId]
+    );
+    const admins = await teamUserIdsByRole(req.teamId, true);
+    await notifyUsers({
+      teamId: req.teamId, userIds: admins, actorUserId: req.userId, type: 'approval_request',
+      title: `🪪 ${u.name.trim()}님이 직원 인증을 요청했습니다`,
+      body: `${u.job_title || '직함 미입력'} · ${u.phone || '연락처 미입력'} — 관리 탭 › 직원 인증에서 승인할 수 있어요.`,
+      refType: 'user', refId: req.userId,
+    });
+    res.json({ profile: await withAvatarUrl(rowToProfile(upd.rows[0])) });
+  } catch (err) {
+    console.error('POST /api/me/approval-request 오류:', err.message);
+    res.status(500).json({ success: false, message: '승인 요청에 실패했습니다.' });
+  }
+});
+
+// POST /api/me/avatar/sign-upload {file_name} → { upload_url, storage_path } (v20 서명 업로드와 동형)
+app.post('/api/me/avatar/sign-upload', async (req, res) => {
+  try {
+    if (!storageConfigured()) {
+      return res.status(503).json({ success: false, message: '파일 스토리지가 설정되지 않았습니다. 관리자에게 문의하세요. (SUPABASE_URL/SERVICE_KEY)' });
+    }
+    await ensureStorageBucket();
+    const raw = req.body && typeof req.body.file_name === 'string' ? req.body.file_name.trim() : '';
+    const storagePath = `avatars/u${req.userId}/${Date.now()}_${sanitizeFileName(raw || 'avatar.png')}`;
+    const signed = await signUploadUrl(storagePath);
+    res.json({ upload_url: signed.uploadUrl, storage_path: signed.path });
+  } catch (err) {
+    console.error('POST /api/me/avatar/sign-upload 오류:', err.message);
+    res.status(500).json({ success: false, message: '업로드 URL 발급에 실패했습니다.' });
+  }
+});
+
+// POST /api/me/avatar {storage_path} — 본인 경로(avatars/u{id}/)만 허용, 이전 객체는 베스트에포트 삭제.
+app.post('/api/me/avatar', async (req, res) => {
+  try {
+    const sp = req.body && typeof req.body.storage_path === 'string' ? req.body.storage_path.trim() : '';
+    if (!sp || !sp.startsWith(`avatars/u${req.userId}/`) || sp.includes('..')) {
+      return res.status(400).json({ success: false, message: '올바른 storage_path 가 아닙니다.' });
+    }
+    const prev = await pool.query('SELECT avatar_path FROM interior_users WHERE id=$1', [req.userId]);
+    const old = prev.rows.length ? prev.rows[0].avatar_path || '' : '';
+    await pool.query('UPDATE interior_users SET avatar_path=$1 WHERE id=$2', [sp, req.userId]);
+    if (old && old !== sp) await deleteStorageObject(old);
+    let url = '';
+    try { url = await signDownloadUrl(sp, 3600); } catch (_) { /* 무시 */ }
+    res.json({ success: true, avatar_url: url });
+  } catch (err) {
+    console.error('POST /api/me/avatar 오류:', err.message);
+    res.status(500).json({ success: false, message: '프로필 사진을 저장하지 못했습니다.' });
+  }
+});
+
+// DELETE /api/me/avatar — 기본 이미지(이니셜)로 되돌리기
+app.delete('/api/me/avatar', async (req, res) => {
+  try {
+    const prev = await pool.query('SELECT avatar_path FROM interior_users WHERE id=$1', [req.userId]);
+    const old = prev.rows.length ? prev.rows[0].avatar_path || '' : '';
+    await pool.query(`UPDATE interior_users SET avatar_path='' WHERE id=$1`, [req.userId]);
+    if (old) await deleteStorageObject(old);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/me/avatar 오류:', err.message);
+    res.status(500).json({ success: false, message: '프로필 사진을 삭제하지 못했습니다.' });
+  }
+});
+
+// GET /api/admin/approvals?status=pending|approved|rejected|none|all — 관리자: 팀원 인증 현황(기본 all)
+app.get('/api/admin/approvals', requireAdmin, async (req, res) => {
+  try {
+    const status = typeof req.query.status === 'string' && req.query.status ? req.query.status : 'all';
+    const valid = ['none', 'pending', 'approved', 'rejected'];
+    const list = status === 'all' ? valid : valid.includes(status) ? [status] : null;
+    if (!list) return res.status(400).json({ success: false, message: '잘못된 status 값입니다.' });
+    const { rows } = await pool.query(
+      `SELECT ${PROFILE_COLS} FROM interior_users
+        WHERE team_id=$1 AND approval_status = ANY($2::text[])
+        ORDER BY CASE approval_status WHEN 'pending' THEN 0 WHEN 'none' THEN 1 WHEN 'rejected' THEN 2 ELSE 3 END,
+                 approval_requested_at DESC NULLS LAST, id ASC`,
+      [req.teamId, list]
+    );
+    const items = [];
+    for (const r of rows) items.push(await withAvatarUrl(rowToProfile(r)));
+    res.json({ items });
+  } catch (err) {
+    console.error('GET /api/admin/approvals 오류:', err.message);
+    res.status(500).json({ success: false, message: '인증 현황을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/admin/approvals/:userId/approve — 승인 + 담당자 마스터 upsert(같은 팀 동명이면 그 행에 연결) + 알림.
+//   이미 approved 여도 재실행 허용(끊어진 staff 링크 자가복구).
+app.post('/api/admin/approvals/:userId/approve', requireAdmin, async (req, res) => {
+  try {
+    const uid = parseId(req.params.userId);
+    if (!uid) return res.status(400).json({ success: false, message: '잘못된 사용자 id 형식입니다.' });
+    const q = await pool.query(`SELECT ${PROFILE_COLS} FROM interior_users WHERE id=$1 AND team_id=$2`, [uid, req.teamId]);
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '해당 팀원을 찾을 수 없습니다.' });
+    const u = q.rows[0];
+    const name = (u.name || '').trim();
+    if (!name) {
+      return res.status(400).json({ success: false, message: '이름이 비어 있어 인증할 수 없습니다. 팀원이 [나의 정보]에서 이름을 입력해야 합니다.' });
+    }
+    // 담당자(직원) 마스터 upsert → 링크
+    const staffId = await upsertStaffForUser(u, req.teamId);
+    const upd = await pool.query(
+      `UPDATE interior_users SET approval_status='approved', approved_at=now(), approved_by=$1, staff_id=$2
+       WHERE id=$3 RETURNING ${PROFILE_COLS}`,
+      [req.userId, staffId, uid]
+    );
+    await notifyUsers({
+      teamId: req.teamId, userIds: [uid], actorUserId: req.userId, type: 'approval_result',
+      title: '🎉 직원 인증이 승인되었습니다',
+      body: '담당자 목록에 등록되어 프로젝트의 PM·시공책임·디자이너 선택란에 이름이 표시됩니다.',
+      refType: 'user', refId: uid,
+    });
+    res.json({ profile: await withAvatarUrl(rowToProfile(upd.rows[0])) });
+  } catch (err) {
+    console.error('POST /api/admin/approvals/:userId/approve 오류:', err.message);
+    res.status(500).json({ success: false, message: '승인 처리에 실패했습니다.' });
+  }
+});
+
+// POST /api/admin/approvals/:userId/reject {reason?} — 반려(인증 취소 겸용: staff 링크 해제 + 담당자 비활성).
+app.post('/api/admin/approvals/:userId/reject', requireAdmin, async (req, res) => {
+  try {
+    const uid = parseId(req.params.userId);
+    if (!uid) return res.status(400).json({ success: false, message: '잘못된 사용자 id 형식입니다.' });
+    const reason = req.body && typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 300) : '';
+    const q = await pool.query(`SELECT ${PROFILE_COLS} FROM interior_users WHERE id=$1 AND team_id=$2`, [uid, req.teamId]);
+    if (q.rows.length === 0) return res.status(404).json({ success: false, message: '해당 팀원을 찾을 수 없습니다.' });
+    const u = q.rows[0];
+    if (u.staff_id) {
+      await pool.query(`UPDATE interior_staff SET active=FALSE WHERE id=$1 AND team_id=$2`, [u.staff_id, req.teamId]);
+    }
+    const upd = await pool.query(
+      `UPDATE interior_users SET approval_status='rejected', staff_id=NULL WHERE id=$1 RETURNING ${PROFILE_COLS}`,
+      [uid]
+    );
+    await notifyUsers({
+      teamId: req.teamId, userIds: [uid], actorUserId: req.userId, type: 'approval_result',
+      title: '직원 인증 요청이 반려되었습니다',
+      body: reason || '정보를 보완해 [나의 정보]에서 다시 요청해 주세요.',
+      refType: 'user', refId: uid,
+    });
+    res.json({ profile: await withAvatarUrl(rowToProfile(upd.rows[0])) });
+  } catch (err) {
+    console.error('POST /api/admin/approvals/:userId/reject 오류:', err.message);
+    res.status(500).json({ success: false, message: '반려 처리에 실패했습니다.' });
+  }
+});
+
+// ── (v28) 💬 AI 채팅 — 팀 데이터 Q&A (gpt-4o + read-only run_sql 도구 루프) ──
+
+// 민감 컬럼/시스템 카탈로그 하드 차단(프롬프트 지시의 방어선). READ ONLY 트랜잭션이 최종 안전망.
+const CHAT_SQL_FORBIDDEN = /password_hash|share_password|share_token|client_share|connected_id|invite_code|interior_teams|information_schema|pg_sleep|pg_read|pg_stat_file|pg_ls_dir|dblink|pg_largeobject/i;
+
+function chatSqlCheck(sql) {
+  let s = String(sql || '').trim();
+  s = s.replace(/;\s*$/, '');
+  if (!/^(select|with)\b/i.test(s)) return { ok: false, reason: 'SELECT/WITH 로 시작하는 읽기 쿼리만 실행할 수 있습니다.' };
+  if (s.includes(';')) return { ok: false, reason: '한 번에 SQL 1문장만 실행할 수 있습니다.' };
+  if (CHAT_SQL_FORBIDDEN.test(s)) return { ok: false, reason: '민감 컬럼(비밀번호/토큰/연동ID)과 시스템 카탈로그는 조회할 수 없습니다.' };
+  // SELECT * 로 민감 컬럼이 딸려 나오는 테이블은 컬럼 명시 강제 (count(*) 는 허용)
+  const noStar = s.replace(/count\s*\(\s*\*\s*\)/gi, 'count(1)');
+  if (/interior_users|interior_card_accounts/i.test(noStar) && /\*/.test(noStar)) {
+    return { ok: false, reason: 'interior_users / interior_card_accounts 는 SELECT * 금지 — 필요한 컬럼만 명시하세요.' };
+  }
+  return { ok: true, sql: s };
+}
+
+// READ ONLY 트랜잭션 + 8초 타임아웃으로 실행, 최대 200행 반환.
+async function runChatSql(sql) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN READ ONLY');
+    await client.query(`SET LOCAL statement_timeout = '8s'`);
+    const r = await client.query(sql);
+    await client.query('ROLLBACK');
+    return { rowCount: r.rowCount || 0, rows: (r.rows || []).slice(0, 200), truncated: (r.rows || []).length > 200 };
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (_) { /* 무시 */ }
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+function chatSystemPrompt(teamId, today) {
+  return [
+    `당신은 "안도 현장"(안도공간 인테리어 현장관리 앱)의 데이터 어시스턴트입니다. 오늘(KST): ${today}.`,
+    `run_sql 도구로 팀 PostgreSQL 에 읽기 전용 SELECT 를 실행해, 사실(데이터)에 근거해서만 답합니다.`,
+    ``,
+    `[절대 규칙]`,
+    `1. 이 팀(team_id=${teamId}) 데이터만 조회합니다. team_id 컬럼이 있는 테이블은 반드시 WHERE team_id=${teamId}, site_id 종속 테이블은 interior_sites s 와 JOIN 해 s.team_id=${teamId} 로 스코프하세요.`,
+    `2. 읽기(SELECT/WITH)만, 한 번에 1문장. 결과는 최대 200행/약 12KB 로 잘립니다 — 큰 목록은 집계나 LIMIT 를 쓰세요.`,
+    `3. 민감정보 금지: 비밀번호/토큰/invite_code/connected_id 는 조회·언급 금지. interior_users 와 interior_card_accounts 는 SELECT * 금지(필요 컬럼만). interior_teams 조회 금지.`,
+    `4. 이름 검색은 부분일치로: 예) name ILIKE '%강남%' AND name ILIKE '%자이%' 처럼 키워드를 나눠 AND. 공백/언더스코어(_) 표기 차이가 흔하니 통짜 문자열 매칭을 피하세요.`,
+    `5. 확실치 않으면 먼저 후보(현장 목록 등)를 조회해 좁혀가세요. 도구는 여러 번(최대 6회) 사용할 수 있습니다.`,
+    ``,
+    `[스키마 — interior_* (PostgreSQL)]`,
+    `interior_sites(id,name,client,client_id,address,manager,pm,construction_manager,designer,budget,start_date,end_date,move_in_date,status,progress_status,building_type,floor_area,tags,archived,team_id) — 현장(프로젝트)`,
+    `interior_costs(id,site_id,date,amount,category,process,manager,vendor,memo,schedule_id,has_invoice) — 실집행 비용`,
+    `interior_schedule(id,site_id,title,process,start_date,end_date,status,planned_cost,staff,vendor,kind['공사'|'지원'|'미팅'],memo) — 일정`,
+    `interior_schedule_deps(predecessor_id,successor_id) — 일정 선후관계`,
+    `interior_estimates(id,site_id,title,client_name,estimate_date,valid_until,vat_mode,vat_rate,discount,status['draft'|'confirmed'],version,memo) — 견적서`,
+    `interior_estimate_items(id,estimate_id,process,trade,name,spec,qty,unit,unit_price,material_price,labor_price,sub_price,amount,memo) — 견적 항목(공종=trade)`,
+    `interior_orders(id,site_id,order_no,vendor,trade,title,amount,order_date,due_date,need_date,status,memo) — 발주서`,
+    `interior_meetings(id,site_id,meeting_date,title,attendees,content,next_action) — 미팅록`,
+    `interior_as(id,site_id,received_date,title,detail,status,handled_date,staff,cost) — A/S 접수`,
+    `interior_staff(id,team_id,name,role,grade,employment_type,phone,email,hire_date,active) — 직원(담당자) 마스터`,
+    `interior_vendors(id,team_id,name,kind,trade,grade,phone,memo,skilled_rate,helper_rate,active) — 거래처/협력업체`,
+    `interior_clients(id,team_id,name,phone,email,source,status,address,memo,active) — 고객/리드`,
+    `interior_categories(id,team_id,kind['cost'|'process'],name,active) — 비용/공정 카테고리`,
+    `interior_catalog(id,team_id,trade,grp,name,unit,material_price,labor_price,sub_price,product_name,vendor,code,source,price_date,active) — 단가 카탈로그`,
+    `interior_takeoff(id,site_id,trade,name,spec,unit,qty,source,material_code,memo,created_at) — 실측/스케치업 물량`,
+    `interior_documents(id,site_id,name,doc_type,file_name,uploader,memo,created_at) — 자료(파일 메타)`,
+    `interior_photos(id,site_id,photo_date,processes,file_name,uploader,memo) — 현장사진 메타`,
+    `interior_tasks(id,team_id,site_id,title,memo,due_date,status,assignee_user_id,created_by,completed_at) — 개인 할일`,
+    `interior_labor_logs(id,team_id,site_id,work_date,process,skilled,helper,vendor_id,skilled_rate,helper_rate,done,memo) — 출력인원(일별 기공/조공)`,
+    `interior_manuals(id,team_id,title,trade,types,status,content) + interior_site_manuals(site_id,manual_id) — 시공 매뉴얼`,
+    `interior_materials(id,team_id,code,type,brand,name,kind,spec,unit,price,waste_pct,trade) — 자재 코드 레지스트리(WD/TX/WP/PT)`,
+    `interior_card_txns(id,team_id,used_at,merchant,amount,status,site_id,cost_id,excluded) — 법인카드 승인내역`,
+    `interior_users(id,team_id,name,email,job_title,phone,role,approval_status) — 팀 계정(※ SELECT * 금지)`,
+    `interior_notifications(user_id,type,title,body,created_at,read_at) — 인앱 알림`,
+    ``,
+    `[도메인 힌트]`,
+    `- "물량" → interior_takeoff(스케치업/실측, qty·unit·spec·material_code) 또는 견적서의 interior_estimate_items.qty`,
+    `- "판매처/구매처/발주처/어디서 샀·시켰" → interior_orders.vendor(발주서), interior_costs.vendor(비용 지출처), interior_catalog.vendor(단가 출처)`,
+    `- "얼마 썼/집행" → interior_costs.amount 합계, 예산 대비는 interior_sites.budget`,
+    `- 공간/부위(예: 안방화장실, 벽체)는 전용 컬럼이 없음 → name/spec/memo/title ILIKE '%키워드%' 로 찾기`,
+    `- 인건비 = interior_labor_logs 의 skilled*skilled_rate + helper*helper_rate`,
+    ``,
+    `[답변 규칙]`,
+    `- 한국어로 간결하게. 금액은 3자리 콤마+"원", 날짜는 YYYY-MM-DD.`,
+    `- 근거를 함께: 어느 현장/견적서/발주서/기간에서 나온 수치인지 한 줄로 밝히세요.`,
+    `- 데이터가 없으면 없다고 말하고, 비슷한 후보(유사 이름의 현장·항목·거래처)를 제시하세요.`,
+    `- 목록이 길면 핵심 위주로 요약하세요.`,
+  ].join('\n');
+}
+
+// POST /api/chat {messages:[{role:'user'|'assistant',content}...]} → {reply, queries}
+app.post('/api/chat', async (req, res) => {
+  try {
+    const apiKey = (process.env.OPENAI_API_KEY || '').trim();
+    if (!apiKey) return res.status(503).json({ error: 'OPENAI_API_KEY 미설정' });
+
+    const raw = req.body && Array.isArray(req.body.messages) ? req.body.messages : [];
+    const msgs = raw
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+      .slice(-12)
+      .map((m) => ({ role: m.role, content: String(m.content).slice(0, 4000) }));
+    if (msgs.length === 0 || msgs[msgs.length - 1].role !== 'user') {
+      return res.status(400).json({ error: 'messages 는 마지막이 user 인 대화 배열이어야 합니다.' });
+    }
+
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
+    const convo = [{ role: 'system', content: chatSystemPrompt(req.teamId, today) }, ...msgs];
+    const tools = [{
+      type: 'function',
+      function: {
+        name: 'run_sql',
+        description: '팀 데이터베이스에 읽기 전용 PostgreSQL SELECT 1문장을 실행하고 rows 를 반환합니다.',
+        parameters: {
+          type: 'object',
+          properties: { sql: { type: 'string', description: 'PostgreSQL SELECT/WITH 단일 문장' } },
+          required: ['sql'],
+        },
+      },
+    }];
+
+    let queries = 0;
+    for (let iter = 0; iter < 6; iter++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000);
+      let apiRes;
+      try {
+        apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: 'gpt-4o', messages: convo, tools, tool_choice: 'auto', temperature: 0.2, max_tokens: 900 }),
+          signal: controller.signal,
+        });
+      } catch (e) {
+        clearTimeout(timer);
+        const detail = e && e.name === 'AbortError' ? '응답 시간 초과(60초)' : String((e && e.message) || e);
+        return res.status(502).json({ error: 'AI 호출에 실패했습니다.', detail });
+      }
+      clearTimeout(timer);
+      if (!apiRes.ok) {
+        let detail = `OpenAI 응답 코드 ${apiRes.status}`;
+        try { const eb = await apiRes.json(); if (eb && eb.error && eb.error.message) detail = eb.error.message; } catch (_) { /* 무시 */ }
+        console.error('POST /api/chat OpenAI 실패 status:', apiRes.status); // 키는 로깅하지 않음
+        return res.status(502).json({ error: 'AI 호출에 실패했습니다.', detail });
+      }
+      const apiJson = await apiRes.json();
+      const msg = apiJson && apiJson.choices && apiJson.choices[0] && apiJson.choices[0].message;
+      if (!msg) return res.status(502).json({ error: 'AI 응답 형식이 올바르지 않습니다.' });
+
+      if (Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+        convo.push(msg);
+        for (const tc of msg.tool_calls) {
+          let resultStr;
+          try {
+            const args = JSON.parse((tc.function && tc.function.arguments) || '{}');
+            const chk = chatSqlCheck(args.sql);
+            if (!chk.ok) {
+              resultStr = JSON.stringify({ error: chk.reason });
+            } else {
+              const r = await runChatSql(chk.sql);
+              queries++;
+              let rowsJson = JSON.stringify(r.rows);
+              if (rowsJson.length > 12000) {
+                resultStr = JSON.stringify({ rowCount: r.rowCount, truncated: true, note: '결과가 잘렸습니다 — 집계나 LIMIT 로 다시 조회하세요.', rows_partial: rowsJson.slice(0, 12000) });
+              } else {
+                resultStr = JSON.stringify({ rowCount: r.rowCount, truncated: r.truncated, rows: r.rows });
+              }
+            }
+          } catch (e) {
+            resultStr = JSON.stringify({ error: String((e && e.message) || e).slice(0, 300) });
+          }
+          convo.push({ role: 'tool', tool_call_id: tc.id, content: resultStr });
+        }
+        continue;
+      }
+
+      return res.json({ reply: String(msg.content || '').trim(), queries });
+    }
+    return res.status(502).json({ error: 'AI가 답을 정리하지 못했습니다. 질문을 조금 더 구체적으로 해주세요.' });
+  } catch (err) {
+    console.error('POST /api/chat 오류:', err.message);
+    res.status(500).json({ success: false, message: 'AI 채팅 처리에 실패했습니다.' });
   }
 });
 
