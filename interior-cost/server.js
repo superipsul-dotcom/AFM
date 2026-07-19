@@ -7070,6 +7070,42 @@ app.delete('/api/photos/:id', async (req, res) => {
   }
 });
 
+// (v30) PATCH /api/photos/:id {photo_date?, processes?, memo?} — 공정 표기 오기 등 사후 수정.
+//   소유검증은 /api/photos/:id 마운트의 requireChildOwned 가 선행. processes 는 배열/문자열 수용.
+app.patch('/api/photos/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장사진 id 형식입니다.' });
+    const b = req.body || {};
+    let photoDate;
+    if (b.photo_date !== undefined) {
+      const s = typeof b.photo_date === 'string' ? b.photo_date.trim() : '';
+      if (!s || !isRealDate(s)) return res.status(400).json({ success: false, message: '촬영일 형식이 올바르지 않습니다 (YYYY-MM-DD).' });
+      photoDate = s;
+    }
+    let processes;
+    if (b.processes !== undefined) {
+      if (Array.isArray(b.processes)) processes = b.processes.filter((p) => typeof p === 'string' && p.trim()).map((p) => p.trim()).join(',');
+      else processes = typeof b.processes === 'string' ? b.processes.trim() : '';
+    }
+    const memo = b.memo !== undefined ? (typeof b.memo === 'string' ? b.memo : '') : undefined;
+    const { rows } = await pool.query(
+      `UPDATE interior_photos SET
+         photo_date = COALESCE($1, photo_date),
+         processes  = COALESCE($2, processes),
+         memo       = COALESCE($3, memo)
+       WHERE id=$4 RETURNING ${PHOTO_COLS}`,
+      [photoDate === undefined ? null : photoDate, processes === undefined ? null : processes,
+       memo === undefined ? null : memo, id]
+    );
+    if (rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장사진을(를) 찾을 수 없습니다.' });
+    res.json(rowToPhoto(rows[0]));
+  } catch (err) {
+    console.error('PATCH /api/photos/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '현장사진을 수정하지 못했습니다.' });
+  }
+});
+
 // GET /api/photos/:id/download — 서명 다운로드 URL {url}
 app.get('/api/photos/:id/download', makeDownloadHandler('interior_photos', '현장사진'));
 
@@ -7330,7 +7366,7 @@ app.get('/api/sites/:id/labor', async (req, res) => {
          WHERE l.site_id=$1 AND l.work_date=$2 ORDER BY l.id ASC`, [id, date]
       ),
       pool.query(
-        `SELECT id, title, process, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, status
+        `SELECT id, title, process, vendor, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, status
          FROM interior_schedule WHERE site_id=$1 AND kind='공사' AND start_date<=$2 AND end_date>=$2
          ORDER BY sort_order ASC, id ASC`, [id, date]
       ),
@@ -7338,7 +7374,8 @@ app.get('/api/sites/:id/labor', async (req, res) => {
     res.json({
       date,
       logs: logs.rows.map(rowToLabor),
-      schedules: scheds.rows.map((s) => ({ id: String(s.id), title: s.title, process: s.process || '', start_date: s.start_date, end_date: s.end_date, status: s.status })),
+      // (v30) vendor = 일정에 지정한 협력업체명 → 출력인원 시공팀 자동 프리필용
+      schedules: scheds.rows.map((s) => ({ id: String(s.id), title: s.title, process: s.process || '', vendor: s.vendor || '', start_date: s.start_date, end_date: s.end_date, status: s.status })),
     });
   } catch (err) {
     console.error('GET /api/sites/:id/labor 오류:', err.message);
