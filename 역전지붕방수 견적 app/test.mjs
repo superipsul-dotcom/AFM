@@ -393,6 +393,43 @@ approx('발주수량 = ceil(26.52/1.62) = 17장', xw100Ord?xw100Ord.orderQty:NaN
 const eWo = clone(eW); eWo.sel.ownerSupplied='예';
 approx('지급자재 시 matTotal 0', RC.computeEstimate(eWo).rows.find(x=>x.id==='xw100').matTotal, 0);
 
+// ================================================================
+// [V5-3 · 투습방수지·기밀테이프·배수판·부직포 '없음'] 각 sel='없음' → 해당 행 미생성 (견적서·내역서·발주서 제외)
+//   메커니즘: 각 아이템 on:"sel.X=변형" 불일치 → 쇄석과 동일. 자재소개는 if(m) 가드로 skip.
+// ================================================================
+head("[V5-3 · 부자재 4종 '없음' (특수현장 미시공)]");
+const baseR = RC.computeEstimate(RC.SAMPLE_DONGSAK);
+const noneCases = [
+  { field:'vaporBarrier', id:'vb_siga', label:'투습방수지' },
+  { field:'tape',         id:'tp_siga', label:'기밀테이프' },
+  { field:'drainBoard',   id:'db_jap',  label:'배수판' },
+  { field:'fabric',       id:'fb_jap',  label:'부직포' },
+];
+noneCases.forEach(c=>{
+  const row0 = baseR.rows.find(x=>x.id===c.id);
+  eq(`baseline ${c.id} 행 존재`, !!row0, true);
+  const e = clone(RC.SAMPLE_DONGSAK); e.sel[c.field]='없음';
+  const rr = RC.computeEstimate(e);
+  eq(`${c.label} 없음 → ${c.id} 행 미생성`, rr.rows.some(x=>x.id===c.id), false);
+  approx(`${c.label} 없음 → tradeTotal −(행 제거분)`, rr.tradeTotal.total, baseR.tradeTotal.total - row0.rowTotal);
+});
+// 구체 수치 스팟체크 (배수판 없음: db_jap qty180×(14175+2625)=3,024,000)
+approx('db_jap rowTotal = 3,024,000', baseR.rows.find(x=>x.id==='db_jap').rowTotal, 3024000);
+const eDB = clone(RC.SAMPLE_DONGSAK); eDB.sel.drainBoard='없음';
+approx('배수판 없음 → 역전지붕 mat −2,551,500', RC.computeEstimate(eDB).trades['역전지붕공사'].mat, baseR.trades['역전지붕공사'].mat - 2551500);
+// 4종 동시 없음 → 4개 행 모두 미생성 + 합계 차감
+const eAll = clone(RC.SAMPLE_DONGSAK);
+eAll.sel.vaporBarrier='없음'; eAll.sel.tape='없음'; eAll.sel.drainBoard='없음'; eAll.sel.fabric='없음';
+const rAll = RC.computeEstimate(eAll);
+eq('4종 동시 없음 → 4개 행 전부 미생성',
+   ['vb_siga','tp_siga','db_jap','fb_jap'].every(id=>!rAll.rows.some(x=>x.id===id)), true);
+const dropSum = ['vb_siga','tp_siga','db_jap','fb_jap'].reduce((s,id)=>s+baseR.rows.find(x=>x.id===id).rowTotal,0);
+approx('4종 없음 → tradeTotal −합계', rAll.tradeTotal.total, baseR.tradeTotal.total - dropSum);
+// 구역별(병합) 경로: zones[0]만 배수판 없음 → db_jap qty = 18.3+23 = 41.3
+const eZDB = RC.withZoneSel(clone(RC.SAMPLE_DONGSAK)); eZDB.zones[0].sel.drainBoard='없음';
+const dbZ = RC.computeEstimate(eZDB).rows.find(x=>x.id==='db_jap');
+approx('구역별: zone0 배수판 없음 → db_jap qty = 41.3', dbZ?dbZ.qty:NaN, 41.3);
+
 // ---- 결과 ----
 console.log(`\n\x1b[1m결과: ${pass} 통과 / ${fail} 실패 (총 ${pass + fail})\x1b[0m`);
 if (fail > 0) { console.log('\x1b[31m실패 항목: ' + fails.join(', ') + '\x1b[0m'); process.exit(1); }

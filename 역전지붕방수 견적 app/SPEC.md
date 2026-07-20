@@ -33,10 +33,10 @@
     membrane:'없음'|'아덱스 WPM 003 ROOFTOP'|'Sikalastic 590'|'우레탄방수'|'adhero 1000'|'adhero 3000'|'weldano 3000'|'Bituthene 3000'|'지정시트',  // 1차방수
     xps1:'100T', xps2:'150T',         // XPS 두께 1P/2P (바닥): 없음|50T|70T|80T|100T|120T|150T|200T
     xpsWall:'30T벽',                  // 없음|30T벽|70T벽|100T벽
-    vaporBarrier:'SIGA'|'프로클리마', // 투습방수지
-    tape:'SIGA'|'프로클리마',         // 기밀테이프
-    drainBoard:'잡자재'|'티푸스',     // 배수판
-    fabric:'잡자재'|'티푸스',         // 부직포
+    vaporBarrier:'없음'|'SIGA'|'프로클리마', // 투습방수지 ('없음'=미시공 → vb_* 행 미생성)
+    tape:'없음'|'SIGA'|'프로클리마',   // 기밀테이프 ('없음'=미시공 → tp_* 행 미생성)
+    drainBoard:'없음'|'잡자재'|'티푸스', // 배수판 ('없음'=미시공 → db_* 행 미생성)
+    fabric:'없음'|'잡자재'|'티푸스',   // 부직포 ('없음'=미시공 → fb_* 행 미생성)
     gravelPack:'없음'|'톤백'|'소분포장', // 쇄석 마감 ('없음'=쇄석작업 미시공 → gv_* 행 미생성)
     trenchFloorEa: 6, trenchSideEa: 0,
     tileSub:'잡자재 사 페데스탈'|'페이그란 페데스탈',      // 타일 부자재 (타일면적>0일 때)

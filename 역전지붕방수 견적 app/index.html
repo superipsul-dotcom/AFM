@@ -888,10 +888,10 @@ function MaterialSelect({ sel, onSel, showTile, showWood }){
         <Field label="XPS 바닥 2P" hint={sel.xps2!=='없음'?`재 ${won0(RC.ITEM_DB.find(x=>x.qty==='XPS:'+sel.xps2)?.mat||0)}`:''}><Sel value={sel.xps2} onChange={v=>onSel({xps2:v})} options={XPS_OPTS} /></Field>
         <Field label="XPS 벽체"><Sel value={sel.xpsWall} onChange={v=>onSel({xpsWall:v})} options={['없음','30T벽','70T벽','100T벽']} /></Field>
         <Field label="단열재 지급자재 (예=재료비 0)"><Sel value={sel.ownerSupplied} onChange={v=>onSel({ownerSupplied:v})} options={['아니오','예']} /></Field>
-        <Field label="투습방수지" hint={hintFor(sel.vaporBarrier==='SIGA'?'vb_siga':'vb_pro')}><Sel value={sel.vaporBarrier} onChange={v=>onSel({vaporBarrier:v})} options={['SIGA','프로클리마']} /></Field>
-        <Field label="기밀테이프" hint={hintFor(sel.tape==='SIGA'?'tp_siga':'tp_pro')}><Sel value={sel.tape} onChange={v=>onSel({tape:v})} options={['SIGA','프로클리마']} /></Field>
-        <Field label="배수판" hint={hintFor(sel.drainBoard==='잡자재'?'db_jap':'db_tif')}><Sel value={sel.drainBoard} onChange={v=>onSel({drainBoard:v})} options={['잡자재','티푸스']} /></Field>
-        <Field label="부직포" hint={hintFor(sel.fabric==='잡자재'?'fb_jap':'fb_tif')}><Sel value={sel.fabric} onChange={v=>onSel({fabric:v})} options={['잡자재','티푸스']} /></Field>
+        <Field label="투습방수지" hint={sel.vaporBarrier!=='없음' ? hintFor(sel.vaporBarrier==='SIGA'?'vb_siga':'vb_pro') : '없음 = 미시공'}><Sel value={sel.vaporBarrier} onChange={v=>onSel({vaporBarrier:v})} options={['없음','SIGA','프로클리마']} /></Field>
+        <Field label="기밀테이프" hint={sel.tape!=='없음' ? hintFor(sel.tape==='SIGA'?'tp_siga':'tp_pro') : '없음 = 미시공'}><Sel value={sel.tape} onChange={v=>onSel({tape:v})} options={['없음','SIGA','프로클리마']} /></Field>
+        <Field label="배수판" hint={sel.drainBoard!=='없음' ? hintFor(sel.drainBoard==='잡자재'?'db_jap':'db_tif') : '없음 = 미시공'}><Sel value={sel.drainBoard} onChange={v=>onSel({drainBoard:v})} options={['없음','잡자재','티푸스']} /></Field>
+        <Field label="부직포" hint={sel.fabric!=='없음' ? hintFor(sel.fabric==='잡자재'?'fb_jap':'fb_tif') : '없음 = 미시공'}><Sel value={sel.fabric} onChange={v=>onSel({fabric:v})} options={['없음','잡자재','티푸스']} /></Field>
         <Field label="쇄석 마감" hint={sel.gravelPack!=='없음' ? hintFor(sel.gravelPack==='톤백'?'gv_ton':'gv_small') : '없음 = 쇄석작업 미시공'}><Sel value={sel.gravelPack} onChange={v=>onSel({gravelPack:v})} options={['없음','톤백','소분포장']} /></Field>
         <Field label="우레탄실리콘 (ea)"><NumInput step="1" value={sel.siliconEa} onChange={v=>onSel({siliconEa:v})} /></Field>
         <Field label="트렌치 바닥배수 (ea)"><NumInput step="1" value={sel.trenchFloorEa} onChange={v=>onSel({trenchFloorEa:v})} /></Field>
