@@ -32,12 +32,12 @@
     ownerSupplied:'아니오'|'예',      // 단열재 지급자재 (예 → XPS 바닥/벽체 재료비 합계=0, 노무만)
     membrane:'없음'|'아덱스 WPM 003 ROOFTOP'|'Sikalastic 590'|'우레탄방수'|'adhero 1000'|'adhero 3000'|'weldano 3000'|'Bituthene 3000'|'지정시트',  // 1차방수
     xps1:'100T', xps2:'150T',         // XPS 두께 1P/2P (바닥): 없음|50T|70T|80T|100T|120T|150T|200T
-    xpsWall:'30T벽',                  // 없음|30T벽|70T벽
+    xpsWall:'30T벽',                  // 없음|30T벽|70T벽|100T벽
     vaporBarrier:'SIGA'|'프로클리마', // 투습방수지
     tape:'SIGA'|'프로클리마',         // 기밀테이프
     drainBoard:'잡자재'|'티푸스',     // 배수판
     fabric:'잡자재'|'티푸스',         // 부직포
-    gravelPack:'톤백'|'소분포장',     // 쇄석 포장
+    gravelPack:'없음'|'톤백'|'소분포장', // 쇄석 마감 ('없음'=쇄석작업 미시공 → gv_* 행 미생성)
     trenchFloorEa: 6, trenchSideEa: 0,
     tileSub:'잡자재 사 페데스탈'|'페이그란 페데스탈',      // 타일 부자재 (타일면적>0일 때)
     tileFinish:'20T타일(중국산)'|'20T타일(유럽산)',        // 타일 마감재
@@ -131,6 +131,7 @@ qty 코드: `WP`=waterproofArea, `FLOOR`=floorSum, `WALL`=wallArea, `PLEN`=parap
  {"id":"x80","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 80T 900*1800","unit":"m2","qty":"XPS:80T","mat":8140.000000000001,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
  {"id":"x70","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 70T 900*1800","unit":"m2","qty":"XPS:70T","mat":7130,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
  {"id":"x50","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 50T 900*1800","unit":"m2","qty":"XPS:50T","mat":5100,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+ {"id":"xw100","grp":"역전지붕공사","work":"단열재 취부 - 벽","name":"XPS 가등급 100T 900*1800 / 연질폼 포함","unit":"m2","qty":"WALL","on":"sel.xpsWall=100T벽","mat":10340,"sur":"xpsFloor","lab":10000,"labSurKey":"xpsWallLab","sub":8200,"vendor":"부광스티로폴","cat":"XPS벽체"},
  {"id":"xw70","grp":"역전지붕공사","work":"단열재 취부 - 벽","name":"XPS 가등급 70T 900*1800 / 연질폼 포함","unit":"m2","qty":"WALL","on":"sel.xpsWall=70T벽","mat":7130,"sur":"xpsFloor","lab":10000,"labSurKey":"xpsWallLab","sub":8200,"vendor":"부광스티로폴","cat":"XPS벽체"},
  {"id":"xw30","grp":"역전지붕공사","work":"단열재 취부 - 벽","name":"XPS 가등급 30T 900*1800 / 연질폼 포함","unit":"m2","qty":"WALL","on":"sel.xpsWall=30T벽","mat":3050,"sur":"xpsFloor","lab":10000,"labSurKey":"xpsWallLab","sub":8200,"vendor":"부광스티로폴","cat":"XPS벽체"},
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>안도공간 · 역전지붕방수 견적 v4</title>
+<title>안도공간 · 역전지붕방수 견적 v5</title>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -92,6 +92,7 @@
     {"id":"x80","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 80T 900*1800","unit":"m2","qty":"XPS:80T","mat":8140.000000000001,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
     {"id":"x70","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 70T 900*1800","unit":"m2","qty":"XPS:70T","mat":7130,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
     {"id":"x50","grp":"역전지붕공사","work":"단열재 깔기 - 바닥","name":"XPS 가등급 50T 900*1800","unit":"m2","qty":"XPS:50T","mat":5100,"sur":"xpsFloor","lab":3500,"labSurFixed":0.03,"sub":0,"vendor":"부광스티로폴","cat":"XPS바닥"},
+    {"id":"xw100","grp":"역전지붕공사","work":"단열재 취부 - 벽","name":"XPS 가등급 100T 900*1800 / 연질폼 포함","unit":"m2","qty":"WALL","on":"sel.xpsWall=100T벽","mat":10340,"sur":"xpsFloor","lab":10000,"labSurKey":"xpsWallLab","sub":8200,"vendor":"부광스티로폴","cat":"XPS벽체"},
     {"id":"xw70","grp":"역전지붕공사","work":"단열재 취부 - 벽","name":"XPS 가등급 70T 900*1800 / 연질폼 포함","unit":"m2","qty":"WALL","on":"sel.xpsWall=70T벽","mat":7130,"sur":"xpsFloor","lab":10000,"labSurKey":"xpsWallLab","sub":8200,"vendor":"부광스티로폴","cat":"XPS벽체"},
     {"id":"xw30","grp":"역전지붕공사","work":"단열재 취부 - 벽","name":"XPS 가등급 30T 900*1800 / 연질폼 포함","unit":"m2","qty":"WALL","on":"sel.xpsWall=30T벽","mat":3050,"sur":"xpsFloor","lab":10000,"labSurKey":"xpsWallLab","sub":8200,"vendor":"부광스티로폴","cat":"XPS벽체"},
 
@@ -885,13 +886,13 @@ function MaterialSelect({ sel, onSel, showTile, showWood }){
         </Field>
         <Field label="XPS 바닥 1P" hint={sel.xps1!=='없음'?`재 ${won0(RC.ITEM_DB.find(x=>x.qty==='XPS:'+sel.xps1)?.mat||0)}`:''}><Sel value={sel.xps1} onChange={v=>onSel({xps1:v})} options={XPS_OPTS} /></Field>
         <Field label="XPS 바닥 2P" hint={sel.xps2!=='없음'?`재 ${won0(RC.ITEM_DB.find(x=>x.qty==='XPS:'+sel.xps2)?.mat||0)}`:''}><Sel value={sel.xps2} onChange={v=>onSel({xps2:v})} options={XPS_OPTS} /></Field>
-        <Field label="XPS 벽체"><Sel value={sel.xpsWall} onChange={v=>onSel({xpsWall:v})} options={['없음','30T벽','70T벽']} /></Field>
+        <Field label="XPS 벽체"><Sel value={sel.xpsWall} onChange={v=>onSel({xpsWall:v})} options={['없음','30T벽','70T벽','100T벽']} /></Field>
         <Field label="단열재 지급자재 (예=재료비 0)"><Sel value={sel.ownerSupplied} onChange={v=>onSel({ownerSupplied:v})} options={['아니오','예']} /></Field>
         <Field label="투습방수지" hint={hintFor(sel.vaporBarrier==='SIGA'?'vb_siga':'vb_pro')}><Sel value={sel.vaporBarrier} onChange={v=>onSel({vaporBarrier:v})} options={['SIGA','프로클리마']} /></Field>
         <Field label="기밀테이프" hint={hintFor(sel.tape==='SIGA'?'tp_siga':'tp_pro')}><Sel value={sel.tape} onChange={v=>onSel({tape:v})} options={['SIGA','프로클리마']} /></Field>
         <Field label="배수판" hint={hintFor(sel.drainBoard==='잡자재'?'db_jap':'db_tif')}><Sel value={sel.drainBoard} onChange={v=>onSel({drainBoard:v})} options={['잡자재','티푸스']} /></Field>
         <Field label="부직포" hint={hintFor(sel.fabric==='잡자재'?'fb_jap':'fb_tif')}><Sel value={sel.fabric} onChange={v=>onSel({fabric:v})} options={['잡자재','티푸스']} /></Field>
-        <Field label="쇄석 포장" hint={hintFor(sel.gravelPack==='톤백'?'gv_ton':'gv_small')}><Sel value={sel.gravelPack} onChange={v=>onSel({gravelPack:v})} options={['톤백','소분포장']} /></Field>
+        <Field label="쇄석 마감" hint={sel.gravelPack!=='없음' ? hintFor(sel.gravelPack==='톤백'?'gv_ton':'gv_small') : '없음 = 쇄석작업 미시공'}><Sel value={sel.gravelPack} onChange={v=>onSel({gravelPack:v})} options={['없음','톤백','소분포장']} /></Field>
         <Field label="우레탄실리콘 (ea)"><NumInput step="1" value={sel.siliconEa} onChange={v=>onSel({siliconEa:v})} /></Field>
         <Field label="트렌치 바닥배수 (ea)"><NumInput step="1" value={sel.trenchFloorEa} onChange={v=>onSel({trenchFloorEa:v})} /></Field>
         <Field label="트렌치 측면배수 (ea)"><NumInput step="1" value={sel.trenchSideEa} onChange={v=>onSel({trenchSideEa:v})} /></Field>
@@ -1405,7 +1406,7 @@ function buildMaterialCards(est, result){
   { const k='기밀_'+est.sel.tape; const m=D.mats[k]; if(m) push('기밀', '기밀테이프', est.sel.tape, D.roles['기밀테이프'], m[0], m[1], est.sel.tape==='SIGA'?'tape_siga':'tape_pro'); }
   { const k='배수판_'+est.sel.drainBoard; const m=D.mats[k]; if(m) push('배수', '배수판 500*500', est.sel.drainBoard, D.roles['배수판'], m[0], m[1], 'drain'); }
   { const k='부직포_'+est.sel.fabric; const m=D.mats[k]; if(m) push('필터', '부직포 300g', est.sel.fabric, D.roles['부직포'], m[0], m[1], 'fabric'); }
-  if (d.gravelArea>0){ const k='쇄석_'+est.sel.gravelPack; const m=D.mats[k]; if(m) push('마감 - 쇄석', '쇄석 마감', est.sel.gravelPack, D.roles['쇄석포장'], m[0], m[1], 'gravel'); }
+  if (d.gravelArea>0 && est.sel.gravelPack!=='없음'){ const k='쇄석_'+est.sel.gravelPack; const m=D.mats[k]; if(m) push('마감 - 쇄석', '쇄석 마감', est.sel.gravelPack, D.roles['쇄석포장'], m[0], m[1], 'gravel'); }
   if (d.tileArea>0){
     const k='타일부자재_'+est.sel.tileSub; const m=D.mats[k]; if(m) push('마감 - 타일', '페데스탈(부자재)', est.sel.tileSub, D.roles['부자재(타일)'], m[0], m[1], est.sel.tileSub==='페이그란 페데스탈'?'ped_pey':'ped_jap');
     const k2='타일_'+est.sel.tileFinish; const m2=D.mats[k2]; if(m2) push('마감 - 타일', '타일 마감재', est.sel.tileFinish, D.roles['마감재(타일)'], m2[0], m2[1], 'tile');
@@ -2116,7 +2117,7 @@ function App(){
         {tab==='material' && <MaterialTab est={est} result={result} manifest={manifest} />}
         {tab==='saved' && <SavedTab list={list} activeId={est.id} mode={mode} onNew={onNew} onLoad={onLoad} onDup={onDup} onDel={onDel} onSample={onSample} onMemo={onMemo} onExport={onExport} onImport={onImport} />}
       </main>
-      <footer className="no-print text-center text-[11px] text-slate-400 py-6">{COMPANY.name} · 역전지붕방수 견적 v4 · {mode==='server'?'서버 팀 공유':'로컬 저장'} · 단일 파일 앱</footer>
+      <footer className="no-print text-center text-[11px] text-slate-400 py-6">{COMPANY.name} · 역전지붕방수 견적 v5 · {mode==='server'?'서버 팀 공유':'로컬 저장'} · 단일 파일 앱</footer>
       {notice && <div className="no-print fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg max-w-[90vw]">{notice}</div>}
     </div>
   );
