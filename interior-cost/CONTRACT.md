@@ -1476,3 +1476,86 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 ## 검증 (2026-07-19)
 - 서버 10/10(격리팀): 사진 3장 실업로드/PATCH 왕복·400/labor schedules[].vendor/마크다운 매뉴얼 생성·현장 지정.
 - Playwright 관통: **딥링크 #/go/photos/70 → 로그인 → 현장사진 탭+현장 자동 선택+해시 정리** → 라이트박스 1/3→▶2/3(‹› 표시 규칙)→✏️수정(타일 칩 추가) 저장→라이트박스 칩 반영 / 일정 폼 공정 '도장/도배' → "연관 업체 1개만 표시"(도배왕도배만, 타일나라 제외) / 출력인원 도배 밑작업 행 = 시공팀 자동선택+일당 35만/25만+📅 배지 / 매뉴얼 [+새 매뉴얼]·✏️·🗑 노출+MdView(제목·리스트·굵게·인용·번호) 렌더. 노션 임포트 42/42(에이전트), 테스트팀 잔존 0.
+
+---
+
+# v31 — 사진 자동압축·라이트박스(공유페이지) · 비밀번호 찾기 · 초대 링크 · 약관 동의/본인확인 · 출력인원 연속일정 검증 (2026-07-23)
+
+## 31-0 DB 마이그레이션 (전부 ADD COLUMN / CREATE TABLE IF NOT EXISTS — v1~v30 데이터 100% 보존)
+- `interior_users` +8: `must_change_password BOOL(false)`, `password_reset_at`, `agreed_terms_at`, `agreed_privacy_at`, `agreed_age14 BOOL(false)`, `agreed_marketing BOOL(false)`, `agreed_marketing_at`, `terms_version TEXT('')`, `email_verified_at`.
+  - ⚠️ 기존 사용자는 동의 컬럼 NULL/false 로 남고 **로그인은 그대로 가능**(소급 동의 강제 없음 — 신규 가입만 필수).
+- **`interior_invites`** (신규): team_id CASCADE, `token UNIQUE`, email(''=누구나), note, role, max_uses(≥1), used_count, expires_at, revoked, created_by, created_at, last_used_at. idx(team_id, created_at DESC).
+- **`interior_email_codes`** (신규): email, `code_hash`(sha256), purpose('signup'), attempts, verified_at, expires_at, created_at. idx(email, created_at DESC). 부팅 시 7일 지난 행 정리.
+- interior_ **32테이블**.
+
+## 31-1 메일 발송 (신규 의존성 0)
+- `sendMail({to,subject,html,text})` — 백엔드 4종을 순서대로: **`MAIL_TRANSPORT=console`**(콘솔 출력·발송성공 취급, 로컬/E2E 전용) → **`RESEND_API_KEY`**(HTTP, 서버리스 권장) → **`SMTP_HOST/PORT/USER/PASS/SECURE`**(nodemailer, 선택 설치) → **미설정**(콘솔 로그 + `sent:false`).
+- env: `MAIL_FROM`(기본 `안도 현장 <onboarding@resend.dev>`), `APP_PUBLIC_URL`(메일·초대링크 절대주소; 없으면 x-forwarded-proto/host 추론), `MAIL_DEV_ECHO=1`(NODE_ENV≠production 에서만 임시비번/코드를 응답에 노출 — 로컬 테스트용).
+- `mailLayout()` 인라인스타일 공통 템플릿(다크헤더+본문+푸터).
+- **어떤 경우에도 임시 비밀번호/인증코드는 HTTP 응답에 싣지 않는다**(MAIL_DEV_ECHO 예외).
+
+## 31-2 REST — 비밀번호 찾기 · 변경
+- `POST /api/auth/forgot` `{email}` (**비보호**) → 임시 비밀번호 10자(혼동문자 0/O/1/l/I 제외) 발급 → bcrypt 저장 + `must_change_password=true` + `password_reset_at=now()` → 메일 발송.
+  - **계정 열거 방지**: 미가입/스로틀 모두 동일한 200 메시지. **3분 1회 스로틀**(password_reset_at 기준). 메일 미설정이면 **비번을 바꾸지 않고** 503 + 관리자 문의 안내(계정 잠김 방지).
+- `POST /api/auth/change-password` `{current_password,new_password}` (보호) → bcrypt 검증 → 변경 + `must_change_password=false`. 6자 미만/동일값 400, 현재비번 불일치 400.
+- `POST /api/auth/login` 응답에 **`must_change_password`** 추가. `rowToUser()` 에도 포함(→ `/api/auth/me` 로 새로고침해도 유지).
+
+## 31-3 REST — 이메일 본인확인 (가입)
+- `POST /api/auth/verify/send` `{email}` (**비보호**) → 6자리 코드(sha256 저장, **10분** 유효) 메일 발송.
+  - 이미 가입된 이메일 409. **스로틀 1분 1회 / 1시간 5회**. 메일 미설정이면 `{skipped:true}` → UI 가 "건너뜀" 표시.
+- `POST /api/auth/verify/check` `{email,code}` (**비보호**) → 일치 시 `verify_token`(JWT `{v:'email',email}`, **15분**) 반환. 오입력 5회 초과 429, 만료 400.
+- `POST /api/auth/signup` 이 `verify_token` 을 검증 — **메일 발송이 설정된 환경에서만 필수**(미설정 로컬/데모는 자동 통과). 실패 시 400 `code:'VERIFY_REQUIRED'`.
+
+## 31-4 REST — 초대 링크 (기존 팀 초대코드는 **그대로 유지**, 추가 경로)
+- `GET /api/auth/invite/:token` (**비보호**) → `{valid, team_name, email, expires_at, mail_configured}` 또는 `{valid:false, message}`. 토큰 자체가 자격증명이므로 팀명 외 정보 없음.
+- `GET /api/invites` (**admin**) → 목록(최근 200). `POST /api/invites` (**admin**) `{email?, note?, days(1~90,기본7), max_uses(1~100,기본1), role, send_mail}` → 201 `{id, token, url, status, …, mail_sent}`. 토큰 = `crypto.randomBytes(18).base64url`(24자).
+- `DELETE /api/invites/:id` (**admin**) → revoked=true.
+- **가입**: `POST /api/auth/signup` 이 `invite_token`(우선) 또는 기존 `invite_code` 수용. 사용 시 `used_count+1`, `last_used_at`.
+- 무효 사유(`inviteInvalidReason`): 취소됨 / 유효기간 만료 / max_uses 소진 / **지정 이메일 불일치**.
+- **검증 순서**(중요): 약관 → **초대(팀) 검증** → 이메일 중복 → 본인확인. 남의 링크인데 "인증코드부터 받으라"고 안내하는 헛수고 방지.
+- 링크 형식: `{APP_PUBLIC_URL}/#/join/{token}` — 프론트 `parseJoinRoute()` 는 `#/join/<token>` 과 `?invite=<token>` 둘 다 인식.
+
+## 31-5 약관 (index.html `LEGAL`, `TERMS_VERSION='2026-07-23'` — 서버 상수와 **함께** 올릴 것)
+- **이용약관** 14조: 목적/정의(서비스=현장 비용·일정·견적·발주·미팅·AS·자료·사진·출력인원·매뉴얼)/효력·변경/이용계약(초대코드·초대링크 보유자만, 만14세)/계정관리(임시비번 변경 의무)/서비스 제공/이용자 의무/콘텐츠 귀속(팀 소유)/**팀 데이터 공유 고지**/외부 연동(카드 비번 미저장·AI 전송 고지)/해지(업무기록은 팀 귀속 유지)/면책(입력 금액·견적 책임은 이용자)/분쟁/문의.
+- **개인정보 처리방침** 10항: 수집항목(필수 이메일·비번(단방향)·이름 / 선택 직함·연락처·소개·사진 / 자동 접속·작성이력 / 업무데이터 내 제3자 정보) · 목적 · 보유기간(탈퇴 시 파기, 법정 5년/3년) · **처리위탁 5곳(Supabase·Vercel·Resend·OpenAI·CODEF)** · 제3자 제공 없음 · 권리행사 · 파기 · 안전조치 · 만14세 미만 미가입 · 신고기관(KISA 118 등).
+- **알림 수신(선택)**: 거부해도 필수기능 제한 없음 명시.
+- 가입 시 `agreements:{age14,terms,privacy,marketing}` 전송 → 서버가 필수 3종 미동의 시 **400**(프론트 체크박스 우회 방어). users 에 시각·버전 기록.
+
+## 31-6 UI
+- **AuthScreen 재구성**
+  - 초대 링크 진입(`#/join/…`) → 부팅 시 유효성 조회 → 초록 배너 "**{팀명} 팀 초대장입니다. 초대코드 없이 가입할 수 있어요.**" + 회원가입 탭 자동 선택 + **초대코드 입력칸 숨김**(지정 이메일이면 이메일 readOnly 프리필). 무효 링크는 빨간 배너 + 가입 버튼 비활성. 가입 성공 시 `history.replaceState` 로 해시 정리.
+  - **본인 확인 블록**: [인증코드 받기] → 6자리 입력 + [확인] → "확인 완료 ✓" 배지. 이메일을 고치면 인증 무효화(재인증). 메일 미설정 환경은 "건너뜀" 배지.
+  - **AgreementBlock**: [전체 동의] + 필수 3(만14세·이용약관·개인정보) / 선택 1(알림수신), 각 항목 [전문 보기] → `LegalModal`(스크롤 전문). 필수 미충족 시 제출 버튼 비활성 + "동의하고 회원가입" 라벨.
+  - 로그인 탭에 **[비밀번호를 잊으셨나요?]** → `ForgotPasswordModal`(이메일 → 발송 → 스팸함 안내).
+- **ChangePasswordModal**: `forced` 모드(임시비번 로그인 직후) = 닫기(×/배경/Esc) 차단 + 토스트 안내, AuthGate 가 `<App/>` 위에 오버레이. 자발적 모드는 **나의 정보 › 🔒 비밀번호 [변경하기]**.
+- **관리 › ✉️ 초대 링크**(admin 전용 서브탭, `InviteManager`): 발급 폼(이메일/메모/유효기간 1·3·7·14·30·90일/사용횟수 1·3·5·10·30명/이메일 자동발송 체크) → 발급 직후 링크 박스([복사][공유]) + 발급 내역 표(대상·상태 배지·사용 n/m·만료·복사/공유/취소 + 취소 확인 모달). `navigator.share` 없으면 복사 폴백.
+- **현장사진 라이트박스**: 좌/우 버튼을 **44px → 36px**(작게, 사용자 요청) + **모바일 좌우 스와이프**(45px 임계) 추가. ‹›는 첫/끝에서 자동 숨김.
+- **클라이언트 공유 페이지(ClientView)에 라이트박스 신규**(`SimpleLightbox`): 기존엔 사진 클릭 = 새 탭 원본 열기였음 → 이제 앱과 동일한 전체화면 + ‹› + 키보드 + 스와이프 + [↗원본]. URL 이 이미 서명돼 내려오므로 비동기 로딩 없음.
+
+## 31-7 사진 자동 압축 (업로드 전, 브라우저에서)
+- `compressImageFile(file, cfg)` — `PHOTO_COMPRESS = {maxEdge:1920, targetBytes:500KB, qualities:[.85,.78,.70,.62,.52,.42]}` / `AVATAR_COMPRESS = {640px, 200KB, [.9,.8,.7,.6]}`.
+- 흐름: `createImageBitmap(file,{imageOrientation:'from-image'})`(EXIF 회전 처리) → 실패 시 `createImageBitmap(file)` → `<img>` 폴백 → 캔버스 리사이즈(흰 배경 선칠 = 투명 PNG→JPEG 검은배경 방지) → 품질 내림차순으로 `toBlob` 하여 **첫 번째 ≤500KB** 채택 → `<원본명>.jpg`(image/jpeg) File 생성.
+- **원본 유지(건드리지 않음) 조건**: 이미지 아님 / gif·svg / 디코딩 실패(HEIC 등 미지원) / 이미 `긴변≤1920 && ≤500KB` / 재인코딩 결과가 원본보다 큼.
+- 적용: 현장사진 업로드(다중), 프로필 아바타. **`file_name` 메타는 원본 파일명 그대로 저장**(추적성). 토스트에 "자동 압축으로 N 절약 📦".
+
+## 31-8 출력인원 — 연속(다일) 일정 검토 결과
+- **결론: 서버는 v25부터 이미 정상**. 쿼리가 `start_date<=날짜 AND end_date>=날짜`(겹침) 이라 7/20~7/23 타일 일정은 **20·21·22·23 네 날 모두** 행이 뜬다. `end_date`는 NOT NULL 이라 누락 경로도 없음. 실측 재현으로 확인(아래 검증).
+- v31 개선 3가지:
+  - `kind IN ('공사','지원')` — 기존엔 `kind='공사'` 만이라 **'지원' 유형 일정은 인력 입력칸이 안 뜨던 것**이 실제 사각지대였음.
+  - `schedules[]` 에 **`day_no` / `day_total`** 추가 → 행에 "**2일차 / 총 4일**" 파란 배지(연속 일정임을 한눈에), '지원' 은 앰버 배지.
+  - 안내문에 "여러 날 잡힌 일정은 그 사이 모든 날짜에 뜨므로 날짜를 넘겨가며 하루치씩 입력" 명시.
+- 기록은 `(현장, 날짜, 공정)` upsert 라 **날짜별로 완전히 독립**(20일 기공1/조공2, 21일 기공2/조공3 각각 저장 확인).
+
+## 31-9 보안
+- AI 채팅 `CHAT_SQL_FORBIDDEN` 에 `interior_invites|interior_email_codes` 추가(초대 토큰 = 가입 자격증명).
+- 인증 게이트 예외 추가: `POST /auth/forgot`, `POST /auth/verify/send`, `POST /auth/verify/check`, `GET /auth/invite/:token`(정규식 정확 일치).
+
+## 검증 (2026-07-23)
+- **백엔드 e2e 63/63** (로컬 3010, `MAIL_TRANSPORT=console MAIL_DEV_ECHO=1`, 테스트 계정·초대·일정 잔존 0):
+  - A 약관 3 — 미동의/부분동의 400.
+  - B 본인확인 8 — 코드 발송·틀린코드 400·정상 verify_token·1분 재발송 429·토큰 없이 가입 시 VERIFY_REQUIRED·잘못된 이메일 400.
+  - C 가입 7 — 201·토큰·플래그 false·동의 시각/마케팅/버전/`email_verified_at` DB 기록.
+  - D 비번찾기 13 — 미가입 동일응답·형식 400·임시비번 발급→**기존 비번 401**→임시비번 로그인 `must_change_password:true`→현재비번오류 400·6자미만 400·변경 성공→플래그 해제→새 비번 로그인·3분 스로틀·비로그인 401.
+  - E 초대링크 18 — 비관리자 403·발급 201·`#/join/` URL·무인증 확인·없는토큰/취소/만료/소진 valid:false·**초대코드 없이 가입 성공+같은 팀**·1회용 소진 후 차단·지정 이메일 외 차단·목록.
+  - F 출력인원 14 — 7/20~7/23 **4일 전부 노출 + day_no 1·2·3·4**, 7/24 미노출, kind='지원' 노출, 날짜별 독립 저장/조회.
+- **Playwright 관통**: 로그인화면 [비밀번호를 잊으셨나요?] 노출 → 회원가입 폼(본인확인 블록+약관 4체크+전문보기 모달 렌더) → 관리›✉️초대링크 발급(링크 박스·내역표) → **로그아웃 후 `#/join/<token>` 진입 → 초록 초대 배너 + 초대코드칸 숨김 → 인증코드 받기·확인 → 전체동의 → 가입 성공(해시 정리)** → 출력인원 site3 `7/20~7/23 타일공사` **7/23 "4일차/총 4일"·7/20 "1일차/총 4일"** 배지 확인 → 현장사진 **7.3MB(4032×3024) 업로드 → 저장본 497KB / 1920×1440**(토스트 "자동 압축으로 6.8 MB 절약") → 라이트박스 1/5→›2/5(작아진 ‹›) → 클라이언트 공유페이지 사진 클릭 → **SimpleLightbox 2/5 ‹›** → `must_change_password=true` 주입 후 새로고침 → **강제 비밀번호 변경 모달 오버레이**. 테스트 데이터(계정 2·초대 1·일정 1·사진 1·공유토큰) 전부 정리, 잔존 0.

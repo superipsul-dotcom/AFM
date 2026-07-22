@@ -207,6 +207,69 @@
     }
 
     // ──────────────────────────────────────────
+    // (v31) 이미지 자동 압축 — 업로드 전 브라우저에서 리사이즈 + JPEG 재인코딩
+    //   왜: 요즘 폰 사진 1장이 3~6MB. 현장 1곳에 수백 장이면 스토리지·데이터 요금이 그대로 비용이 된다.
+    //   목표: 긴 변 1920px(현장사진) / 약 500KB 이하 — PC·폰에서 확대해도 충분히 선명한 수준.
+    //   안전장치: 디코딩 실패(HEIC 등 브라우저 미지원)·이미 충분히 작은 파일이면 원본 그대로 업로드.
+    //   EXIF 회전은 createImageBitmap({imageOrientation:'from-image'}) 이 처리(미지원 브라우저는 <img> 폴백).
+    // ──────────────────────────────────────────
+    const PHOTO_COMPRESS = { maxEdge: 1920, targetBytes: 500 * 1024, qualities: [0.85, 0.78, 0.7, 0.62, 0.52, 0.42] };
+    const AVATAR_COMPRESS = { maxEdge: 640, targetBytes: 200 * 1024, qualities: [0.9, 0.8, 0.7, 0.6] };
+
+    async function decodeImage(file) {
+      if (window.createImageBitmap) {
+        try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+        catch (e) { try { return await createImageBitmap(file); } catch (e2) { /* fall through */ } }
+      }
+      // 폴백: object URL → <img> (EXIF 회전은 브라우저 기본 동작에 맡김)
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode failed')); };
+        img.src = url;
+      });
+    }
+
+    // → { file, original, compressed, skipped }  (실패/불필요 시 원본 file 그대로)
+    async function compressImageFile(file, opts) {
+      const cfg = Object.assign({}, PHOTO_COMPRESS, opts || {});
+      const original = file.size;
+      if (!file || !/^image\//.test(file.type || '')) return { file, original, compressed: original, skipped: true };
+      if (/image\/(gif|svg\+xml)/.test(file.type)) return { file, original, compressed: original, skipped: true }; // 애니메이션/벡터는 건드리지 않음
+      let src;
+      try { src = await decodeImage(file); }
+      catch (e) { return { file, original, compressed: original, skipped: true }; } // HEIC 등 → 원본 업로드
+      const w0 = src.width || src.naturalWidth, h0 = src.height || src.naturalHeight;
+      if (!w0 || !h0) return { file, original, compressed: original, skipped: true };
+      const long = Math.max(w0, h0);
+      // 이미 작고 가벼우면 재인코딩 이득이 없다 → 원본 유지(화질 손실 방지)
+      if (long <= cfg.maxEdge && original <= cfg.targetBytes) {
+        if (src.close) src.close();
+        return { file, original, compressed: original, skipped: true };
+      }
+      const scale = Math.min(1, cfg.maxEdge / long);
+      const w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); // 투명 PNG → JPEG 시 검은 배경 방지
+      ctx.drawImage(src, 0, 0, w, h);
+      if (src.close) src.close();
+      const toBlob = (q) => new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', q));
+      let blob = null;
+      for (const q of cfg.qualities) {
+        blob = await toBlob(q);                       // eslint-disable-line no-await-in-loop
+        if (blob && blob.size <= cfg.targetBytes) break;
+      }
+      if (!blob || blob.size >= original) return { file, original, compressed: original, skipped: true }; // 되레 커지면 원본
+      const base = (file.name || 'photo').replace(/\.[^.]+$/, '');
+      const out = new File([blob], `${base}.jpg`, { type: 'image/jpeg', lastModified: file.lastModified || Date.now() });
+      return { file: out, original, compressed: out.size, skipped: false };
+    }
+    // 파일 크기 표기는 v20 의 fmtBytes 를 그대로 쓴다(아래에 선언).
+
+    // ──────────────────────────────────────────
     // v3: 실무 견적 엔진 (공종 · 3분할단가 · 원가계산서 · 단가 카탈로그)
     // ──────────────────────────────────────────
     const CATALOG_KEY = 'interior_catalog_v1';
@@ -833,6 +896,16 @@
       async authMe() { return this._tryFetch(`${API_BASE_URL}/auth/me`, { _skipAuthRedirect: true }); },
       async authLogin(body) { return this._tryFetch(`${API_BASE_URL}/auth/login`, { method: 'POST', body: JSON.stringify(body), _skipAuthRedirect: true }); },
       async authSignup(body) { return this._tryFetch(`${API_BASE_URL}/auth/signup`, { method: 'POST', body: JSON.stringify(body), _skipAuthRedirect: true }); },
+
+      // ── v31: 비밀번호 찾기·변경 · 이메일 본인확인 · 초대 링크 (전부 서버 전용) ──
+      async authForgot(email) { return this._tryFetch(`${API_BASE_URL}/auth/forgot`, { method: 'POST', body: JSON.stringify({ email }), _skipAuthRedirect: true }); },
+      async changePassword(body) { return this._tryFetch(`${API_BASE_URL}/auth/change-password`, { method: 'POST', body: JSON.stringify(body) }); },
+      async verifySend(email) { return this._tryFetch(`${API_BASE_URL}/auth/verify/send`, { method: 'POST', body: JSON.stringify({ email }), _skipAuthRedirect: true }); },
+      async verifyCheck(email, code) { return this._tryFetch(`${API_BASE_URL}/auth/verify/check`, { method: 'POST', body: JSON.stringify({ email, code }), _skipAuthRedirect: true }); },
+      async inviteInfo(token) { return this._tryFetch(`${API_BASE_URL}/auth/invite/${encodeURIComponent(token)}`, { _skipAuthRedirect: true }); },
+      async listInvites() { return this._tryFetch(`${API_BASE_URL}/invites`); },
+      async createInvite(body) { return this._tryFetch(`${API_BASE_URL}/invites`, { method: 'POST', body: JSON.stringify(body || {}) }); },
+      async revokeInvite(id) { return this._tryFetch(`${API_BASE_URL}/invites/${id}`, { method: 'DELETE' }); },
 
       // ── v25: 개인 할일 · 출력인원 · 매뉴얼 · 알림 (서버 전용 — 데모(오프라인)는 UI에서 안내) ──
       async teamUsers() { return this._tryFetch(`${API_BASE_URL}/team/users`); },
@@ -7783,6 +7856,7 @@
     function PhotoLightbox({ photos, index, onIndex, onClose, onEdit, onDelete }) {
       const photo = photos[index];
       const cacheRef = useRef(new Map());
+      const touchX = useRef(null); // (v31) 모바일 좌우 스와이프
       const [url, setUrl] = useState(null);
       const [err, setErr] = useState(false);
       const load = useCallback(async (p) => {
@@ -7809,6 +7883,13 @@
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
       }, [index, photos.length, onClose, onIndex]);
+      const onTouchEnd = (e) => {
+        const x0 = touchX.current; touchX.current = null;
+        const x1 = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : null;
+        if (x0 == null || x1 == null || Math.abs(x1 - x0) < 45) return;
+        if (x1 < x0 && index < photos.length - 1) onIndex(index + 1);
+        if (x1 > x0 && index > 0) onIndex(index - 1);
+      };
       if (!photo) return null;
       const procs = (photo.processes || '').split(',').map((s) => s.trim()).filter(Boolean);
       return (
@@ -7829,8 +7910,9 @@
                 className="ml-1 w-9 h-9 rounded-lg bg-white/10 hover:bg-white/25 text-xl leading-none flex items-center justify-center transition">×</button>
             </div>
           </div>
-          {/* 이미지 + 좌우 내비게이션 */}
-          <div className="flex-1 relative flex items-center justify-center min-h-0 px-12 sm:px-16 pb-2">
+          {/* 이미지 + 좌우 내비게이션 (v31: 모바일 스와이프 추가) */}
+          <div className="flex-1 relative flex items-center justify-center min-h-0 px-12 sm:px-16 pb-2"
+            onTouchStart={(e) => { touchX.current = e.touches[0] ? e.touches[0].clientX : null; }} onTouchEnd={onTouchEnd}>
             {url ? (
               <img src={url} alt={photo.file_name || '현장사진'} className="max-w-full max-h-full object-contain select-none" />
             ) : err ? (
@@ -7840,11 +7922,11 @@
             )}
             {index > 0 && (
               <button onClick={() => onIndex(index - 1)} aria-label="이전 사진" title="이전 (←)"
-                className="absolute left-2.5 sm:left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/30 text-white text-2xl leading-none flex items-center justify-center transition">‹</button>
+                className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">‹</button>
             )}
             {index < photos.length - 1 && (
               <button onClick={() => onIndex(index + 1)} aria-label="다음 사진" title="다음 (→)"
-                className="absolute right-2.5 sm:right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/30 text-white text-2xl leading-none flex items-center justify-center transition">›</button>
+                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">›</button>
             )}
           </div>
           {/* 하단 정보 */}
@@ -8003,19 +8085,27 @@
         const processes = pProcs.join(',');
         setUploading(true); setProg({ done: 0, total: files.length });
         let ok = 0, fail = 0, cfgErr = false;
+        let savedBytes = 0, shrunk = 0; // (v31) 압축 절감량 안내용
         for (let i = 0; i < files.length; i++) {
-          const f = files[i];
+          const raw = files[i];
           try {
+            // (v31) 업로드 전 자동 압축 — 긴 변 1920px / 약 500KB. 원본 파일명은 메타로 그대로 보존.
+            const c = await compressImageFile(raw);
+            const f = c.file;
+            if (!c.skipped) { savedBytes += (c.original - c.compressed); shrunk++; }
             const sign = await api.signUploadPhoto(site.id, { file_name: f.name || ('photo_' + Date.now() + '.jpg'), content_type: f.type || 'image/jpeg' });
             await api.putToSignedUrl(sign.upload_url, f);
-            await api.createPhoto(site.id, { photo_date: pDate, processes, storage_path: sign.storage_path, file_name: f.name || '', memo: pMemo.trim(), uploader: uploaderName });
+            await api.createPhoto(site.id, { photo_date: pDate, processes, storage_path: sign.storage_path, file_name: raw.name || f.name || '', memo: pMemo.trim(), uploader: uploaderName });
             ok++;
           } catch (e) { fail++; if (e.status === 503) cfgErr = true; }
           setProg({ done: i + 1, total: files.length });
         }
         setUploading(false); setProg({ done: 0, total: 0 });
         if (cfgErr && ok === 0) toast('스토리지가 설정되지 않았습니다. 관리자 설정이 필요합니다. (Supabase 키)', 'error');
-        else if (ok) toast(`사진 ${ok}장을 업로드했습니다.` + (fail ? ` (${fail}장 실패)` : ''), fail ? 'info' : 'success');
+        else if (ok) toast(
+          `사진 ${ok}장을 업로드했습니다.` + (fail ? ` (${fail}장 실패)` : '') +
+          (shrunk ? ` · 자동 압축으로 ${fmtBytes(savedBytes)} 절약 📦` : ''),
+          fail ? 'info' : 'success');
         else toast('사진 업로드에 실패했습니다.', 'error');
         if (ok) { setLastUpload({ date: pDate, procs: processes, count: ok, memo: pMemo.trim() }); setPMemo(''); await reload(); } // (v22) 알림용 기록
       };
@@ -9502,6 +9592,10 @@
             }
             merged.push({
               key: 'sch-' + s.id, schedule_id: s.id, process: proc, label: s.title,
+              // (v31) 여러 날짜에 걸친 일정은 매일 여기에 뜬다 → "2일차/총 3일" 로 며칠째인지 표시
+              day_no: Number(s.day_no) || 0, day_total: Number(s.day_total) || 0,
+              span: s.start_date && s.end_date && s.start_date !== s.end_date ? `${s.start_date} ~ ${s.end_date}` : '',
+              kind: s.kind || '공사',
               skilled: log ? String(log.skilled) : '', helper: log ? String(log.helper) : '',
               vendor_id: vendorId,
               skilled_rate: sRate,
@@ -9603,7 +9697,7 @@
                 {!isToday && <Button variant="ghost" size="sm" onClick={() => setDate(todayStr())}>오늘</Button>}
               </div>
             </div>
-            <p className="text-xs text-slate-400 mt-2">일정표의 당일 공사 공정이 자동으로 표시됩니다. 기공·조공 인원을 입력하고 행별 [저장] 후, [입력 완료]를 누르면 팀원 전체에게 알림이 갑니다.</p>
+            <p className="text-xs text-slate-400 mt-2">일정표의 당일 공정(공사·지원)이 자동으로 표시됩니다. <b className="text-slate-500">7/21~7/23 처럼 여러 날 잡힌 일정은 그 사이 모든 날짜에 뜨므로</b> 날짜를 넘겨가며 하루치씩 기공·조공을 넣으면 됩니다. 행별 [저장] 후 [입력 완료]를 누르면 팀원 전체에게 알림이 갑니다.</p>
           </Card>
 
           <Card className="p-4">
@@ -9626,6 +9720,13 @@
                             <span className="text-sm font-semibold text-slate-700 truncate">{r.label || r.process}</span>
                           )}
                           {!r.custom && r.process !== r.label && r.process && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{r.process}</span>}
+                          {/* (v31) 여러 날 이어지는 일정 → 며칠째인지 표시. 매일 이 화면에 떠서 날마다 인원을 넣을 수 있다. */}
+                          {r.day_total > 1 && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 whitespace-nowrap" title={`연속 일정 ${r.span}`}>
+                              {r.day_no}일차 / 총 {r.day_total}일
+                            </span>
+                          )}
+                          {r.kind === '지원' && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">지원</span>}
                           {r.done && <Badge color="bg-green-500">완료됨</Badge>}
                           {r.id && !r.done && <span className="text-[10px] text-slate-400">저장됨</span>}
                         </div>
@@ -10437,6 +10538,7 @@
       const [saving, setSaving] = useState(false);
       const [requesting, setRequesting] = useState(false);
       const [uploading, setUploading] = useState(false);
+      const [pwOpen, setPwOpen] = useState(false); // (v31) 비밀번호 변경 모달
       const fileRef = useRef(null);
       useEffect(() => {
         if (isOpen && profile) {
@@ -10477,8 +10579,10 @@
         if (f.size > 5 * 1024 * 1024) { toast('5MB 이하 이미지만 가능합니다.', 'error'); return; }
         setUploading(true);
         try {
-          const sign = await api.avatarSignUpload(f.name);
-          await api.putToSignedUrl(sign.upload_url, f);
+          // (v31) 프로필 사진도 업로드 전 압축 — 640px / 200KB 면 아바타로 충분
+          const c = await compressImageFile(f, AVATAR_COMPRESS);
+          const sign = await api.avatarSignUpload(c.file.name);
+          await api.putToSignedUrl(sign.upload_url, c.file);
           await api.saveAvatar(sign.storage_path);
           toast('프로필 사진을 변경했습니다 📸', 'success');
           await onChanged();
@@ -10559,12 +10663,188 @@
               </p>
             </div>
 
+            {/* (v31) 보안 — 비밀번호 변경 */}
+            <div className="pt-1 border-t border-slate-100">
+              <div className="flex items-center justify-between gap-2 pt-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-700">🔒 비밀번호</p>
+                  <p className="text-[11px] text-slate-400">주기적으로 변경하면 계정을 더 안전하게 지킬 수 있어요.</p>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => setPwOpen(true)}>변경하기</Button>
+              </div>
+            </div>
+
             <div className="flex gap-2 justify-end pt-1">
               <Button variant="secondary" onClick={onClose}>닫기</Button>
               <Button onClick={() => save(false)} disabled={saving}>{saving ? '저장 중…' : '저장'}</Button>
             </div>
           </div>
+          {pwOpen && <ChangePasswordModal onClose={() => setPwOpen(false)} onDone={() => setPwOpen(false)} />}
         </Modal>
+      );
+    }
+
+    // ⚙️ 관리 › ✉️ 초대 링크 (관리자) — 초대코드 없이 가입시키는 1회용/기한부 링크
+    //   기존 팀 초대코드는 그대로 유지되고, 이 링크는 그와 별개의 추가 경로다.
+    function InviteManager() {
+      const toast = useToast();
+      const [items, setItems] = useState(null); // null=로딩
+      const [error, setError] = useState('');
+      const [form, setForm] = useState({ email: '', note: '', days: 7, max_uses: 1, send_mail: true });
+      const [creating, setCreating] = useState(false);
+      const [created, setCreated] = useState(null); // 방금 만든 링크(크게 보여주고 복사)
+      const [revokeTarget, setRevokeTarget] = useState(null);
+
+      const load = useCallback(async () => {
+        try { setItems(await api.listInvites()); setError(''); }
+        catch (e) { setItems([]); setError(e.message || '초대 링크를 불러오지 못했습니다.'); }
+      }, []);
+      useEffect(() => { load(); }, [load]);
+
+      const create = async () => {
+        setCreating(true);
+        try {
+          const r = await api.createInvite({
+            email: form.email.trim(), note: form.note.trim(),
+            days: Number(form.days) || 7, max_uses: Number(form.max_uses) || 1,
+            send_mail: !!(form.send_mail && form.email.trim()),
+          });
+          setCreated(r);
+          toast(r.mail_sent ? '초대 링크를 만들고 메일로 보냈습니다 ✉️' : '초대 링크를 만들었습니다. 복사해서 전달하세요.', 'success');
+          setForm({ email: '', note: '', days: 7, max_uses: 1, send_mail: true });
+          await load();
+        } catch (e) { toast(e.message || '초대 링크 발급에 실패했습니다.', 'error'); }
+        finally { setCreating(false); }
+      };
+      const copy = async (url) => {
+        const ok = await copyToClipboard(url);
+        toast(ok ? '초대 링크를 복사했습니다 — 카톡/문자로 보내세요.' : '복사에 실패했습니다.', ok ? 'success' : 'error');
+      };
+      const share = async (inv) => {
+        const text = `[${SUPPLIER.name}] 현장관리 앱 초대\n아래 링크로 가입하시면 됩니다 (초대코드 불필요)\n${inv.url}`;
+        if (navigator.share) {
+          try { await navigator.share({ title: '안도 현장 초대', text }); return; } catch (e) { /* 취소 → 복사 폴백 */ }
+        }
+        copy(text);
+      };
+      const doRevoke = async () => {
+        const inv = revokeTarget; setRevokeTarget(null);
+        try { await api.revokeInvite(inv.id); toast('초대 링크를 취소했습니다.', 'info'); await load(); }
+        catch (e) { toast(e.message || '취소에 실패했습니다.', 'error'); }
+      };
+
+      const statusColor = (s) => (s === '사용가능' ? 'text-emerald-600 bg-emerald-50' : s === '사용완료' ? 'text-slate-500 bg-slate-100' : 'text-red-500 bg-red-50');
+      const fmtDay = (iso) => (iso ? String(iso).slice(0, 10) : '-');
+
+      return (
+        <div className="space-y-4">
+          {error && <Card className="p-4 bg-red-50 border-red-200 text-sm text-red-700">{error}</Card>}
+
+          <Card className="p-4 sm:p-5">
+            <h3 className="text-sm font-bold text-slate-700">✉️ 초대 링크 발급</h3>
+            <p className="text-xs text-slate-400 mt-1 mb-3">
+              링크를 받은 사람은 <b className="text-slate-500">초대코드 없이</b> 가입할 수 있습니다. 팀 초대코드는 그대로 유지됩니다.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input label="이메일 (선택)" type="email" value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="지정하면 그 사람만 가입 가능" />
+              <Input label="메모 (선택)" type="text" value={form.note}
+                onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="예: 타일 김반장" />
+              <Select label="유효기간" value={String(form.days)} onChange={(e) => setForm({ ...form, days: Number(e.target.value) })}>
+                {[1, 3, 7, 14, 30, 90].map((d) => <option key={d} value={d}>{d}일</option>)}
+              </Select>
+              <Select label="사용 횟수" value={String(form.max_uses)} onChange={(e) => setForm({ ...form, max_uses: Number(e.target.value) })}>
+                {[1, 3, 5, 10, 30].map((n) => <option key={n} value={n}>{n}명까지</option>)}
+              </Select>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+              <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer select-none">
+                <input type="checkbox" checked={form.send_mail} disabled={!form.email.trim()}
+                  onChange={(e) => setForm({ ...form, send_mail: e.target.checked })}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400" />
+                이메일로 초대장 자동 발송 {!form.email.trim() && <span className="text-slate-300">(이메일 입력 시)</span>}
+              </label>
+              <Button onClick={create} disabled={creating}>{creating ? '발급 중…' : '＋ 초대 링크 만들기'}</Button>
+            </div>
+
+            {created && (
+              <div className="mt-4 p-3.5 rounded-xl bg-blue-50 border border-blue-200 space-y-2">
+                <p className="text-xs font-semibold text-blue-700">새 초대 링크 {created.mail_sent && <span className="font-normal">· 메일 발송됨</span>}</p>
+                <div className="flex items-center gap-2">
+                  <input readOnly value={created.url} onFocus={(e) => e.target.select()}
+                    className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-blue-200 bg-white text-xs text-slate-600 font-mono" />
+                  <Button size="sm" onClick={() => copy(created.url)}>복사</Button>
+                  <Button size="sm" variant="secondary" onClick={() => share(created)}>공유</Button>
+                </div>
+                <p className="text-[11px] text-blue-600/80">
+                  {fmtDay(created.expires_at)}까지 · {created.max_uses}명까지{created.email ? ` · ${created.email} 전용` : ''}
+                </p>
+              </div>
+            )}
+          </Card>
+
+          <Card className="overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-700">발급 내역 {items && <span className="text-slate-400 font-normal">· {items.length}건</span>}</h3>
+              <Button size="sm" variant="ghost" onClick={load}>새로고침</Button>
+            </div>
+            {items === null ? (
+              <p className="p-8 text-center text-sm text-slate-400">불러오는 중…</p>
+            ) : items.length === 0 ? (
+              <p className="p-8 text-center text-sm text-slate-400">발급한 초대 링크가 없습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-slate-400 bg-slate-50">
+                    <tr>
+                      <th className="py-2 px-3 font-medium text-left">대상 / 메모</th>
+                      <th className="py-2 px-3 font-medium text-center">상태</th>
+                      <th className="py-2 px-3 font-medium text-center">사용</th>
+                      <th className="py-2 px-3 font-medium text-center">만료</th>
+                      <th className="py-2 px-3 font-medium text-right">링크</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((inv) => (
+                      <tr key={inv.id} className="border-b border-slate-50 last:border-b-0">
+                        <td className="py-2.5 px-3">
+                          <p className="text-slate-700">{inv.email || <span className="text-slate-400">누구나</span>}</p>
+                          {inv.note && <p className="text-[11px] text-slate-400">{inv.note}</p>}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${statusColor(inv.status)}`}>{inv.status}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-xs text-slate-500 tabular-nums">{inv.used_count}/{inv.max_uses}</td>
+                        <td className="py-2.5 px-3 text-center text-xs text-slate-500">{fmtDay(inv.expires_at)}</td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex gap-1 justify-end">
+                            {inv.status === '사용가능' && (
+                              <>
+                                <Button size="sm" variant="ghost" onClick={() => copy(inv.url)}>복사</Button>
+                                <Button size="sm" variant="ghost" onClick={() => share(inv)}>공유</Button>
+                                <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => setRevokeTarget(inv)}>취소</Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Modal isOpen={!!revokeTarget} onClose={() => setRevokeTarget(null)} title="초대 링크 취소" size="sm">
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600">이 초대 링크를 취소하시겠습니까? 아직 가입하지 않은 사람은 더 이상 이 링크로 가입할 수 없습니다.</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={() => setRevokeTarget(null)}>닫기</Button>
+                <Button variant="danger" onClick={doRevoke}>취소하기</Button>
+              </div>
+            </div>
+          </Modal>
+        </div>
       );
     }
 
@@ -11121,6 +11401,7 @@
       const subs = [
         { id: 'staff', label: '담당자', icon: '👷' },
         ...(isAdmin ? [{ id: 'approvals', label: '직원 인증', icon: '🪪' }] : []), // v28: 관리자 전용
+        ...(isAdmin ? [{ id: 'invites', label: '초대 링크', icon: '✉️' }] : []), // v31: 관리자 전용
         { id: 'vendors', label: '거래처', icon: '🏪' },
         { id: 'clients', label: '고객/리드', icon: '👤' },
         { id: 'categories', label: '카테고리', icon: '🏷️' },
@@ -11147,6 +11428,7 @@
           </Card>
           {sub === 'staff' && <StaffManager staff={staffAll} onChanged={reloadMasters} isAdmin={isAdmin} />}
           {sub === 'approvals' && isAdmin && <ApprovalManager onChanged={reloadMasters} />} {/* v28 */}
+          {sub === 'invites' && isAdmin && <InviteManager />} {/* v31 */}
           {sub === 'vendors' && <VendorManager vendors={vendorsAll} onChanged={reloadMasters} />}
           {sub === 'clients' && <ClientManager clients={clientsAll} onChanged={reloadMasters} />}
           {sub === 'categories' && <CategoryManager cats={catsAll} onChanged={reloadMasters} />}
@@ -11970,6 +12252,69 @@
     //   접근: #/share/client/<token> · 요약/일정/현장사진/자료 4탭만, 읽기전용.
     //   비용/견적/내부담당 정보는 서버 payload 자체에 미포함(화이트리스트).
     // ══════════════════════════════════════════════════════════════
+    // (v31) 클라이언트 공유 페이지용 라이트박스 — 좌/우 작은 버튼 + 키보드(←/→/Esc) + 스와이프.
+    //   앱 내부 PhotoLightbox 와 달리 URL 이 이미 서명돼 내려오므로(1시간 유효) 비동기 로딩이 없다.
+    function SimpleLightbox({ photos, index, onIndex, onClose }) {
+      const photo = photos[index];
+      const touchX = useRef(null);
+      useEffect(() => {
+        const onKey = (e) => {
+          if (e.key === 'Escape') onClose();
+          else if (e.key === 'ArrowLeft' && index > 0) onIndex(index - 1);
+          else if (e.key === 'ArrowRight' && index < photos.length - 1) onIndex(index + 1);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [index, photos.length, onClose, onIndex]);
+      if (!photo) return null;
+      const procs = (photo.processes || '').split(',').map((s) => s.trim()).filter(Boolean);
+      const onTouchEnd = (e) => {
+        const x0 = touchX.current; touchX.current = null;
+        const x1 = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : null;
+        if (x0 == null || x1 == null || Math.abs(x1 - x0) < 45) return;
+        if (x1 < x0 && index < photos.length - 1) onIndex(index + 1);
+        if (x1 > x0 && index > 0) onIndex(index - 1);
+      };
+      return (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" role="dialog" aria-modal="true" aria-label="현장사진 크게 보기">
+          <div className="flex items-center justify-between px-4 py-3 text-white/90 shrink-0">
+            <span className="text-sm font-medium tabular-nums">{index + 1} / {photos.length}</span>
+            <div className="flex items-center gap-1.5">
+              {photo.url && (
+                <button onClick={() => window.open(photo.url, '_blank', 'noopener')} title="원본을 새 탭에서 열기"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/25 text-xs font-medium transition">↗ 원본</button>
+              )}
+              <button onClick={onClose} aria-label="닫기"
+                className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/25 text-xl leading-none flex items-center justify-center transition">×</button>
+            </div>
+          </div>
+          <div className="flex-1 relative flex items-center justify-center min-h-0 px-12 sm:px-16 pb-2"
+            onTouchStart={(e) => { touchX.current = e.touches[0] ? e.touches[0].clientX : null; }} onTouchEnd={onTouchEnd}>
+            {photo.url
+              ? <img src={photo.url} alt={photo.file_name || '현장사진'} className="max-w-full max-h-full object-contain select-none" />
+              : <span className="text-white/50 text-sm">이미지를 불러오지 못했습니다.</span>}
+            {index > 0 && (
+              <button onClick={() => onIndex(index - 1)} aria-label="이전 사진" title="이전 (←)"
+                className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">‹</button>
+            )}
+            {index < photos.length - 1 && (
+              <button onClick={() => onIndex(index + 1)} aria-label="다음 사진" title="다음 (→)"
+                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">›</button>
+            )}
+          </div>
+          <div className="px-4 pb-4 pt-1 text-center space-y-1 shrink-0">
+            <p className="text-xs text-white/70">{photo.photo_date || '-'}{photo.file_name ? ` · ${photo.file_name}` : ''}</p>
+            {procs.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-1">
+                {procs.map((p) => <span key={p} className="text-[10px] px-2 py-0.5 rounded-full bg-white/15 text-white/85">{p}</span>)}
+              </div>
+            )}
+            {photo.memo && <p className="text-xs text-amber-300/90">📝 {photo.memo}</p>}
+          </div>
+        </div>
+      );
+    }
+
     function ClientView({ token }) {
       const [phase, setPhase] = useState('loading'); // loading | password | ready | error
       const [data, setData] = useState(null);
@@ -11978,6 +12323,7 @@
       const [submitting, setSubmitting] = useState(false);
       const [ctab, setCtab] = useState('summary'); // summary | schedule | photos | docs
       const [fProc, setFProc] = useState('');
+      const [lbIndex, setLbIndex] = useState(null); // (v31) 라이트박스 인덱스(fPhotos 기준)
 
       const load = useCallback(async (password) => {
         setErr('');
@@ -12223,9 +12569,10 @@
                             const procs = (p.processes || '').split(',').map((s) => s.trim()).filter(Boolean);
                             return (
                               <div key={p.id}>
-                                <button onClick={() => p.url && window.open(p.url, '_blank', 'noopener')}
+                                {/* (v31) 새 탭 대신 라이트박스 — 좌/우 버튼·키보드·스와이프로 다음 사진 탐색 */}
+                                <button onClick={() => p.url && setLbIndex(fPhotos.findIndex((x) => x.id === p.id))}
                                   className={`w-full aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-200 ${p.url ? 'cursor-zoom-in' : 'cursor-default'}`}
-                                  title={p.url ? '원본 보기' : '이미지 준비 중'}>
+                                  title={p.url ? '크게 보기' : '이미지 준비 중'}>
                                   {p.url
                                     ? <img src={p.url} alt={p.file_name || '현장사진'} loading="lazy" className="w-full h-full object-cover" />
                                     : <span className="w-full h-full flex items-center justify-center text-3xl text-slate-300">🖼</span>}
@@ -12244,6 +12591,10 @@
                 )}
                 <p className="text-[11px] text-slate-300 mt-4">사진이 열리지 않으면 페이지를 새로고침하세요. (보안을 위해 열람 링크는 1시간만 유효합니다)</p>
               </Card>
+            )}
+            {/* (v31) 공유 페이지 라이트박스 */}
+            {lbIndex != null && fPhotos[lbIndex] && (
+              <SimpleLightbox photos={fPhotos} index={lbIndex} onIndex={setLbIndex} onClose={() => setLbIndex(null)} />
             )}
 
             {ctab === 'docs' && (
@@ -12278,16 +12629,405 @@
       );
     }
 
+    // ════════════════════════════════════════════════════════
+    // (v31) 약관 — 가입 시 동의 대상. 본문을 고치면 서버 TERMS_VERSION 도 함께 올릴 것.
+    //   이 앱이 실제로 하는 일(현장 비용·일정·견적·발주·사진·출력인원·카드내역·AI 도우미)에 맞춰 작성.
+    // ════════════════════════════════════════════════════════
+    const TERMS_VERSION = '2026-07-23';
+    const LEGAL = {
+      terms: {
+        title: '이용약관',
+        version: TERMS_VERSION,
+        body: `제1조 (목적)
+이 약관은 안도공간(이하 "회사")이 제공하는 인테리어 현장관리 서비스 "안도 현장"(이하 "서비스")의 이용과 관련하여 회사와 이용자의 권리·의무 및 책임사항을 정함을 목적으로 합니다.
+
+제2조 (정의)
+1. "서비스"란 현장(프로젝트)의 비용·일정·견적·발주·미팅·A/S·자료·현장사진·출력인원·매뉴얼을 기록하고 공유하는 웹 기반 도구를 말합니다.
+2. "이용자"란 이 약관에 동의하고 계정을 만들어 서비스를 이용하는 자를 말합니다.
+3. "팀"이란 하나의 초대코드 또는 초대 링크로 묶여 같은 현장 데이터를 공유하는 이용자 집합을 말합니다.
+4. "관리자"란 팀 내에서 직원 인증·인력 배정·마스터 데이터 관리 권한을 가진 이용자를 말합니다.
+5. "콘텐츠"란 이용자가 서비스에 입력·업로드한 모든 데이터(현장 정보, 금액, 일정, 사진, 파일, 메모 등)를 말합니다.
+
+제3조 (약관의 효력과 변경)
+1. 이 약관은 서비스 화면에 게시함으로써 효력이 발생합니다.
+2. 회사는 필요한 경우 약관을 변경할 수 있으며, 변경 시 적용일자와 변경사유를 명시하여 적용일 7일 전(이용자에게 불리한 변경은 30일 전)부터 공지합니다.
+3. 이용자가 변경된 약관에 동의하지 않는 경우 이용계약을 해지할 수 있습니다.
+
+제4조 (이용계약의 성립)
+1. 이용계약은 가입 신청자가 이 약관과 개인정보 처리방침에 동의하고, 회사가 승낙함으로써 성립합니다.
+2. 서비스는 팀 초대코드 또는 관리자가 발급한 초대 링크를 가진 사람만 가입할 수 있습니다.
+3. 회사는 다음의 경우 승낙을 거부하거나 사후에 이용계약을 해지할 수 있습니다.
+   가. 타인의 명의·이메일을 도용한 경우
+   나. 허위 정보를 기재한 경우
+   다. 만 14세 미만인 경우
+   라. 초대 링크를 권한 없이 유포하거나 부정하게 취득한 경우
+
+제5조 (계정 관리)
+1. 이용자는 계정 정보(이메일·비밀번호)를 스스로 안전하게 관리할 책임이 있습니다.
+2. 계정을 타인과 공유하거나 양도할 수 없습니다.
+3. 계정 도용이 의심되면 즉시 비밀번호를 변경하고 관리자에게 알려야 합니다.
+4. 비밀번호를 분실한 경우 가입 이메일로 임시 비밀번호를 받을 수 있으며, 임시 비밀번호로 로그인한 뒤에는 반드시 새 비밀번호로 변경해야 합니다.
+
+제6조 (서비스의 제공)
+1. 서비스는 연중무휴 24시간 제공을 원칙으로 합니다.
+2. 회사는 시스템 점검·교체, 설비 장애, 통신 두절, 외부 서비스(데이터베이스·스토리지·호스팅) 장애 등 불가피한 사유가 있는 경우 서비스 제공을 일시 중단할 수 있습니다.
+3. 회사는 서비스의 기능을 추가·변경·중단할 수 있으며, 중요한 변경은 사전에 공지합니다.
+
+제7조 (이용자의 의무)
+이용자는 다음 행위를 해서는 안 됩니다.
+1. 타인의 개인정보·거래처 정보·견적 정보를 권한 없이 수집, 열람, 유출하는 행위
+2. 서비스에 허위 정보를 입력하여 회사 또는 제3자에게 손해를 끼치는 행위
+3. 서비스의 취약점을 이용하거나 자동화 수단으로 비정상적인 부하를 유발하는 행위
+4. 회사의 사전 동의 없이 서비스를 영리 목적으로 재판매·재배포하는 행위
+5. 법령 또는 공서양속에 반하는 자료를 업로드하는 행위
+
+제8조 (콘텐츠의 귀속과 이용)
+1. 이용자가 입력·업로드한 콘텐츠의 권리는 해당 이용자 및 그가 속한 팀에 있습니다.
+2. 회사는 서비스 제공·유지·장애 대응·백업에 필요한 범위에서만 콘텐츠를 처리하며, 그 외의 목적으로 사용하지 않습니다.
+3. 이용자는 자신이 업로드한 콘텐츠가 제3자의 권리를 침해하지 않음을 보증합니다.
+
+제9조 (팀 데이터의 공유)
+1. 같은 팀에 속한 이용자는 그 팀의 현장 데이터를 열람·수정할 수 있습니다. 가입 전 이 점을 충분히 이해하고 동의한 것으로 봅니다.
+2. 관리자가 발급한 공유 링크(견적서·발주서·클라이언트 페이지)는 로그인 없이 열람이 가능하므로, 링크 전달 범위는 발급자가 관리해야 합니다.
+
+제10조 (외부 서비스 연동)
+1. 서비스는 기능 제공을 위해 외부 서비스를 연동할 수 있습니다(데이터베이스·파일 저장, 호스팅, 메일 발송, 카드 이용내역 조회, AI 도우미 등).
+2. 카드 이용내역 조회는 이용자가 직접 연결을 신청한 경우에만 동작하며, 카드사 로그인 비밀번호는 서비스에 저장하지 않습니다.
+3. AI 도우미 기능은 답변 생성을 위해 질문과 조회에 필요한 데이터를 외부 AI 사업자에게 전송할 수 있습니다.
+
+제11조 (이용계약의 해지)
+1. 이용자는 언제든지 관리자에게 요청하여 계정 삭제를 요구할 수 있습니다.
+2. 회사는 이용자가 제7조를 위반한 경우 사전 통지 후 이용을 제한하거나 계약을 해지할 수 있습니다(긴급한 경우 사후 통지).
+3. 해지 시 이용자의 계정 정보는 삭제되나, 팀의 현장 기록(비용·일정·견적 등 업무 자료)은 팀의 자산으로 보아 그대로 유지될 수 있습니다.
+
+제12조 (면책)
+1. 회사는 천재지변, 외부 서비스 장애, 이용자의 귀책사유로 인한 손해에 대해 책임을 지지 않습니다.
+2. 서비스에 기록된 견적·금액·수량·일정은 이용자가 입력한 값이며, 그 정확성과 그에 근거한 의사결정의 결과에 대한 책임은 이용자에게 있습니다.
+3. 회사는 이용자 간 또는 이용자와 제3자(발주처·협력업체) 간 분쟁에 개입하지 않습니다.
+
+제13조 (분쟁 해결)
+이 약관은 대한민국 법을 준거법으로 하며, 분쟁이 발생한 경우 회사 소재지를 관할하는 법원을 관할 법원으로 합니다.
+
+제14조 (문의)
+서비스 이용과 관련한 문의는 팀 관리자 또는 회사에 연락하여 주시기 바랍니다.
+
+부칙 — 이 약관은 ${TERMS_VERSION}부터 적용됩니다.`,
+      },
+      privacy: {
+        title: '개인정보 수집·이용 동의 (개인정보 처리방침)',
+        version: TERMS_VERSION,
+        body: `안도공간(이하 "회사")은 「개인정보 보호법」에 따라 이용자의 개인정보를 보호하고 관련 고충을 신속하게 처리하기 위해 다음과 같이 처리방침을 둡니다.
+
+1. 수집하는 개인정보 항목
+가. 필수 항목
+   - 이메일 주소 (계정 식별, 로그인, 비밀번호 재발급, 본인 확인)
+   - 비밀번호 (단방향 암호화하여 저장 — 회사도 원문을 알 수 없습니다)
+   - 이름 (팀 내 작성자·담당자 표시)
+나. 선택 항목
+   - 직함, 연락처, 소개, 프로필 사진
+다. 서비스 이용 과정에서 자동으로 생성·수집되는 정보
+   - 접속 일시, 작성·수정 이력, 알림 수신 기록
+라. 이용자가 직접 입력하는 업무 데이터
+   - 현장 정보, 비용·견적·발주 내역, 일정, 출력인원, 현장사진 및 첨부 파일
+   - 거래처·고객 담당자의 성명, 연락처 등 이용자가 업무 목적으로 입력한 제3자 정보
+
+2. 개인정보의 수집·이용 목적
+   - 회원 식별 및 로그인 유지, 본인 확인, 비밀번호 재발급
+   - 팀 단위 협업 기능 제공(작성자 표시, 담당자 배정, 알림 발송)
+   - 서비스 운영·개선, 장애 대응 및 문의 응대
+   - 선택 동의 시: 서비스 소식·기능 안내 등 정보성 메시지 발송
+
+3. 개인정보의 보유 및 이용 기간
+   - 회원 정보: 회원 탈퇴 시까지. 탈퇴 후에는 지체 없이 파기합니다.
+   - 다만 관계 법령에 따라 보존이 필요한 경우 해당 기간 동안 보관합니다.
+     · 계약 또는 청약철회 등에 관한 기록: 5년 (전자상거래법)
+     · 대금 결제 및 재화 등의 공급에 관한 기록: 5년 (전자상거래법)
+     · 소비자 불만 또는 분쟁 처리에 관한 기록: 3년 (전자상거래법)
+   - 업무 데이터(현장·비용·견적 등)는 팀의 업무 기록으로서, 탈퇴 후에도 팀에 귀속되어 보관될 수 있습니다.
+
+4. 개인정보 처리의 위탁
+회사는 서비스 제공을 위해 아래와 같이 개인정보 처리 업무를 위탁하고 있습니다.
+   - Supabase (데이터베이스 및 파일 저장) — 계정 정보 및 업무 데이터 보관
+   - Vercel (애플리케이션 호스팅) — 서비스 실행 및 접속 로그
+   - Resend 등 메일 발송 사업자 — 인증코드·임시 비밀번호 등 안내 메일 발송
+   - OpenAI (AI 도우미) — 이용자가 AI 기능을 사용할 때 질문 및 조회 결과 처리
+   - CODEF (카드 이용내역 조회) — 이용자가 카드 연동을 신청한 경우에 한함
+위탁 업무 내용이나 수탁자가 변경될 경우 본 방침을 통해 공개합니다.
+
+5. 개인정보의 제3자 제공
+회사는 이용자의 개인정보를 제3자에게 제공하지 않습니다. 다만 법령에 근거하거나 수사기관의 적법한 절차에 따른 요구가 있는 경우는 예외로 합니다.
+
+6. 이용자의 권리와 행사 방법
+   - 이용자는 언제든지 [나의 정보]에서 자신의 개인정보를 조회·수정할 수 있습니다.
+   - 동의 철회(회원 탈퇴)는 팀 관리자에게 요청할 수 있으며, 요청 시 지체 없이 처리합니다.
+   - 선택 항목 및 마케팅 수신 동의는 거부할 수 있으며, 거부해도 서비스의 필수 기능 이용에는 제한이 없습니다.
+
+7. 개인정보의 파기
+보유 기간이 지나거나 처리 목적이 달성된 개인정보는 지체 없이 파기합니다. 전자적 파일은 복구할 수 없는 방법으로 삭제하고, 출력물은 분쇄하거나 소각합니다.
+
+8. 개인정보의 안전성 확보 조치
+   - 비밀번호 단방향 암호화 저장, 통신 구간 암호화(HTTPS)
+   - 접근 권한 최소화 및 팀 단위 데이터 격리
+   - 로그인 토큰 기반 인증, 공유 링크에 대한 비밀번호 설정 기능 제공
+
+9. 만 14세 미만 아동
+회사는 만 14세 미만 아동의 회원 가입을 받지 않습니다.
+
+10. 개인정보 보호책임자 및 문의
+개인정보와 관련한 문의·불만·피해 구제는 팀 관리자 또는 회사로 연락해 주시기 바랍니다.
+그 밖에 개인정보 침해에 대한 신고·상담이 필요한 경우 아래 기관에 문의할 수 있습니다.
+   - 개인정보침해 신고센터 (privacy.kisa.or.kr / 국번없이 118)
+   - 개인정보 분쟁조정위원회 (kopico.go.kr / 1833-6972)
+   - 대검찰청 사이버수사과 (spo.go.kr / 1301)
+
+부칙 — 이 방침은 ${TERMS_VERSION}부터 시행됩니다.`,
+      },
+      marketing: {
+        title: '알림·소식 수신 동의 (선택)',
+        version: TERMS_VERSION,
+        body: `1. 수신 목적
+회사는 동의한 이용자에게 서비스의 새로운 기능, 개선 사항, 이용 팁, 점검 일정 등 정보성 메시지를 이메일로 발송할 수 있습니다.
+
+2. 수신 항목
+   - 신규 기능 및 업데이트 안내
+   - 서비스 점검·장애 관련 안내(필수 공지는 동의 여부와 무관하게 발송됩니다)
+   - 이용 가이드 및 활용 사례
+
+3. 동의 거부 권리
+이 항목은 선택 사항이며, 동의하지 않아도 서비스의 모든 필수 기능을 제한 없이 이용할 수 있습니다.
+
+4. 동의 철회
+[나의 정보] 또는 발송된 메일의 안내에 따라 언제든지 수신을 거부할 수 있습니다.`,
+      },
+    };
+
+    // 약관 전문 모달 — 스크롤 가능한 본문
+    function LegalModal({ docKey, onClose }) {
+      const doc = LEGAL[docKey];
+      if (!doc) return null;
+      return (
+        <Modal isOpen onClose={onClose} title={`📄 ${doc.title}`} size="lg">
+          <div className="max-h-[60vh] overflow-y-auto pr-1">
+            <p className="text-[11px] text-slate-400 mb-3">버전 {doc.version} · {SUPPLIER.name}</p>
+            <pre className="whitespace-pre-wrap font-sans text-[13px] leading-[1.75] text-slate-600">{doc.body}</pre>
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button onClick={onClose}>확인</Button>
+          </div>
+        </Modal>
+      );
+    }
+
+    // 가입 약관 동의 블록 — 전체동의 + 필수 3 / 선택 1
+    function AgreementBlock({ value, onChange }) {
+      const [openDoc, setOpenDoc] = useState(null);
+      const items = [
+        { key: 'age14', label: '만 14세 이상입니다', required: true, doc: null },
+        { key: 'terms', label: '이용약관 동의', required: true, doc: 'terms' },
+        { key: 'privacy', label: '개인정보 수집·이용 동의', required: true, doc: 'privacy' },
+        { key: 'marketing', label: '서비스 소식·알림 메일 수신', required: false, doc: 'marketing' },
+      ];
+      const allOn = items.every((it) => value[it.key]);
+      const toggleAll = () => {
+        const next = {};
+        items.forEach((it) => { next[it.key] = !allOn; });
+        onChange(next);
+      };
+      return (
+        <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+          <label className="flex items-center gap-2.5 px-3.5 py-3 cursor-pointer select-none">
+            <input type="checkbox" checked={allOn} onChange={toggleAll}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400" />
+            <span className="text-sm font-bold text-slate-700">전체 동의</span>
+            <span className="text-[11px] text-slate-400">선택 항목 포함</span>
+          </label>
+          <div className="px-3.5 py-2.5 space-y-2">
+            {items.map((it) => (
+              <div key={it.key} className="flex items-center gap-2.5">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none flex-1 min-w-0">
+                  <input type="checkbox" checked={!!value[it.key]}
+                    onChange={(e) => onChange({ ...value, [it.key]: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400 shrink-0" />
+                  <span className="text-[13px] text-slate-600 truncate">
+                    <span className={it.required ? 'text-blue-600 font-medium' : 'text-slate-400'}>[{it.required ? '필수' : '선택'}]</span> {it.label}
+                  </span>
+                </label>
+                {it.doc && (
+                  <button type="button" onClick={() => setOpenDoc(it.doc)}
+                    className="text-[11px] text-slate-400 hover:text-blue-600 underline shrink-0">전문 보기</button>
+                )}
+              </div>
+            ))}
+          </div>
+          {openDoc && <LegalModal docKey={openDoc} onClose={() => setOpenDoc(null)} />}
+        </div>
+      );
+    }
+
+    // (v31) 비밀번호 찾기 — 가입 이메일로 임시 비밀번호 발송
+    function ForgotPasswordModal({ initialEmail, onClose }) {
+      const [email, setEmail] = useState(initialEmail || '');
+      const [state, setState] = useState('idle'); // idle | sending | sent
+      const [msg, setMsg] = useState('');
+      const [err, setErr] = useState('');
+      const submit = async (e) => {
+        e.preventDefault();
+        setErr(''); setMsg('');
+        const em = email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setErr('올바른 이메일을 입력하세요.'); return; }
+        setState('sending');
+        try {
+          const r = await api.authForgot(em);
+          setMsg(r.message || '임시 비밀번호를 보냈습니다.');
+          setState('sent');
+        } catch (e2) {
+          setErr((e2 && e2.message) || '요청을 처리하지 못했습니다.');
+          setState('idle');
+        }
+      };
+      return (
+        <Modal isOpen onClose={onClose} title="🔑 비밀번호 찾기" size="sm">
+          {state === 'sent' ? (
+            <div className="space-y-4">
+              <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-3">{msg}</div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                메일로 받은 <b>임시 비밀번호</b>로 로그인하면 새 비밀번호 설정 화면이 바로 뜹니다.<br />
+                메일이 오지 않으면 <b>스팸함</b>을 확인하고, 그래도 없으면 팀 관리자에게 문의하세요.
+              </p>
+              <div className="flex justify-end"><Button onClick={onClose}>로그인으로</Button></div>
+            </div>
+          ) : (
+            <form onSubmit={submit} className="space-y-4">
+              <p className="text-sm text-slate-500">가입할 때 사용한 이메일을 입력하면 <b>임시 비밀번호</b>를 보내드립니다.</p>
+              <Input label="가입 이메일" type="email" value={email} autoComplete="email"
+                onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+              {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{err}</div>}
+              <div className="flex justify-end gap-2">
+                <Button variant="secondary" onClick={onClose}>취소</Button>
+                <Button type="submit" disabled={state === 'sending'}>{state === 'sending' ? '보내는 중…' : '임시 비밀번호 받기'}</Button>
+              </div>
+            </form>
+          )}
+        </Modal>
+      );
+    }
+
+    // (v31) 비밀번호 변경 — 임시 비밀번호 로그인 직후(강제) / [나의 정보](자발적) 공용
+    function ChangePasswordModal({ forced = false, onClose, onDone }) {
+      const toast = useToast();
+      const [cur, setCur] = useState('');
+      const [next, setNext] = useState('');
+      const [next2, setNext2] = useState('');
+      const [err, setErr] = useState('');
+      const [saving, setSaving] = useState(false);
+      const submit = async (e) => {
+        e.preventDefault();
+        setErr('');
+        if (next.length < 6) { setErr('새 비밀번호는 6자 이상이어야 합니다.'); return; }
+        if (next !== next2) { setErr('새 비밀번호가 서로 다릅니다.'); return; }
+        setSaving(true);
+        try {
+          await api.changePassword({ current_password: cur, new_password: next });
+          toast('비밀번호를 변경했습니다 🔒', 'success');
+          if (onDone) onDone();
+        } catch (e2) { setErr((e2 && e2.message) || '변경에 실패했습니다.'); }
+        finally { setSaving(false); }
+      };
+      // 강제 모드에서는 닫기(×/배경/Esc)를 막고 이유를 알려준다 — 임시 비밀번호 상태로 앱을 쓰지 못하게.
+      const blockClose = () => toast('새 비밀번호를 설정해야 계속 사용할 수 있습니다.', 'info');
+      return (
+        <Modal isOpen onClose={forced ? blockClose : onClose} title="🔒 비밀번호 변경" size="sm">
+          <form onSubmit={submit} className="space-y-4">
+            {forced && (
+              <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
+                임시 비밀번호로 로그인했습니다. 보안을 위해 <b>새 비밀번호로 변경</b>해 주세요.
+              </div>
+            )}
+            <Input label={forced ? '임시 비밀번호' : '현재 비밀번호'} type="password" autoComplete="current-password"
+              value={cur} onChange={(e) => setCur(e.target.value)} placeholder={forced ? '메일로 받은 비밀번호' : '현재 비밀번호'} />
+            <Input label="새 비밀번호" type="password" autoComplete="new-password"
+              value={next} onChange={(e) => setNext(e.target.value)} placeholder="6자 이상" />
+            <Input label="새 비밀번호 확인" type="password" autoComplete="new-password"
+              value={next2} onChange={(e) => setNext2(e.target.value)} placeholder="한 번 더 입력" />
+            {err && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{err}</div>}
+            <div className="flex justify-end gap-2">
+              {!forced && <Button variant="secondary" onClick={onClose}>취소</Button>}
+              <Button type="submit" disabled={saving}>{saving ? '변경 중…' : '변경하기'}</Button>
+            </div>
+          </form>
+        </Modal>
+      );
+    }
+
+    // (v31) 초대 링크 감지 — #/join/<token> · ?invite=<token> 둘 다 지원
+    function parseJoinRoute() {
+      const hash = (location.hash || '').replace(/^#/, '');
+      const m = hash.match(/(?:^|\/)join\/([^/?#]+)/);
+      if (m) return decodeURIComponent(m[1]);
+      const q = new URLSearchParams(location.search || '').get('invite');
+      return q ? q.trim() : null;
+    }
+
     function AuthScreen({ onAuthed }) {
-      const [mode, setMode] = useState('login'); // login | signup
+      const [joinToken] = useState(() => parseJoinRoute());       // 초대 링크로 들어왔는지
+      const [mode, setMode] = useState(() => (parseJoinRoute() ? 'signup' : 'login'));
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
       const [name, setName] = useState('');
       const [invite, setInvite] = useState('');
       const [error, setError] = useState('');
       const [submitting, setSubmitting] = useState(false);
+      const [forgotOpen, setForgotOpen] = useState(false);
+      // 초대 링크 검증 결과: null=조회중 / {valid,team_name,email,message}
+      const [inviteInfo, setInviteInfo] = useState(null);
+      // 약관 동의 + 이메일 본인확인
+      const [agree, setAgree] = useState({ age14: false, terms: false, privacy: false, marketing: false });
+      const [vState, setVState] = useState('idle');  // idle | sending | sent | verified | skipped
+      const [vCode, setVCode] = useState('');
+      const [vToken, setVToken] = useState('');
+      const [vMsg, setVMsg] = useState('');
+
+      // 초대 토큰이 있으면 서버에 유효성 확인(팀명·지정 이메일 프리필)
+      useEffect(() => {
+        if (!joinToken) return;
+        let alive = true;
+        api.inviteInfo(joinToken)
+          .then((d) => { if (!alive) return; setInviteInfo(d); if (d && d.valid && d.email) setEmail(d.email); })
+          .catch(() => { if (alive) setInviteInfo({ valid: false, message: '초대 링크를 확인하지 못했습니다. 네트워크를 확인해 주세요.' }); });
+        return () => { alive = false; };
+      }, [joinToken]);
 
       const switchMode = (m) => { setMode(m); setError(''); setPassword(''); };
+      // 이메일이 바뀌면 본인확인은 무효 — 다시 받아야 한다
+      const changeEmail = (v) => {
+        setEmail(v);
+        if (vState !== 'idle') { setVState('idle'); setVToken(''); setVCode(''); setVMsg(''); }
+      };
+
+      const sendCode = async () => {
+        setError('');
+        const em = email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setError('먼저 올바른 이메일을 입력하세요.'); return; }
+        setVState('sending');
+        try {
+          const r = await api.verifySend(em);
+          if (r && r.skipped) { setVState('skipped'); setVMsg(r.message || ''); return; } // 메일 미설정 환경
+          setVState('sent'); setVMsg(r.message || '인증코드를 보냈습니다.');
+          if (r && r.dev_code) setVCode(String(r.dev_code)); // 로컬 개발(MAIL_DEV_ECHO=1)에서만 내려옴
+        } catch (e) {
+          setVState('idle');
+          setError((e && e.message) || '인증코드 발송에 실패했습니다.');
+        }
+      };
+      const checkCode = async () => {
+        setError('');
+        try {
+          const r = await api.verifyCheck(email.trim().toLowerCase(), vCode.trim());
+          setVToken(r.verify_token); setVState('verified'); setVMsg('본인 확인 완료 ✓');
+        } catch (e) { setError((e && e.message) || '인증에 실패했습니다.'); }
+      };
+
+      const requiredAgreed = agree.age14 && agree.terms && agree.privacy;
 
       const submit = async (e) => {
         e.preventDefault();
@@ -12297,23 +13037,34 @@
         if (!password) { setError('비밀번호를 입력하세요.'); return; }
         if (mode === 'signup') {
           if (password.length < 6) { setError('비밀번호는 6자 이상이어야 합니다.'); return; }
-          if (!invite.trim()) { setError('초대코드를 입력하세요.'); return; }
+          if (!joinToken && !invite.trim()) { setError('초대코드를 입력하세요. (또는 관리자에게 초대 링크를 요청하세요)'); return; }
+          if (!requiredAgreed) { setError('필수 약관에 모두 동의해야 가입할 수 있습니다.'); return; }
         }
         setSubmitting(true);
         try {
           const data = mode === 'login'
             ? await api.authLogin({ email: em, password })
-            : await api.authSignup({ email: em, password, name: name.trim(), invite_code: invite.trim() });
+            : await api.authSignup({
+              email: em, password, name: name.trim(),
+              ...(joinToken ? { invite_token: joinToken } : { invite_code: invite.trim() }),
+              verify_token: vToken,
+              agreements: { age14: !!agree.age14, terms: !!agree.terms, privacy: !!agree.privacy, marketing: !!agree.marketing },
+              terms_version: TERMS_VERSION,
+            });
           if (!data || !data.token) throw new Error('인증 응답이 올바르지 않습니다.');
-          onAuthed(data.user, data.token);
+          if (joinToken) history.replaceState(null, '', location.pathname); // 초대 링크 소비 후 주소 정리
+          onAuthed(data.user, data.token, data.must_change_password);
         } catch (err) {
           // 서버 메시지 우선(초대코드 오류/이메일 중복/로그인 실패/짧은 비번). status 없으면 = 네트워크 실패.
-          if (err && err.status) setError(err.message || '요청을 처리하지 못했습니다.');
+          if (err && err.code === 'VERIFY_REQUIRED') { setError(err.message); setVState('idle'); }
+          else if (err && err.status) setError(err.message || '요청을 처리하지 못했습니다.');
           else setError('서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.');
         } finally {
           setSubmitting(false);
         }
       };
+
+      const inviteBlocked = joinToken && inviteInfo && !inviteInfo.valid;
 
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4 py-10">
@@ -12324,6 +13075,22 @@
               <p className="text-sm text-slate-400 mt-1">현장 비용 · 일정 · 견적 · 발주 통합 관리</p>
             </div>
             <Card className="p-6 sm:p-7">
+              {/* (v31) 초대 링크 배너 — 유효하면 초대코드 입력 없이 바로 가입 */}
+              {joinToken && (
+                inviteInfo == null ? (
+                  <div className="mb-5 text-sm text-slate-400 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3">초대 링크를 확인하는 중…</div>
+                ) : inviteInfo.valid ? (
+                  <div className="mb-5 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-3">
+                    ✉️ <b>{inviteInfo.team_name}</b> 팀 초대장입니다. 초대코드 없이 가입할 수 있어요.
+                    {inviteInfo.email && <div className="text-xs text-emerald-600/80 mt-1">{inviteInfo.email} 전용 링크</div>}
+                  </div>
+                ) : (
+                  <div className="mb-5 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-3">
+                    {inviteInfo.message || '사용할 수 없는 초대 링크입니다.'}
+                  </div>
+                )
+              )}
+
               {/* 로그인 / 회원가입 탭 */}
               <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-xl mb-5">
                 {[['login', '로그인'], ['signup', '회원가입']].map(([m, label]) => (
@@ -12336,7 +13103,8 @@
 
               <form onSubmit={submit} className="space-y-4">
                 <Input label="이메일" type="email" autoComplete="email" value={email}
-                  onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+                  onChange={(e) => changeEmail(e.target.value)} placeholder="you@company.com"
+                  readOnly={!!(joinToken && inviteInfo && inviteInfo.valid && inviteInfo.email)} />
                 <Input label="비밀번호" type="password"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   value={password} onChange={(e) => setPassword(e.target.value)}
@@ -12345,8 +13113,41 @@
                   <>
                     <Input label="이름 (선택)" type="text" value={name}
                       onChange={(e) => setName(e.target.value)} placeholder="표시할 이름" />
-                    <Input label="초대코드" type="text" value={invite}
-                      onChange={(e) => setInvite(e.target.value)} placeholder="팀 초대코드 (예: ANDO-2026)" />
+                    {!joinToken && (
+                      <Input label="초대코드" type="text" value={invite}
+                        onChange={(e) => setInvite(e.target.value)} placeholder="팀 초대코드 (예: ANDO-2026)" />
+                    )}
+
+                    {/* (v31) 본인 확인 — 가입 이메일로 6자리 코드. 메일 미설정 환경은 자동으로 건너뜀. */}
+                    <div className="rounded-xl border border-slate-200 px-3.5 py-3 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[13px] font-medium text-slate-600">
+                          본인 확인 <span className="text-slate-400 font-normal">· 이메일 인증</span>
+                        </span>
+                        {vState === 'verified'
+                          ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">확인 완료 ✓</span>
+                          : vState === 'skipped'
+                            ? <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">건너뜀</span>
+                            : (
+                              <Button size="sm" variant="secondary" onClick={sendCode} disabled={vState === 'sending'}>
+                                {vState === 'sending' ? '보내는 중…' : vState === 'sent' ? '다시 보내기' : '인증코드 받기'}
+                              </Button>
+                            )}
+                      </div>
+                      {vState === 'sent' && (
+                        <div className="flex items-center gap-2">
+                          <input value={vCode} onChange={(e) => setVCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            inputMode="numeric" placeholder="6자리 코드"
+                            className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm tracking-[0.3em] text-center focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                          <Button size="sm" onClick={checkCode} disabled={vCode.length !== 6}>확인</Button>
+                        </div>
+                      )}
+                      {vMsg && <p className={`text-[11px] ${vState === 'verified' ? 'text-emerald-600' : 'text-slate-400'}`}>{vMsg}</p>}
+                      {vState === 'idle' && <p className="text-[11px] text-slate-400">가입 이메일이 본인 것인지 확인합니다. 코드를 받아 입력해 주세요.</p>}
+                    </div>
+
+                    {/* (v31) 약관 동의 */}
+                    <AgreementBlock value={agree} onChange={setAgree} />
                   </>
                 )}
 
@@ -12354,18 +13155,25 @@
                   <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{error}</div>
                 )}
 
-                <Button type="submit" size="lg" disabled={submitting} className="w-full">
-                  {submitting ? '처리 중…' : (mode === 'login' ? '로그인' : '회원가입')}
+                <Button type="submit" size="lg" disabled={submitting || (mode === 'signup' && (inviteBlocked || !requiredAgreed))} className="w-full">
+                  {submitting ? '처리 중…' : (mode === 'login' ? '로그인' : '동의하고 회원가입')}
                 </Button>
               </form>
 
-              <p className="text-center text-xs text-slate-400 mt-5">
+              {mode === 'login' && (
+                <p className="text-center text-xs text-slate-400 mt-3">
+                  <button type="button" className="hover:text-blue-600 hover:underline" onClick={() => setForgotOpen(true)}>비밀번호를 잊으셨나요?</button>
+                </p>
+              )}
+
+              <p className="text-center text-xs text-slate-400 mt-4">
                 {mode === 'login'
-                  ? <>계정이 없으신가요? <button type="button" className="text-blue-600 font-medium hover:underline" onClick={() => switchMode('signup')}>회원가입</button> (초대코드 필요)</>
+                  ? <>계정이 없으신가요? <button type="button" className="text-blue-600 font-medium hover:underline" onClick={() => switchMode('signup')}>회원가입</button> (초대코드 또는 초대 링크 필요)</>
                   : <>이미 계정이 있으신가요? <button type="button" className="text-blue-600 font-medium hover:underline" onClick={() => switchMode('login')}>로그인</button></>}
               </p>
             </Card>
-            <p className="text-center text-[11px] text-slate-400 mt-4">초대코드는 팀 관리자에게 문의하세요.</p>
+            <p className="text-center text-[11px] text-slate-400 mt-4">초대코드·초대 링크는 팀 관리자에게 문의하세요.</p>
+            {forgotOpen && <ForgotPasswordModal initialEmail={email} onClose={() => setForgotOpen(false)} />}
           </div>
         </div>
       );
@@ -12379,6 +13187,7 @@
       const [shareRoute] = useState(() => parseShareRoute());
       const [status, setStatus] = useState('checking'); // checking | guest | authed | demo
       const [user, setUser] = useState(null);
+      const [mustChangePw, setMustChangePw] = useState(false); // (v31) 임시 비밀번호 로그인 → 변경 강제
       const statusRef = useRef('checking');
       useEffect(() => { statusRef.current = status; }, [status]);
 
@@ -12399,6 +13208,7 @@
         try {
           const data = await api.authMe(); // 토큰 있으면 Bearer 부착; 없으면 서버가 401
           setUser(data.user || null);
+          setMustChangePw(!!(data.user && data.user.must_change_password)); // (v31) 새로고침해도 유지
           setStatus('authed');
         } catch (e) {
           if (e && e.status) {
@@ -12414,9 +13224,10 @@
       }, []);
       useEffect(() => { boot(); }, [boot]);
 
-      const handleAuthed = useCallback((u, token) => {
+      const handleAuthed = useCallback((u, token, mustChange) => {
         setToken(token);
         setUser(u || null);
+        setMustChangePw(!!(mustChange || (u && u.must_change_password))); // (v31)
         // v25: 로그인 직후엔 항상 개인 대시보드(내 업무)로 랜딩
         try { localStorage.setItem(TAB_KEY, 'my'); } catch (e) {}
         setStatus('authed');
@@ -12425,6 +13236,7 @@
       const handleLogout = useCallback(() => {
         clearToken();
         setUser(null);
+        setMustChangePw(false);
         setStatus('guest');
       }, []);
 
@@ -12445,7 +13257,15 @@
         );
       }
       if (status === 'guest') return <AuthScreen onAuthed={handleAuthed} />;
-      return <App authUser={user} demoMode={status === 'demo'} onLogout={handleLogout} />;
+      return (
+        <>
+          <App authUser={user} demoMode={status === 'demo'} onLogout={handleLogout} />
+          {/* (v31) 임시 비밀번호로 들어온 경우 — 새 비밀번호를 설정할 때까지 덮어놓는다 */}
+          {mustChangePw && status === 'authed' && (
+            <ChangePasswordModal forced onDone={() => setMustChangePw(false)} onClose={() => {}} />
+          )}
+        </>
+      );
     }
 
     // ========================================

@@ -1139,6 +1139,59 @@ async function initDB() {
   // admin 은 자동 인증(상태가 none 인 행만 → 멱등, pending/rejected 로 바꾼 경우는 존중)
   await pool.query(`UPDATE interior_users SET approval_status='approved', approved_at=now() WHERE role='admin' AND approval_status='none'`);
 
+  // ====================================================================
+  // (v31) 계정 보안 — 비밀번호 재설정 · 초대 링크 · 약관 동의 · 이메일 본인확인
+  //   전부 ADD COLUMN / CREATE TABLE IF NOT EXISTS → v1~v30 데이터 100% 보존, 멱등.
+  //   기존 사용자(약관 동의 이력 없음)는 agreed_terms_at NULL 로 남고 로그인은 그대로 가능하다
+  //   (소급 동의 강제는 하지 않음 — 신규 가입만 필수).
+  // ====================================================================
+  // (v31-1) 비밀번호 재설정: 임시 비밀번호 발급 → must_change_password=true → 로그인 직후 변경 강제
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS password_reset_at TIMESTAMPTZ`); // 재발급 시각(스로틀 기준)
+  // (v31-2) 약관 동의 이력 — 필수 2종(이용약관·개인정보) + 만 14세 + 선택(알림/마케팅 수신)
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS agreed_terms_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS agreed_privacy_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS agreed_age14 BOOLEAN NOT NULL DEFAULT false`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS agreed_marketing BOOLEAN NOT NULL DEFAULT false`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS agreed_marketing_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS terms_version TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`); // 본인확인(이메일 코드) 완료 시각
+  // (v31-3) 초대 링크 — 팀 초대코드(변하지 않는 공용 코드)와 별개로, 1회성/기한부 링크 발급
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_invites (
+      id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id     BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      token       TEXT NOT NULL UNIQUE,
+      email       TEXT NOT NULL DEFAULT '',   -- 지정하면 그 이메일로만 가입 가능(빈값=누구나)
+      note        TEXT NOT NULL DEFAULT '',   -- 관리용 메모(예: "타일 김반장")
+      role        TEXT NOT NULL DEFAULT 'member',
+      max_uses    INT NOT NULL DEFAULT 1 CHECK (max_uses >= 1),
+      used_count  INT NOT NULL DEFAULT 0 CHECK (used_count >= 0),
+      expires_at  TIMESTAMPTZ,
+      revoked     BOOLEAN NOT NULL DEFAULT false,
+      created_by  BIGINT REFERENCES interior_users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      last_used_at TIMESTAMPTZ
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_invites_team ON interior_invites (team_id, created_at DESC);');
+  // (v31-4) 이메일 본인확인 코드 — 6자리, 해시 저장, 10분 유효, 5회 오입력 시 폐기
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_email_codes (
+      id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      email       TEXT NOT NULL,
+      code_hash   TEXT NOT NULL,
+      purpose     TEXT NOT NULL DEFAULT 'signup',
+      attempts    INT NOT NULL DEFAULT 0,
+      verified_at TIMESTAMPTZ,
+      expires_at  TIMESTAMPTZ NOT NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_email_codes_email ON interior_email_codes (email, created_at DESC);');
+  // 만료 7일 지난 코드 정리(부팅 시 1회, best-effort)
+  await pool.query(`DELETE FROM interior_email_codes WHERE expires_at < now() - interval '7 days'`).catch(() => {});
+
   // (v25) 매뉴얼 시드 — 전체 0건일 때만 노션 43건을 가장 오래된 팀에 적재
   await seedManualsIfEmpty();
 
@@ -1284,6 +1337,8 @@ function rowToUser(row) {
     team_id: Number(row.team_id),
     team_name: row.team_name == null ? null : row.team_name,
     role: row.role || 'member',
+    // (v31) 임시 비밀번호 상태 — 조회된 행에 컬럼이 없으면(구 쿼리) undefined 대신 false.
+    must_change_password: !!row.must_change_password,
   };
 }
 
@@ -1300,6 +1355,17 @@ app.use('/api', (req, res, next) => {
   const pathOnly = (req.originalUrl || '').split('?')[0];
   if (req.method === 'POST' && (pathOnly === '/api/auth/login' || pathOnly === '/api/auth/signup')) {
     return next(); // 비보호 (로그인/회원가입)
+  }
+  // (v31) 로그인 전에 호출해야 하는 공개 엔드포인트 — 비번찾기 · 이메일 본인확인 · 초대링크 확인
+  if (req.method === 'POST' && (
+    pathOnly === '/api/auth/forgot' ||
+    pathOnly === '/api/auth/verify/send' ||
+    pathOnly === '/api/auth/verify/check'
+  )) {
+    return next();
+  }
+  if (req.method === 'GET' && /^\/api\/auth\/invite\/[^/]+$/.test(pathOnly)) {
+    return next(); // 초대 링크 유효성 확인(팀명만 반환, 토큰 자체가 자격증명)
   }
   // (v17) 공유 열람(외부 고객용)은 무인증 공개 — 정확히 /api/share/* 경로만 예외. 다른 /api/* 는 그대로 401.
   if (pathOnly === '/api/share' || pathOnly.startsWith('/api/share/')) {
@@ -1379,6 +1445,143 @@ async function requireAdmin(req, res, next) {
   }
 }
 
+// ========================================
+// (v31) 메일 발송 — 임시 비밀번호 / 본인확인 코드 / 초대 링크
+//   백엔드 3종(설정된 것을 순서대로 사용):
+//     1) RESEND_API_KEY  → Resend HTTP API (의존성 0, Vercel 서버리스에 가장 적합) — 권장
+//     2) SMTP_HOST/PORT/USER/PASS → nodemailer (선택 설치: npm i nodemailer)
+//     3) 미설정 → 발송하지 않고 서버 콘솔에만 출력(로컬 개발/E2E용). 호출부는 sent:false 로 안내.
+//   ⚠️ 어떤 경우에도 임시 비밀번호/인증코드를 HTTP 응답으로 돌려주지 않는다(계정 탈취 방지).
+//      단 MAIL_DEV_ECHO=1 이고 NODE_ENV!=='production' 일 때만 로컬 테스트용으로 노출.
+// ========================================
+const MAIL_FROM = (process.env.MAIL_FROM || '안도 현장 <onboarding@resend.dev>').trim();
+const APP_PUBLIC_URL = (process.env.APP_PUBLIC_URL || '').trim().replace(/\/+$/, '');
+function mailBackend() {
+  // MAIL_TRANSPORT=console → 실제로 보내지 않고 서버 콘솔에만 출력하되 "발송 성공"으로 취급.
+  //   로컬 개발·E2E에서 본인확인/임시비밀번호 전 구간을 그대로 돌려보기 위한 모드.
+  //   ⚠️ production 에서는 무시한다 — 실수로 켜두면 임시 비밀번호는 바뀌는데 메일은 안 가서 계정이 잠긴다.
+  if ((process.env.MAIL_TRANSPORT || '').trim() === 'console' && process.env.NODE_ENV !== 'production') return 'console';
+  if ((process.env.RESEND_API_KEY || '').trim()) return 'resend';
+  if ((process.env.SMTP_HOST || '').trim()) return 'smtp';
+  return 'none';
+}
+const MAIL_ENABLED = () => mailBackend() !== 'none';
+// 개발 편의: 메일 미설정 로컬에서만 임시 비번/코드를 응답에 실어 보낸다(프로덕션은 무조건 차단).
+const MAIL_DEV_ECHO = () =>
+  process.env.NODE_ENV !== 'production' && String(process.env.MAIL_DEV_ECHO || '') === '1';
+
+// 앱 기본 주소 — 초대 링크/메일 본문에 쓸 절대 URL. env 우선, 없으면 요청 헤더에서 추론.
+function appBaseUrl(req) {
+  if (APP_PUBLIC_URL) return APP_PUBLIC_URL;
+  const proto = (req && (req.headers['x-forwarded-proto'] || req.protocol)) || 'http';
+  const host = (req && (req.headers['x-forwarded-host'] || req.headers.host)) || `localhost:${PORT}`;
+  return `${String(proto).split(',')[0]}://${host}`;
+}
+
+async function sendMail({ to, subject, html, text }) {
+  const backend = mailBackend();
+  if (backend === 'none') {
+    console.log(`📭 [MAIL:미설정] to=${to} subject=${subject}\n${text || ''}`);
+    return { sent: false, backend };
+  }
+  if (backend === 'console') {
+    console.log(`📨 [MAIL:console] to=${to} subject=${subject}\n${text || ''}`);
+    return { sent: true, backend };
+  }
+  try {
+    if (backend === 'resend') {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${(process.env.RESEND_API_KEY || '').trim()}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, html, text }),
+      });
+      if (!r.ok) {
+        const body = await r.text().catch(() => '');
+        throw new Error(`Resend ${r.status} ${body.slice(0, 300)}`);
+      }
+      return { sent: true, backend };
+    }
+    // SMTP (nodemailer 는 선택 의존성 — 미설치면 명확한 오류)
+    let nodemailer;
+    try { nodemailer = require('nodemailer'); }
+    catch (_) { throw new Error('SMTP_HOST 가 설정됐지만 nodemailer 가 설치되지 않았습니다. (npm i nodemailer)'); }
+    const transport = nodemailer.createTransport({
+      host: (process.env.SMTP_HOST || '').trim(),
+      port: Number((process.env.SMTP_PORT || '587').trim()),
+      secure: String(process.env.SMTP_SECURE || '') === '1',
+      auth: (process.env.SMTP_USER || '').trim()
+        ? { user: (process.env.SMTP_USER || '').trim(), pass: (process.env.SMTP_PASS || '').trim() }
+        : undefined,
+    });
+    await transport.sendMail({ from: MAIL_FROM, to, subject, html, text });
+    return { sent: true, backend };
+  } catch (err) {
+    console.error('✉️  메일 발송 실패:', err.message);
+    return { sent: false, backend, error: err.message };
+  }
+}
+
+// 메일 공통 레이아웃 — 인라인 스타일만 사용(메일 클라이언트 CSS 제약).
+function mailLayout(title, bodyHtml, footNote) {
+  return `<div style="margin:0;padding:24px;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div style="padding:20px 24px;background:#0f172a;color:#fff;">
+      <div style="font-size:18px;font-weight:800;">🏗️ 안도 현장</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:2px;">인테리어 현장 비용·일정·견적 관리</div>
+    </div>
+    <div style="padding:24px;color:#334155;font-size:14px;line-height:1.7;">
+      <h1 style="margin:0 0 14px;font-size:17px;color:#0f172a;">${title}</h1>
+      ${bodyHtml}
+    </div>
+    <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:11px;line-height:1.6;">
+      ${footNote || '본인이 요청하지 않았다면 이 메일을 무시하세요.'}<br />ⓒ 안도공간 (ANDO SPACE)
+    </div>
+  </div>
+</div>`;
+}
+
+// 임시 비밀번호 — 혼동 문자(0/O/1/l/I) 제외, 10자.
+function generateTempPassword() {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const buf = crypto.randomBytes(10);
+  let out = '';
+  for (let i = 0; i < 10; i++) out += alphabet[buf[i] % alphabet.length];
+  return out;
+}
+const sha256 = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || ''));
+
+// (v31) 약관 버전 — 약관 본문(index.html LEGAL) 을 고칠 때 함께 올린다. 가입 시점 버전을 users 에 기록.
+const TERMS_VERSION = '2026-07-23';
+
+// (v31) 이메일 본인확인 → 단기 JWT(15분). 가입 요청에 실어 보내면 서버가 "이 이메일은 본인 확인됨"으로 인정.
+function signSignupVerifyToken(email) {
+  return jwt.sign({ v: 'email', email }, JWT_SECRET, { algorithm: 'HS256', expiresIn: '15m' });
+}
+function verifySignupToken(token) {
+  if (!token) return null;
+  try {
+    const p = jwt.verify(token, JWT_SECRET);
+    return p && p.v === 'email' && p.email ? p : null;
+  } catch (_) { return null; }
+}
+
+// (v31) 초대 링크 유효성 — 사용 불가 사유 문자열, 유효하면 null.
+function inviteInvalidReason(row, email) {
+  if (!row) return '초대 링크가 올바르지 않습니다.';
+  if (row.revoked) return '이 초대 링크는 취소되었습니다. 관리자에게 새 링크를 요청하세요.';
+  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return '초대 링크의 유효기간이 지났습니다. 관리자에게 새 링크를 요청하세요.';
+  if (Number(row.used_count) >= Number(row.max_uses)) return '이미 사용된 초대 링크입니다. 관리자에게 새 링크를 요청하세요.';
+  if (row.email && email && String(row.email).toLowerCase() !== String(email).toLowerCase()) {
+    return `이 초대 링크는 ${row.email} 전용입니다.`;
+  }
+  return null;
+}
+function inviteUrl(req, token) { return `${appBaseUrl(req)}/#/join/${token}`; }
+
 // ----------------------------------------
 // 인증 라우트 (signup/login 은 비보호, me 는 보호)
 // ----------------------------------------
@@ -1389,6 +1592,9 @@ app.post('/api/auth/signup', async (req, res) => {
     const password = typeof b.password === 'string' ? b.password : '';
     const name = typeof b.name === 'string' ? b.name.trim() : '';
     const inviteCode = typeof b.invite_code === 'string' ? b.invite_code.trim() : '';
+    const inviteToken = typeof b.invite_token === 'string' ? b.invite_token.trim() : ''; // (v31) 초대 링크
+    const verifyToken = typeof b.verify_token === 'string' ? b.verify_token.trim() : ''; // (v31) 이메일 본인확인
+    const agree = b.agreements && typeof b.agreements === 'object' ? b.agreements : {};
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ success: false, message: '올바른 이메일을 입력해 주세요.' });
@@ -1397,12 +1603,31 @@ app.post('/api/auth/signup', async (req, res) => {
       return res.status(400).json({ success: false, message: '비밀번호는 6자 이상이어야 합니다.' });
     }
 
-    // 초대코드 → 팀 조회 (없으면 400)
-    const teamQ = await pool.query('SELECT id, name FROM interior_teams WHERE invite_code=$1', [inviteCode]);
-    if (teamQ.rows.length === 0) {
-      return res.status(400).json({ success: false, message: '초대코드가 올바르지 않습니다.' });
+    // (v31) 약관 동의 — 필수 3종. 프론트 체크박스가 우회돼도 서버에서 막는다.
+    if (!agree.age14 || !agree.terms || !agree.privacy) {
+      return res.status(400).json({ success: false, message: '필수 약관에 모두 동의해야 가입할 수 있습니다.' });
     }
-    const team = teamQ.rows[0];
+
+    // 팀 결정 — ① 초대 링크(토큰) 우선, ② 없으면 기존 초대코드
+    //   본인확인보다 먼저 검사한다: 링크가 남의 것/만료면 인증코드부터 받으라고 안내하는 건 헛수고.
+    let team = null;
+    let invite = null;
+    if (inviteToken) {
+      const q = await pool.query(
+        `SELECT i.*, t.name AS team_name FROM interior_invites i JOIN interior_teams t ON t.id = i.team_id WHERE i.token=$1`,
+        [inviteToken]
+      );
+      const reason = q.rows.length === 0 ? '초대 링크가 올바르지 않습니다.' : inviteInvalidReason(q.rows[0], email);
+      if (reason) return res.status(400).json({ success: false, message: reason });
+      invite = q.rows[0];
+      team = { id: invite.team_id, name: invite.team_name };
+    } else {
+      const teamQ = await pool.query('SELECT id, name FROM interior_teams WHERE invite_code=$1', [inviteCode]);
+      if (teamQ.rows.length === 0) {
+        return res.status(400).json({ success: false, message: '초대코드가 올바르지 않습니다.' });
+      }
+      team = teamQ.rows[0];
+    }
 
     // 이메일 중복 사전 체크(409) + INSERT UNIQUE 위반도 409 로 동일 처리(경합 방어)
     const dup = await pool.query('SELECT 1 FROM interior_users WHERE email=$1', [email]);
@@ -1410,17 +1635,37 @@ app.post('/api/auth/signup', async (req, res) => {
       return res.status(409).json({ success: false, message: '이미 가입된 이메일입니다.' });
     }
 
+    // (v31) 본인 확인 — 메일 발송이 설정된 환경에서만 필수(미설정 로컬/데모는 건너뜀).
+    let emailVerifiedAt = null;
+    if (MAIL_ENABLED()) {
+      const v = verifySignupToken(verifyToken);
+      if (!v || v.email !== email) {
+        return res.status(400).json({ success: false, message: '이메일 본인 확인이 필요합니다. 인증코드를 받아 확인해 주세요.', code: 'VERIFY_REQUIRED' });
+      }
+      emailVerifiedAt = new Date();
+    }
+
     const hash = await bcrypt.hash(password, 10);
     // (v21) 첫 가입자 = 관리자: 그 팀 유저 수가 0이면 admin, 아니면 member.
     const cnt = await pool.query('SELECT COUNT(*)::int AS n FROM interior_users WHERE team_id=$1', [team.id]);
-    const role = cnt.rows[0].n === 0 ? 'admin' : 'member';
+    let role = cnt.rows[0].n === 0 ? 'admin' : 'member';
+    if (invite && invite.role === 'admin') role = 'admin'; // 관리자가 명시적으로 admin 초대한 경우
+    const now = new Date();
     // (v28) 첫 가입자(admin)는 자동 인증 — 이후 [나의 정보] 저장 시 담당자 마스터에 자동 등록됨.
     const { rows } = await pool.query(
-      `INSERT INTO interior_users (email, password_hash, name, team_id, role, approval_status, approved_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO interior_users
+         (email, password_hash, name, team_id, role, approval_status, approved_at,
+          agreed_terms_at, agreed_privacy_at, agreed_age14, agreed_marketing, agreed_marketing_at,
+          terms_version, email_verified_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING id, email, name, team_id, role`,
-      [email, hash, name, team.id, role, role === 'admin' ? 'approved' : 'none', role === 'admin' ? new Date() : null]
+      [email, hash, name, team.id, role, role === 'admin' ? 'approved' : 'none', role === 'admin' ? now : null,
+        now, now, true, !!agree.marketing, agree.marketing ? now : null, TERMS_VERSION, emailVerifiedAt]
     );
+    // 초대 링크 사용 처리 (used_count 증가 — max_uses 도달 시 이후 가입 차단)
+    if (invite) {
+      await pool.query('UPDATE interior_invites SET used_count = used_count + 1, last_used_at = now() WHERE id=$1', [invite.id]);
+    }
     const userRow = { ...rows[0], team_name: team.name };
     const token = signToken(userRow);
     res.status(201).json({ token, user: rowToUser(userRow) });
@@ -1440,7 +1685,7 @@ app.post('/api/auth/login', async (req, res) => {
     const password = typeof b.password === 'string' ? b.password : '';
 
     const { rows } = await pool.query(
-      `SELECT u.id, u.email, u.password_hash, u.name, u.team_id, u.role, t.name AS team_name
+      `SELECT u.id, u.email, u.password_hash, u.name, u.team_id, u.role, u.must_change_password, t.name AS team_name
          FROM interior_users u JOIN interior_teams t ON t.id = u.team_id
         WHERE u.email=$1`,
       [email]
@@ -1452,7 +1697,8 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, message: '이메일 또는 비밀번호가 올바르지 않습니다.' });
     }
     const token = signToken(row);
-    res.json({ token, user: rowToUser(row) });
+    // (v31) 임시 비밀번호로 로그인한 경우 → 앱이 비밀번호 변경 모달을 강제로 띄운다.
+    res.json({ token, user: rowToUser(row), must_change_password: !!row.must_change_password });
   } catch (err) {
     console.error('POST /api/auth/login 오류:', err.message);
     res.status(500).json({ success: false, message: '로그인에 실패했습니다.' });
@@ -1462,7 +1708,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.id, u.email, u.name, u.team_id, u.role, t.name AS team_name
+      `SELECT u.id, u.email, u.name, u.team_id, u.role, u.must_change_password, t.name AS team_name
          FROM interior_users u JOIN interior_teams t ON t.id = u.team_id
         WHERE u.id=$1`,
       [req.userId]
@@ -1472,6 +1718,310 @@ app.get('/api/auth/me', async (req, res) => {
   } catch (err) {
     console.error('GET /api/auth/me 오류:', err.message);
     res.status(500).json({ success: false, message: '사용자 정보를 불러오지 못했습니다.' });
+  }
+});
+
+// ========================================
+// (v31) 비밀번호 찾기 · 변경
+//   POST /api/auth/forgot          {email}                         (비보호) → 임시 비밀번호 메일 발송
+//   POST /api/auth/change-password {current_password,new_password}  (보호)   → 변경 + 강제변경 플래그 해제
+// ========================================
+
+// 계정 존재 여부를 노출하지 않기 위해 성공/실패와 무관하게 동일한 200 응답을 준다.
+app.post('/api/auth/forgot', async (req, res) => {
+  const genericOk = (extra) => res.json({
+    success: true,
+    message: '가입된 이메일이라면 임시 비밀번호를 보냈습니다. 메일함(스팸함 포함)을 확인해 주세요.',
+    mail_configured: MAIL_ENABLED(),
+    ...(extra || {}),
+  });
+  try {
+    const email = typeof (req.body || {}).email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!isEmail(email)) return res.status(400).json({ success: false, message: '올바른 이메일을 입력해 주세요.' });
+
+    const { rows } = await pool.query(
+      'SELECT id, email, name, password_reset_at FROM interior_users WHERE email=$1', [email]
+    );
+    const user = rows[0];
+    if (!user) return genericOk(); // 미가입 이메일도 동일 응답(계정 열거 방지)
+
+    // 스로틀: 3분에 1회. 남용/메일폭탄 방지 — 역시 동일 응답으로 노출하지 않는다.
+    if (user.password_reset_at && Date.now() - new Date(user.password_reset_at).getTime() < 3 * 60 * 1000) {
+      return genericOk();
+    }
+    if (!MAIL_ENABLED()) {
+      // 메일 미설정 = 발송 불가. 임시 비밀번호를 만들지 않고(계정을 잠그면 안 되므로) 안내만.
+      console.warn('⚠️  비밀번호 찾기 요청이 있었지만 메일 발송이 설정돼 있지 않습니다. (RESEND_API_KEY / SMTP_HOST)');
+      return res.status(503).json({
+        success: false, mail_configured: false,
+        message: '이메일 발송이 아직 설정되지 않았습니다. 관리자에게 비밀번호 재설정을 요청해 주세요.',
+      });
+    }
+
+    const temp = generateTempPassword();
+    const hash = await bcrypt.hash(temp, 10);
+    await pool.query(
+      'UPDATE interior_users SET password_hash=$1, must_change_password=true, password_reset_at=now() WHERE id=$2',
+      [hash, user.id]
+    );
+    const base = appBaseUrl(req);
+    const r = await sendMail({
+      to: email,
+      subject: '[안도 현장] 임시 비밀번호 안내',
+      text: `임시 비밀번호: ${temp}\n\n${base} 에서 이 비밀번호로 로그인한 뒤, 바로 새 비밀번호로 변경해 주세요.`,
+      html: mailLayout(
+        '임시 비밀번호를 발급했습니다',
+        `<p style="margin:0 0 16px;">${user.name ? `<b>${user.name}</b>님, ` : ''}아래 임시 비밀번호로 로그인해 주세요.</p>
+         <div style="margin:0 0 16px;padding:16px;background:#f1f5f9;border-radius:12px;text-align:center;">
+           <div style="font-size:12px;color:#64748b;margin-bottom:6px;">임시 비밀번호</div>
+           <div style="font-size:24px;font-weight:800;letter-spacing:2px;color:#0f172a;font-family:ui-monospace,Menlo,monospace;">${temp}</div>
+         </div>
+         <p style="margin:0 0 16px;">로그인하면 <b>새 비밀번호 설정 화면</b>이 바로 뜹니다. 보안을 위해 반드시 변경해 주세요.</p>
+         <a href="${base}" style="display:inline-block;padding:11px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">로그인하러 가기</a>`,
+        '본인이 요청하지 않았다면 즉시 관리자에게 알려주세요. 이 메일을 받은 시점부터 기존 비밀번호는 사용할 수 없습니다.'
+      ),
+    });
+    if (!r.sent) {
+      console.error('⚠️  임시 비밀번호는 발급됐지만 메일 발송에 실패했습니다:', r.error || '(사유 미상)');
+    }
+    return genericOk(MAIL_DEV_ECHO() ? { dev_temp_password: temp, dev_mail_sent: r.sent } : undefined);
+  } catch (err) {
+    console.error('POST /api/auth/forgot 오류:', err.message);
+    res.status(500).json({ success: false, message: '요청을 처리하지 못했습니다.' });
+  }
+});
+
+app.post('/api/auth/change-password', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const current = typeof b.current_password === 'string' ? b.current_password : '';
+    const next = typeof b.new_password === 'string' ? b.new_password : '';
+    if (next.length < 6) return res.status(400).json({ success: false, message: '새 비밀번호는 6자 이상이어야 합니다.' });
+    if (next === current) return res.status(400).json({ success: false, message: '기존과 다른 비밀번호를 입력해 주세요.' });
+
+    const { rows } = await pool.query('SELECT id, password_hash FROM interior_users WHERE id=$1', [req.userId]);
+    if (rows.length === 0) return res.status(401).json({ error: '인증이 필요합니다' });
+    const ok = await bcrypt.compare(current, rows[0].password_hash);
+    if (!ok) return res.status(400).json({ success: false, message: '현재 비밀번호가 올바르지 않습니다.' });
+
+    const hash = await bcrypt.hash(next, 10);
+    await pool.query('UPDATE interior_users SET password_hash=$1, must_change_password=false WHERE id=$2', [hash, req.userId]);
+    res.json({ success: true, message: '비밀번호를 변경했습니다.' });
+  } catch (err) {
+    console.error('POST /api/auth/change-password 오류:', err.message);
+    res.status(500).json({ success: false, message: '비밀번호 변경에 실패했습니다.' });
+  }
+});
+
+// ========================================
+// (v31) 이메일 본인확인 — 가입 시 6자리 코드
+//   POST /api/auth/verify/send  {email}         → 코드 메일 발송 (10분 유효)
+//   POST /api/auth/verify/check {email, code}   → 성공 시 verify_token(15분) 반환 → signup 에 첨부
+// ========================================
+app.post('/api/auth/verify/send', async (req, res) => {
+  try {
+    const email = typeof (req.body || {}).email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!isEmail(email)) return res.status(400).json({ success: false, message: '올바른 이메일을 입력해 주세요.' });
+    if (!MAIL_ENABLED()) {
+      return res.json({ success: true, skipped: true, mail_configured: false, message: '이메일 발송이 설정되지 않아 본인 확인 없이 가입할 수 있습니다.' });
+    }
+    // 이미 가입된 이메일이면 코드 발송 없이 안내(중복 가입 시도를 미리 차단)
+    const dup = await pool.query('SELECT 1 FROM interior_users WHERE email=$1', [email]);
+    if (dup.rows.length > 0) return res.status(409).json({ success: false, message: '이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용하세요.' });
+
+    // 스로틀: 같은 이메일로 1분에 1회, 1시간 5회
+    const recent = await pool.query(
+      `SELECT COUNT(*)::int AS n, MAX(created_at) AS last FROM interior_email_codes
+        WHERE email=$1 AND purpose='signup' AND created_at > now() - interval '1 hour'`, [email]
+    );
+    const { n, last } = recent.rows[0];
+    if (last && Date.now() - new Date(last).getTime() < 60 * 1000) {
+      return res.status(429).json({ success: false, message: '인증코드는 1분에 한 번만 보낼 수 있습니다. 잠시 후 다시 시도해 주세요.' });
+    }
+    if (n >= 5) return res.status(429).json({ success: false, message: '인증 요청이 너무 많습니다. 1시간 후 다시 시도해 주세요.' });
+
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    await pool.query(
+      `INSERT INTO interior_email_codes (email, code_hash, purpose, expires_at)
+       VALUES ($1,$2,'signup', now() + interval '10 minutes')`,
+      [email, sha256(code)]
+    );
+    const r = await sendMail({
+      to: email,
+      subject: `[안도 현장] 가입 인증코드 ${code}`,
+      text: `가입 인증코드: ${code}\n10분 안에 입력해 주세요.`,
+      html: mailLayout(
+        '이메일 본인 확인',
+        `<p style="margin:0 0 16px;">아래 6자리 인증코드를 가입 화면에 입력해 주세요. <b>10분간</b> 유효합니다.</p>
+         <div style="margin:0 0 16px;padding:18px;background:#f1f5f9;border-radius:12px;text-align:center;">
+           <div style="font-size:30px;font-weight:800;letter-spacing:8px;color:#0f172a;font-family:ui-monospace,Menlo,monospace;">${code}</div>
+         </div>`,
+        '본인이 요청하지 않았다면 이 메일을 무시하세요. 코드가 노출되면 타인이 이 이메일로 가입할 수 있습니다.'
+      ),
+    });
+    if (!r.sent) return res.status(502).json({ success: false, message: '인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요.' });
+    res.json({ success: true, mail_configured: true, message: '인증코드를 보냈습니다. 메일함(스팸함 포함)을 확인해 주세요.', ...(MAIL_DEV_ECHO() ? { dev_code: code } : {}) });
+  } catch (err) {
+    console.error('POST /api/auth/verify/send 오류:', err.message);
+    res.status(500).json({ success: false, message: '인증코드 발송에 실패했습니다.' });
+  }
+});
+
+app.post('/api/auth/verify/check', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
+    const code = typeof b.code === 'string' ? b.code.trim() : '';
+    if (!isEmail(email) || !/^\d{6}$/.test(code)) {
+      return res.status(400).json({ success: false, message: '6자리 인증코드를 입력해 주세요.' });
+    }
+    const { rows } = await pool.query(
+      `SELECT id, code_hash, attempts, expires_at FROM interior_email_codes
+        WHERE email=$1 AND purpose='signup' AND verified_at IS NULL
+        ORDER BY created_at DESC LIMIT 1`, [email]
+    );
+    const row = rows[0];
+    if (!row) return res.status(400).json({ success: false, message: '인증코드를 먼저 요청해 주세요.' });
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: '인증코드가 만료되었습니다. 다시 요청해 주세요.' });
+    }
+    if (Number(row.attempts) >= 5) {
+      return res.status(429).json({ success: false, message: '입력 횟수를 초과했습니다. 인증코드를 다시 요청해 주세요.' });
+    }
+    if (row.code_hash !== sha256(code)) {
+      await pool.query('UPDATE interior_email_codes SET attempts = attempts + 1 WHERE id=$1', [row.id]);
+      return res.status(400).json({ success: false, message: '인증코드가 일치하지 않습니다.' });
+    }
+    await pool.query('UPDATE interior_email_codes SET verified_at=now() WHERE id=$1', [row.id]);
+    res.json({ success: true, verify_token: signSignupVerifyToken(email), message: '본인 확인이 완료되었습니다.' });
+  } catch (err) {
+    console.error('POST /api/auth/verify/check 오류:', err.message);
+    res.status(500).json({ success: false, message: '본인 확인에 실패했습니다.' });
+  }
+});
+
+// ========================================
+// (v31) 초대 링크 — 관리자가 발급한 링크로 초대코드 없이 가입
+//   GET    /api/auth/invite/:token  (비보호) → 링크 유효성 + 팀명/지정이메일
+//   GET    /api/invites             (admin)  → 목록
+//   POST   /api/invites             (admin)  → 발급 {email?, note?, days?, max_uses?, role?, send_mail?}
+//   DELETE /api/invites/:id         (admin)  → 취소(revoke)
+// ========================================
+app.get('/api/auth/invite/:token', async (req, res) => {
+  try {
+    const token = String(req.params.token || '').trim();
+    const { rows } = await pool.query(
+      `SELECT i.*, t.name AS team_name FROM interior_invites i JOIN interior_teams t ON t.id = i.team_id WHERE i.token=$1`,
+      [token]
+    );
+    const row = rows[0];
+    const reason = inviteInvalidReason(row, '');
+    if (reason) return res.json({ valid: false, message: reason });
+    res.json({
+      valid: true, team_name: row.team_name, email: row.email || '',
+      expires_at: row.expires_at ? new Date(row.expires_at).toISOString() : null,
+      mail_configured: MAIL_ENABLED(),
+    });
+  } catch (err) {
+    console.error('GET /api/auth/invite/:token 오류:', err.message);
+    res.status(500).json({ valid: false, message: '초대 링크를 확인하지 못했습니다.' });
+  }
+});
+
+function rowToInvite(row, req) {
+  const expired = !!(row.expires_at && new Date(row.expires_at).getTime() < Date.now());
+  const usedUp = Number(row.used_count) >= Number(row.max_uses);
+  return {
+    id: String(row.id),
+    token: row.token,
+    url: inviteUrl(req, row.token),
+    email: row.email || '',
+    note: row.note || '',
+    role: row.role || 'member',
+    max_uses: Number(row.max_uses),
+    used_count: Number(row.used_count),
+    expires_at: row.expires_at ? new Date(row.expires_at).toISOString() : null,
+    revoked: !!row.revoked,
+    status: row.revoked ? '취소됨' : expired ? '만료' : usedUp ? '사용완료' : '사용가능',
+    created_by_name: row.created_by_name || '',
+    created_at: row.created_at,
+    last_used_at: row.last_used_at,
+  };
+}
+
+app.get('/api/invites', requireAdmin, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT i.*, u.name AS created_by_name FROM interior_invites i
+         LEFT JOIN interior_users u ON u.id = i.created_by
+        WHERE i.team_id=$1 ORDER BY i.created_at DESC LIMIT 200`,
+      [req.teamId]
+    );
+    res.json(rows.map((r) => rowToInvite(r, req)));
+  } catch (err) {
+    console.error('GET /api/invites 오류:', err.message);
+    res.status(500).json({ success: false, message: '초대 링크 목록을 불러오지 못했습니다.' });
+  }
+});
+
+app.post('/api/invites', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const email = typeof b.email === 'string' && b.email.trim() ? b.email.trim().toLowerCase() : '';
+    if (email && !isEmail(email)) return res.status(400).json({ success: false, message: '올바른 이메일을 입력해 주세요.' });
+    const note = typeof b.note === 'string' ? b.note.trim().slice(0, 200) : '';
+    const role = b.role === 'admin' ? 'admin' : 'member';
+    const days = Math.min(Math.max(Number(b.days) || 7, 1), 90);
+    const maxUses = Math.min(Math.max(Number(b.max_uses) || 1, 1), 100);
+    const token = crypto.randomBytes(18).toString('base64url'); // 24자, URL 안전
+
+    const { rows } = await pool.query(
+      `INSERT INTO interior_invites (team_id, token, email, note, role, max_uses, expires_at, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6, now() + ($7 || ' days')::interval, $8)
+       RETURNING *`,
+      [req.teamId, token, email, note, role, maxUses, String(days), req.userId]
+    );
+    const invite = rowToInvite(rows[0], req);
+
+    // 이메일 지정 + 발송 요청 시 초대 메일까지 (실패해도 링크는 유효 → 200 유지)
+    let mailSent = false;
+    if (email && b.send_mail && MAIL_ENABLED()) {
+      const team = await pool.query('SELECT name FROM interior_teams WHERE id=$1', [req.teamId]);
+      const teamName = team.rows.length ? team.rows[0].name : '팀';
+      const r = await sendMail({
+        to: email,
+        subject: `[안도 현장] ${teamName} 팀에 초대되었습니다`,
+        text: `아래 링크로 가입해 주세요 (${days}일간 유효)\n${invite.url}`,
+        html: mailLayout(
+          `${teamName} 팀 초대`,
+          `<p style="margin:0 0 16px;">아래 버튼을 눌러 가입하면 <b>${teamName}</b> 팀의 현장·일정·견적을 함께 관리할 수 있습니다. 초대코드는 따로 입력하지 않아도 됩니다.</p>
+           ${note ? `<p style="margin:0 0 16px;padding:10px 14px;background:#f8fafc;border-left:3px solid #cbd5e1;color:#64748b;font-size:13px;">${note}</p>` : ''}
+           <a href="${invite.url}" style="display:inline-block;padding:11px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:14px;">가입하고 팀 참여하기</a>
+           <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;">버튼이 안 열리면 이 주소를 복사해 브라우저에 붙여넣으세요:<br />${invite.url}</p>`,
+          `이 초대 링크는 ${days}일 후 만료됩니다.`
+        ),
+      });
+      mailSent = r.sent;
+    }
+    res.status(201).json({ ...invite, mail_sent: mailSent });
+  } catch (err) {
+    console.error('POST /api/invites 오류:', err.message);
+    res.status(500).json({ success: false, message: '초대 링크 발급에 실패했습니다.' });
+  }
+});
+
+app.delete('/api/invites/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 id 형식입니다.' });
+    const { rowCount } = await pool.query(
+      'UPDATE interior_invites SET revoked=true WHERE id=$1 AND team_id=$2', [id, req.teamId]
+    );
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 초대 링크를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/invites/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '초대 링크 취소에 실패했습니다.' });
   }
 });
 
@@ -7365,9 +7915,17 @@ app.get('/api/sites/:id/labor', async (req, res) => {
          FROM interior_labor_logs l LEFT JOIN interior_vendors v ON v.id = l.vendor_id
          WHERE l.site_id=$1 AND l.work_date=$2 ORDER BY l.id ASC`, [id, date]
       ),
+      // (v31) 다일(多日) 일정은 start~end 사이 '모든 날'에 잡힌다 (start_date<=날짜<=end_date 겹침 조건).
+      //   예: 타일 7/21~7/23 → 21·22·23 세 날 모두 이 현장의 출력인원 행으로 뜬다.
+      //   kind: '공사' + '지원' 둘 다 인력이 투입되므로 함께 노출('미팅'만 제외).
+      //   day_no/day_total = 그 일정의 며칠째인지(주말 구분 없이 달력일 기준) — UI 배지용.
       pool.query(
-        `SELECT id, title, process, vendor, to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, status
-         FROM interior_schedule WHERE site_id=$1 AND kind='공사' AND start_date<=$2 AND end_date>=$2
+        `SELECT id, title, process, vendor, kind,
+                to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, status,
+                ($2::date - start_date) + 1        AS day_no,
+                (end_date - start_date) + 1        AS day_total
+         FROM interior_schedule
+         WHERE site_id=$1 AND kind IN ('공사','지원') AND start_date<=$2::date AND end_date>=$2::date
          ORDER BY sort_order ASC, id ASC`, [id, date]
       ),
     ]);
@@ -7375,7 +7933,11 @@ app.get('/api/sites/:id/labor', async (req, res) => {
       date,
       logs: logs.rows.map(rowToLabor),
       // (v30) vendor = 일정에 지정한 협력업체명 → 출력인원 시공팀 자동 프리필용
-      schedules: scheds.rows.map((s) => ({ id: String(s.id), title: s.title, process: s.process || '', vendor: s.vendor || '', start_date: s.start_date, end_date: s.end_date, status: s.status })),
+      schedules: scheds.rows.map((s) => ({
+        id: String(s.id), title: s.title, process: s.process || '', vendor: s.vendor || '', kind: s.kind || '공사',
+        start_date: s.start_date, end_date: s.end_date, status: s.status,
+        day_no: Number(s.day_no), day_total: Number(s.day_total), // (v31) "2일차 / 총 3일"
+      })),
     });
   } catch (err) {
     console.error('GET /api/sites/:id/labor 오류:', err.message);
@@ -8429,7 +8991,8 @@ app.post('/api/admin/approvals/:userId/reject', requireAdmin, async (req, res) =
 // ── (v28) 💬 AI 채팅 — 팀 데이터 Q&A (gpt-4o + read-only run_sql 도구 루프) ──
 
 // 민감 컬럼/시스템 카탈로그 하드 차단(프롬프트 지시의 방어선). READ ONLY 트랜잭션이 최종 안전망.
-const CHAT_SQL_FORBIDDEN = /password_hash|share_password|share_token|client_share|connected_id|invite_code|interior_teams|information_schema|pg_sleep|pg_read|pg_stat_file|pg_ls_dir|dblink|pg_largeobject/i;
+// (v31) 초대 토큰·인증코드 테이블도 차단 대상에 추가 — 토큰이 곧 가입 자격증명이므로.
+const CHAT_SQL_FORBIDDEN = /password_hash|share_password|share_token|client_share|connected_id|invite_code|interior_teams|interior_invites|interior_email_codes|information_schema|pg_sleep|pg_read|pg_stat_file|pg_ls_dir|dblink|pg_largeobject/i;
 
 function chatSqlCheck(sql) {
   let s = String(sql || '').trim();
