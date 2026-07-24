@@ -9726,7 +9726,6 @@
                               {r.day_no}일차 / 총 {r.day_total}일
                             </span>
                           )}
-                          {r.kind === '지원' && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">지원</span>}
                           {r.done && <Badge color="bg-green-500">완료됨</Badge>}
                           {r.id && !r.done && <span className="text-[10px] text-slate-400">저장됨</span>}
                         </div>
@@ -10531,10 +10530,10 @@
       );
     }
 
-    // 나의 정보 모달 — 사진/캐릭터 업로드 + 이름/직함/연락처/소개 + 직원 인증 요청
+    // 나의 정보 모달 — 사진/캐릭터 업로드 + 이름/부서/직급/직함/담당분야/연락처/비상연락처/소개 + 비밀번호 변경 + 직원 인증 요청
     function ProfileModal({ isOpen, onClose, profile, onChanged }) {
       const toast = useToast();
-      const [form, setForm] = useState({ name: '', job_title: '', phone: '', bio: '' });
+      const [form, setForm] = useState({ name: '', job_title: '', department: '', position: '', specialty: '', phone: '', emergency_contact: '', bio: '' });
       const [saving, setSaving] = useState(false);
       const [requesting, setRequesting] = useState(false);
       const [uploading, setUploading] = useState(false);
@@ -10542,12 +10541,22 @@
       const fileRef = useRef(null);
       useEffect(() => {
         if (isOpen && profile) {
-          setForm({ name: profile.name || '', job_title: profile.job_title || '', phone: profile.phone || '', bio: profile.bio || '' });
+          setForm({
+            name: profile.name || '', job_title: profile.job_title || '',
+            department: profile.department || '', position: profile.position || '',
+            specialty: profile.specialty || '', phone: profile.phone || '',
+            emergency_contact: profile.emergency_contact || '', bio: profile.bio || '',
+          });
         }
       }, [isOpen, profile]);
 
       const save = async (silent) => {
-        const body = { name: form.name.trim(), job_title: form.job_title.trim(), phone: form.phone.trim(), bio: form.bio.trim() };
+        const body = {
+          name: form.name.trim(), job_title: form.job_title.trim(),
+          department: form.department.trim(), position: form.position.trim(),
+          specialty: form.specialty.trim(), phone: form.phone.trim(),
+          emergency_contact: form.emergency_contact.trim(), bio: form.bio.trim(),
+        };
         if (!body.name) { toast('이름을 입력해 주세요.', 'error'); return false; }
         setSaving(true);
         try {
@@ -10630,15 +10639,25 @@
               {profile.email} · {profile.team_name || '팀'}{profile.role === 'admin' ? ' · 관리자' : ''}
             </div>
 
-            {/* 프로필 입력 */}
+            {/* 프로필 입력 (v31: 부서·직급·담당 분야·비상 연락처 추가) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="이름 *" placeholder="예: 홍평화" value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              <Input label="직함" placeholder="예: 시공책임 / 디자이너" value={form.job_title}
+              <Input label="직함" placeholder="예: 대표 / 팀장" value={form.job_title}
                 onChange={(e) => setForm({ ...form, job_title: e.target.value })} />
+              <Input label="부서" placeholder="예: 시공팀 / 디자인팀 / 관리팀" value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })} />
+              <Input label="직급" placeholder="예: 사원 / 대리 / 과장 / 부장" value={form.position}
+                onChange={(e) => setForm({ ...form, position: e.target.value })} />
             </div>
-            <Input label="연락처" placeholder="예: 010-1234-5678" value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Input label="담당 분야 / 전문" placeholder="예: 타일·방수 / 3D 모델링 / 견적 산출" value={form.specialty}
+              onChange={(e) => setForm({ ...form, specialty: e.target.value })} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input label="연락처" placeholder="예: 010-1234-5678" value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input label="비상 연락처" placeholder="예: 가족·비상시 연락처" value={form.emergency_contact}
+                onChange={(e) => setForm({ ...form, emergency_contact: e.target.value })} />
+            </div>
             <Textarea label="소개 / 기타" rows={3} placeholder="담당 영역, 소개 등 자유롭게"
               value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
 
@@ -12973,6 +12992,7 @@
       const [mode, setMode] = useState(() => (parseJoinRoute() ? 'signup' : 'login'));
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
+      const [password2, setPassword2] = useState(''); // (v31) 가입 시 비밀번호 확인(교차검증)
       const [name, setName] = useState('');
       const [invite, setInvite] = useState('');
       const [error, setError] = useState('');
@@ -12997,7 +13017,7 @@
         return () => { alive = false; };
       }, [joinToken]);
 
-      const switchMode = (m) => { setMode(m); setError(''); setPassword(''); };
+      const switchMode = (m) => { setMode(m); setError(''); setPassword(''); setPassword2(''); };
       // 이메일이 바뀌면 본인확인은 무효 — 다시 받아야 한다
       const changeEmail = (v) => {
         setEmail(v);
@@ -13037,6 +13057,7 @@
         if (!password) { setError('비밀번호를 입력하세요.'); return; }
         if (mode === 'signup') {
           if (password.length < 6) { setError('비밀번호는 6자 이상이어야 합니다.'); return; }
+          if (password !== password2) { setError('비밀번호가 서로 일치하지 않습니다. 다시 확인해 주세요.'); return; }
           if (!joinToken && !invite.trim()) { setError('초대코드를 입력하세요. (또는 관리자에게 초대 링크를 요청하세요)'); return; }
           if (!requiredAgreed) { setError('필수 약관에 모두 동의해야 가입할 수 있습니다.'); return; }
         }
@@ -13111,6 +13132,17 @@
                   placeholder={mode === 'signup' ? '6자 이상' : '비밀번호'} />
                 {mode === 'signup' && (
                   <>
+                    {/* (v31) 비밀번호 확인 — 두 번 입력 교차검증 */}
+                    <div>
+                      <Input label="비밀번호 확인" type="password" autoComplete="new-password"
+                        value={password2} onChange={(e) => setPassword2(e.target.value)}
+                        placeholder="비밀번호를 한 번 더 입력" />
+                      {password2 && (
+                        <p className={`mt-1 text-[11px] ${password === password2 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {password === password2 ? '✓ 비밀번호가 일치합니다' : '✗ 비밀번호가 일치하지 않습니다'}
+                        </p>
+                      )}
+                    </div>
                     <Input label="이름 (선택)" type="text" value={name}
                       onChange={(e) => setName(e.target.value)} placeholder="표시할 이름" />
                     {!joinToken && (
@@ -13155,7 +13187,7 @@
                   <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{error}</div>
                 )}
 
-                <Button type="submit" size="lg" disabled={submitting || (mode === 'signup' && (inviteBlocked || !requiredAgreed))} className="w-full">
+                <Button type="submit" size="lg" disabled={submitting || (mode === 'signup' && (inviteBlocked || !requiredAgreed || !password2 || password !== password2))} className="w-full">
                   {submitting ? '처리 중…' : (mode === 'login' ? '로그인' : '동의하고 회원가입')}
                 </Button>
               </form>

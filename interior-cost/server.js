@@ -1131,6 +1131,11 @@ async function initDB() {
   await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS bio TEXT NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS avatar_path TEXT NOT NULL DEFAULT ''`);
+  // (v31) 상세 프로필 — 부서/직급/담당 분야/비상 연락처 (그룹웨어형 인적사항). 전부 선택 입력.
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS department TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS position TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS specialty TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS emergency_contact TEXT NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS approval_status TEXT NOT NULL DEFAULT 'none'`);
   await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS approval_requested_at TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ`);
@@ -7917,15 +7922,15 @@ app.get('/api/sites/:id/labor', async (req, res) => {
       ),
       // (v31) 다일(多日) 일정은 start~end 사이 '모든 날'에 잡힌다 (start_date<=날짜<=end_date 겹침 조건).
       //   예: 타일 7/21~7/23 → 21·22·23 세 날 모두 이 현장의 출력인원 행으로 뜬다.
-      //   kind: '공사' + '지원' 둘 다 인력이 투입되므로 함께 노출('미팅'만 제외).
-      //   day_no/day_total = 그 일정의 며칠째인지(주말 구분 없이 달력일 기준) — UI 배지용.
+      //   kind='공사'만 인력(기공/조공)을 입력한다 — '지원'/'미팅'은 인력 입력 대상 아님(사용자 확인).
+      //   day_no/day_total = 그 일정의 며칠째인지(주말 구분 없이 달력일 기준) — UI "N일차/총M일" 배지용.
       pool.query(
         `SELECT id, title, process, vendor, kind,
                 to_char(start_date,'YYYY-MM-DD') AS start_date, to_char(end_date,'YYYY-MM-DD') AS end_date, status,
                 ($2::date - start_date) + 1        AS day_no,
                 (end_date - start_date) + 1        AS day_total
          FROM interior_schedule
-         WHERE site_id=$1 AND kind IN ('공사','지원') AND start_date<=$2::date AND end_date>=$2::date
+         WHERE site_id=$1 AND kind='공사' AND start_date<=$2::date AND end_date>=$2::date
          ORDER BY sort_order ASC, id ASC`, [id, date]
       ),
     ]);
@@ -8683,7 +8688,7 @@ app.delete('/api/materials/:id', async (req, res) => {
 // ════════════════════════════════════════════════════════════════
 
 const PROFILE_COLS =
-  'id, email, name, job_title, phone, bio, team_id, role, avatar_path, approval_status, approval_requested_at, approved_at, staff_id';
+  'id, email, name, job_title, department, position, specialty, phone, emergency_contact, bio, team_id, role, avatar_path, approval_status, approval_requested_at, approved_at, staff_id';
 
 function rowToProfile(row) {
   return {
@@ -8691,7 +8696,11 @@ function rowToProfile(row) {
     email: row.email,
     name: row.name || '',
     job_title: row.job_title || '',
+    department: row.department || '',       // (v31) 부서
+    position: row.position || '',           // (v31) 직급
+    specialty: row.specialty || '',         // (v31) 담당 분야/전문
     phone: row.phone || '',
+    emergency_contact: row.emergency_contact || '', // (v31) 비상 연락처
     bio: row.bio || '',
     team_id: Number(row.team_id),
     team_name: row.team_name == null ? undefined : row.team_name,
@@ -8751,7 +8760,7 @@ async function withAvatarUrl(profile) {
 app.get('/api/me/profile', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT u.id,u.email,u.name,u.job_title,u.phone,u.bio,u.team_id,u.role,u.avatar_path,
+      `SELECT u.id,u.email,u.name,u.job_title,u.department,u.position,u.specialty,u.phone,u.emergency_contact,u.bio,u.team_id,u.role,u.avatar_path,
               u.approval_status,u.approval_requested_at,u.approved_at,u.staff_id,t.name AS team_name
          FROM interior_users u JOIN interior_teams t ON t.id=u.team_id WHERE u.id=$1`,
       [req.userId]
@@ -8764,7 +8773,8 @@ app.get('/api/me/profile', async (req, res) => {
   }
 });
 
-// PATCH /api/me/profile {name?, job_title?, phone?, bio?} — 부분 수정(빈 문자열로 비우기 가능, 이름만 비우기 금지).
+// PATCH /api/me/profile {name?, job_title?, department?, position?, specialty?, phone?, emergency_contact?, bio?}
+//   부분 수정(빈 문자열로 비우기 가능, 이름만 비우기 금지).
 //   인증된 직원(staff_id 링크)이면 담당자 마스터 행도 함께 동기화(동명 충돌 시 이름만 유지).
 app.patch('/api/me/profile', async (req, res) => {
   try {
@@ -8772,7 +8782,11 @@ app.patch('/api/me/profile', async (req, res) => {
     const pick = (k, max) => (typeof b[k] === 'string' ? b[k].trim().slice(0, max) : undefined);
     const name = pick('name', 60);
     const jobTitle = pick('job_title', 60);
+    const department = pick('department', 60);       // (v31)
+    const position = pick('position', 40);           // (v31)
+    const specialty = pick('specialty', 120);        // (v31)
     const phone = pick('phone', 40);
+    const emergency = pick('emergency_contact', 60); // (v31)
     const bio = pick('bio', 500);
     if (name !== undefined && !name) {
       return res.status(400).json({ success: false, message: '이름은 비울 수 없습니다.' });
@@ -8780,10 +8794,14 @@ app.patch('/api/me/profile', async (req, res) => {
     const { rows } = await pool.query(
       `UPDATE interior_users SET
          name = COALESCE($1, name), job_title = COALESCE($2, job_title),
-         phone = COALESCE($3, phone), bio = COALESCE($4, bio)
-       WHERE id=$5 RETURNING ${PROFILE_COLS}`,
+         department = COALESCE($3, department), position = COALESCE($4, position),
+         specialty = COALESCE($5, specialty), phone = COALESCE($6, phone),
+         emergency_contact = COALESCE($7, emergency_contact), bio = COALESCE($8, bio)
+       WHERE id=$9 RETURNING ${PROFILE_COLS}`,
       [name === undefined ? null : name, jobTitle === undefined ? null : jobTitle,
-       phone === undefined ? null : phone, bio === undefined ? null : bio, req.userId]
+       department === undefined ? null : department, position === undefined ? null : position,
+       specialty === undefined ? null : specialty, phone === undefined ? null : phone,
+       emergency === undefined ? null : emergency, bio === undefined ? null : bio, req.userId]
     );
     if (rows.length === 0) return res.status(401).json({ error: '인증이 필요합니다' });
     const me = rows[0];
