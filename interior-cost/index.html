@@ -2258,6 +2258,8 @@
           const err = new Error('데모/오프라인 모드에서는 파일을 다운로드할 수 없습니다.'); err.offline = true; throw err;
         }
       },
+      // (v34) 자료 AI 읽기 (PDF/이미지 → gpt-4o 요약/질의). 서버 전용.
+      async docAiRead(id, question) { return this._tryFetch(`${API_BASE_URL}/documents/${id}/ai`, { method: 'POST', body: JSON.stringify(question ? { question } : {}) }); },
 
       // ════════ v20: 현장사진 — Storage 직접 업로드 (업로더·시각 자동=서버) ════════
       async signUploadPhoto(siteId, body) {
@@ -7713,6 +7715,99 @@
       );
     }
 
+    // (v34) 자료 미리보기 + AI 읽기 — PDF/이미지는 브라우저에서 바로 보기, 그 외는 다운로드 안내. gpt-4o 요약/질의.
+    function DocPreviewModal({ doc, onClose }) {
+      const toast = useToast();
+      const [url, setUrl] = useState(null);
+      const [loadErr, setLoadErr] = useState('');
+      const ext = ((doc.file_name || '').toLowerCase().match(/\.([a-z0-9]+)$/) || [])[1] || '';
+      const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+      const isPdf = ext === 'pdf';
+      const viewable = isImage || isPdf;
+      // AI
+      const [aiOpen, setAiOpen] = useState(false);
+      const [aiBusy, setAiBusy] = useState(false);
+      const [aiReply, setAiReply] = useState('');
+      const [aiQ, setAiQ] = useState('');
+      useEffect(() => {
+        let alive = true;
+        api.docDownloadUrl(doc.id).then((u) => { if (alive) { if (u) setUrl(u); else setLoadErr('URL을 가져오지 못했습니다.'); } })
+          .catch((e) => { if (alive) setLoadErr(e.message || '불러오기 실패'); });
+        return () => { alive = false; };
+      }, [doc.id]);
+      const runAi = async (question) => {
+        setAiOpen(true); setAiBusy(true); setAiReply('');
+        try {
+          const r = await api.docAiRead(doc.id, question);
+          setAiReply((r && r.reply) || '(빈 응답)');
+        } catch (e) {
+          setAiReply('⚠️ ' + ((e && (e.message || e.detail)) || 'AI 읽기에 실패했습니다.'));
+        } finally { setAiBusy(false); }
+      };
+      return (
+        <Modal isOpen onClose={onClose} title={`📄 ${doc.name || doc.file_name}`} size="xl">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-slate-400 truncate">{doc.file_name} · {fmtBytes(doc.file_size)}</p>
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" variant="secondary" onClick={() => url && window.open(url, '_blank', 'noopener')} disabled={!url}>↗ 새 탭</Button>
+                {viewable && <Button size="sm" onClick={() => runAi('')} disabled={aiBusy}>🤖 AI로 읽기</Button>}
+              </div>
+            </div>
+
+            {/* 미리보기 */}
+            <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50" style={{ height: '60vh' }}>
+              {loadErr ? (
+                <div className="h-full flex items-center justify-center text-sm text-slate-400">{loadErr}</div>
+              ) : !url ? (
+                <div className="h-full flex items-center justify-center"><span className="w-7 h-7 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin"></span></div>
+              ) : isImage ? (
+                <div className="h-full overflow-auto flex items-center justify-center bg-slate-800/5">
+                  <img src={url} alt={doc.file_name} className="max-w-full max-h-full object-contain" />
+                </div>
+              ) : isPdf ? (
+                <iframe src={url} title={doc.file_name} className="w-full h-full" />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
+                  <span className="text-4xl">📄</span>
+                  <p className="text-sm text-slate-500">이 형식(.{ext || '?'})은 브라우저 미리보기를 지원하지 않습니다.</p>
+                  <Button size="sm" variant="secondary" onClick={() => url && window.open(url, '_blank', 'noopener')}>다운로드</Button>
+                </div>
+              )}
+            </div>
+
+            {/* AI 읽기 결과 */}
+            {aiOpen && (
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-3.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs font-bold text-indigo-700">🤖 AI 문서 읽기</p>
+                  <button onClick={() => setAiOpen(false)} className="text-indigo-400 hover:text-indigo-600 text-xs">닫기</button>
+                </div>
+                {aiBusy ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500 py-2">
+                    <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin"></span>
+                    문서를 읽는 중… (분량에 따라 10~30초)
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{aiReply}</p>
+                )}
+                {viewable && !aiBusy && (
+                  <form onSubmit={(e) => { e.preventDefault(); if (aiQ.trim()) runAi(aiQ.trim()); }} className="mt-2.5 flex gap-2">
+                    <input value={aiQ} onChange={(e) => setAiQ(e.target.value)} placeholder="이 문서에 대해 물어보기 (예: 금액 총합은?)"
+                      className="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                    <Button size="sm" type="submit" disabled={!aiQ.trim()}>질문</Button>
+                  </form>
+                )}
+              </div>
+            )}
+            {!viewable && (
+              <p className="text-[11px] text-slate-400">※ PDF·이미지가 아니면 브라우저 미리보기와 AI 읽기가 제한됩니다. [↗ 새 탭] 또는 다운로드로 확인하세요.</p>
+            )}
+          </div>
+        </Modal>
+      );
+    }
+
     function DocumentsTab({ site, demoMode = false, uploaderName = '' }) {
       const toast = useToast();
       const [list, setList] = useState([]);
@@ -7723,7 +7818,9 @@
       const [editing, setEditing] = useState(null);
       const [delTarget, setDelTarget] = useState(null);
       const [dlId, setDlId] = useState(null);
+      const [preview, setPreview] = useState(null); // (v34) 미리보기/AI 대상 자료
       const fileRef = useRef(null);
+      const isViewable = (d) => /\.(pdf|jpg|jpeg|png|webp|gif)$/i.test(d.file_name || '');
 
       const reload = useCallback(async () => {
         setLoading(true);
@@ -7843,13 +7940,19 @@
                   <tbody className="divide-y divide-slate-100">
                     {list.map((d) => (
                       <tr key={d.id}>
-                        <td className="py-2 pr-3 font-medium text-slate-700 min-w-[140px]">{d.name}{d.memo ? <span className="block text-[11px] font-normal text-slate-400 truncate max-w-[220px]">{d.memo}</span> : null}</td>
+                        <td className="py-2 pr-3 font-medium min-w-[140px]">
+                          {/* (v34) 자료명 클릭 → 미리보기(웹으로 바로 보기) */}
+                          <button onClick={() => setPreview(d)} className="text-left text-slate-700 hover:text-blue-600 hover:underline underline-offset-2" title="미리보기 · AI로 읽기">{d.name}</button>
+                          {isViewable(d) && <span className="ml-1 align-middle text-[10px] text-blue-400" title="브라우저에서 바로 보기 가능">👁</span>}
+                          {d.memo ? <span className="block text-[11px] font-normal text-slate-400 truncate max-w-[220px]">{d.memo}</span> : null}
+                        </td>
                         <td className="py-2 pr-3"><Badge color={DOC_TYPE_COLOR[d.doc_type] || 'bg-slate-400'}>{d.doc_type || '기타'}</Badge></td>
                         <td className="py-2 pr-3 text-slate-500 truncate max-w-[180px]" title={d.file_name}>{d.file_name || <span className="text-slate-300">-</span>}</td>
                         <td className="py-2 pr-3 text-right text-slate-500 whitespace-nowrap">{fmtBytes(d.file_size)}</td>
                         <td className="py-2 pr-3 text-slate-500 whitespace-nowrap">{d.uploader || <span className="text-slate-300">-</span>}</td>
                         <td className="py-2 pr-3 text-slate-400 whitespace-nowrap text-xs">{d.created_at ? String(d.created_at).slice(0, 10) : '-'}</td>
                         <td className="py-2 text-right whitespace-nowrap">
+                          {isViewable(d) && <button onClick={() => setPreview(d)} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50" title="미리보기 · AI로 읽기">👁</button>}
                           <button onClick={() => handleDownload(d)} disabled={dlId === d.id} className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-40" title="다운로드(서명 URL)">{dlId === d.id ? '…' : '⬇'}</button>
                           <button onClick={() => setEditing(d)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50" title="정보 수정">✏️</button>
                           <button onClick={() => setDelTarget(d)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50" title="삭제">🗑️</button>
@@ -7862,6 +7965,8 @@
             )}
           </Card>
 
+          {/* (v34) 미리보기 + AI 읽기 */}
+          {preview && <DocPreviewModal doc={preview} onClose={() => setPreview(null)} />}
           <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="자료 정보 수정" size="md">
             {editing && <DocEditForm key={editing.id} initial={editing} onSave={saveEdit} onCancel={() => setEditing(null)} />}
           </Modal>
@@ -8138,6 +8243,7 @@
       const [delTarget, setDelTarget] = useState(null);
       const [lbIndex, setLbIndex] = useState(null); // (v30) 라이트박스 인덱스(filtered 기준)
       const [editTarget, setEditTarget] = useState(null); // (v30) 사진 정보 수정 대상
+      const [photoView, setPhotoView] = useState('grid'); // (v34) grid | date(일정별 표)
       const cameraRef = useRef(null);
       const galleryRef = useRef(null);
 
@@ -8247,6 +8353,37 @@
         return true;
       }), [list, fDate, fProc]);
 
+      // (v34) 일정별(날짜별) 표 — 일정 진행일 ∪ 사진 촬영일, 각 날짜의 진행 공정(일정) + 사진 장수.
+      const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+      const photoCountByDate = useMemo(() => {
+        const m = new Map();
+        list.forEach((p) => { if (p.photo_date) m.set(p.photo_date, (m.get(p.photo_date) || 0) + 1); });
+        return m;
+      }, [list]);
+      const dateRows = useMemo(() => {
+        const set = new Set(list.map((p) => p.photo_date).filter(Boolean));
+        // 일정(공사/지원) 진행일 전부 나열 (미팅 제외), 태스크당 최대 400일 가드
+        schedTasks.forEach((t) => {
+          if ((t.kind || '공사') === '미팅') return;
+          if (!t.start_date || !t.end_date) return;
+          let d = t.start_date, g = 0;
+          while (d <= t.end_date && g++ < 400) { set.add(d); d = addDays(d, 1); }
+        });
+        return Array.from(set).sort().reverse().map((date) => ({
+          date,
+          dow: DOW[new Date(date + 'T00:00:00').getDay()] || '',
+          procs: autoProcsFor(date),
+          count: photoCountByDate.get(date) || 0,
+        }));
+      }, [list, schedTasks, autoProcsFor, photoCountByDate]);
+      // 날짜 행 클릭 → 그 날짜 사진으로 진입(있으면 라이트박스, 없으면 필터만)
+      const openDate = (date) => {
+        const has = (photoCountByDate.get(date) || 0) > 0;
+        setFProc(''); setFDate(date);
+        if (has) { setPhotoView('grid'); setLbIndex(0); }
+        else { setPhotoView('grid'); }
+      };
+
       return (
         <div className="space-y-6">
           {/* 업로드 */}
@@ -8319,20 +8456,72 @@
           {/* 갤러리 */}
           <Card className="p-5">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h2 className="text-base font-bold text-slate-800">현장사진 <span className="text-sm font-normal text-slate-400">· {filtered.length}/{list.length}장</span></h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <select value={fDate} onChange={(e) => setFDate(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                  <option value="">전체 날짜</option>
-                  {dates.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-                <select value={fProc} onChange={(e) => setFProc(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                  <option value="">전체 공정</option>
-                  {PHOTO_PROCESSES.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-                {(fDate || fProc) && <button onClick={() => { setFDate(''); setFProc(''); }} className="text-xs text-slate-400 hover:text-slate-600 underline">필터 해제</button>}
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-base font-bold text-slate-800">현장사진 <span className="text-sm font-normal text-slate-400">· {photoView === 'date' ? `${dateRows.length}일` : `${filtered.length}/${list.length}장`}</span></h2>
+                {/* (v34) 갤러리 / 일정별 표 토글 */}
+                <div className="inline-flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                  <button onClick={() => setPhotoView('grid')} className={`px-2.5 py-1 rounded-md transition ${photoView === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>갤러리</button>
+                  <button onClick={() => setPhotoView('date')} className={`px-2.5 py-1 rounded-md transition ${photoView === 'date' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>📅 일정별</button>
+                </div>
               </div>
+              {photoView === 'grid' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <select value={fDate} onChange={(e) => setFDate(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <option value="">전체 날짜</option>
+                    {dates.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  <select value={fProc} onChange={(e) => setFProc(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <option value="">전체 공정</option>
+                    {PHOTO_PROCESSES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  {(fDate || fProc) && <button onClick={() => { setFDate(''); setFProc(''); }} className="text-xs text-slate-400 hover:text-slate-600 underline">필터 해제</button>}
+                </div>
+              )}
             </div>
-            {loading ? (
+            {photoView === 'date' ? (
+              /* (v34) 일정별(날짜별) 표 — 날짜·요일 + 그날 진행 공정 + 사진 장수. 행 클릭 → 그 날짜 사진 열기 */
+              dateRows.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">표시할 일정·사진 날짜가 없습니다.</p>
+              ) : (
+                <div className="overflow-x-auto -mx-1">
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                      <th className="py-2 pr-3 font-medium whitespace-nowrap">날짜</th>
+                      <th className="py-2 pr-3 font-medium">진행 공정 (일정)</th>
+                      <th className="py-2 pr-2 font-medium text-right whitespace-nowrap">사진</th>
+                    </tr></thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {dateRows.map((r) => {
+                        const isToday = r.date === todayStr();
+                        return (
+                          <tr key={r.date} onClick={() => openDate(r.date)}
+                            className={`cursor-pointer transition hover:bg-blue-50/60 ${r.count > 0 ? '' : 'opacity-70'}`}
+                            title={r.count > 0 ? `${r.date} 사진 ${r.count}장 보기` : `${r.date} — 등록된 사진 없음`}>
+                            <td className="py-2.5 pr-3 whitespace-nowrap">
+                              <span className="font-medium text-slate-700">{r.date}</span>
+                              <span className={`ml-1.5 text-[11px] ${r.dow === '일' ? 'text-red-400' : r.dow === '토' ? 'text-blue-400' : 'text-slate-400'}`}>{r.dow}</span>
+                              {isToday && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-semibold">오늘</span>}
+                            </td>
+                            <td className="py-2.5 pr-3">
+                              {r.procs.length > 0 ? (
+                                <span className="flex flex-wrap gap-1">
+                                  {r.procs.map((p) => <span key={p} className="text-[11px] px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: procHex(p) }}>{p}</span>)}
+                                </span>
+                              ) : <span className="text-slate-300 text-xs">일정 없음</span>}
+                            </td>
+                            <td className="py-2.5 pr-2 text-right whitespace-nowrap">
+                              {r.count > 0
+                                ? <span className="inline-flex items-center gap-1 text-slate-600 font-medium">📷 {r.count}장 <span className="text-blue-500">›</span></span>
+                                : <span className="text-slate-300 text-xs">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {[0, 1, 2, 3].map((i) => <div key={i} className="aspect-square bg-slate-100 rounded-xl animate-pulse"></div>)}
               </div>
@@ -9459,7 +9648,7 @@
     // ── 🙋 내 업무: 로그인 랜딩 대시보드 — 내 할일(마감순) + 완료 체크(→매니저 알림) + 팀 전체 뷰 ──
     function MyTab({ authUser, sites, demoMode }) {
       const toast = useToast();
-      const [sub, setSub] = useState('mine'); // mine | team | done
+      const [sub, setSub] = useState('all'); // (v34) all(통합) | mine | team | done
       const [tasks, setTasks] = useState([]);
       const [loading, setLoading] = useState(true);
       const [users, setUsers] = useState([]);
@@ -9473,8 +9662,8 @@
         setLoading(true);
         try {
           const params = sub === 'mine' ? { view: 'mine', status: '진행' }
-            : sub === 'team' ? { view: 'team', status: '진행' }
-            : { view: 'team', status: '완료' };
+            : sub === 'done' ? { view: 'team', status: '완료' }
+            : { view: 'team', status: '진행' }; // all·team = 팀 전체 진행
           setTasks(await api.listTasks(params));
         } catch (e) { toast('할일을 불러오지 못했습니다.', 'error'); }
         finally { setLoading(false); }
@@ -9526,8 +9715,14 @@
         catch (err) { toast('삭제에 실패했습니다.', 'error'); }
       };
 
-      const myOpenCount = sub === 'mine' ? tasks.length : null;
+      // (v34) 통합(전체) 뷰용 — 나에게 해당 / 팀 분리
+      const meId = String((authUser && authUser.id) || '');
+      const isMine = (t) => String(t.assignee_user_id || '') === meId;
+      const mineTasks = useMemo(() => tasks.filter(isMine), [tasks, meId]);
+      const teamTasks = useMemo(() => tasks.filter((t) => !isMine(t)), [tasks, meId]);
+      const myOpenCount = sub === 'mine' ? tasks.length : sub === 'all' ? mineTasks.length : null;
       const subs = [
+        { id: 'all', label: '전체' }, // v34: 내+팀 통합
         { id: 'mine', label: '내 할일' },
         { id: 'team', label: '팀 전체' },
         { id: 'done', label: '완료됨' },
@@ -9620,7 +9815,23 @@
             ) : tasks.length === 0 ? (
               <div className="p-10 text-center">
                 <div className="text-4xl mb-2">{sub === 'done' ? '📦' : '🎉'}</div>
-                <p className="text-sm text-slate-400">{sub === 'mine' ? '남은 할일이 없습니다. 위에서 추가하세요!' : sub === 'team' ? '팀에 진행 중인 할일이 없습니다.' : '완료된 할일이 아직 없습니다.'}</p>
+                <p className="text-sm text-slate-400">{sub === 'mine' ? '남은 할일이 없습니다. 위에서 추가하세요!' : sub === 'done' ? '완료된 할일이 아직 없습니다.' : '진행 중인 할일이 없습니다.'}</p>
+              </div>
+            ) : sub === 'all' ? (
+              // (v34) 통합: 나에게 해당 / 팀 두 섹션
+              <div className="divide-y divide-slate-100">
+                <div className="py-2">
+                  <p className="px-3 py-1 text-xs font-bold text-blue-600">🙋 나에게 해당 <span className="font-normal text-slate-400">· {mineTasks.length}건</span></p>
+                  {mineTasks.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-slate-400">나에게 배정된 진행 중 할일이 없습니다.</p>
+                  ) : mineTasks.map((t) => <TaskRow key={t.id} t={t} showAssignee={false} />)}
+                </div>
+                <div className="py-2">
+                  <p className="px-3 py-1 text-xs font-bold text-slate-500">👥 팀 (다른 담당) <span className="font-normal text-slate-400">· {teamTasks.length}건</span></p>
+                  {teamTasks.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-slate-400">다른 팀원에게 배정된 진행 중 할일이 없습니다.</p>
+                  ) : teamTasks.map((t) => <TaskRow key={t.id} t={t} showAssignee={true} />)}
+                </div>
               </div>
             ) : sub === 'team' && grouped ? (
               <div className="divide-y divide-slate-100">

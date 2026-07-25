@@ -7704,6 +7704,85 @@ app.delete('/api/documents/:id', async (req, res) => {
 // GET /api/documents/:id/download — 서명 다운로드 URL {url}
 app.get('/api/documents/:id/download', makeDownloadHandler('interior_documents', '자료'));
 
+// (v34) POST /api/documents/:id/ai {question?} — 자료(PDF/이미지)를 gpt-4o 로 읽어 요약/질의응답.
+//   PDF 는 파일 원본을 base64 로 gpt-4o 에 직접 전달(네이티브 문서 읽기), 이미지는 Vision(image_url).
+//   소유검증은 requireChildOwned('/api/documents/:id') 미들웨어가 이미 적용.
+app.post('/api/documents/:id/ai', async (req, res) => {
+  try {
+    const apiKey = (process.env.OPENAI_API_KEY || '').trim();
+    if (!apiKey) return res.status(503).json({ error: 'AI 기능이 설정되지 않았습니다. (OPENAI_API_KEY)' });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: '잘못된 자료 id 형식입니다.' });
+    if (!storageConfigured()) return res.status(503).json({ error: '파일 스토리지가 설정되지 않았습니다.' });
+
+    const { rows } = await pool.query('SELECT storage_path, file_name, name FROM interior_documents WHERE id=$1', [id]);
+    if (rows.length === 0) return res.status(404).json({ error: '해당 자료를 찾을 수 없습니다.' });
+    const doc = rows[0];
+    const m = String(doc.file_name || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    const ext = m ? m[1] : '';
+    const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+    const isPdf = ext === 'pdf';
+    if (!isImage && !isPdf) {
+      return res.status(415).json({ error: `이 형식(.${ext || '알수없음'})은 AI 읽기를 지원하지 않습니다. 현재 PDF·이미지(jpg/png/webp)만 읽을 수 있어요.` });
+    }
+
+    const question = typeof (req.body || {}).question === 'string' && req.body.question.trim()
+      ? req.body.question.trim().slice(0, 500) : '';
+    const instruction = question
+      || '이 문서의 핵심 내용을 한국어로 정리해줘. ① 어떤 종류의 문서인지 ② 대상/현장 ③ 주요 항목·금액·수량·일정(있으면 표로) ④ 특이사항. 문서에 실제로 있는 내용만 근거로.';
+
+    let userContent;
+    if (isImage) {
+      const url = await signDownloadUrl(doc.storage_path, 600); // Vision 이 직접 fetch
+      userContent = [{ type: 'text', text: instruction }, { type: 'image_url', image_url: { url } }];
+    } else {
+      // PDF: 서버가 원본을 받아 base64 로 gpt-4o file 입력에 실어 보냄
+      const url = await signDownloadUrl(doc.storage_path, 600);
+      const fr = await fetch(url);
+      if (!fr.ok) throw new Error(`파일을 불러오지 못했습니다 (HTTP ${fr.status})`);
+      const buf = Buffer.from(await fr.arrayBuffer());
+      if (buf.length > 25 * 1024 * 1024) return res.status(413).json({ error: '파일이 너무 큽니다(25MB 초과). 더 작은 파일로 시도해 주세요.' });
+      userContent = [
+        { type: 'text', text: instruction },
+        { type: 'file', file: { filename: doc.file_name || 'document.pdf', file_data: `data:application/pdf;base64,${buf.toString('base64')}` } },
+      ];
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90000);
+    let apiRes;
+    try {
+      apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: '당신은 인테리어 현장 문서(제안서·도면·견적·계약 등)를 읽고 한국어로 명확히 요약·설명하는 도우미입니다. 실제 문서에 있는 내용만 근거로 답하고, 불확실하면 추정임을 밝히세요.' },
+            { role: 'user', content: userContent },
+          ],
+          temperature: 0.2,
+          max_tokens: 1400,
+        }),
+        signal: controller.signal,
+      });
+    } finally { clearTimeout(timer); }
+
+    if (!apiRes.ok) {
+      let detail = `OpenAI 응답 코드 ${apiRes.status}`;
+      try { const eb = await apiRes.json(); if (eb && eb.error && eb.error.message) detail = eb.error.message; } catch (_) { /* 무시 */ }
+      console.error('POST /api/documents/:id/ai OpenAI 실패:', apiRes.status, detail.slice(0, 200));
+      return res.status(502).json({ error: 'AI가 문서를 읽지 못했습니다.', detail });
+    }
+    const j = await apiRes.json();
+    const reply = (j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
+    res.json({ reply: String(reply).trim(), file_name: doc.file_name, kind: isPdf ? 'pdf' : 'image' });
+  } catch (err) {
+    console.error('POST /api/documents/:id/ai 오류:', err.message);
+    res.status(500).json({ error: 'AI 읽기에 실패했습니다.', detail: String(err.message || err).slice(0, 200) });
+  }
+});
+
 // ---------- 현장사진(photos) ----------
 app.post('/api/sites/:id/photos/sign-upload', makeSignUploadHandler('photos', '현장사진'));
 
