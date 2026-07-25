@@ -582,7 +582,8 @@
         const dtstart = t.start_date.replace(/-/g, '');
         const dtend = addDays(t.end_date, 1).replace(/-/g, ''); // DTEND exclusive = 종료+1
         const summary = `[${t.process || '공정'}] ${t.title || ''}`;
-        const desc = `담당자: ${t.staff || '-'}\\n상태: ${t.status || '-'}\\n계획비용: ${(Number(t.planned_cost) || 0).toLocaleString('ko-KR')}원${t.memo ? '\\n메모: ' + t.memo : ''}`;
+        const vline = [t.vendor && `시공: ${t.vendor}`, t.vendor_material && `자재: ${t.vendor_material}`].filter(Boolean).join(' / ');
+        const desc = `담당자: ${t.staff || '-'}\\n상태: ${t.status || '-'}${vline ? '\\n협력업체: ' + vline : ''}${t.memo ? '\\n메모: ' + t.memo : ''}`;
         lines.push('BEGIN:VEVENT', `UID:schedule-${t.id}@interior-cost`, `DTSTAMP:${stamp}`,
           `DTSTART;VALUE=DATE:${dtstart}`, `DTEND;VALUE=DATE:${dtend}`,
           `SUMMARY:${icsEscape(summary)}`, `DESCRIPTION:${desc}`, 'END:VEVENT');
@@ -2118,6 +2119,10 @@
           ordersStore.write([...cur, ...created]);
           return { generated: created.length, orders: created };
         }
+      },
+      // (v32) 자재 발주 자동생성 (스케치업 물량 × 자재상 단가 → 자재상별 발주). 서버 전용(폴백 없음 — 카탈로그/물량 필요).
+      async autoGenerateMaterialOrders(siteId, opts = {}) {
+        return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/orders/auto-generate-material${opts.replace ? '?replace=1' : ''}`, { method: 'POST', body: JSON.stringify({}) });
       },
 
       // ════════ v5: 미팅 (meetings) — 프로젝트 종속 ════════
@@ -4322,30 +4327,44 @@
     // 🧩 일정 등록/수정 폼 (모달)
     function ScheduleForm({ editing, prefill, hasSuccessors, onSubmit, onCancel, procNames, staffNames, vendorNames = [], vendors = [] }) {
       // v6-3: 캘린더 드래그로 받은 prefill(start/end)을 신규 폼 기본값으로
-      const blank = { title: '', process: '', kind: '공사', start_date: (prefill && prefill.start) || todayStr(), end_date: (prefill && prefill.end) || todayStr(), status: '예정', planned_cost: '', staff: '', vendor: '', color: '', memo: '' };
+      const blank = { title: '', process: '', kind: '공사', start_date: (prefill && prefill.start) || todayStr(), end_date: (prefill && prefill.end) || todayStr(), planned_cost: '', staff: '', vendor: '', vendor_material: '', color: '', memo: '' };
       const [form, setForm] = useState(editing ? {
         title: editing.title || '', process: editing.process || '', kind: schedKind(editing),
         start_date: editing.start_date || todayStr(), end_date: editing.end_date || todayStr(),
-        status: editing.status || '예정', planned_cost: editing.planned_cost != null ? String(editing.planned_cost) : '',
-        staff: editing.staff || '', vendor: editing.vendor || '', color: editing.color || '', memo: editing.memo || '',
+        planned_cost: editing.planned_cost != null ? String(editing.planned_cost) : '',
+        staff: editing.staff || '', vendor: editing.vendor || '', vendor_material: editing.vendor_material || '', color: editing.color || '', memo: editing.memo || '',
       } : blank);
       const [cascade, setCascade] = useState(false); // v6-4 연결된 후속 일정 함께 이동
       const dateChanged = !!editing && (form.start_date !== (editing.start_date || '') || form.end_date !== (editing.end_date || ''));
       const [errors, setErrors] = useState({});
       const [submitting, setSubmitting] = useState(false);
-      // (v30) 공정 → 연관 협력업체만 노출: 공정명·업체 trade/kind 를 토큰으로 나눠 양방향 부분일치(예: '도장/도배' ↔ trade '도배').
-      const [showAllVendors, setShowAllVendors] = useState(false);
-      const relVendorNames = useMemo(() => {
-        const tokenize = (s) => String(s || '').split(/[\/·,+\s]+/).map((t) => t.trim().replace(/공사$/, '')).filter((t) => t && t !== '기타');
+      const [showAllCons, setShowAllCons] = useState(false); // (v32) 협력업체(시공) 전체 보기
+      const [showAllMat, setShowAllMat] = useState(false);   // (v32) 협력업체(자재) 전체 보기
+
+      // (v32) 공정 선택 → 작업명 자동 채움. 작업명이 비어있거나 직전 공정과 같을 때만 덮어씀(사용자 덧붙임 보존, 예: '목공-가벽시공').
+      const setProcess = (val) => {
+        setForm((f) => {
+          const autofill = !f.title.trim() || f.title.trim() === (f.process || '').trim();
+          return { ...f, process: val, title: autofill ? val : f.title };
+        });
+      };
+
+      // (v32) 공정·역할(시공/자재)로 협력업체 필터. kind 에 '시공'/'자재' 포함 여부로 역할 판정(노션 import 값).
+      const tokenize = (s) => String(s || '').split(/[\/·,+\s]+/).map((t) => t.trim().replace(/공사$/, '')).filter((t) => t && t !== '기타');
+      const roleNames = (role, showAll) => {
+        const roleList = (vendors || []).filter((v) => (v.kind || '').includes(role) && v.active !== false);
+        if (!roleList.length) return vendorNames; // kind 데이터 없으면 전체 목록 폴백
+        if (showAll) return roleList.map((v) => v.name);
         const pts = tokenize(form.process);
-        if (!vendors.length || !pts.length) return null;
-        const match = vendors.filter((v) => {
-          const vts = [...tokenize(v.trade), ...tokenize(v.kind)];
-          return pts.some((pt) => vts.some((vt) => vt.includes(pt) || pt.includes(vt)));
-        }).map((v) => v.name);
-        return match.length ? match : null; // 연관 업체가 없으면 전체 노출(null)
-      }, [vendors, form.process]);
-      const vendorOpts = relVendorNames && !showAllVendors ? relVendorNames : vendorNames;
+        if (!pts.length) return roleList.map((v) => v.name);
+        const rel = roleList.filter((v) => { const vts = [...tokenize(v.trade), ...tokenize(v.kind)]; return pts.some((pt) => vts.some((vt) => vt.includes(pt) || pt.includes(vt))); });
+        return (rel.length ? rel : roleList).map((v) => v.name);
+      };
+      const consOpts = useMemo(() => roleNames('시공', showAllCons), [vendors, vendorNames, form.process, showAllCons]);
+      const matOpts = useMemo(() => roleNames('자재', showAllMat), [vendors, vendorNames, form.process, showAllMat]);
+      const hasRole = (role) => (vendors || []).some((v) => (v.kind || '').includes(role));
+      const isFiltered = (role, showAll) => hasRole(role) && !showAll && tokenize(form.process).length > 0;
+
       const validate = () => {
         const e = {};
         if (!form.title.trim()) e.title = '작업명을 입력하세요.';
@@ -4360,16 +4379,34 @@
         setSubmitting(true);
         await onSubmit({
           title: form.title.trim(), process: form.process.trim(), start_date: form.start_date, end_date: form.end_date,
-          status: form.status, planned_cost: Math.round(Number(form.planned_cost) || 0), staff: form.staff.trim(),
-          vendor: form.vendor.trim(), color: form.color, memo: form.memo.trim(), kind: form.kind,
+          planned_cost: Math.round(Number(form.planned_cost) || 0), staff: form.staff.trim(),
+          vendor: form.vendor.trim(), vendor_material: form.vendor_material.trim(), color: form.color, memo: form.memo.trim(), kind: form.kind,
           ...(editing && hasSuccessors && cascade && dateChanged ? { cascade: true } : {}),
         });
         setSubmitting(false);
       };
+
+      // (v32) 상태 미리보기 — 날짜 기준 자동(오늘). 저장 후에도 서버가 같은 규칙으로 자동 산출.
+      const statusPreview = (() => {
+        const t = todayStr();
+        if (!form.start_date || !form.end_date) return '예정';
+        if (t < form.start_date) return '예정';
+        if (t > form.end_date) return '완료';
+        return '진행';
+      })();
+
       return (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input label="작업명 *" placeholder="예: 주방 목공" value={form.title} error={errors.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          {/* (v32) 공정 먼저 → 작업명 자동 생성 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Combo label="공정" placeholder="선택 또는 직접 입력" value={form.process} options={procNames.length ? procNames : PROCESS_CATEGORIES}
+              onChange={(e) => setProcess(e.target.value)} />
+            <div>
+              <Input label="작업명 *" placeholder="예: 목공-가벽시공" value={form.title} error={errors.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              <p className="mt-1 text-[11px] text-slate-400">공정을 고르면 자동 입력돼요. 뒤에 상세를 덧붙일 수 있습니다 (예: 목공-가벽시공).</p>
+            </div>
+          </div>
           {/* v19: 일정 유형(공사/지원/미팅) */}
           <div>
             <span className="block mb-1.5 text-sm font-medium text-slate-700">유형</span>
@@ -4385,36 +4422,39 @@
             {form.kind === '지원' && <p className="mt-1.5 text-[11px] text-teal-600">🤝 ‘지원’ 유형은 공정 외 지원 업무입니다. [지원] 필터로 모아볼 수 있습니다.</p>}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Combo label="공정" placeholder="선택 또는 직접 입력" value={form.process} options={procNames.length ? procNames : PROCESS_CATEGORIES}
-              onChange={(e) => setForm({ ...form, process: e.target.value })} />
-            <Select label="상태" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              {TASK_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </Select>
             <Input label="시작일 *" type="date" value={form.start_date} error={errors.start_date}
               onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
             <Input label="종료일 *" type="date" value={form.end_date} error={errors.end_date}
               onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
-            <Combo label="담당자" placeholder="예: 박현장" value={form.staff} options={staffNames}
-              onChange={(e) => setForm({ ...form, staff: e.target.value })} />
+          </div>
+          {/* (v32) 상태 = 날짜 기준 자동 (선택 필드 제거) */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-slate-700">상태</span>
+            <Badge color={TASK_STATUS_COLOR[statusPreview] || 'bg-slate-400'}>{statusPreview}</Badge>
+            <span className="text-[11px] text-slate-400">날짜에 따라 자동 계산됩니다 · 오늘 진행 중이면 <b>진행</b>, 종료일이 지났으면 <b>완료</b>.</span>
+          </div>
+          <Combo label="담당자" placeholder="예: 박현장" value={form.staff} options={staffNames}
+            onChange={(e) => setForm({ ...form, staff: e.target.value })} />
+          {/* (v32) 협력업체 시공/자재 분리 — 각 역할·공정 연관만 노출 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Combo label="협력업체" placeholder="거래처 검색/직접 입력" value={form.vendor} options={vendorOpts}
+              <Combo label="협력업체 (시공)" placeholder="시공 업체 선택/입력" value={form.vendor} options={consOpts}
                 onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
-              {/* (v30) 공정 연관 업체만 노출 + 전체 보기 토글 */}
-              {relVendorNames && !showAllVendors && (
-                <p className="mt-1 text-[11px] text-violet-600">
-                  🔍 '{form.process.trim()}' 연관 업체 {relVendorNames.length}개만 표시 중 ·{' '}
-                  <button type="button" onClick={() => setShowAllVendors(true)} className="underline decoration-dotted hover:text-violet-800">전체 업체 보기</button>
-                </p>
-              )}
-              {relVendorNames && showAllVendors && (
-                <p className="mt-1 text-[11px] text-slate-400">
-                  전체 업체 표시 중 ·{' '}
-                  <button type="button" onClick={() => setShowAllVendors(false)} className="underline decoration-dotted hover:text-slate-600">공정 연관만 보기</button>
-                </p>
-              )}
+              {isFiltered('시공', showAllCons)
+                ? <p className="mt-1 text-[11px] text-violet-600">🔍 '{form.process.trim()}' 연관 시공 업체만 표시 · <button type="button" onClick={() => setShowAllCons(true)} className="underline decoration-dotted hover:text-violet-800">전체 시공 보기</button></p>
+                : hasRole('시공') && showAllCons
+                  ? <p className="mt-1 text-[11px] text-slate-400">전체 시공 업체 표시 · <button type="button" onClick={() => setShowAllCons(false)} className="underline decoration-dotted hover:text-slate-600">공정 연관만</button></p>
+                  : <p className="mt-1 text-[11px] text-slate-400">기공/조공 일당이 등록된 업체는 출력인원에서 단가가 자동 적용됩니다.</p>}
             </div>
-            <Input label="계획비용 (원)" type="number" inputMode="numeric" min="0" placeholder="예: 5000000"
-              value={form.planned_cost} onChange={(e) => setForm({ ...form, planned_cost: e.target.value })} />
+            <div>
+              <Combo label="협력업체 (자재)" placeholder="자재상 선택/입력" value={form.vendor_material} options={matOpts}
+                onChange={(e) => setForm({ ...form, vendor_material: e.target.value })} />
+              {isFiltered('자재', showAllMat)
+                ? <p className="mt-1 text-[11px] text-violet-600">🔍 '{form.process.trim()}' 연관 자재상만 표시 · <button type="button" onClick={() => setShowAllMat(true)} className="underline decoration-dotted hover:text-violet-800">전체 자재상 보기</button></p>
+                : hasRole('자재') && showAllMat
+                  ? <p className="mt-1 text-[11px] text-slate-400">전체 자재상 표시 · <button type="button" onClick={() => setShowAllMat(false)} className="underline decoration-dotted hover:text-slate-600">공정 연관만</button></p>
+                  : <p className="mt-1 text-[11px] text-slate-400">발주 탭의 [📐 스케치업 물량 → 자재 발주]로 물량×단가 발주가 자동 생성됩니다.</p>}
+            </div>
           </div>
           <div>
             <span className="block mb-1.5 text-sm font-medium text-slate-700">표시 색상</span>
@@ -7245,6 +7285,20 @@
         } finally { setGenLoading(false); }
       };
       const onAutoGenClick = () => { if (hasAuto) setReplaceConfirm(true); else runAutoGen(false); };
+      // (v32) 자재 발주 자동생성 (스케치업 물량 × 자재상 단가). 재생성 시 기존 자재 초안(대기)만 교체.
+      const [genMatLoading, setGenMatLoading] = useState(false);
+      const runMaterialGen = async () => {
+        setGenMatLoading(true);
+        try {
+          const r = await api.autoGenerateMaterialOrders(site.id, { replace: true });
+          if (r && r.generated > 0) toast(`📐 자재상별 발주 ${r.generated}건 생성 · 물량 ${r.matched}건 매칭${r.skipped ? ` · 미매칭 ${r.skipped}건` : ''}`, 'success');
+          else toast((r && r.message) || '생성할 자재 발주가 없습니다.', 'info');
+          await reload();
+        } catch (e) {
+          if (e.status === 404) toast(e.message || '스케치업 물량이 없습니다. 견적 탭에서 물량을 먼저 가져오세요.', 'error');
+          else toast(e.message || '자재 발주 자동생성에 실패했습니다.', 'error');
+        } finally { setGenMatLoading(false); }
+      };
       // v10: 발주서 PDF (목록 전체 / 단건)
       const printAll = () => { if (!list.length) { toast('인쇄할 발주가 없습니다.', 'info'); return; } onPrintOrders && onPrintOrders(list); };
       const printOne = (o) => { onPrintOrders && onPrintOrders([o]); };
@@ -7275,6 +7329,8 @@
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" onClick={onAutoGenClick} disabled={genLoading}
                   title="확정 견적을 공종별로 그룹핑해 발주 초안을 자동으로 만듭니다.">{genLoading ? '생성 중…' : '⚡ 발주 자동생성'}</Button>
+                <Button size="sm" variant="secondary" onClick={runMaterialGen} disabled={genMatLoading}
+                  title="스케치업 CSV 물량 × 자재상 단가를 자재상별 발주로 자동 생성합니다.">{genMatLoading ? '생성 중…' : '📐 물량 → 자재 발주'}</Button>
                 <Button size="sm" variant="secondary" onClick={printAll} disabled={list.length === 0}
                   title="현재 발주 목록을 A4 발주서로 인쇄/PDF 저장합니다.">🖨 발주서 PDF</Button>
                 <Button size="sm" onClick={() => { setEditing(null); setEditorOpen(true); }}>+ 발주 추가</Button>
@@ -7853,10 +7909,89 @@
     }
 
     // (v30) 사진 라이트박스 — ◀▶ 버튼·키보드(←/→/Esc) 탐색 + 원본/수정/삭제. URL 은 내부 캐시+이웃 프리로드.
+    // (v32) 줌 가능한 이미지 — 휠/더블클릭/핀치 확대, 드래그 팬. 배율 1일 때 좌우 스와이프는 사진 넘기기(onPrev/onNext).
+    function ZoomableImage({ src, alt, resetKey, onPrev, onNext }) {
+      const [z, setZ] = useState({ s: 1, x: 0, y: 0 });
+      const wrapRef = useRef(null);
+      const drag = useRef(null);   // 팬(배율>1)
+      const pinch = useRef(null);  // 두 손가락 핀치
+      const swipe = useRef(null);  // 배율1 좌우 스와이프(넘기기)
+      const [grabbing, setGrabbing] = useState(false);
+      useEffect(() => { setZ({ s: 1, x: 0, y: 0 }); }, [resetKey]); // 사진 바뀌면 줌 리셋
+
+      const clamp = (s) => Math.min(5, Math.max(1, s));
+      const zoomAt = (factor, cx, cy) => setZ((p) => {
+        const ns = clamp(p.s * factor);
+        if (ns === p.s) return p;
+        const rect = wrapRef.current.getBoundingClientRect();
+        const ox = cx - rect.left - rect.width / 2 - p.x;
+        const oy = cy - rect.top - rect.height / 2 - p.y;
+        const k = ns / p.s;
+        if (ns === 1) return { s: 1, x: 0, y: 0 };
+        return { s: ns, x: p.x - ox * (k - 1), y: p.y - oy * (k - 1) };
+      });
+      const zoomBtn = (factor) => { const r = wrapRef.current.getBoundingClientRect(); zoomAt(factor, r.left + r.width / 2, r.top + r.height / 2); };
+      const onWheel = (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.18 : 1 / 1.18, e.clientX, e.clientY); };
+      const onDouble = (e) => { if (z.s > 1) setZ({ s: 1, x: 0, y: 0 }); else zoomAt(2.5, e.clientX, e.clientY); };
+      const onMouseDown = (e) => { if (z.s <= 1) return; e.preventDefault(); drag.current = { x0: e.clientX, y0: e.clientY, tx0: z.x, ty0: z.y }; setGrabbing(true); };
+      const onMouseMove = (e) => { if (!drag.current) return; setZ((p) => ({ ...p, x: drag.current.tx0 + (e.clientX - drag.current.x0), y: drag.current.ty0 + (e.clientY - drag.current.y0) })); };
+      const endMouse = () => { drag.current = null; setGrabbing(false); };
+
+      const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+      const onTouchStart = (e) => {
+        if (e.touches.length === 2) { pinch.current = { d0: dist(e.touches), s0: z.s }; swipe.current = null; drag.current = null; }
+        else if (e.touches.length === 1) {
+          if (z.s > 1) drag.current = { x0: e.touches[0].clientX, y0: e.touches[0].clientY, tx0: z.x, ty0: z.y };
+          else swipe.current = { x0: e.touches[0].clientX, y0: e.touches[0].clientY };
+        }
+      };
+      const onTouchMove = (e) => {
+        if (pinch.current && e.touches.length === 2) {
+          e.preventDefault();
+          const factor = dist(e.touches) / pinch.current.d0;
+          setZ((p) => { const ns = clamp(pinch.current.s0 * factor); return ns === 1 ? { s: 1, x: 0, y: 0 } : { ...p, s: ns }; });
+        } else if (drag.current && e.touches.length === 1) {
+          e.preventDefault();
+          setZ((p) => ({ ...p, x: drag.current.tx0 + (e.touches[0].clientX - drag.current.x0), y: drag.current.ty0 + (e.touches[0].clientY - drag.current.y0) }));
+        }
+      };
+      const onTouchEnd = (e) => {
+        if (swipe.current && e.changedTouches[0]) {
+          const dx = e.changedTouches[0].clientX - swipe.current.x0;
+          const dy = e.changedTouches[0].clientY - swipe.current.y0;
+          if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { if (dx < 0) onNext && onNext(); else onPrev && onPrev(); }
+        }
+        swipe.current = null; drag.current = null; pinch.current = null;
+      };
+      const moving = grabbing || !!pinch.current;
+      return (
+        <div ref={wrapRef} className="absolute inset-0 flex items-center justify-center overflow-hidden"
+          onWheel={onWheel} onDoubleClick={onDouble}
+          onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={endMouse} onMouseLeave={endMouse}
+          onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+          style={{ cursor: z.s > 1 ? (grabbing ? 'grabbing' : 'grab') : 'zoom-in', touchAction: 'none' }}>
+          <img src={src} alt={alt} draggable="false"
+            className="max-w-full max-h-full object-contain select-none pointer-events-none"
+            style={{ transform: `translate(${z.x}px, ${z.y}px) scale(${z.s})`, transition: moving ? 'none' : 'transform 0.15s ease-out', willChange: 'transform' }} />
+          {/* 줌 컨트롤 */}
+          <div className="absolute bottom-3 right-3 flex items-center gap-0.5 bg-black/45 rounded-full p-1" onDoubleClick={(e) => e.stopPropagation()}>
+            <button onClick={(e) => { e.stopPropagation(); zoomBtn(1 / 1.4); }} title="축소" aria-label="축소"
+              className="w-8 h-8 rounded-full text-white text-lg leading-none flex items-center justify-center hover:bg-white/20 transition">−</button>
+            <span className="text-white/80 text-[11px] tabular-nums w-9 text-center">{Math.round(z.s * 100)}%</span>
+            <button onClick={(e) => { e.stopPropagation(); zoomBtn(1.4); }} title="확대" aria-label="확대"
+              className="w-8 h-8 rounded-full text-white text-lg leading-none flex items-center justify-center hover:bg-white/20 transition">+</button>
+            {z.s > 1 && (
+              <button onClick={(e) => { e.stopPropagation(); setZ({ s: 1, x: 0, y: 0 }); }} title="원래대로" aria-label="원래대로"
+                className="ml-0.5 px-2 h-8 rounded-full text-white text-[11px] font-medium flex items-center justify-center hover:bg-white/20 transition">1:1</button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     function PhotoLightbox({ photos, index, onIndex, onClose, onEdit, onDelete }) {
       const photo = photos[index];
       const cacheRef = useRef(new Map());
-      const touchX = useRef(null); // (v31) 모바일 좌우 스와이프
       const [url, setUrl] = useState(null);
       const [err, setErr] = useState(false);
       const load = useCallback(async (p) => {
@@ -7883,13 +8018,6 @@
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
       }, [index, photos.length, onClose, onIndex]);
-      const onTouchEnd = (e) => {
-        const x0 = touchX.current; touchX.current = null;
-        const x1 = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : null;
-        if (x0 == null || x1 == null || Math.abs(x1 - x0) < 45) return;
-        if (x1 < x0 && index < photos.length - 1) onIndex(index + 1);
-        if (x1 > x0 && index > 0) onIndex(index - 1);
-      };
       if (!photo) return null;
       const procs = (photo.processes || '').split(',').map((s) => s.trim()).filter(Boolean);
       return (
@@ -7910,11 +8038,11 @@
                 className="ml-1 w-9 h-9 rounded-lg bg-white/10 hover:bg-white/25 text-xl leading-none flex items-center justify-center transition">×</button>
             </div>
           </div>
-          {/* 이미지 + 좌우 내비게이션 (v31: 모바일 스와이프 추가) */}
-          <div className="flex-1 relative flex items-center justify-center min-h-0 px-12 sm:px-16 pb-2"
-            onTouchStart={(e) => { touchX.current = e.touches[0] ? e.touches[0].clientX : null; }} onTouchEnd={onTouchEnd}>
+          {/* 이미지(줌/팬) + 좌우 내비게이션 (v32: 휠/더블클릭/핀치 줌) */}
+          <div className="flex-1 relative flex items-center justify-center min-h-0 px-12 sm:px-16 pb-2">
             {url ? (
-              <img src={url} alt={photo.file_name || '현장사진'} className="max-w-full max-h-full object-contain select-none" />
+              <ZoomableImage src={url} alt={photo.file_name || '현장사진'} resetKey={photo.id}
+                onPrev={() => index > 0 && onIndex(index - 1)} onNext={() => index < photos.length - 1 && onIndex(index + 1)} />
             ) : err ? (
               <span className="text-white/50 text-sm">미리보기를 불러오지 못했습니다.</span>
             ) : (
@@ -7922,11 +8050,11 @@
             )}
             {index > 0 && (
               <button onClick={() => onIndex(index - 1)} aria-label="이전 사진" title="이전 (←)"
-                className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">‹</button>
+                className="absolute z-10 left-2 sm:left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">‹</button>
             )}
             {index < photos.length - 1 && (
               <button onClick={() => onIndex(index + 1)} aria-label="다음 사진" title="다음 (→)"
-                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">›</button>
+                className="absolute z-10 right-2 sm:right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">›</button>
             )}
           </div>
           {/* 하단 정보 */}
@@ -12275,7 +12403,6 @@
     //   앱 내부 PhotoLightbox 와 달리 URL 이 이미 서명돼 내려오므로(1시간 유효) 비동기 로딩이 없다.
     function SimpleLightbox({ photos, index, onIndex, onClose }) {
       const photo = photos[index];
-      const touchX = useRef(null);
       useEffect(() => {
         const onKey = (e) => {
           if (e.key === 'Escape') onClose();
@@ -12287,13 +12414,6 @@
       }, [index, photos.length, onClose, onIndex]);
       if (!photo) return null;
       const procs = (photo.processes || '').split(',').map((s) => s.trim()).filter(Boolean);
-      const onTouchEnd = (e) => {
-        const x0 = touchX.current; touchX.current = null;
-        const x1 = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : null;
-        if (x0 == null || x1 == null || Math.abs(x1 - x0) < 45) return;
-        if (x1 < x0 && index < photos.length - 1) onIndex(index + 1);
-        if (x1 > x0 && index > 0) onIndex(index - 1);
-      };
       return (
         <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" role="dialog" aria-modal="true" aria-label="현장사진 크게 보기">
           <div className="flex items-center justify-between px-4 py-3 text-white/90 shrink-0">
@@ -12307,18 +12427,18 @@
                 className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/25 text-xl leading-none flex items-center justify-center transition">×</button>
             </div>
           </div>
-          <div className="flex-1 relative flex items-center justify-center min-h-0 px-12 sm:px-16 pb-2"
-            onTouchStart={(e) => { touchX.current = e.touches[0] ? e.touches[0].clientX : null; }} onTouchEnd={onTouchEnd}>
+          <div className="flex-1 relative flex items-center justify-center min-h-0 px-12 sm:px-16 pb-2">
             {photo.url
-              ? <img src={photo.url} alt={photo.file_name || '현장사진'} className="max-w-full max-h-full object-contain select-none" />
+              ? <ZoomableImage src={photo.url} alt={photo.file_name || '현장사진'} resetKey={photo.id}
+                  onPrev={() => index > 0 && onIndex(index - 1)} onNext={() => index < photos.length - 1 && onIndex(index + 1)} />
               : <span className="text-white/50 text-sm">이미지를 불러오지 못했습니다.</span>}
             {index > 0 && (
               <button onClick={() => onIndex(index - 1)} aria-label="이전 사진" title="이전 (←)"
-                className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">‹</button>
+                className="absolute z-10 left-2 sm:left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">‹</button>
             )}
             {index < photos.length - 1 && (
               <button onClick={() => onIndex(index + 1)} aria-label="다음 사진" title="다음 (→)"
-                className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">›</button>
+                className="absolute z-10 right-2 sm:right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/10 hover:bg-white/30 text-white text-xl leading-none flex items-center justify-center transition">›</button>
             )}
           </div>
           <div className="px-4 pb-4 pt-1 text-center space-y-1 shrink-0">

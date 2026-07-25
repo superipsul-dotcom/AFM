@@ -507,6 +507,8 @@ async function initDB() {
   // 7-b) (v14) 일정 협력업체(이 공정에 투입되는 거래처명) — staff 와 동형 텍스트.
   //   ADD COLUMN IF NOT EXISTS → 기존 일정 데이터 100% 보존, 멱등. 거래처 마스터명과 매칭(자유입력 허용).
   await pool.query(`ALTER TABLE interior_schedule ADD COLUMN IF NOT EXISTS vendor TEXT NOT NULL DEFAULT ''`);
+  // (v32) 협력업체를 시공/자재로 분리: 기존 vendor=협력업체(시공), vendor_material=협력업체(자재).
+  await pool.query(`ALTER TABLE interior_schedule ADD COLUMN IF NOT EXISTS vendor_material TEXT NOT NULL DEFAULT ''`);
 
   // 7-c) (v19) 일정 유형(kind): 공사(기본)/지원/미팅. ADD COLUMN IF NOT EXISTS → 기존 일정 전부 '공사' 로 backfill, 멱등.
   //   kind='미팅' 일정은 interior_meetings 에 연동행이 생성된다(아래 syncScheduleMeeting).
@@ -2214,6 +2216,16 @@ function rowToCategory(row) {
   };
 }
 
+// (v32) 일정 상태 자동 도출 — 오늘(KST) 기준. 미팅/지원도 날짜가 있으므로 동일 규칙.
+//   kind 은 영향 없음(유형은 별도). 날짜 없으면 저장값 폴백.
+function deriveScheduleStatus(start, end, fallback) {
+  if (!start || !end) return fallback || '예정';
+  const today = todayKST();
+  if (today < start) return '예정';
+  if (today > end) return '완료';
+  return '진행';
+}
+
 function rowToSchedule(row) {
   return {
     id: row.id,
@@ -2222,11 +2234,13 @@ function rowToSchedule(row) {
     process: row.process || '',
     start_date: row.start_date, // 'YYYY-MM-DD'
     end_date: row.end_date, // 'YYYY-MM-DD'
-    status: row.status || '예정',
+    // (v32) 상태는 저장값 대신 오늘(KST) 기준 자동 도출: 오늘<시작→예정, 시작≤오늘≤종료→진행, 오늘>종료→완료.
+    status: deriveScheduleStatus(row.start_date, row.end_date, row.status),
     planned_cost: Number(row.planned_cost),
     actual_cost: Number(row.actual_cost || 0), // 서버 집계 (연결 비용 합)
     staff: row.staff || '',
-    vendor: row.vendor || '', // (v14) 협력업체(거래처명) — 자유입력/마스터 매칭
+    vendor: row.vendor || '', // (v14) 협력업체(시공) — 자유입력/마스터 매칭
+    vendor_material: row.vendor_material || '', // (v32) 협력업체(자재)
     color: row.color || '',
     memo: row.memo || '',
     sort_order: Number(row.sort_order || 0),
@@ -2480,7 +2494,7 @@ const SCHEDULE_SELECT_COLS = `
   s.id, s.site_id, s.title, s.process,
   to_char(s.start_date,'YYYY-MM-DD') AS start_date,
   to_char(s.end_date,'YYYY-MM-DD')   AS end_date,
-  s.status, s.planned_cost, s.staff, s.vendor, s.color, s.memo, s.sort_order, s.kind, s.created_at,
+  s.status, s.planned_cost, s.staff, s.vendor, s.vendor_material, s.color, s.memo, s.sort_order, s.kind, s.created_at,
   (SELECT COALESCE(SUM(c.amount),0)::bigint FROM interior_costs c WHERE c.schedule_id = s.id) AS actual_cost
 `;
 // 일정 INSERT/UPDATE RETURNING — 동일하지만 테이블명(interior_schedule)으로 상관 서브쿼리 참조
@@ -2488,7 +2502,7 @@ const SCHEDULE_RETURNING_COLS = `
   id, site_id, title, process,
   to_char(start_date,'YYYY-MM-DD') AS start_date,
   to_char(end_date,'YYYY-MM-DD')   AS end_date,
-  status, planned_cost, staff, vendor, color, memo, sort_order, kind, created_at,
+  status, planned_cost, staff, vendor, vendor_material, color, memo, sort_order, kind, created_at,
   (SELECT COALESCE(SUM(c.amount),0)::bigint FROM interior_costs c WHERE c.schedule_id = interior_schedule.id) AS actual_cost
 `;
 
@@ -3055,6 +3069,9 @@ function validateSchedule(body) {
   // (v14) 협력업체: 본문에 키가 있을 때만 반영 → PUT 미전달 시 기존값 보존, POST 미전달 시 ''.
   const vendor_provided = Object.prototype.hasOwnProperty.call(b, 'vendor');
   const vendor = typeof b.vendor === 'string' ? b.vendor.trim() : '';
+  // (v32) 협력업체(자재): vendor 와 동형(provided-tracking).
+  const vendor_material_provided = Object.prototype.hasOwnProperty.call(b, 'vendor_material');
+  const vendor_material = typeof b.vendor_material === 'string' ? b.vendor_material.trim() : '';
 
   // (v19) 유형(kind): 공사/지원/미팅. 본문에 키가 있을 때만 반영(PUT 미전달 시 기존값 보존).
   //   목록 외 값은 '공사'로 보정(400 대신). POST 미전달 시 '공사'.
@@ -3077,6 +3094,8 @@ function validateSchedule(body) {
       staff: typeof b.staff === 'string' ? b.staff.trim() : '',
       vendor, // (v14) '' when absent (POST default); PUT uses vendor_provided for preserve
       vendor_provided,
+      vendor_material, // (v32) 협력업체(자재)
+      vendor_material_provided,
       kind, // (v19) '공사' when absent (POST default); PUT uses kind_provided for preserve
       kind_provided,
       color: typeof b.color === 'string' ? b.color.trim() : '',
@@ -4562,10 +4581,10 @@ app.post('/api/sites/:id/schedule', async (req, res) => {
     if (site.rows.length === 0) return res.status(404).json({ success: false, message: '해당 현장을 찾을 수 없습니다.' });
 
     // (v19) kind 컬럼 포함. kind≠'미팅' 이면 v1~v18 그대로 단일 INSERT(트랜잭션 불필요).
-    const insertSQL = `INSERT INTO interior_schedule (site_id, title, process, start_date, end_date, status, planned_cost, staff, vendor, color, memo, sort_order, kind)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+    const insertSQL = `INSERT INTO interior_schedule (site_id, title, process, start_date, end_date, status, planned_cost, staff, vendor, vendor_material, color, memo, sort_order, kind)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING ${SCHEDULE_RETURNING_COLS}`;
-    const insertParams = [id, v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.vendor, v.color, v.memo, v.sort_order, v.kind];
+    const insertParams = [id, v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.vendor, v.vendor_material, v.color, v.memo, v.sort_order, v.kind];
 
     if (v.kind !== '미팅') {
       const { rows } = await pool.query(insertSQL, insertParams);
@@ -4611,10 +4630,10 @@ app.put('/api/schedule/:id', async (req, res) => {
         await client.query('BEGIN');
         const { rows } = await client.query(
           `UPDATE interior_schedule
-           SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor), kind=COALESCE($12::text, kind)
-           WHERE id=$13
+           SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor), kind=COALESCE($12::text, kind), vendor_material=COALESCE($13::text, vendor_material)
+           WHERE id=$14
            RETURNING ${SCHEDULE_RETURNING_COLS}`,
-          [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, v.kind_provided ? v.kind : null, id]
+          [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, v.kind_provided ? v.kind : null, v.vendor_material_provided ? v.vendor_material : null, id]
         );
         if (rows.length === 0) {
           await client.query('ROLLBACK');
@@ -4653,10 +4672,10 @@ app.put('/api/schedule/:id', async (req, res) => {
       // 2) 본 일정 갱신 (cascade=false 와 동일한 풀-리플레이스). (v19) kind 포함.
       const upd = await client.query(
         `UPDATE interior_schedule
-         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor), kind=COALESCE($12::text, kind)
-         WHERE id=$13
+         SET title=$1, process=$2, start_date=$3, end_date=$4, status=$5, planned_cost=$6, staff=$7, color=$8, memo=$9, sort_order=$10, vendor=COALESCE($11::text, vendor), kind=COALESCE($12::text, kind), vendor_material=COALESCE($13::text, vendor_material)
+         WHERE id=$14
          RETURNING ${SCHEDULE_RETURNING_COLS}`,
-        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, v.kind_provided ? v.kind : null, id]
+        [v.title, v.process, v.start_date, v.end_date, v.status, v.planned_cost, v.staff, v.color, v.memo, v.sort_order, v.vendor_provided ? v.vendor : null, v.kind_provided ? v.kind : null, v.vendor_material_provided ? v.vendor_material : null, id]
       );
       const self = rowToSchedule(upd.rows[0]);
 
@@ -6246,6 +6265,121 @@ app.post('/api/sites/:id/orders/auto-generate', async (req, res) => {
   } catch (err) {
     console.error('POST /api/sites/:id/orders/auto-generate 오류:', err.message);
     res.status(500).json({ success: false, message: '발주 자동생성에 실패했습니다.' });
+  }
+});
+
+// (v32) POST /api/sites/:id/orders/auto-generate-material — 스케치업 물량(takeoff) × 자재상 단가(catalog) → 자재상별 발주 초안
+//   흐름: 현장 takeoff(스케치업 CSV 물량) 각 품목을 단가 카탈로그(판매처·자재단가 보유)와 이름/공종으로 매칭
+//         → 자재상(vendor)별로 Σ round(qty×material_price) → 발주 1건씩 초안 생성(memo 에 품목 내역).
+//   ?replace=1 → 그 현장의 자동생성(대기)·vendor≠'' 발주(=자재 초안)만 삭제 후 재생성(견적기반 초안 vendor='' 은 보존).
+//   매칭 규칙: 정규화 이름 완전일치 우선 → 부분일치 폴백, 같은 공종 우선 → 최저 자재단가.
+app.post('/api/sites/:id/orders/auto-generate-material', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+
+    const tk = await pool.query(
+      'SELECT trade, name, spec, unit, qty FROM interior_takeoff WHERE site_id=$1 AND qty > 0 ORDER BY id ASC',
+      [id]
+    );
+    if (tk.rows.length === 0) {
+      return res.status(404).json({ success: false, message: '스케치업/실측 물량이 없습니다. 견적 탭에서 [스케치업 CSV 가져오기]로 물량을 먼저 넣어주세요.' });
+    }
+
+    // 팀 단가 카탈로그 중 판매처·자재단가가 있는 행만(발주 대상).
+    const cat = await pool.query(
+      "SELECT trade, name, unit, material_price, vendor FROM interior_catalog WHERE team_id=$1 AND active = TRUE AND vendor <> '' AND material_price > 0",
+      [req.teamId]
+    );
+    const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, '').replace(/[()[\]{}/*·,.\-_]/g, '');
+    const catRows = cat.rows.map((r) => ({ trade: r.trade || '', name: r.name || '', unit: r.unit || '', price: Number(r.material_price) || 0, vendor: r.vendor, _n: norm(r.name) }));
+    const byName = new Map();
+    for (const r of catRows) { if (!byName.has(r._n)) byName.set(r._n, []); byName.get(r._n).push(r); }
+    const pickBest = (item) => {
+      const nn = norm(item.name);
+      if (!nn) return null;
+      let cands = byName.get(nn) || [];
+      if (!cands.length) cands = catRows.filter((r) => r._n && (r._n.includes(nn) || nn.includes(r._n)));
+      if (!cands.length) return null;
+      const itrade = (item.trade || '').trim();
+      cands = cands.slice().sort((a, b) => {
+        const at = a.trade === itrade ? 0 : 1, bt = b.trade === itrade ? 0 : 1;
+        if (at !== bt) return at - bt;              // 같은 공종 우선
+        return a.price - b.price;                    // 그다음 최저 단가
+      });
+      return cands[0];
+    };
+
+    const byVendor = new Map(); // vendor → { amount, lines[], trades: Map(trade→count) }
+    let matched = 0, skipped = 0; const unmatched = [];
+    for (const it of tk.rows) {
+      const qty = Number(it.qty) || 0;
+      if (qty <= 0) continue;
+      const m = pickBest(it);
+      if (!m) { skipped++; if (unmatched.length < 20) unmatched.push(it.name); continue; }
+      matched++;
+      const amount = Math.round(qty * m.price);
+      const g = byVendor.get(m.vendor) || { amount: 0, lines: [], trades: new Map() };
+      g.amount += amount;
+      const qtyStr = Number.isInteger(qty) ? String(qty) : qty.toFixed(2);
+      g.lines.push(`· ${it.name} ${qtyStr}${m.unit || it.unit || ''} × ${m.price.toLocaleString('ko-KR')}원 = ${amount.toLocaleString('ko-KR')}원`);
+      const dt = m.trade || it.trade || '';
+      g.trades.set(dt, (g.trades.get(dt) || 0) + 1);
+      byVendor.set(m.vendor, g);
+    }
+
+    if (byVendor.size === 0) {
+      return res.status(200).json({
+        generated: 0, matched: 0, skipped,
+        message: '물량과 일치하는 자재상 단가를 찾지 못했습니다. 관리 › 단가 카탈로그에 해당 자재의 판매처·자재단가가 등록돼 있어야 매칭됩니다.',
+        unmatched,
+      });
+    }
+
+    const ndQ = await pool.query(
+      "SELECT process, to_char(MIN(start_date) - 3, 'YYYY-MM-DD') AS need_date FROM interior_schedule WHERE site_id=$1 GROUP BY process",
+      [id]
+    );
+    const ndMap = new Map(); for (const r of ndQ.rows) ndMap.set(r.process || '', r.need_date);
+
+    const replace = req.query.replace === '1' || req.query.replace === 'true';
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (replace) {
+        await client.query(
+          "DELETE FROM interior_orders WHERE site_id=$1 AND auto_generated=TRUE AND status='대기' AND vendor <> ''",
+          [id]
+        );
+      }
+      const created = [];
+      for (const [vendor, g] of byVendor) {
+        let domTrade = ''; let best = -1;
+        for (const [t, c] of g.trades) { if (c > best) { best = c; domTrade = t; } }
+        const need_date = ndMap.has(domTrade) ? ndMap.get(domTrade) : null;
+        const memo = `📐 스케치업 물량 자동 산출 (${g.lines.length}개 품목)\n${g.lines.join('\n')}`;
+        const ins = await client.query(
+          `INSERT INTO interior_orders (site_id, order_no, vendor, trade, title, amount, status, memo, need_date, auto_generated)
+           VALUES ($1, '', $2, $3, $4, $5, '대기', $6, $7, TRUE) RETURNING ${ORDER_COLS}`,
+          [id, vendor, domTrade, `${vendor} 자재 발주`, g.amount, memo, need_date]
+        );
+        const upd = await client.query(
+          `UPDATE interior_orders SET order_no=$1 WHERE id=$2 RETURNING ${ORDER_COLS}`,
+          ['PO-' + ins.rows[0].id, ins.rows[0].id]
+        );
+        created.push(rowToOrder(upd.rows[0]));
+      }
+      await client.query('COMMIT');
+      res.json({ generated: created.length, matched, skipped, orders: created, unmatched });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('POST /api/sites/:id/orders/auto-generate-material 오류:', err.message);
+    res.status(500).json({ success: false, message: '자재 발주 자동생성에 실패했습니다.' });
   }
 });
 
