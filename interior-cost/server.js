@@ -1211,6 +1211,37 @@ async function initDB() {
   // 만료 7일 지난 코드 정리(부팅 시 1회, best-effort)
   await pool.query(`DELETE FROM interior_email_codes WHERE expires_at < now() - interval '7 days'`).catch(() => {});
 
+  // ====================================================================
+  // (v36) 개인 알림 설정 + 💬 채팅방(Phase 1: 현장별 팀 채팅 + AI)
+  //   전부 ADD COLUMN / CREATE TABLE IF NOT EXISTS → 데이터 보존, 멱등.
+  // ====================================================================
+  // 개인 알림 채널/이벤트 선호. inapp 은 항상 on(컬럼 없음). 기본=외부 채널 전부 off.
+  await pool.query(`ALTER TABLE interior_users ADD COLUMN IF NOT EXISTS notify_prefs JSONB NOT NULL DEFAULT '{"email":false,"sms":false,"kakao":false,"events":{"chat":true,"work":true,"task":true}}'::jsonb`);
+  // 채팅 메시지 — Phase 1: 현장(room=site) 단위, 팀원 접근. sender_user_id NULL = AI/시스템.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_chat_messages (
+      id             BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id        BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      site_id        BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      sender_user_id BIGINT REFERENCES interior_users(id) ON DELETE SET NULL,
+      sender_name    TEXT NOT NULL DEFAULT '',
+      kind           TEXT NOT NULL DEFAULT 'user',   -- user | ai | system
+      body           TEXT NOT NULL DEFAULT '',
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_chat_site ON interior_chat_messages (site_id, id);');
+  // 채팅 읽음 표시 — 사용자×현장 마지막 읽은 메시지 id (안 읽음 배지용).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_chat_reads (
+      user_id      BIGINT NOT NULL REFERENCES interior_users(id) ON DELETE CASCADE,
+      site_id      BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      last_read_id BIGINT NOT NULL DEFAULT 0,
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, site_id)
+    )
+  `);
+
   // (v25) 매뉴얼 시드 — 전체 0건일 때만 노션 43건을 가장 오래된 팀에 적재
   await seedManualsIfEmpty();
 
@@ -1560,6 +1591,45 @@ function mailLayout(title, bodyHtml, footNote) {
     </div>
   </div>
 </div>`;
+}
+
+// (v36) SMS 발송 — 국내 문자 API(플러그형). 미설정 시 발송 안 함(로그만) → 알림은 인앱/이메일로 대체.
+//   지원: SMS_PROVIDER=aligo (알리고, 발신번호 사전등록 필요) · 그 외/미설정 = 'none'.
+//   ⚠️ 국내 문자는 발신번호 사전등록이 법적 필수 — 사용자가 제공사 가입+번호등록 후 키를 넣어야 실제 발송됨.
+function smsBackend() {
+  if ((process.env.SMS_PROVIDER || '').trim() === 'aligo' && (process.env.ALIGO_KEY || '').trim()) return 'aligo';
+  return 'none';
+}
+const SMS_ENABLED = () => smsBackend() !== 'none';
+async function sendSms({ to, text }) {
+  const backend = smsBackend();
+  const phone = String(to || '').replace(/[^0-9]/g, '');
+  if (!phone) return { sent: false, backend, error: '수신 번호 없음' };
+  if (backend === 'none') { console.log(`📱 [SMS:미설정] to=${phone} ${String(text).slice(0, 40)}`); return { sent: false, backend }; }
+  try {
+    if (backend === 'aligo') {
+      const form = new URLSearchParams({
+        key: (process.env.ALIGO_KEY || '').trim(),
+        user_id: (process.env.ALIGO_USER || '').trim(),
+        sender: (process.env.ALIGO_SENDER || '').trim(),
+        receiver: phone,
+        msg: String(text || '').slice(0, 500),
+      });
+      const r = await fetch('https://apis.aligo.in/send/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
+      const j = await r.json().catch(() => ({}));
+      if (String(j.result_code) !== '1') throw new Error(`aligo ${j.result_code} ${j.message || ''}`.slice(0, 200));
+      return { sent: true, backend };
+    }
+    return { sent: false, backend };
+  } catch (err) { console.error('📱 SMS 발송 실패:', err.message); return { sent: false, backend, error: err.message }; }
+}
+
+// (v36) 카카오 알림톡 — 채널+템플릿 사전승인 필요(설정 부담 큼). 지금은 스텁: 미설정이면 발송 안 함.
+//   실제 발송하려면 aligo/solapi 등 알림톡 대행 + 템플릿 승인 후 KAKAO_* 키 연결 필요.
+const KAKAO_ENABLED = () => false; // 템플릿 승인 전까지 비활성(추후 연동)
+async function sendKakao({ to, text }) {
+  console.log(`💬 [KAKAO:미설정] to=${to} ${String(text).slice(0, 40)}`);
+  return { sent: false, backend: 'none' };
 }
 
 // 임시 비밀번호 — 혼동 문자(0/O/1/l/I) 제외, 10자.
@@ -7895,6 +7965,36 @@ app.get('/api/photos/:id/download', makeDownloadHandler('interior_photos', '현�
 //   알림 규칙: 할일 할당→담당자 / 할일 완료→팀 admin+생성자 / 출력 완료→팀원 전체 (모두 actor 제외)
 // ========================================
 // 알림 생성 헬퍼 — 수신자 dedupe + actor 제외 + 빈 배열 no-op. 실패해도 본 요청은 성공 처리(warn).
+// (v36) 알림 type → 이벤트 카테고리(개인 알림 설정의 events 키). chat_*/task_*/그외=work.
+function notifyCategory(type) {
+  const t = String(type || '');
+  if (t.startsWith('chat')) return 'chat';
+  if (t.startsWith('task')) return 'task';
+  return 'work';
+}
+// (v36) 개인 설정에 따라 이메일/문자/카톡으로도 발송(인앱은 항상). fire-and-forget — API 응답 지연 방지.
+async function dispatchExternalNotifications({ targets, type, title, body }) {
+  try {
+    const category = notifyCategory(type);
+    const { rows } = await pool.query(
+      'SELECT id, COALESCE(NULLIF(name,\'\'), email) AS name, email, phone, notify_prefs FROM interior_users WHERE id = ANY($1::bigint[])',
+      [targets]
+    );
+    const text = `[안도 현장] ${title}${body ? `\n${body}` : ''}`;
+    for (const u of rows) {
+      const p = u.notify_prefs || {};
+      const events = p.events || {};
+      if (events[category] === false) continue; // 이 카테고리는 외부 알림 끔
+      if (p.email && u.email && MAIL_ENABLED()) {
+        sendMail({ to: u.email, subject: `[안도 현장] ${title}`, text, html: mailLayout(title, `<p style="margin:0 0 8px;white-space:pre-wrap;">${(body || '').replace(/</g, '&lt;')}</p>`, '안도 현장 알림 · 수신 설정은 [나의 정보]에서 변경할 수 있습니다.') })
+          .catch(() => {});
+      }
+      if (p.sms && u.phone && SMS_ENABLED()) sendSms({ to: u.phone, text }).catch(() => {});
+      if (p.kakao && u.phone && KAKAO_ENABLED()) sendKakao({ to: u.phone, text }).catch(() => {});
+    }
+  } catch (err) { console.warn('⚠️  외부 알림 디스패치 실패(무시):', err.message); }
+}
+
 async function notifyUsers({ teamId, userIds, actorUserId, type, title, body = '', siteId = null, refType = '', refId = null }) {
   try {
     const targets = [...new Set((userIds || []).map(Number).filter((x) => Number.isFinite(x) && x > 0 && x !== Number(actorUserId)))];
@@ -7909,6 +8009,8 @@ async function notifyUsers({ teamId, userIds, actorUserId, type, title, body = '
       `INSERT INTO interior_notifications (team_id, user_id, actor_user_id, type, title, body, site_id, ref_type, ref_id)
        VALUES ${values.join(',')}`, params
     );
+    // (v36) 외부 채널(이메일/문자/카톡)로도 개인 설정에 따라 발송 — 응답 지연 없이 백그라운드.
+    dispatchExternalNotifications({ targets, type, title, body }).catch(() => {});
   } catch (err) {
     console.warn('⚠️  알림 생성 실패(요청은 계속):', err.message);
   }
@@ -8914,7 +9016,7 @@ app.delete('/api/materials/:id', async (req, res) => {
 // ════════════════════════════════════════════════════════════════
 
 const PROFILE_COLS =
-  'id, email, name, job_title, department, position, specialty, phone, emergency_contact, bio, team_id, role, avatar_path, approval_status, approval_requested_at, approved_at, staff_id';
+  'id, email, name, job_title, department, position, specialty, phone, emergency_contact, bio, team_id, role, avatar_path, approval_status, approval_requested_at, approved_at, staff_id, notify_prefs';
 
 function rowToProfile(row) {
   return {
@@ -8936,6 +9038,7 @@ function rowToProfile(row) {
     approval_requested_at: row.approval_requested_at || null,
     approved_at: row.approved_at || null,
     staff_id: row.staff_id == null ? null : Number(row.staff_id),
+    notify_prefs: row.notify_prefs || { email: false, sms: false, kakao: false, events: { chat: true, work: true, task: true } }, // (v36)
   };
 }
 
@@ -8987,7 +9090,7 @@ app.get('/api/me/profile', async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id,u.email,u.name,u.job_title,u.department,u.position,u.specialty,u.phone,u.emergency_contact,u.bio,u.team_id,u.role,u.avatar_path,
-              u.approval_status,u.approval_requested_at,u.approved_at,u.staff_id,t.name AS team_name
+              u.approval_status,u.approval_requested_at,u.approved_at,u.staff_id,u.notify_prefs,t.name AS team_name
          FROM interior_users u JOIN interior_teams t ON t.id=u.team_id WHERE u.id=$1`,
       [req.userId]
     );
@@ -9062,6 +9165,158 @@ app.patch('/api/me/profile', async (req, res) => {
   } catch (err) {
     console.error('PATCH /api/me/profile 오류:', err.message);
     res.status(500).json({ success: false, message: '프로필을 저장하지 못했습니다.' });
+  }
+});
+
+// (v36) PATCH /api/me/notify-prefs {email?, sms?, kakao?, events?:{chat,work,task}} — 개인 알림 설정.
+//   서버 채널 설정 상태(configured)도 함께 반환 → UI 가 "설정 필요" 안내.
+app.patch('/api/me/notify-prefs', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cur = await pool.query('SELECT notify_prefs FROM interior_users WHERE id=$1', [req.userId]);
+    if (cur.rows.length === 0) return res.status(401).json({ error: '인증이 필요합니다' });
+    const prev = cur.rows[0].notify_prefs || {};
+    const prevEvents = prev.events || {};
+    const bool = (v, d) => (typeof v === 'boolean' ? v : d);
+    const eIn = b.events || {};
+    const next = {
+      email: bool(b.email, !!prev.email),
+      sms: bool(b.sms, !!prev.sms),
+      kakao: bool(b.kakao, !!prev.kakao),
+      events: {
+        chat: bool(eIn.chat, prevEvents.chat !== false),
+        work: bool(eIn.work, prevEvents.work !== false),
+        task: bool(eIn.task, prevEvents.task !== false),
+      },
+    };
+    await pool.query('UPDATE interior_users SET notify_prefs=$1::jsonb WHERE id=$2', [JSON.stringify(next), req.userId]);
+    res.json({ notify_prefs: next, channels_configured: { email: MAIL_ENABLED(), sms: SMS_ENABLED(), kakao: KAKAO_ENABLED() } });
+  } catch (err) {
+    console.error('PATCH /api/me/notify-prefs 오류:', err.message);
+    res.status(500).json({ success: false, message: '알림 설정을 저장하지 못했습니다.' });
+  }
+});
+
+// GET /api/me/notify-channels — 서버에서 실제 사용 가능한 알림 채널(UI 안내용).
+app.get('/api/me/notify-channels', (req, res) => {
+  res.json({ email: MAIL_ENABLED(), sms: SMS_ENABLED(), kakao: KAKAO_ENABLED() });
+});
+
+// ========================================
+// (v36) 💬 채팅방 — 현장(room=site) 단위 팀 채팅 + @AI 어시스턴트
+//   site 소유검증은 app.use('/api/sites/:id') 미들웨어가 선행(타팀 404).
+// ========================================
+function rowToChatMsg(r) {
+  return {
+    id: String(r.id), site_id: String(r.site_id),
+    sender_user_id: r.sender_user_id == null ? null : String(r.sender_user_id),
+    sender_name: r.sender_name || (r.kind === 'ai' ? 'AI' : ''),
+    kind: r.kind || 'user', body: r.body || '',
+    created_at: new Date(r.created_at).toISOString(),
+  };
+}
+const CHAT_MSG_COLS = 'id, site_id, sender_user_id, sender_name, kind, body, created_at';
+
+// GET /api/sites/:id/chat?after=<id>&limit= — after 이후 메시지(폴링). after 없으면 최근 limit개.
+app.get('/api/sites/:id/chat', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const after = parseId(req.query.after);
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 60));
+    let rows;
+    if (after) {
+      rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 AND id>$2 ORDER BY id ASC LIMIT 200`, [id, after])).rows;
+    } else {
+      rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT $2`, [id, limit])).rows.reverse();
+    }
+    res.json({ messages: rows.map(rowToChatMsg) });
+  } catch (err) {
+    console.error('GET /api/sites/:id/chat 오류:', err.message);
+    res.status(500).json({ success: false, message: '채팅을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/chat {body} — 메시지 전송. @AI 멘션 시 AI 응답도 함께 생성. 팀원에게 알림.
+app.post('/api/sites/:id/chat', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const body = typeof (req.body || {}).body === 'string' ? req.body.body.trim() : '';
+    if (!body) return res.status(400).json({ success: false, message: '메시지를 입력하세요.' });
+    if (body.length > 4000) return res.status(400).json({ success: false, message: '메시지가 너무 깁니다(4000자 이하).' });
+
+    const senderName = await currentUserName(req);
+    const ins = await pool.query(
+      `INSERT INTO interior_chat_messages (team_id, site_id, sender_user_id, sender_name, kind, body)
+       VALUES ($1,$2,$3,$4,'user',$5) RETURNING ${CHAT_MSG_COLS}`,
+      [req.teamId, id, req.userId, senderName, body]
+    );
+    const userMsg = rowToChatMsg(ins.rows[0]);
+    const created = [userMsg];
+
+    // 팀원 전체에게 새 메시지 알림(발신자 제외 — notifyUsers 가 처리). 인앱+개인설정 외부채널.
+    const teamIds = await teamUserIdsByRole(req.teamId, false);
+    const siteNameQ = await pool.query('SELECT name FROM interior_sites WHERE id=$1', [id]);
+    const siteName = siteNameQ.rows.length ? siteNameQ.rows[0].name : '현장';
+    await notifyUsers({
+      teamId: req.teamId, userIds: teamIds, actorUserId: req.userId,
+      type: 'chat_message', title: `💬 ${siteName} 새 메시지`, body: `${senderName}: ${body.slice(0, 80)}`,
+      siteId: id, refType: 'chat', refId: null,
+    });
+
+    // (v36) @AI 멘션 → AI 응답 생성(현장 스코프 + 최근 대화 맥락).
+    const mentionsAi = /@ai\b/i.test(body) || /(^|\s)ai\s*(야|님|씨|봇|,|\?|아)/i.test(body);
+    if (mentionsAi) {
+      const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
+      const scope = { site_id: id, site_name: siteName, tab_label: '채팅' };
+      const recent = (await pool.query(
+        `SELECT sender_name, kind, body FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT 10`, [id]
+      )).rows.reverse();
+      const convo = [
+        { role: 'system', content: chatSystemPrompt(req.teamId, today, scope)
+          + '\n\n[채팅방 모드] 여러 사람이 있는 현장 채팅방입니다. @AI 로 호출됐습니다. 방금 사용자의 요청에 짧고 명확히 답하세요(2~5문장). 직전 대화 맥락을 참고하되, 답은 마지막 사용자 메시지에 집중.' },
+        ...recent.map((m) => ({ role: m.kind === 'ai' ? 'assistant' : 'user', content: `${m.kind === 'ai' ? '' : (m.sender_name + ': ')}${m.body}`.slice(0, 2000) })),
+      ];
+      const r = await runAiConversation(convo, 700);
+      const aiText = r.ok ? r.reply : `⚠️ ${r.error || 'AI 응답에 실패했습니다.'}`;
+      const aiIns = await pool.query(
+        `INSERT INTO interior_chat_messages (team_id, site_id, sender_user_id, sender_name, kind, body)
+         VALUES ($1,$2,NULL,'AI','ai',$3) RETURNING ${CHAT_MSG_COLS}`,
+        [req.teamId, id, aiText]
+      );
+      created.push(rowToChatMsg(aiIns.rows[0]));
+    }
+
+    // 발신자의 읽음 위치 갱신(마지막 생성 메시지까지)
+    const lastId = created[created.length - 1].id;
+    await pool.query(
+      `INSERT INTO interior_chat_reads (user_id, site_id, last_read_id) VALUES ($1,$2,$3)
+       ON CONFLICT (user_id, site_id) DO UPDATE SET last_read_id=GREATEST(interior_chat_reads.last_read_id, EXCLUDED.last_read_id), updated_at=now()`,
+      [req.userId, id, lastId]
+    );
+    res.status(201).json({ messages: created });
+  } catch (err) {
+    console.error('POST /api/sites/:id/chat 오류:', err.message);
+    res.status(500).json({ success: false, message: '메시지를 보내지 못했습니다.' });
+  }
+});
+
+// POST /api/sites/:id/chat/read {last_id} — 읽음 표시.
+app.post('/api/sites/:id/chat/read', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const lastId = parseId((req.body || {}).last_id) || 0;
+    await pool.query(
+      `INSERT INTO interior_chat_reads (user_id, site_id, last_read_id) VALUES ($1,$2,$3)
+       ON CONFLICT (user_id, site_id) DO UPDATE SET last_read_id=GREATEST(interior_chat_reads.last_read_id, EXCLUDED.last_read_id), updated_at=now()`,
+      [req.userId, id, lastId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/sites/:id/chat/read 오류:', err.message);
+    res.status(500).json({ success: false, message: '읽음 처리에 실패했습니다.' });
   }
 });
 
@@ -9342,12 +9597,74 @@ function chatSystemPrompt(teamId, today, scope) {
   ].join('\n');
 }
 
+// (v36) gpt-4o + run_sql 도구 루프 공용 실행기 — /api/chat 과 채팅방 AI 가 공유.
+//   convo: [{role:'system',...}, ...대화]. 반환 {ok, reply, queries} 또는 {ok:false, status, error, detail}.
+async function runAiConversation(convo, maxTokens = 900) {
+  const apiKey = (process.env.OPENAI_API_KEY || '').trim();
+  if (!apiKey) return { ok: false, status: 503, error: 'AI 기능이 설정되지 않았습니다. (OPENAI_API_KEY)' };
+  const tools = [{
+    type: 'function',
+    function: {
+      name: 'run_sql',
+      description: '팀 데이터베이스에 읽기 전용 PostgreSQL SELECT 1문장을 실행하고 rows 를 반환합니다.',
+      parameters: { type: 'object', properties: { sql: { type: 'string', description: 'PostgreSQL SELECT/WITH 단일 문장' } }, required: ['sql'] },
+    },
+  }];
+  let queries = 0;
+  for (let iter = 0; iter < 6; iter++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60000);
+    let apiRes;
+    try {
+      apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: 'gpt-4o', messages: convo, tools, tool_choice: 'auto', temperature: 0.2, max_tokens: maxTokens }),
+        signal: controller.signal,
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      return { ok: false, status: 502, error: 'AI 호출에 실패했습니다.', detail: e && e.name === 'AbortError' ? '응답 시간 초과(60초)' : String((e && e.message) || e) };
+    }
+    clearTimeout(timer);
+    if (!apiRes.ok) {
+      let detail = `OpenAI 응답 코드 ${apiRes.status}`;
+      try { const eb = await apiRes.json(); if (eb && eb.error && eb.error.message) detail = eb.error.message; } catch (_) { /* 무시 */ }
+      console.error('runAiConversation OpenAI 실패 status:', apiRes.status);
+      return { ok: false, status: 502, error: 'AI 호출에 실패했습니다.', detail };
+    }
+    const apiJson = await apiRes.json();
+    const msg = apiJson && apiJson.choices && apiJson.choices[0] && apiJson.choices[0].message;
+    if (!msg) return { ok: false, status: 502, error: 'AI 응답 형식이 올바르지 않습니다.' };
+    if (Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+      convo.push(msg);
+      for (const tc of msg.tool_calls) {
+        let resultStr;
+        try {
+          const args = JSON.parse((tc.function && tc.function.arguments) || '{}');
+          const chk = chatSqlCheck(args.sql);
+          if (!chk.ok) { resultStr = JSON.stringify({ error: chk.reason }); }
+          else {
+            const r = await runChatSql(chk.sql);
+            queries++;
+            const rowsJson = JSON.stringify(r.rows);
+            resultStr = rowsJson.length > 12000
+              ? JSON.stringify({ rowCount: r.rowCount, truncated: true, note: '결과가 잘렸습니다 — 집계나 LIMIT 로 다시 조회하세요.', rows_partial: rowsJson.slice(0, 12000) })
+              : JSON.stringify({ rowCount: r.rowCount, truncated: r.truncated, rows: r.rows });
+          }
+        } catch (e) { resultStr = JSON.stringify({ error: String((e && e.message) || e).slice(0, 300) }); }
+        convo.push({ role: 'tool', tool_call_id: tc.id, content: resultStr });
+      }
+      continue;
+    }
+    return { ok: true, reply: String(msg.content || '').trim(), queries };
+  }
+  return { ok: false, status: 502, error: 'AI가 답을 정리하지 못했습니다. 질문을 조금 더 구체적으로 해주세요.' };
+}
+
 // POST /api/chat {messages:[{role:'user'|'assistant',content}...]} → {reply, queries}
 app.post('/api/chat', async (req, res) => {
   try {
-    const apiKey = (process.env.OPENAI_API_KEY || '').trim();
-    if (!apiKey) return res.status(503).json({ error: 'OPENAI_API_KEY 미설정' });
-
     const raw = req.body && Array.isArray(req.body.messages) ? req.body.messages : [];
     const msgs = raw
       .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
@@ -9372,77 +9689,9 @@ app.post('/api/chat', async (req, res) => {
       }
     }
     const convo = [{ role: 'system', content: chatSystemPrompt(req.teamId, today, scope) }, ...msgs];
-    const tools = [{
-      type: 'function',
-      function: {
-        name: 'run_sql',
-        description: '팀 데이터베이스에 읽기 전용 PostgreSQL SELECT 1문장을 실행하고 rows 를 반환합니다.',
-        parameters: {
-          type: 'object',
-          properties: { sql: { type: 'string', description: 'PostgreSQL SELECT/WITH 단일 문장' } },
-          required: ['sql'],
-        },
-      },
-    }];
-
-    let queries = 0;
-    for (let iter = 0; iter < 6; iter++) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 60000);
-      let apiRes;
-      try {
-        apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: 'gpt-4o', messages: convo, tools, tool_choice: 'auto', temperature: 0.2, max_tokens: 900 }),
-          signal: controller.signal,
-        });
-      } catch (e) {
-        clearTimeout(timer);
-        const detail = e && e.name === 'AbortError' ? '응답 시간 초과(60초)' : String((e && e.message) || e);
-        return res.status(502).json({ error: 'AI 호출에 실패했습니다.', detail });
-      }
-      clearTimeout(timer);
-      if (!apiRes.ok) {
-        let detail = `OpenAI 응답 코드 ${apiRes.status}`;
-        try { const eb = await apiRes.json(); if (eb && eb.error && eb.error.message) detail = eb.error.message; } catch (_) { /* 무시 */ }
-        console.error('POST /api/chat OpenAI 실패 status:', apiRes.status); // 키는 로깅하지 않음
-        return res.status(502).json({ error: 'AI 호출에 실패했습니다.', detail });
-      }
-      const apiJson = await apiRes.json();
-      const msg = apiJson && apiJson.choices && apiJson.choices[0] && apiJson.choices[0].message;
-      if (!msg) return res.status(502).json({ error: 'AI 응답 형식이 올바르지 않습니다.' });
-
-      if (Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
-        convo.push(msg);
-        for (const tc of msg.tool_calls) {
-          let resultStr;
-          try {
-            const args = JSON.parse((tc.function && tc.function.arguments) || '{}');
-            const chk = chatSqlCheck(args.sql);
-            if (!chk.ok) {
-              resultStr = JSON.stringify({ error: chk.reason });
-            } else {
-              const r = await runChatSql(chk.sql);
-              queries++;
-              let rowsJson = JSON.stringify(r.rows);
-              if (rowsJson.length > 12000) {
-                resultStr = JSON.stringify({ rowCount: r.rowCount, truncated: true, note: '결과가 잘렸습니다 — 집계나 LIMIT 로 다시 조회하세요.', rows_partial: rowsJson.slice(0, 12000) });
-              } else {
-                resultStr = JSON.stringify({ rowCount: r.rowCount, truncated: r.truncated, rows: r.rows });
-              }
-            }
-          } catch (e) {
-            resultStr = JSON.stringify({ error: String((e && e.message) || e).slice(0, 300) });
-          }
-          convo.push({ role: 'tool', tool_call_id: tc.id, content: resultStr });
-        }
-        continue;
-      }
-
-      return res.json({ reply: String(msg.content || '').trim(), queries });
-    }
-    return res.status(502).json({ error: 'AI가 답을 정리하지 못했습니다. 질문을 조금 더 구체적으로 해주세요.' });
+    const r = await runAiConversation(convo);
+    if (!r.ok) return res.status(r.status || 502).json({ error: r.error, detail: r.detail });
+    return res.json({ reply: r.reply, queries: r.queries });
   } catch (err) {
     console.error('POST /api/chat 오류:', err.message);
     res.status(500).json({ success: false, message: 'AI 채팅 처리에 실패했습니다.' });

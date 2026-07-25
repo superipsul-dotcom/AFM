@@ -1640,3 +1640,29 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 
 ## 검증 (2026-07-25, Playwright, 클라이언트 공유 링크)
 - 클라이언트 일정=달력(도장/도배·타일·목공 막대, 오늘 25 표시)+목록 토글 / 사진 일정별(7/25 목공 2장·7/19 도장/도배 4장, 사진 있는 날만)→행 클릭 라이트박스 / 자료 PDF 22p 인라인 렌더. 콘솔 에러 0(Babel note 제외). 테스트 공유링크 비활성화.
+
+---
+
+# v36 — 💬 현장 채팅방(팀+AI) + 개인 알림 설정(채널/이벤트) + 외부 알림 채널(이메일 가동·문자/카톡 플러그) (2026-07-26)
+
+## 36-0 DB (ADD COLUMN/CREATE TABLE IF NOT EXISTS)
+- interior_users +`notify_prefs JSONB`({email,sms,kakao,events:{chat,work,task}}, 기본 외부 전부 off).
+- **interior_chat_messages**(team_id,site_id,sender_user_id(NULL=AI/시스템),sender_name,kind[user|ai|system],body,created_at) idx(site_id,id) · **interior_chat_reads**(user_id,site_id,last_read_id) PK(user,site).
+
+## 36-1 개인 알림 설정
+- `PATCH /api/me/notify-prefs {email,sms,kakao,events}` · `GET /api/me/notify-channels`(서버 설정 여부). profile 에 notify_prefs 포함.
+- **notifyUsers 확장**: 인앱 INSERT 후 `dispatchExternalNotifications`(fire-and-forget) — 사용자별 prefs+채널설정 확인해 이메일(sendMail)/문자(sendSms)/카톡(sendKakao) 발송. 이벤트 카테고리(chat/task/work=그외)로 필터.
+- UI: 나의 정보 › 🔔 알림 설정 — 채널 토글(📱인앱 항상·이메일·문자·카톡, 미설정=`설정 필요` 배지·비활성) + 이벤트 칩(채팅/업무/할일).
+
+## 36-2 외부 발송 채널(플러그형, sendMail 과 동형)
+- **이메일=Resend**(이미 가동). **SMS**: `SMS_PROVIDER=aligo`+ALIGO_KEY/USER/SENDER(⚠️발신번호 사전등록 필수) → 미설정 'none'. **카카오 알림톡**: 스텁(KAKAO_ENABLED=false) — 채널+템플릿 승인 대행 연동 후 활성.
+
+## 36-3 채팅방 (Phase 1: 현장별 팀 채팅 + @AI)
+- `GET /api/sites/:id/chat?after=&limit=`(폴링 증분) · `POST /api/sites/:id/chat {body}`(전송, **@AI 멘션 시 AI 응답 메시지도 생성**, 팀원 알림) · `POST .../chat/read {last_id}`.
+- **AI**: `runAiConversation(convo)` 공용 실행기(/api/chat 에서 추출) 재사용. 채팅방은 현장 스코프+최근 10메시지 맥락+짧게 답 지시. @AI/`AI야` 등 감지.
+- UI: **💬 채팅 탭**(현장 종속) `ChatRoomTab` — 4초 폴링(문서 숨김 시 스킵), 말풍선(내=우파랑/타인=좌백/AI=좌인디고 🤖), 날짜 구분·시각, [🤖 AI] 프리픽스 버튼, AI 생성 중 타이핑 인디케이터, 읽음 표시.
+- **다음 단계(미구현)**: 외부 참여자(클라이언트/협력업체 매직링크), Supabase Realtime 업그레이드, AI 자동 브리핑.
+
+## 검증 (2026-07-26, 로컬+실 OpenAI)
+- API: notify-prefs 저장/채널상태, 채팅 전송, **@AI 멘션→'목공 진행중' 정확 응답**(현장 스코프), 폴링.
+- Playwright: 💬채팅 탭 렌더·말풍선(내/AI)·전송→AI 응답 관통·타이핑 인디케이터 / 나의 정보 🔔알림 설정(채널 토글·설정필요 배지·이벤트 칩). 콘솔 에러 0. 테스트 데이터·prefs 정리.

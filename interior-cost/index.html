@@ -947,6 +947,12 @@
       async approveUser(userId) { return this._tryFetch(`${API_BASE_URL}/admin/approvals/${userId}/approve`, { method: 'POST', body: JSON.stringify({}) }); },
       async rejectUser(userId, reason) { return this._tryFetch(`${API_BASE_URL}/admin/approvals/${userId}/reject`, { method: 'POST', body: JSON.stringify({ reason: reason || '' }) }); },
       async chatAsk(messages, scope) { return this._tryFetch(`${API_BASE_URL}/chat`, { method: 'POST', body: JSON.stringify({ messages, ...(scope ? { scope } : {}) }) }); },
+      // (v36) 개인 알림 설정 + 💬 채팅방
+      async updateNotifyPrefs(body) { return this._tryFetch(`${API_BASE_URL}/me/notify-prefs`, { method: 'PATCH', body: JSON.stringify(body) }); },
+      async notifyChannels() { return this._tryFetch(`${API_BASE_URL}/me/notify-channels`); },
+      async chatRoomMessages(siteId, afterId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat${afterId ? `?after=${afterId}` : ''}`); },
+      async chatRoomSend(siteId, body) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat`, { method: 'POST', body: JSON.stringify({ body }) }); },
+      async chatRoomRead(siteId, lastId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/read`, { method: 'POST', body: JSON.stringify({ last_id: lastId }) }); },
 
       _ensureSeed() {
         if (!localStorage.getItem(SITES_KEY)) seedSites();
@@ -3715,6 +3721,7 @@
       { id: 'documents', label: '자료', icon: '📁' },
       { id: 'manuals', label: '매뉴얼', icon: '📖' }, // v25: 현장별 선택 매뉴얼
       { id: 'photos', label: '현장사진', icon: '📷' },
+      { id: 'chat', label: '채팅', icon: '💬' }, // v36: 현장 채팅방 + AI
       { id: 'manage', label: '관리', icon: '⚙️' },
     ];
     function TabNav({ active, onChange }) {
@@ -10939,6 +10946,77 @@
     }
 
     // 나의 정보 모달 — 사진/캐릭터 업로드 + 이름/부서/직급/직함/담당분야/연락처/비상연락처/소개 + 비밀번호 변경 + 직원 인증 요청
+    // (v36) 개인 알림 설정 — 채널 토글(인앱 항상 on) + 이벤트 카테고리. 채널 미설정 시 "설정 필요" 안내.
+    function NotifyPrefsSection({ profile, onChanged }) {
+      const toast = useToast();
+      const [prefs, setPrefs] = useState(() => profile.notify_prefs || { email: false, sms: false, kakao: false, events: { chat: true, work: true, task: true } });
+      const [channels, setChannels] = useState(null); // {email,sms,kakao} 서버 설정 여부
+      const [saving, setSaving] = useState(false);
+      useEffect(() => { setPrefs(profile.notify_prefs || { email: false, sms: false, kakao: false, events: { chat: true, work: true, task: true } }); }, [profile.notify_prefs]);
+      useEffect(() => { let a = true; api.notifyChannels().then((d) => { if (a) setChannels(d); }).catch(() => {}); return () => { a = false; }; }, []);
+
+      const save = async (next) => {
+        setPrefs(next); setSaving(true);
+        try { const r = await api.updateNotifyPrefs(next); if (r && r.channels_configured) setChannels(r.channels_configured); if (onChanged) await onChanged(); }
+        catch (e) { toast('알림 설정 저장에 실패했습니다.', 'error'); }
+        finally { setSaving(false); }
+      };
+      const setChannel = (ch, v) => save({ ...prefs, [ch]: v });
+      const setEvent = (ev, v) => save({ ...prefs, events: { ...(prefs.events || {}), [ev]: v } });
+      const ev = prefs.events || {};
+
+      const Toggle = ({ on, onChange, disabled }) => (
+        <button type="button" disabled={disabled} onClick={() => onChange(!on)} aria-pressed={on}
+          className={`relative w-9 h-5 rounded-full transition ${disabled ? 'bg-slate-200 cursor-not-allowed' : on ? 'bg-blue-600' : 'bg-slate-300'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition ${on ? 'translate-x-4' : ''}`}></span>
+        </button>
+      );
+      const ChannelRow = ({ ch, icon, label }) => {
+        const configured = !channels || channels[ch]; // 로딩 중엔 활성 취급
+        const on = !!prefs[ch] && configured;
+        return (
+          <div className="flex items-center justify-between gap-2 py-1.5">
+            <div className="min-w-0">
+              <span className="text-sm text-slate-700">{icon} {label}</span>
+              {channels && !channels[ch] && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">설정 필요</span>}
+            </div>
+            <Toggle on={on} disabled={saving || (channels && !channels[ch])} onChange={(v) => setChannel(ch, v)} />
+          </div>
+        );
+      };
+
+      return (
+        <div className="pt-1 border-t border-slate-100">
+          <p className="text-sm font-medium text-slate-700 pt-3">🔔 알림 설정</p>
+          <p className="text-[11px] text-slate-400 mb-2">어떻게 알림을 받을지 고르세요. 앱 안 알림은 항상 켜져 있습니다.</p>
+          <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 px-3.5">
+            <div className="flex items-center justify-between gap-2 py-1.5">
+              <span className="text-sm text-slate-500">📱 앱 내 알림 <span className="text-[11px] text-slate-400">(항상)</span></span>
+              <Toggle on disabled onChange={() => {}} />
+            </div>
+            <ChannelRow ch="email" icon="✉️" label="이메일" />
+            <ChannelRow ch="sms" icon="💬" label="문자(SMS)" />
+            <ChannelRow ch="kakao" icon="🟡" label="카카오 알림톡" />
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2 mb-1">받고 싶은 알림 종류 (이메일/문자/카톡에 적용)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {[['chat', '💬 채팅'], ['work', '📋 업무(일정·발주·승인)'], ['task', '✅ 할일']].map(([k, lbl]) => {
+              const on = ev[k] !== false;
+              return (
+                <button key={k} type="button" disabled={saving} onClick={() => setEvent(k, !on)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition ${on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-50'}`}>
+                  {lbl}
+                </button>
+              );
+            })}
+          </div>
+          {channels && !channels.email && !channels.sms && !channels.kakao && (
+            <p className="text-[11px] text-slate-400 mt-2">※ 외부 알림(이메일/문자/카톡) 채널이 아직 서버에 설정되지 않았습니다. 이메일은 곧 사용 가능하며, 문자·카톡은 발송 대행 연동 후 켜집니다.</p>
+          )}
+        </div>
+      );
+    }
+
     function ProfileModal({ isOpen, onClose, profile, onChanged }) {
       const toast = useToast();
       const [form, setForm] = useState({ name: '', job_title: '', department: '', position: '', specialty: '', phone: '', emergency_contact: '', bio: '' });
@@ -11089,6 +11167,9 @@
                       : '이름·직함을 입력하고 승인을 요청하면, 관리자 인증 후 프로젝트 담당자 선택란에 이름이 표시됩니다.'}
               </p>
             </div>
+
+            {/* (v36) 알림 설정 — 채널(인앱/이메일/문자/카톡) + 이벤트 카테고리 */}
+            <NotifyPrefsSection profile={profile} onChanged={onChanged} />
 
             {/* (v31) 보안 — 비밀번호 변경 */}
             <div className="pt-1 border-t border-slate-100">
@@ -11406,6 +11487,148 @@
 
     // 💬 AI 채팅 위젯 — 우하단 플로팅, 팀 데이터 Q&A (서버 /api/chat)
     const CHAT_STORE_KEY = 'interior_chat_v28';
+    // (v36) 💬 현장 채팅방 — 팀 채팅 + @AI 어시스턴트. 4초 폴링(탭 열려있을 때).
+    function ChatRoomTab({ site, authUser, demoMode }) {
+      const toast = useToast();
+      const [msgs, setMsgs] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [input, setInput] = useState('');
+      const [sending, setSending] = useState(false);
+      const [aiThinking, setAiThinking] = useState(false);
+      const listRef = useRef(null);
+      const inputRef = useRef(null);
+      const lastIdRef = useRef(0);
+      const meId = String((authUser && authUser.id) || '');
+
+      const load = useCallback(async () => {
+        try {
+          const d = await api.chatRoomMessages(site.id);
+          const m = (d && d.messages) || [];
+          setMsgs(m);
+          if (m.length) { lastIdRef.current = Number(m[m.length - 1].id); api.chatRoomRead(site.id, lastIdRef.current).catch(() => {}); }
+        } catch (e) { /* keep */ } finally { setLoading(false); }
+      }, [site.id]);
+
+      useEffect(() => { if (demoMode) return; setLoading(true); lastIdRef.current = 0; setMsgs([]); load(); }, [site.id, demoMode, load]);
+      // 폴링 — 4초마다 새 메시지만 증분 로드
+      useEffect(() => {
+        if (demoMode) return undefined;
+        const iv = setInterval(async () => {
+          if (document.hidden) return;
+          try {
+            const d = await api.chatRoomMessages(site.id, lastIdRef.current || undefined);
+            const nw = (d && d.messages) || [];
+            if (nw.length) {
+              setMsgs((prev) => { const seen = new Set(prev.map((x) => x.id)); return [...prev, ...nw.filter((x) => !seen.has(x.id))]; });
+              lastIdRef.current = Number(nw[nw.length - 1].id);
+              api.chatRoomRead(site.id, lastIdRef.current).catch(() => {});
+            }
+          } catch (e) { /* 무시 */ }
+        }, 4000);
+        return () => clearInterval(iv);
+      }, [site.id, demoMode]);
+      useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [msgs, loading, aiThinking]);
+
+      if (demoMode) return <ServerNeededCard feature="현장 채팅방" />;
+
+      const send = async (text) => {
+        const q = (text != null ? text : input).trim();
+        if (!q || sending) return;
+        const isAi = /@ai\b/i.test(q);
+        setInput(''); setSending(true); setAiThinking(isAi);
+        try {
+          const d = await api.chatRoomSend(site.id, q);
+          const created = (d && d.messages) || [];
+          setMsgs((prev) => { const seen = new Set(prev.map((x) => x.id)); return [...prev, ...created.filter((x) => !seen.has(x.id))]; });
+          if (created.length) { lastIdRef.current = Number(created[created.length - 1].id); api.chatRoomRead(site.id, lastIdRef.current).catch(() => {}); }
+        } catch (e) { toast(e.message || '메시지를 보내지 못했습니다.', 'error'); setInput(q); }
+        finally { setSending(false); setAiThinking(false); }
+      };
+      const askAi = () => { setInput((v) => (/@ai/i.test(v) ? v : ('@AI ' + v))); if (inputRef.current) inputRef.current.focus(); };
+
+      const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+      const dayLabel = (iso) => { try { return new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }); } catch (e) { return ''; } };
+
+      return (
+        <Card className="p-0 overflow-hidden flex flex-col" >
+          <div className="px-4 py-3 border-b border-slate-100 bg-slate-800 text-white shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="leading-tight">
+                <p className="text-sm font-bold">💬 {site.name} 채팅방</p>
+                <p className="text-[11px] text-slate-300">팀 채팅 · <b className="text-white">@AI</b> 로 현장 데이터를 물어보세요</p>
+              </div>
+            </div>
+          </div>
+          <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50" style={{ height: '56vh' }}>
+            {loading ? (
+              <div className="h-full flex items-center justify-center text-sm text-slate-400">불러오는 중…</div>
+            ) : msgs.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
+                <div className="text-4xl">💬</div>
+                <p className="text-sm text-slate-400">아직 대화가 없습니다. 첫 메시지를 보내보세요.</p>
+                <p className="text-[11px] text-slate-400">예: "@AI 이번 주 일정 알려줘" · "@AI 타일 발주 얼마였지?"</p>
+              </div>
+            ) : (
+              msgs.map((m, i) => {
+                const prev = msgs[i - 1];
+                const showDay = !prev || String(prev.created_at).slice(0, 10) !== String(m.created_at).slice(0, 10);
+                if (m.kind === 'system') {
+                  return (
+                    <div key={m.id}>
+                      {showDay && <p className="text-center text-[10px] text-slate-400 my-2">{dayLabel(m.created_at)}</p>}
+                      <p className="text-center text-[11px] text-slate-400 py-1">{m.body}</p>
+                    </div>
+                  );
+                }
+                const isAi = m.kind === 'ai';
+                const isMine = !isAi && String(m.sender_user_id || '') === meId;
+                return (
+                  <div key={m.id}>
+                    {showDay && <p className="text-center text-[10px] text-slate-400 my-2">{dayLabel(m.created_at)}</p>}
+                    <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} gap-2`}>
+                      {!isMine && (
+                        <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${isAi ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}`} title={isAi ? 'AI' : m.sender_name}>
+                          {isAi ? '🤖' : (m.sender_name || '?').slice(0, 1)}
+                        </div>
+                      )}
+                      <div className={`max-w-[78%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
+                        {!isMine && <span className={`text-[11px] mb-0.5 ${isAi ? 'text-indigo-500 font-semibold' : 'text-slate-400'}`}>{isAi ? 'AI 어시스턴트' : m.sender_name}</span>}
+                        <div className={`rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words leading-relaxed ${
+                          isMine ? 'bg-blue-600 text-white rounded-br-md'
+                            : isAi ? 'bg-indigo-50 border border-indigo-200 text-slate-700 rounded-bl-md'
+                              : 'bg-white border border-slate-200 text-slate-700 rounded-bl-md'}`}>
+                          {m.body}
+                        </div>
+                        <span className="text-[10px] text-slate-400 mt-0.5 px-1">{fmtTime(m.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            {aiThinking && (
+              <div className="flex justify-start gap-2">
+                <div className="shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">🤖</div>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl rounded-bl-md px-4 py-3 flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  <span className="text-[11px] text-indigo-500 ml-1">AI가 답하는 중…</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); send(); }} className="p-2.5 border-t border-slate-100 bg-white flex gap-2 shrink-0">
+            <button type="button" onClick={askAi} title="AI에게 질문 — 현장 데이터를 답해줍니다"
+              className="shrink-0 px-2.5 rounded-xl bg-indigo-50 text-indigo-600 text-sm font-semibold hover:bg-indigo-100 transition">🤖 AI</button>
+            <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} placeholder="메시지 입력 · @AI 로 질문"
+              className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            <Button type="submit" disabled={sending || !input.trim()}>{sending ? '…' : '전송'}</Button>
+          </form>
+        </Card>
+      );
+    }
+
     function ChatWidget({ site = null, activeTab = '' }) {
       const [open, setOpen] = useState(false);
       const [msgs, setMsgs] = useState(() => {
@@ -12385,6 +12608,9 @@
                 )}
                 {activeTab === 'photos' && (
                   <PhotosTab key={'pho-' + selectedSite.id} site={selectedSite} demoMode={demoMode} uploaderName={authUser ? (authUser.name || authUser.email) : ''} />
+                )}
+                {activeTab === 'chat' && (
+                  <ChatRoomTab key={'chat-' + selectedSite.id} site={selectedSite} authUser={authUser} demoMode={demoMode} />
                 )}
               </>
             )}
