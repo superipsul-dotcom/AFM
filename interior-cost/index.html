@@ -3947,6 +3947,82 @@
       );
     }
 
+    // (v35) 읽기전용 월 캘린더 — 클라이언트 공유 페이지용(드래그/수정 없음, 날짜 위 공정 막대만 표시).
+    function ReadOnlyCalendar({ tasks }) {
+      const [cursor, setCursor] = useState(() => {
+        const dates = (tasks || []).map((t) => t.start_date).filter(Boolean).sort();
+        const base = dates.length ? new Date(dates[0] + 'T00:00:00') : new Date();
+        return { y: base.getFullYear(), m: base.getMonth() };
+      });
+      const [expanded, setExpanded] = useState({});
+      const today = todayStr();
+      const startWeekday = new Date(cursor.y, cursor.m, 1).getDay();
+      const daysInMonth = new Date(cursor.y, cursor.m + 1, 0).getDate();
+      const cells = [];
+      for (let i = 0; i < startWeekday; i++) cells.push(null);
+      for (let d = 1; d <= daysInMonth; d++) cells.push(ymd(cursor.y, cursor.m, d));
+      while (cells.length % 7 !== 0) cells.push(null);
+      const tasksOn = (ds) => (tasks || []).filter((t) => t.start_date && t.end_date && t.start_date <= ds && ds <= t.end_date);
+      const prev = () => setCursor((c) => (c.m === 0 ? { y: c.y - 1, m: 11 } : { y: c.y, m: c.m - 1 }));
+      const next = () => setCursor((c) => (c.m === 11 ? { y: c.y + 1, m: 0 } : { y: c.y, m: c.m + 1 }));
+      const goToday = () => { const d = new Date(); setCursor({ y: d.getFullYear(), m: d.getMonth() }); };
+      const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-slate-700">{monthLabel(cursor.y, cursor.m)}</h3>
+            <div className="flex items-center gap-1">
+              <button onClick={prev} aria-label="이전 달" className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-100">◀</button>
+              <button onClick={goToday} className="px-2.5 h-7 rounded-lg text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200">오늘</button>
+              <button onClick={next} aria-label="다음 달" className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-100">▶</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-7 mb-1">
+            {weekdays.map((w, i) => (
+              <div key={w} className={`text-center text-xs font-semibold py-1 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-slate-400'}`}>{w}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-px bg-slate-100 rounded-xl overflow-hidden border border-slate-100">
+            {cells.map((ds, i) => {
+              if (!ds) return <div key={i} className="bg-slate-50 min-h-[64px] sm:min-h-[80px]"></div>;
+              const wd = i % 7;
+              const isToday = ds === today;
+              const isWeekend = wd === 0 || wd === 6;
+              const dayTasks = tasksOn(ds);
+              const limit = expanded[ds] ? dayTasks.length : 3;
+              return (
+                <div key={i} className={`min-h-[64px] sm:min-h-[80px] p-1 align-top ${isToday ? 'bg-blue-50/50' : isWeekend ? 'bg-slate-50/70' : 'bg-white'}`}>
+                  <div className="flex justify-end">
+                    <span className={`inline-flex items-center justify-center w-5 h-5 text-[11px] rounded-full ${isToday ? 'bg-blue-600 text-white font-bold' : wd === 0 ? 'text-red-500' : wd === 6 ? 'text-blue-500' : 'text-slate-500'}`}>
+                      {Number(ds.slice(8, 10))}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 space-y-0.5">
+                    {dayTasks.slice(0, limit).map((t) => {
+                      const isStart = t.start_date === ds, isEnd = t.end_date === ds;
+                      const showLabel = isStart || wd === 0;
+                      return (
+                        <div key={t.id} title={`${t.title} (${t.start_date}~${t.end_date})`} style={{ backgroundColor: schedBarColor(t) }}
+                          className={`text-[10px] leading-tight text-white px-1 py-0.5 truncate ${isStart ? 'rounded-l-md' : ''} ${isEnd ? 'rounded-r-md' : ''}`}>
+                          {showLabel ? kindPrefix(t) + (t.process || t.title) : ' '}
+                        </div>
+                      );
+                    })}
+                    {dayTasks.length > 3 && (
+                      <button type="button" onClick={() => setExpanded((m) => ({ ...m, [ds]: !m[ds] }))}
+                        className="block text-[10px] text-slate-400 hover:text-blue-600 px-1">
+                        {expanded[ds] ? '접기' : `+${dayTasks.length - 3}`}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
     // 🧩 일정 — 노션식 타임라인(간트) 뷰 (v11-2)
     //  · 좌측 고정 패널 = 공종(process) 그룹 + 일정명, 우측 = 가로 날짜축 + start~end 막대(가로 스크롤)
     //  · 오늘 세로선 · 선후관계 연결선(점선+화살표) · 막대 드래그 이동(Shift=후속도)·리사이즈·클릭=수정
@@ -8361,21 +8437,14 @@
         return m;
       }, [list]);
       const dateRows = useMemo(() => {
-        const set = new Set(list.map((p) => p.photo_date).filter(Boolean));
-        // 일정(공사/지원) 진행일 전부 나열 (미팅 제외), 태스크당 최대 400일 가드
-        schedTasks.forEach((t) => {
-          if ((t.kind || '공사') === '미팅') return;
-          if (!t.start_date || !t.end_date) return;
-          let d = t.start_date, g = 0;
-          while (d <= t.end_date && g++ < 400) { set.add(d); d = addDays(d, 1); }
-        });
-        return Array.from(set).sort().reverse().map((date) => ({
+        // (v35) 사진이 있는 날짜만 — 각 날짜의 진행 공정(일정 겹침)과 사진 장수.
+        return Array.from(photoCountByDate.keys()).sort().reverse().map((date) => ({
           date,
           dow: DOW[new Date(date + 'T00:00:00').getDay()] || '',
           procs: autoProcsFor(date),
           count: photoCountByDate.get(date) || 0,
         }));
-      }, [list, schedTasks, autoProcsFor, photoCountByDate]);
+      }, [photoCountByDate, autoProcsFor]);
       // 날짜 행 클릭 → 그 날짜 사진으로 진입(있으면 라이트박스, 없으면 필터만)
       const openDate = (date) => {
         const has = (photoCountByDate.get(date) || 0) > 0;
@@ -12704,6 +12773,9 @@
       const [ctab, setCtab] = useState('summary'); // summary | schedule | photos | docs
       const [fProc, setFProc] = useState('');
       const [lbIndex, setLbIndex] = useState(null); // (v31) 라이트박스 인덱스(fPhotos 기준)
+      const [schedView, setSchedView] = useState('calendar'); // (v35) calendar | list
+      const [photoView, setPhotoView] = useState('grid');      // (v35) grid | date
+      const [docPreview, setDocPreview] = useState(null);      // (v35) 인라인 미리보기 대상 자료
 
       const load = useCallback(async (password) => {
         setErr('');
@@ -12803,6 +12875,22 @@
         if (!g) { g = { date: key, items: [] }; photoGroups.push(g); }
         g.items.push(p);
       });
+      // (v35) 사진 있는 날짜만 표(일정별): 날짜(요일) + 그날 진행 공정(공유 일정 겹침) + 사진 장수
+      const CDOW = ['일', '월', '화', '수', '목', '금', '토'];
+      const procsForDate = (date) => {
+        const s = [];
+        schedule.forEach((t) => {
+          if ((t.kind || '공사') === '미팅' || !t.start_date || !t.end_date) return;
+          if (t.start_date <= date && date <= t.end_date) { const pr = (t.process || '').trim(); if (pr && !s.includes(pr)) s.push(pr); }
+        });
+        return s;
+      };
+      const photoDateRows = photoGroups.map((g) => ({
+        date: g.date, count: g.items.length,
+        dow: /^\d{4}-/.test(g.date) ? (CDOW[new Date(g.date + 'T00:00:00').getDay()] || '') : '',
+        procs: /^\d{4}-/.test(g.date) ? procsForDate(g.date) : [],
+        firstIdx: fPhotos.findIndex((x) => x.id === g.items[0].id),
+      }));
 
       const CTABS = [
         { id: 'summary', label: '요약', icon: '📊' },
@@ -12903,9 +12991,18 @@
 
             {ctab === 'schedule' && (
               <Card className="p-5">
-                <h2 className="text-sm font-bold text-slate-700 mb-3">공사 일정 <span className="text-xs font-normal text-slate-400">· {schedule.length}건</span></h2>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <h2 className="text-sm font-bold text-slate-700">공사 일정 <span className="text-xs font-normal text-slate-400">· {schedule.length}건</span></h2>
+                  {/* (v35) 달력 / 목록 토글 — 클라이언트도 캘린더로 공정을 한눈에 */}
+                  <div className="inline-flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                    <button onClick={() => setSchedView('calendar')} className={`px-2.5 py-1 rounded-md transition ${schedView === 'calendar' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>📅 달력</button>
+                    <button onClick={() => setSchedView('list')} className={`px-2.5 py-1 rounded-md transition ${schedView === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>목록</button>
+                  </div>
+                </div>
                 {schedule.length === 0 ? (
                   <p className="text-sm text-slate-400 py-4 text-center">등록된 일정이 없습니다.</p>
+                ) : schedView === 'calendar' ? (
+                  <ReadOnlyCalendar tasks={schedule} />
                 ) : (
                   <ul className="divide-y divide-slate-100">
                     {schedule.map((t) => (
@@ -12929,8 +13026,15 @@
             {ctab === 'photos' && (
               <Card className="p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                  <h2 className="text-sm font-bold text-slate-700">현장사진 <span className="text-xs font-normal text-slate-400">· {fPhotos.length}장</span></h2>
-                  {photoProcs.length > 0 && (
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-sm font-bold text-slate-700">현장사진 <span className="text-xs font-normal text-slate-400">· {photoView === 'date' ? `${photoDateRows.length}일` : `${fPhotos.length}장`}</span></h2>
+                    {/* (v35) 갤러리 / 일정별 표 토글 */}
+                    <div className="inline-flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                      <button onClick={() => setPhotoView('grid')} className={`px-2.5 py-1 rounded-md transition ${photoView === 'grid' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>갤러리</button>
+                      <button onClick={() => setPhotoView('date')} className={`px-2.5 py-1 rounded-md transition ${photoView === 'date' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>📅 일정별</button>
+                    </div>
+                  </div>
+                  {photoProcs.length > 0 && photoView === 'grid' && (
                     <select value={fProc} onChange={(e) => setFProc(e.target.value)} className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
                       <option value="">전체 공정</option>
                       {photoProcs.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -12939,6 +13043,34 @@
                 </div>
                 {photoGroups.length === 0 ? (
                   <p className="text-sm text-slate-400 py-4 text-center">등록된 사진이 없습니다.</p>
+                ) : photoView === 'date' ? (
+                  /* (v35) 일정별 표 — 사진 있는 날짜만. 행 클릭 → 그 날짜 첫 사진 라이트박스 */
+                  <div className="overflow-x-auto -mx-1">
+                    <table className="w-full text-sm">
+                      <thead><tr className="text-left text-xs text-slate-400 border-b border-slate-100">
+                        <th className="py-2 pr-3 font-medium whitespace-nowrap">날짜</th>
+                        <th className="py-2 pr-3 font-medium">진행 공정</th>
+                        <th className="py-2 pr-2 font-medium text-right whitespace-nowrap">사진</th>
+                      </tr></thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {photoDateRows.map((r) => (
+                          <tr key={r.date} onClick={() => r.firstIdx >= 0 && setLbIndex(r.firstIdx)}
+                            className="cursor-pointer transition hover:bg-blue-50/60" title={`${r.date} 사진 ${r.count}장 보기`}>
+                            <td className="py-2.5 pr-3 whitespace-nowrap">
+                              <span className="font-medium text-slate-700">{r.date}</span>
+                              {r.dow && <span className={`ml-1.5 text-[11px] ${r.dow === '일' ? 'text-red-400' : r.dow === '토' ? 'text-blue-400' : 'text-slate-400'}`}>{r.dow}</span>}
+                            </td>
+                            <td className="py-2.5 pr-3">
+                              {r.procs.length > 0
+                                ? <span className="flex flex-wrap gap-1">{r.procs.map((p) => <span key={p} className="text-[11px] px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: procHex(p) }}>{p}</span>)}</span>
+                                : <span className="text-slate-300 text-xs">-</span>}
+                            </td>
+                            <td className="py-2.5 pr-2 text-right whitespace-nowrap"><span className="inline-flex items-center gap-1 text-slate-600 font-medium">📷 {r.count}장 <span className="text-blue-500">›</span></span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <div className="space-y-5">
                     {photoGroups.map((g) => (
@@ -12984,23 +13116,44 @@
                   <p className="text-sm text-slate-400 py-4 text-center">공유된 자료가 없습니다.</p>
                 ) : (
                   <ul className="divide-y divide-slate-100">
-                    {documents.map((d) => (
-                      <li key={d.id} className="py-2.5 flex items-center gap-3">
-                        <Badge color="bg-indigo-500">{d.doc_type}</Badge>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-700 truncate">{d.name}</p>
-                          <p className="text-[11px] text-slate-400 truncate">{d.file_name || '-'}{d.file_size ? ` · ${fmtBytes(d.file_size)}` : ''}</p>
-                        </div>
-                        <Button size="sm" variant="secondary" disabled={!d.url}
-                          onClick={() => d.url && window.open(d.url, '_blank', 'noopener')}>
-                          {d.url ? '다운로드' : '준비 중'}
-                        </Button>
-                      </li>
-                    ))}
+                    {documents.map((d) => {
+                      const viewable = /\.(pdf|jpg|jpeg|png|webp|gif)$/i.test(d.file_name || '');
+                      return (
+                        <li key={d.id} className="py-2.5 flex items-center gap-3">
+                          <Badge color="bg-indigo-500">{d.doc_type}</Badge>
+                          <div className="flex-1 min-w-0">
+                            {/* (v35) 자료명 클릭 → 앱 내에서 바로 열기(미리보기) */}
+                            <button onClick={() => viewable && d.url ? setDocPreview(d) : (d.url && window.open(d.url, '_blank', 'noopener'))}
+                              className="text-sm font-medium text-slate-700 hover:text-blue-600 hover:underline underline-offset-2 truncate text-left block max-w-full" title={viewable ? '미리보기' : '열기'}>
+                              {d.name}{viewable && <span className="ml-1 text-[10px] text-blue-400">👁</span>}
+                            </button>
+                            <p className="text-[11px] text-slate-400 truncate">{d.file_name || '-'}{d.file_size ? ` · ${fmtBytes(d.file_size)}` : ''}</p>
+                          </div>
+                          {viewable && d.url && <Button size="sm" variant="secondary" onClick={() => setDocPreview(d)}>보기</Button>}
+                          <Button size="sm" variant="ghost" disabled={!d.url} onClick={() => d.url && window.open(d.url, '_blank', 'noopener')} title="새 탭/다운로드">↗</Button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
-                <p className="text-[11px] text-slate-300 mt-4">다운로드가 안 되면 페이지를 새로고침하세요. (보안을 위해 링크는 1시간만 유효합니다)</p>
+                <p className="text-[11px] text-slate-300 mt-4">파일이 안 열리면 페이지를 새로고침하세요. (보안을 위해 링크는 1시간만 유효합니다)</p>
               </Card>
+            )}
+            {/* (v35) 클라이언트 자료 인라인 미리보기 (읽기전용, AI 없음) */}
+            {docPreview && (
+              <Modal isOpen onClose={() => setDocPreview(null)} title={`📄 ${docPreview.name}`} size="xl">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-400 truncate">{docPreview.file_name} · {fmtBytes(docPreview.file_size)}</p>
+                    <Button size="sm" variant="secondary" onClick={() => window.open(docPreview.url, '_blank', 'noopener')}>↗ 새 탭</Button>
+                  </div>
+                  <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50" style={{ height: '62vh' }}>
+                    {/\.(jpg|jpeg|png|webp|gif)$/i.test(docPreview.file_name || '')
+                      ? <div className="h-full overflow-auto flex items-center justify-center"><img src={docPreview.url} alt={docPreview.file_name} className="max-w-full max-h-full object-contain" /></div>
+                      : <iframe src={docPreview.url} title={docPreview.file_name} className="w-full h-full" />}
+                  </div>
+                </div>
+              </Modal>
             )}
 
             <p className="text-center text-[11px] text-slate-400 pt-2">본 페이지는 {SUPPLIER.name}에서 공유한 읽기전용 현장 페이지입니다.</p>
