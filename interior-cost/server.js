@@ -509,6 +509,18 @@ async function initDB() {
   await pool.query(`ALTER TABLE interior_schedule ADD COLUMN IF NOT EXISTS vendor TEXT NOT NULL DEFAULT ''`);
   // (v32) 협력업체를 시공/자재로 분리: 기존 vendor=협력업체(시공), vendor_material=협력업체(자재).
   await pool.query(`ALTER TABLE interior_schedule ADD COLUMN IF NOT EXISTS vendor_material TEXT NOT NULL DEFAULT ''`);
+  // (v33) 일정 status 를 날짜 기준(KST)으로 정합화 — v32에서 status 를 앱에서 파생하며 저장 컬럼이 낡아짐(AI run_sql 이 raw 조회 시 오답).
+  //   부팅마다 불일치 행만 갱신(멱등·경량, 표 작음) → 서버 SQL·AI 조회가 실제 상태와 일치. self-healing.
+  await pool.query(`
+    UPDATE interior_schedule SET status = CASE
+        WHEN (now() AT TIME ZONE 'Asia/Seoul')::date < start_date THEN '예정'
+        WHEN (now() AT TIME ZONE 'Asia/Seoul')::date > end_date   THEN '완료'
+        ELSE '진행' END
+    WHERE status IS DISTINCT FROM (CASE
+        WHEN (now() AT TIME ZONE 'Asia/Seoul')::date < start_date THEN '예정'
+        WHEN (now() AT TIME ZONE 'Asia/Seoul')::date > end_date   THEN '완료'
+        ELSE '진행' END)
+  `).catch((e) => console.warn('⚠️ 일정 status 정합화 스킵:', e.message));
 
   // 7-c) (v19) 일정 유형(kind): 공사(기본)/지원/미팅. ADD COLUMN IF NOT EXISTS → 기존 일정 전부 '공사' 로 backfill, 멱등.
   //   kind='미팅' 일정은 interior_meetings 에 연동행이 생성된다(아래 syncScheduleMeeting).
@@ -3089,7 +3101,8 @@ function validateSchedule(body) {
       process: typeof b.process === 'string' ? b.process.trim() : '',
       start_date,
       end_date,
-      status: typeof b.status === 'string' && b.status.trim() ? b.status.trim() : '예정',
+      // (v33) 상태는 입력값 무시 — 저장 시점의 날짜 기준으로 산출해 저장(rowToSchedule 이 조회 시 다시 파생하므로 항상 일치).
+      status: deriveScheduleStatus(start_date, end_date),
       planned_cost,
       staff: typeof b.staff === 'string' ? b.staff.trim() : '',
       vendor, // (v14) '' when absent (POST default); PUT uses vendor_provided for preserve
@@ -9177,22 +9190,39 @@ async function runChatSql(sql) {
   }
 }
 
-function chatSystemPrompt(teamId, today) {
+function chatSystemPrompt(teamId, today, scope) {
+  const scopeLines = scope && scope.site_id ? [
+    ``,
+    `[현재 보고 있는 페이지]`,
+    `사용자는 지금 '${scope.site_name}' 현장(site_id=${scope.site_id})${scope.tab_label ? `의 '${scope.tab_label}' 탭` : ''}을 보고 있습니다.`,
+    `→ 특별한 언급이 없으면 이 현장(site_id=${scope.site_id})으로 한정해 답하세요. "전체"·"모든 현장"·다른 현장 이름을 말하면 그때 범위를 넓히세요.`,
+  ] : [
+    ``,
+    `[범위] 특정 현장이 지정되지 않았습니다 — 팀의 전체 현장을 대상으로 답하세요(질문에서 특정 현장을 지목하면 그 현장으로 좁히세요).`,
+  ];
   return [
     `당신은 "안도 현장"(안도공간 인테리어 현장관리 앱)의 데이터 어시스턴트입니다. 오늘(KST): ${today}.`,
     `run_sql 도구로 팀 PostgreSQL 에 읽기 전용 SELECT 를 실행해, 사실(데이터)에 근거해서만 답합니다.`,
+    ...scopeLines,
     ``,
     `[절대 규칙]`,
     `1. 이 팀(team_id=${teamId}) 데이터만 조회합니다. team_id 컬럼이 있는 테이블은 반드시 WHERE team_id=${teamId}, site_id 종속 테이블은 interior_sites s 와 JOIN 해 s.team_id=${teamId} 로 스코프하세요.`,
     `2. 읽기(SELECT/WITH)만, 한 번에 1문장. 결과는 최대 200행/약 12KB 로 잘립니다 — 큰 목록은 집계나 LIMIT 를 쓰세요.`,
     `3. 민감정보 금지: 비밀번호/토큰/invite_code/connected_id 는 조회·언급 금지. interior_users 와 interior_card_accounts 는 SELECT * 금지(필요 컬럼만). interior_teams 조회 금지.`,
     `4. 이름 검색은 부분일치로: 예) name ILIKE '%강남%' AND name ILIKE '%자이%' 처럼 키워드를 나눠 AND. 공백/언더스코어(_) 표기 차이가 흔하니 통짜 문자열 매칭을 피하세요.`,
-    `5. 확실치 않으면 먼저 후보(현장 목록 등)를 조회해 좁혀가세요. 도구는 여러 번(최대 6회) 사용할 수 있습니다.`,
+    `5. 확실치 않으면 먼저 후보(현장 목록 등)를 조회해 좁혀가세요. 도구는 여러 번(최대 6회) 사용할 수 있습니다. 조회 결과가 비면(0행) 필터(상태·정확한 이름·날짜)를 의심하고 조건을 풀어 재조회한 뒤 답하세요 — 성급히 "없다"고 하지 마세요.`,
+    ``,
+    `[⚠️ 일정 상태 — 매우 중요]`,
+    `일정(interior_schedule)의 status 컬럼은 신뢰하지 말고, 상태는 항상 날짜로 판단하세요(오늘=${today}):`,
+    `  · 오늘 < start_date → '예정',  start_date ≤ 오늘 ≤ end_date → '진행(진행 중)',  오늘 > end_date → '완료'.`,
+    `일정에는 '확정' 개념이 없습니다 — 추가된 일정은 모두 유효한 실제 일정입니다(status='확정' 같은 필터를 쓰지 마세요).`,
+    `"오늘/이번 주 진행 중인 일정" 처럼 기간 질문은 겹침으로: start_date <= (기간끝) AND end_date >= (기간시작). (특정일 진행 = start_date <= 그날 AND end_date >= 그날)`,
+    `'draft'/'confirmed' 상태는 오직 견적서(interior_estimates)에만 있습니다 — 일정과 혼동하지 마세요.`,
     ``,
     `[스키마 — interior_* (PostgreSQL)]`,
     `interior_sites(id,name,client,client_id,address,manager,pm,construction_manager,designer,budget,start_date,end_date,move_in_date,status,progress_status,building_type,floor_area,tags,archived,team_id) — 현장(프로젝트)`,
     `interior_costs(id,site_id,date,amount,category,process,manager,vendor,memo,schedule_id,has_invoice) — 실집행 비용`,
-    `interior_schedule(id,site_id,title,process,start_date,end_date,status,planned_cost,staff,vendor,kind['공사'|'지원'|'미팅'],memo) — 일정`,
+    `interior_schedule(id,site_id,title,process,start_date,end_date,status⚠️날짜로판단,planned_cost,staff,vendor=협력업체(시공),vendor_material=협력업체(자재),kind['공사'|'지원'|'미팅'],memo) — 일정. 인력 인원수는 없음(→interior_labor_logs)`,
     `interior_schedule_deps(predecessor_id,successor_id) — 일정 선후관계`,
     `interior_estimates(id,site_id,title,client_name,estimate_date,valid_until,vat_mode,vat_rate,discount,status['draft'|'confirmed'],version,memo) — 견적서`,
     `interior_estimate_items(id,estimate_id,process,trade,name,spec,qty,unit,unit_price,material_price,labor_price,sub_price,amount,memo) — 견적 항목(공종=trade)`,
@@ -9220,12 +9250,15 @@ function chatSystemPrompt(teamId, today) {
     `- "판매처/구매처/발주처/어디서 샀·시켰" → interior_orders.vendor(발주서), interior_costs.vendor(비용 지출처), interior_catalog.vendor(단가 출처)`,
     `- "얼마 썼/집행" → interior_costs.amount 합계, 예산 대비는 interior_sites.budget`,
     `- 공간/부위(예: 안방화장실, 벽체)는 전용 컬럼이 없음 → name/spec/memo/title ILIKE '%키워드%' 로 찾기`,
-    `- 인건비 = interior_labor_logs 의 skilled*skilled_rate + helper*helper_rate`,
+    `- "인력/출력/투입/기공/조공/몇 명" → interior_labor_logs 의 실제 투입 기록(work_date별 skilled=기공수, helper=조공수). "오늘 인력"은 work_date=오늘. 업체명은 vendor_id 로 interior_vendors JOIN. 예정 인력(계획)은 별도 인원수 데이터가 없고, 그날 일정(interior_schedule)의 공정·담당업체가 예정 정보입니다.`,
+    `- 인건비(금액) = interior_labor_logs 의 skilled*skilled_rate + helper*helper_rate`,
+    `- "누가 일정/작업" → interior_schedule.staff(담당자) + vendor(시공 협력업체). "무슨 작업" → title/process.`,
     ``,
     `[답변 규칙]`,
     `- 한국어로 간결하게. 금액은 3자리 콤마+"원", 날짜는 YYYY-MM-DD.`,
     `- 근거를 함께: 어느 현장/견적서/발주서/기간에서 나온 수치인지 한 줄로 밝히세요.`,
-    `- 데이터가 없으면 없다고 말하고, 비슷한 후보(유사 이름의 현장·항목·거래처)를 제시하세요.`,
+    `- 일정을 답할 땐 날짜로 판단한 상태(예정/진행/완료)를 함께 쓰세요. "확정" 여부로 없다고 하지 마세요.`,
+    `- 정말 데이터가 없을 때만 없다고 하고(먼저 조건을 넓혀 재확인), 비슷한 후보(유사 이름의 현장·항목·거래처·근접 날짜)를 제시하세요.`,
     `- 목록이 길면 핵심 위주로 요약하세요.`,
   ].join('\n');
 }
@@ -9246,7 +9279,20 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
-    const convo = [{ role: 'system', content: chatSystemPrompt(req.teamId, today) }, ...msgs];
+    // (v33) 현재 페이지 스코프 — 클라이언트가 보고 있는 현장. site_id 는 팀 소속 검증 후에만 반영(타팀 주입 차단).
+    let scope = null;
+    const rawScope = req.body && req.body.scope;
+    if (rawScope && rawScope.site_id != null) {
+      const sid = parseId(rawScope.site_id);
+      if (sid) {
+        const sq = await pool.query('SELECT name FROM interior_sites WHERE id=$1 AND team_id=$2', [sid, req.teamId]);
+        if (sq.rows.length) {
+          const tabLabel = typeof rawScope.tab_label === 'string' ? rawScope.tab_label.trim().slice(0, 20) : '';
+          scope = { site_id: sid, site_name: sq.rows[0].name, tab_label: tabLabel };
+        }
+      }
+    }
+    const convo = [{ role: 'system', content: chatSystemPrompt(req.teamId, today, scope) }, ...msgs];
     const tools = [{
       type: 'function',
       function: {

@@ -1591,3 +1591,22 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 ## 검증 (2026-07-25, 로컬)
 - 서버: 자재 발주 자동생성(물량 3매칭→대산우드 213,150원 품목내역 memo·1 미매칭 보고) · 일정 vendor_material 저장 · 상태 자동(과거 완료/현재 진행/미래 예정).
 - Playwright: 일정 폼(공정 먼저→작업명 자동 '목공', '목공-가벽시공' 덧붙임 후 공정 변경해도 유지, 상태 자동 배지, 계획비용 없음, 협력업체 시공/자재 분리 옵션 확인) · 사진 라이트박스 줌(+ 버튼 100→196%·1:1 리셋 노출). 콘솔 에러 0(Babel 크기 note·비로그인 401 제외). 테스트 데이터 잔존 0.
+
+---
+
+# v33 — AI 채팅 정확도 수정 + 현재 페이지 스코프(노션 AI형) (2026-07-25)
+
+## 33-1 정확도 버그 (v32 회귀 수정)
+- **원인**: v32에서 일정 status 를 앱(rowToSchedule)에서 날짜로 파생하며 DB `status` 컬럼이 낡음(예: 타일 7/21~23 저장='예정'인데 실제=완료). AI 채팅은 run_sql 로 raw DB 를 읽으므로 status 로 필터하면 오답("확정된 일정 없음" 등). 실제로 존재하는 목공 일정도 "없다"고 답함.
+- **수정 3겹**:
+  1. **부팅 백필**: ensureDb 에서 `interior_schedule.status` 를 KST 날짜 기준으로 재계산해 불일치 행만 UPDATE(멱등·self-healing, cold boot마다).
+  2. **저장 시 파생 저장**: validateSchedule 이 입력 status 무시하고 `deriveScheduleStatus(start,end)` 저장.
+  3. **프롬프트 강화(핵심)**: 일정 status 컬럼 신뢰 금지 → 날짜로 판단(오늘<start=예정/진행/오늘>end=완료), '확정' 개념 없음(견적서에만 draft/confirmed), 기간질의=날짜겹침, 0행이면 조건 풀어 재조회 후 답(성급한 "없다" 금지). 인력/출력/기공/조공→interior_labor_logs(work_date별 skilled/helper, vendor JOIN). schedule 스키마에 vendor_material·status⚠️ 주석.
+
+## 33-2 현재 페이지 스코프 (노션 AI "페이지 칩" UX)
+- **ChatWidget** 이 현재 `site`(선택 현장)·`activeTab` 을 받아, 입력창 위 **📍 현장명 · 탭 칩** 표시(기본 스코프 ON). **×** 누르면 `🌐 전체 현장` 으로 전환(+[📍 이 현장만 보기] 재스코프). 현장 바뀌면 다시 스코프 ON. 스코프별로 제안 질문·placeholder 도 바뀜.
+- **/api/chat** `{messages, scope?:{site_id,site_name,tab_label}}`. site_id 는 **팀 소속 검증 후에만** 반영(타팀 주입 차단, DB 이름 사용). 스코프 있으면 시스템 프롬프트에 "현재 이 현장을 보고 있음 → 특별 언급 없으면 이 현장 한정, '전체'/다른 현장이면 확장" 지시.
+
+## 검증 (2026-07-25, 로컬, 실 OpenAI)
+- 백필 후 저장 status=파생 일치(타일→완료·목공→진행 등).
+- AI(실호출): ①[자양동 스코프] "오늘 목공 일정?"→"진행 중인 목공 일정 있습니다"(이전=없다) ②[전체] "이번주 진행 일정 전체현장"→자양동 목공(진행)/도배(완료)/타일(완료) 정확 나열 ③[자양동 스코프] 인력→7/19 도장/도배 2기공2조공·박성숙반장(vendor JOIN). Playwright: 스코프 칩(📍현장·탭 × ↔ 🌐전체 + 이 현장만 보기), 제안·placeholder 전환 확인. 콘솔 에러 0.

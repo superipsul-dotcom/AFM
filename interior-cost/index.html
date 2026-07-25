@@ -946,7 +946,7 @@
       async adminApprovals(status) { return this._tryFetch(`${API_BASE_URL}/admin/approvals${status ? '?status=' + encodeURIComponent(status) : ''}`); },
       async approveUser(userId) { return this._tryFetch(`${API_BASE_URL}/admin/approvals/${userId}/approve`, { method: 'POST', body: JSON.stringify({}) }); },
       async rejectUser(userId, reason) { return this._tryFetch(`${API_BASE_URL}/admin/approvals/${userId}/reject`, { method: 'POST', body: JSON.stringify({ reason: reason || '' }) }); },
-      async chatAsk(messages) { return this._tryFetch(`${API_BASE_URL}/chat`, { method: 'POST', body: JSON.stringify({ messages }) }); },
+      async chatAsk(messages, scope) { return this._tryFetch(`${API_BASE_URL}/chat`, { method: 'POST', body: JSON.stringify({ messages, ...(scope ? { scope } : {}) }) }); },
 
       _ensureSeed() {
         if (!localStorage.getItem(SITES_KEY)) seedSites();
@@ -11126,7 +11126,7 @@
 
     // 💬 AI 채팅 위젯 — 우하단 플로팅, 팀 데이터 Q&A (서버 /api/chat)
     const CHAT_STORE_KEY = 'interior_chat_v28';
-    function ChatWidget() {
+    function ChatWidget({ site = null, activeTab = '' }) {
       const [open, setOpen] = useState(false);
       const [msgs, setMsgs] = useState(() => {
         try { const s = JSON.parse(sessionStorage.getItem(CHAT_STORE_KEY) || '[]'); return Array.isArray(s) ? s : []; }
@@ -11134,6 +11134,10 @@
       });
       const [input, setInput] = useState('');
       const [busy, setBusy] = useState(false);
+      // (v33) 현재 페이지 스코프 — 기본은 지금 보고 있는 현장으로 한정, X 누르면 전체 데이터 대상.
+      const [scoped, setScoped] = useState(true);
+      useEffect(() => { setScoped(true); }, [site && site.id]); // 현장 바뀌면 다시 그 현장으로 스코프
+      const tabLabel = (TABS.find((t) => t.id === activeTab) || {}).label || '';
       const listRef = useRef(null);
       const inputRef = useRef(null);
       useEffect(() => {
@@ -11144,6 +11148,7 @@
       }, [open, msgs, busy]);
       useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open]);
 
+      const activeScope = scoped && site ? { site_id: site.id, site_name: site.name, tab_label: tabLabel } : null;
       const send = async (text) => {
         const q = (text != null ? text : input).trim();
         if (!q || busy) return;
@@ -11152,16 +11157,21 @@
         setMsgs(next);
         setBusy(true);
         try {
-          const r = await api.chatAsk(next.slice(-12).map(({ role, content }) => ({ role, content })));
+          const r = await api.chatAsk(next.slice(-12).map(({ role, content }) => ({ role, content })), activeScope);
           setMsgs((prev) => [...prev, { role: 'assistant', content: (r.reply || '').trim() || '(빈 응답)', queries: r.queries || 0 }]);
         } catch (e) {
           setMsgs((prev) => [...prev, { role: 'assistant', content: '⚠️ ' + (e.message || '응답에 실패했습니다. 잠시 후 다시 시도해 주세요.'), error: true }]);
         } finally { setBusy(false); }
       };
 
-      const SUGGESTIONS = [
+      // 스코프에 따라 제안 질문도 달라짐
+      const SUGGESTIONS = activeScope ? [
+        '이 현장 지금 진행 중인 일정 알려줘',
+        '오늘 투입된 인력(기공/조공) 몇 명이야?',
+        '이 현장 비용 얼마나 집행됐어?',
+      ] : [
         '등록된 현장 목록이랑 예산 알려줘',
-        '이번 주 일정 뭐 있어?',
+        '이번 주 진행 중인 일정 전체 현장 알려줘',
         '타일 관련 발주는 어느 업체에 했어?',
       ];
 
@@ -11225,12 +11235,32 @@
                   </div>
                 )}
               </div>
-              {/* 입력 */}
-              <form onSubmit={(e) => { e.preventDefault(); send(); }} className="p-2.5 border-t border-slate-100 bg-white flex gap-2">
-                <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} placeholder="무엇이든 물어보세요…"
-                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" />
-                <Button type="submit" disabled={busy || !input.trim()}>전송</Button>
-              </form>
+              {/* (v33) 스코프 칩 + 입력 */}
+              <div className="border-t border-slate-100 bg-white">
+                <div className="px-2.5 pt-2 flex items-center gap-1.5 flex-wrap">
+                  {scoped && site ? (
+                    <span className="inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-medium text-blue-700 max-w-full"
+                      title={`지금 '${site.name}' 현장으로 한정해 답합니다. ×를 누르면 전체 현장 대상으로 바뀝니다.`}>
+                      <span className="truncate max-w-[180px]">📍 {site.name}{tabLabel ? ` · ${tabLabel}` : ''}</span>
+                      <button type="button" onClick={() => setScoped(false)} aria-label="현장 한정 해제(전체 보기)"
+                        className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-blue-200 text-blue-500 leading-none">×</button>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full bg-slate-100 text-slate-500 font-medium">🌐 전체 현장</span>
+                      {site && (
+                        <button type="button" onClick={() => setScoped(true)} className="text-blue-500 hover:underline">📍 이 현장만 보기</button>
+                      )}
+                    </span>
+                  )}
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); send(); }} className="p-2.5 flex gap-2">
+                  <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
+                    placeholder={activeScope ? `${site.name} 현장에 대해 물어보세요…` : '전체 현장에 대해 물어보세요…'}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" />
+                  <Button type="submit" disabled={busy || !input.trim()}>전송</Button>
+                </form>
+              </div>
             </div>
           )}
         </>
@@ -12152,8 +12182,8 @@
             )}
           </Modal>
 
-          {/* v28: 💬 AI 채팅 위젯 — 서버 연결 시에만 (데모(오프라인)는 미지원) */}
-          {!demoMode && <ChatWidget />}
+          {/* v28: 💬 AI 채팅 위젯 — 서버 연결 시에만 (데모(오프라인)는 미지원). v33: 현재 현장·탭 스코프 전달 */}
+          {!demoMode && <ChatWidget site={selectedSite} activeTab={activeTab} />}
         </div>
 
         {/* 견적서 인쇄 영역 (화면 숨김 / 인쇄 시에만 표시) */}
