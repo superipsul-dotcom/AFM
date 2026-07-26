@@ -956,16 +956,19 @@
       // (v36) 개인 알림 설정 + 💬 채팅방
       async updateNotifyPrefs(body) { return this._tryFetch(`${API_BASE_URL}/me/notify-prefs`, { method: 'PATCH', body: JSON.stringify(body) }); },
       async notifyChannels() { return this._tryFetch(`${API_BASE_URL}/me/notify-channels`); },
-      async chatRoomMessages(siteId, afterId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat${afterId ? `?after=${afterId}` : ''}`); },
-      async chatRoomSend(siteId, body, attach) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat`, { method: 'POST', body: JSON.stringify({ body, ...(attach ? { attach } : {}) }) }); },
-      async chatSignUpload(siteId, fileName) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/sign-upload`, { method: 'POST', body: JSON.stringify({ file_name: fileName }) }); },
+      async chatRoomMessages(siteId, room, afterId) { const q = new URLSearchParams({ room: room || 'internal' }); if (afterId) q.set('after', afterId); return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat?${q.toString()}`); },
+      async chatRoomSend(siteId, room, body, attach) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat`, { method: 'POST', body: JSON.stringify({ room: room || 'internal', body, ...(attach ? { attach } : {}) }) }); },
+      async chatSignUpload(siteId, room, fileName) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/sign-upload`, { method: 'POST', body: JSON.stringify({ room: room || 'internal', file_name: fileName }) }); },
       async chatGuestSignUpload(token, fileName) { return this._tryFetch(`${API_BASE_URL}/chat-guest/${encodeURIComponent(token)}/sign-upload`, { method: 'POST', body: JSON.stringify({ file_name: fileName }), _skipAuthRedirect: true }); },
-      async chatRoomRead(siteId, lastId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/read`, { method: 'POST', body: JSON.stringify({ last_id: lastId }) }); },
+      async chatRoomRead(siteId, room, lastId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/read`, { method: 'POST', body: JSON.stringify({ room: room || 'internal', last_id: lastId }) }); },
+      // (v39) 채팅 홈(현장별 방 목록) + 전역 안읽음 배지
+      async chatRooms() { return this._tryFetch(`${API_BASE_URL}/chat/rooms`); },
+      async chatUnread() { return this._tryFetch(`${API_BASE_URL}/chat/unread`); },
       // (v37) 채팅 외부 참여자(클라이언트/협력업체) + 시스템 브리핑 + 게스트 무인증
       async chatParticipants(siteId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/participants`); },
       async chatInvite(siteId, body) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/participants`, { method: 'POST', body: JSON.stringify(body) }); },
       async chatRevokeParticipant(id) { return this._tryFetch(`${API_BASE_URL}/chat/participants/${id}`, { method: 'DELETE' }); },
-      async chatPostSystem(siteId, body) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/system`, { method: 'POST', body: JSON.stringify({ body }) }); },
+      async chatPostSystem(siteId, room, body) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/system`, { method: 'POST', body: JSON.stringify({ room: room || 'client', body }) }); },
       async chatGuestLoad(token, afterId) { return this._tryFetch(`${API_BASE_URL}/chat-guest/${encodeURIComponent(token)}${afterId ? `?after=${afterId}` : ''}`, { _skipAuthRedirect: true }); },
       async chatGuestSend(token, body, attach) { return this._tryFetch(`${API_BASE_URL}/chat-guest/${encodeURIComponent(token)}`, { method: 'POST', body: JSON.stringify({ body, ...(attach ? { attach } : {}) }), _skipAuthRedirect: true }); },
 
@@ -3736,7 +3739,6 @@
       { id: 'documents', label: '자료', icon: '📁' },
       { id: 'manuals', label: '매뉴얼', icon: '📖' }, // v25: 현장별 선택 매뉴얼
       { id: 'photos', label: '현장사진', icon: '📷' },
-      { id: 'chat', label: '채팅', icon: '💬' }, // v36: 현장 채팅방 + AI
       { id: 'manage', label: '관리', icon: '⚙️' },
     ];
     function TabNav({ active, onChange }) {
@@ -8615,7 +8617,7 @@
           setLastUpload({ date: pDate, procs: processes, count: ok, memo: pMemo.trim() }); setPMemo(''); await reload();
           // (v37 · 3단계) 채팅방에 자동 브리핑 — 클라이언트/협력업체도 새 사진 소식을 받음.
           const md = pDate ? `${Number(pDate.slice(5, 7))}/${Number(pDate.slice(8, 10))}` : '';
-          api.chatPostSystem(site.id, `📷 ${md} 현장사진 ${ok}장 업로드${processes ? ` · 공정: ${processes}` : ''}${pMemo.trim() ? ` · ${pMemo.trim()}` : ''}`).catch(() => {});
+          api.chatPostSystem(site.id, 'client', `📷 ${md} 현장사진 ${ok}장 업로드${processes ? ` · 공정: ${processes}` : ''}${pMemo.trim() ? ` · ${pMemo.trim()}` : ''}`).catch(() => {});
         } // (v22) 알림용 기록
       };
 
@@ -11848,39 +11850,43 @@
       );
     }
 
-    // (v36) 💬 현장 채팅방 — 팀 채팅 + @AI 어시스턴트. (v38) 2초 폴링 + 포커스 시 즉시 갱신(준실시간).
-    function ChatRoomTab({ site, authUser, demoMode, isAdmin = false }) {
+    // (v39) 💬 채팅 대화창 — 현장×방(internal 직원방 | client 고객방). 채팅 홈에서 사용. 2초 폴링 + 포커스 즉시.
+    function ChatConversation({ site, roomKind, meId, onBack }) {
       const toast = useToast();
+      const room = roomKind === 'client' ? 'client' : 'internal';
+      const roomName = room === 'client' ? '고객방' : '직원방';
       const [msgs, setMsgs] = useState([]);
       const [loading, setLoading] = useState(true);
       const [aiThinking, setAiThinking] = useState(false);
-      const [inviteOpen, setInviteOpen] = useState(false); // (v37) 참여자 초대 모달
+      const [inviteOpen, setInviteOpen] = useState(false);
+      const [parts, setParts] = useState([]);
       const listRef = useRef(null);
       const lastIdRef = useRef(0);
-      const meId = String((authUser && authUser.id) || '');
+
+      const loadParts = useCallback(async () => { try { setParts(await api.chatParticipants(site.id) || []); } catch (e) { setParts([]); } }, [site.id]);
+      useEffect(() => { loadParts(); }, [loadParts]);
 
       const load = useCallback(async () => {
+        setLoading(true); lastIdRef.current = 0; setMsgs([]);
         try {
-          const d = await api.chatRoomMessages(site.id);
+          const d = await api.chatRoomMessages(site.id, room);
           const m = (d && d.messages) || [];
           setMsgs(m);
-          if (m.length) { lastIdRef.current = Number(m[m.length - 1].id); api.chatRoomRead(site.id, lastIdRef.current).catch(() => {}); }
+          if (m.length) { lastIdRef.current = Number(m[m.length - 1].id); api.chatRoomRead(site.id, room, lastIdRef.current).catch(() => {}); }
         } catch (e) { /* keep */ } finally { setLoading(false); }
-      }, [site.id]);
+      }, [site.id, room]);
+      useEffect(() => { load(); }, [load]);
 
-      useEffect(() => { if (demoMode) return; setLoading(true); lastIdRef.current = 0; setMsgs([]); load(); }, [site.id, demoMode, load]);
-      // (v38) 폴링 — 활성 시 2초, 백그라운드(숨김) 스킵 → 준실시간
       useEffect(() => {
-        if (demoMode) return undefined;
         const poll = async () => {
           if (document.hidden) return;
           try {
-            const d = await api.chatRoomMessages(site.id, lastIdRef.current || undefined);
+            const d = await api.chatRoomMessages(site.id, room, lastIdRef.current || undefined);
             const nw = (d && d.messages) || [];
             if (nw.length) {
               setMsgs((prev) => { const seen = new Set(prev.map((x) => x.id)); return [...prev, ...nw.filter((x) => !seen.has(x.id))]; });
               lastIdRef.current = Number(nw[nw.length - 1].id);
-              api.chatRoomRead(site.id, lastIdRef.current).catch(() => {});
+              api.chatRoomRead(site.id, room, lastIdRef.current).catch(() => {});
             }
           } catch (e) { /* 무시 */ }
         };
@@ -11888,63 +11894,191 @@
         const onFocus = () => poll();
         window.addEventListener('focus', onFocus);
         return () => { clearInterval(iv); window.removeEventListener('focus', onFocus); };
-      }, [site.id, demoMode]);
+      }, [site.id, room]);
       useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [msgs, loading, aiThinking]);
-
-      if (demoMode) return <ServerNeededCard feature="현장 채팅방" />;
 
       const send = async (body, attach) => {
         const q = (body || '').trim();
         if (!q && !attach) return false;
-        const isAi = /@ai\b/i.test(q);
-        setAiThinking(isAi);
+        setAiThinking(/@ai\b/i.test(q));
         try {
-          const d = await api.chatRoomSend(site.id, q, attach);
+          const d = await api.chatRoomSend(site.id, room, q, attach);
           const created = (d && d.messages) || [];
           setMsgs((prev) => { const seen = new Set(prev.map((x) => x.id)); return [...prev, ...created.filter((x) => !seen.has(x.id))]; });
-          if (created.length) { lastIdRef.current = Number(created[created.length - 1].id); api.chatRoomRead(site.id, lastIdRef.current).catch(() => {}); }
+          if (created.length) { lastIdRef.current = Number(created[created.length - 1].id); api.chatRoomRead(site.id, room, lastIdRef.current).catch(() => {}); }
           return true;
         } catch (e) { toast(e.message || '메시지를 보내지 못했습니다.', 'error'); return false; }
         finally { setAiThinking(false); }
       };
 
+      const vendors = parts.filter((p) => !p.revoked && (p.room_kind || 'internal') === 'internal');
       return (
-        <Card className="p-0 overflow-hidden flex flex-col" >
-          <div className="px-4 py-3 border-b border-slate-100 bg-slate-800 text-white shrink-0">
+        <div className="flex flex-col h-full min-h-0">
+          <div className={`px-4 py-3 shrink-0 text-white ${room === 'client' ? 'bg-amber-700' : 'bg-slate-800'}`}>
             <div className="flex items-center justify-between gap-2">
-              <div className="leading-tight min-w-0">
-                <p className="text-sm font-bold truncate">💬 {site.name} 채팅방</p>
-                <p className="text-[11px] text-slate-300">팀 · 클라이언트 · 협력업체 + <b className="text-white">@AI</b></p>
+              <div className="flex items-center gap-2 min-w-0">
+                {onBack && <button onClick={onBack} className="md:hidden shrink-0 text-white/80 hover:text-white text-xl leading-none">←</button>}
+                <div className="leading-tight min-w-0">
+                  <p className="text-sm font-bold truncate">{room === 'client' ? '🤝' : '🏢'} {site.name} · {roomName}</p>
+                  <p className="text-[11px] text-white/70">{room === 'client' ? '고객 + 담당직원 · @AI 는 일정만 안내' : '직원 + 협력업체 · @AI 전체 조회'}</p>
+                </div>
               </div>
-              <button onClick={() => setInviteOpen(true)} title="클라이언트/협력업체 초대"
-                className="shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/25 transition">👥 참여자 초대</button>
+              <button onClick={() => setInviteOpen(true)} title={room === 'client' ? '고객 초대' : '협력업체 초대'}
+                className="shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/25 transition">{room === 'client' ? '👥 고객 초대' : '🔧 협력업체 초대'}</button>
             </div>
+            {room === 'internal' && vendors.length > 0 && (
+              <div className="mt-2 text-[11px] bg-amber-400/20 text-amber-50 rounded-lg px-2.5 py-1.5">⚠️ 협력업체 {vendors.length}명 참여 중 — 원가·이윤 등 내부 대화에 주의하세요.</div>
+            )}
           </div>
-          <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50" style={{ height: '56vh' }}>
+          <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50 min-h-0">
             {loading ? (
               <div className="h-full flex items-center justify-center text-sm text-slate-400">불러오는 중…</div>
             ) : msgs.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
-                <div className="text-4xl">💬</div>
+                <div className="text-4xl">{room === 'client' ? '🤝' : '🏢'}</div>
                 <p className="text-sm text-slate-400">아직 대화가 없습니다. 첫 메시지를 보내보세요.</p>
-                <p className="text-[11px] text-slate-400">예: "@AI 이번 주 일정 알려줘" · [👥 참여자 초대]로 클라이언트도 부를 수 있어요</p>
+                <p className="text-[11px] text-slate-400">{room === 'client' ? '고객에게 진행 상황을 공유하세요 · [👥 고객 초대]' : '팀·협력업체와 실무를 논의하세요 · "@AI 이번 주 일정"'}</p>
               </div>
             ) : (
               <ChatBubbleList msgs={msgs} isMine={(m) => m.kind === 'user' && String(m.sender_user_id || '') === meId} />
             )}
             {aiThinking && <AiTypingIndicator />}
           </div>
-          <ChatComposer onSend={send} signUpload={(fn) => api.chatSignUpload(site.id, fn)} />
-          {inviteOpen && <ChatInviteModal site={site} onClose={() => setInviteOpen(false)} />}
-        </Card>
+          <ChatComposer onSend={send} signUpload={(fn) => api.chatSignUpload(site.id, room, fn)}
+            placeholder={room === 'client' ? '고객에게 메시지 · @AI 로 일정 안내' : '메시지 입력 · @AI 로 질문'} />
+          {inviteOpen && <ChatInviteModal site={site} roomKind={room} onClose={() => { setInviteOpen(false); loadParts(); }} />}
+        </div>
       );
     }
 
-    // (v37) 채팅 외부 참여자(클라이언트/협력업체) 초대 관리 모달
-    function ChatInviteModal({ site, onClose }) {
+    // (v39) 헤더 💬 진입 버튼 — 전역 안읽음 배지(20초 폴링 + 포커스).
+    function ChatLauncher({ onOpen }) {
+      const [total, setTotal] = useState(0);
+      const load = useCallback(async () => { try { const d = await api.chatUnread(); setTotal((d && d.total) || 0); } catch (e) { /* 무시 */ } }, []);
+      useEffect(() => {
+        load();
+        const iv = setInterval(() => { if (!document.hidden) load(); }, 20000);
+        const onFocus = () => load();
+        window.addEventListener('focus', onFocus);
+        return () => { clearInterval(iv); window.removeEventListener('focus', onFocus); };
+      }, [load]);
+      return (
+        <button onClick={onOpen} title="채팅" className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-xl transition">
+          💬
+          {total > 0 && <span className="absolute -top-0.5 -right-0.5 text-[10px] font-bold text-white bg-red-500 rounded-full min-w-[17px] h-[17px] px-1 flex items-center justify-center">{total > 99 ? '99+' : total}</span>}
+        </button>
+      );
+    }
+
+    // (v39) 채팅 홈 — 현장별 방 목록(현장×직원방·고객방). 5초 폴링 + 포커스.
+    function ChatRoomList({ onSelect, selectedKey }) {
+      const [data, setData] = useState(null);
+      const [q, setQ] = useState('');
+      const load = useCallback(async () => { try { const d = await api.chatRooms(); setData(d && Array.isArray(d.sites) ? d : { sites: [] }); } catch (e) { setData({ sites: [] }); } }, []);
+      useEffect(() => {
+        load();
+        const iv = setInterval(() => { if (!document.hidden) load(); }, 5000);
+        const onFocus = () => load();
+        window.addEventListener('focus', onFocus);
+        return () => { clearInterval(iv); window.removeEventListener('focus', onFocus); };
+      }, [load]);
+      const fmtTime = (iso) => { if (!iso) return ''; try { const d = new Date(iso); const now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' }); } catch (e) { return ''; } };
+      const preview = (last) => {
+        if (!last) return '대화 없음';
+        const txt = last.body || (last.has_attach ? '📎 ' + (last.attach_name || '첨부') : '');
+        if (last.kind === 'system') return txt;
+        const who = last.kind === 'ai' ? 'AI: ' : (last.sender_name ? last.sender_name.replace(/\s*\((클라이언트|협력업체)\)\s*$/, '') + ': ' : '');
+        return who + txt;
+      };
+      const sites = (data && data.sites) || [];
+      const needle = q.trim().toLowerCase();
+      const filtered = needle ? sites.filter((s) => (s.site_name || '').toLowerCase().includes(needle)) : sites;
+      const RoomRow = ({ site, room, meta }) => {
+        const isClient = room === 'client';
+        const key = `${site.site_id}|${room}`;
+        return (
+          <button onClick={() => onSelect({ site: { id: site.site_id, name: site.site_name }, room })}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition ${selectedKey === key ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+            <span className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ${isClient ? 'bg-amber-100' : 'bg-slate-200'}`}>{isClient ? '🤝' : '🏢'}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px] font-semibold text-slate-700">{isClient ? '고객방' : '직원방'}</span>
+                {meta.participant_count > 0 && <span className={`text-[9px] ${isClient ? 'text-amber-600' : 'text-teal-600'}`}>{isClient ? '👤' : '🔧'}{meta.participant_count}</span>}
+              </div>
+              <p className="text-[11px] text-slate-400 truncate">{preview(meta.last)}</p>
+            </div>
+            <div className="shrink-0 flex flex-col items-end gap-1">
+              <span className="text-[10px] text-slate-400">{fmtTime(meta.last && meta.last.created_at)}</span>
+              {meta.unread > 0 && <span className="text-[10px] font-bold text-white bg-red-500 rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{meta.unread > 99 ? '99+' : meta.unread}</span>}
+            </div>
+          </button>
+        );
+      };
+      return (
+        <div className="flex flex-col h-full min-h-0">
+          <div className="p-2.5 border-b border-slate-100 shrink-0">
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 현장 검색…" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {data === null ? <p className="text-center text-sm text-slate-400 py-8">불러오는 중…</p>
+              : filtered.length === 0 ? <p className="text-center text-sm text-slate-400 py-8">{needle ? '검색 결과가 없습니다.' : '등록된 현장이 없습니다.'}</p>
+                : filtered.map((site) => (
+                  <div key={site.site_id} className="border-b border-slate-100">
+                    <div className="px-3 pt-2 pb-1 flex items-center gap-1.5">
+                      <span className="text-[11px]">📍</span>
+                      <span className="text-[12px] font-bold text-slate-600 truncate">{site.site_name}</span>
+                      {site.progress_status && <span className="text-[9px] text-slate-400 shrink-0">{site.progress_status}</span>}
+                    </div>
+                    <RoomRow site={site} room="internal" meta={site.rooms.internal} />
+                    <RoomRow site={site} room="client" meta={site.rooms.client} />
+                  </div>
+                ))}
+          </div>
+        </div>
+      );
+    }
+
+    // (v39) 채팅 홈 오버레이 — 좌: 방 목록 / 우: 대화(데스크톱 2단, 모바일 목록→대화).
+    function ChatHome({ onClose, authUser }) {
+      const meId = String((authUser && authUser.id) || '');
+      const [sel, setSel] = useState(null); // { site:{id,name}, room }
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-100 flex flex-col">
+          <div className="bg-slate-900 text-white px-4 py-3 shrink-0 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {sel && <button onClick={() => setSel(null)} className="md:hidden text-white/80 hover:text-white text-xl leading-none">←</button>}
+              <p className="text-base font-bold">💬 채팅</p>
+              <span className="text-[11px] text-white/50">현장별 직원방·고객방</span>
+            </div>
+            <button onClick={onClose} className="text-white/70 hover:text-white text-sm px-2.5 py-1 rounded-lg hover:bg-white/10">닫기 ✕</button>
+          </div>
+          <div className="flex-1 min-h-0 flex">
+            <div className={`${sel ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-80 lg:w-96 md:border-r border-slate-200 bg-white min-h-0`}>
+              <ChatRoomList onSelect={setSel} selectedKey={sel ? `${sel.site.id}|${sel.room}` : ''} />
+            </div>
+            <div className={`${sel ? 'flex' : 'hidden md:flex'} flex-col flex-1 min-h-0 bg-white`}>
+              {sel ? (
+                <ChatConversation key={`${sel.site.id}|${sel.room}`} site={sel.site} roomKind={sel.room} meId={meId} onBack={() => setSel(null)} />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center px-6 text-slate-400">
+                  <div className="text-5xl mb-3">💬</div>
+                  <p className="text-sm">왼쪽에서 채팅방을 선택하세요.</p>
+                  <p className="text-[11px] mt-1">현장마다 🏢 직원방 · 🤝 고객방이 있어요.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // (v37/v39) 채팅방 참여자 초대 — 방별. 고객방=클라이언트, 직원방=협력업체(내부정보 주의).
+    function ChatInviteModal({ site, roomKind, onClose }) {
       const toast = useToast();
+      const room = roomKind === 'client' ? 'client' : 'internal';
+      const kind = room === 'client' ? 'client' : 'vendor';
+      const label = kind === 'vendor' ? '협력업체' : '클라이언트';
       const [list, setList] = useState(null);
-      const [kind, setKind] = useState('client');
       const [name, setName] = useState('');
       const [note, setNote] = useState('');
       const [creating, setCreating] = useState(false);
@@ -11968,28 +12102,29 @@
         copy(text);
       };
       const revoke = async (p) => { try { await api.chatRevokeParticipant(p.id); toast('참여자를 내보냈습니다.', 'info'); await load(); } catch (e) { toast('취소 실패', 'error'); } };
-      const active = (list || []).filter((p) => !p.revoked);
+      // 이 방의 참여자만 표시(고객방=client, 직원방=vendor)
+      const active = (list || []).filter((p) => !p.revoked && (p.room_kind || (p.kind === 'client' ? 'client' : 'internal')) === room);
       return (
-        <Modal isOpen onClose={onClose} title="👥 채팅방 참여자 초대" size="md">
+        <Modal isOpen onClose={onClose} title={`${kind === 'vendor' ? '🔧 협력업체' : '👥 고객'} 초대 · ${room === 'client' ? '고객방' : '직원방'}`} size="md">
           <div className="space-y-4">
-            <p className="text-xs text-slate-500">클라이언트·협력업체를 <b>계정 없이</b> 초대합니다. 링크를 받은 사람은 이 현장 채팅방에서 대화하고, 진행 상황을 <b>@AI</b>에게 물어볼 수 있어요. (비용·견적 등 내부 정보는 보이지 않습니다.)</p>
+            {room === 'client' ? (
+              <p className="text-xs text-slate-500">고객(발주처)을 <b>계정 없이</b> 초대합니다. 링크를 받은 고객은 이 <b>고객방</b>에서 대화하고 진행 상황을 <b>@AI</b>에게 물어볼 수 있어요. <b className="text-amber-600">비용·견적·원가 등 내부 정보는 보이지 않습니다.</b></p>
+            ) : (
+              <p className="text-xs text-slate-500">협력업체(하도급·자재상)를 <b>계정 없이</b> 초대합니다. 링크를 받으면 <b>직원방</b>에서 함께 대화합니다. <b className="text-red-600">⚠️ 직원방에는 원가·이윤 등 내부 대화가 오갈 수 있으니, 협력업체 앞에서의 내부 대화에 주의하세요.</b> (협력업체의 @AI 는 일정만 안내되어 내부 조회는 막혀 있습니다.)</p>
+            )}
             <div className="rounded-xl border border-slate-200 p-3.5 space-y-2.5">
-              <div className="inline-flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
-                <button onClick={() => setKind('client')} className={`px-3 py-1 rounded-md transition ${kind === 'client' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500'}`}>클라이언트</button>
-                <button onClick={() => setKind('vendor')} className={`px-3 py-1 rounded-md transition ${kind === 'vendor' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500'}`}>협력업체</button>
-              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Input placeholder={kind === 'client' ? '예: 홍길동 고객님' : '예: 대산우드 김반장'} value={name} onChange={(e) => setName(e.target.value)} />
                 <Input placeholder="메모 (선택)" value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
               <div className="flex justify-end">
-                <Button onClick={create} disabled={creating}>{creating ? '발급 중…' : '＋ 초대 링크 만들기 (복사)'}</Button>
+                <Button onClick={create} disabled={creating}>{creating ? '발급 중…' : `＋ ${label} 초대 링크 만들기 (복사)`}</Button>
               </div>
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-500 mb-1.5">참여자 {active.length > 0 && <span className="font-normal text-slate-400">· {active.length}명</span>}</p>
+              <p className="text-xs font-bold text-slate-500 mb-1.5">{label} 참여자 {active.length > 0 && <span className="font-normal text-slate-400">· {active.length}명</span>}</p>
               {list === null ? <p className="text-sm text-slate-400 py-3 text-center">불러오는 중…</p>
-                : active.length === 0 ? <p className="text-sm text-slate-400 py-3 text-center">아직 초대한 외부 참여자가 없습니다.</p>
+                : active.length === 0 ? <p className="text-sm text-slate-400 py-3 text-center">아직 초대한 {label}가 없습니다.</p>
                   : (
                     <ul className="divide-y divide-slate-100 border border-slate-100 rounded-xl">
                       {active.map((p) => (
@@ -12614,6 +12749,7 @@
 
       // v2: 탭 / 마스터 / 일정 / 견적 / 인쇄
       const [activeTab, setActiveTab] = useState(() => localStorage.getItem(TAB_KEY) || 'summary');
+      const [chatHomeOpen, setChatHomeOpen] = useState(false); // (v39) 채팅 홈 오버레이
 
       // (v30) 딥링크(#/go/<tab>/<siteId>) — 카톡 알림 링크로 진입 시 해당 현장·탭으로 1회 자동 이동(로그인 후에도 해시 유지됨)
       const goHandledRef = useRef(false);
@@ -12910,6 +13046,7 @@
                     )}
                     {authUser && (
                       <>
+                        {!usingMock && <ChatLauncher onOpen={() => setChatHomeOpen(true)} />} {/* v39: 채팅 홈 */}
                         <NotificationBell /> {/* v25: 인앱 알림 */}
                         <ProfileArea authUser={authUser} /> {/* v28: 나의 정보(프로필/아바타/직원 인증) */}
                         {isAdmin && <span className="text-[11px] font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700" title="관리자 — 조직·직원·인력배정 관리 권한">관리자</span>}
@@ -13077,9 +13214,6 @@
                 {activeTab === 'photos' && (
                   <PhotosTab key={'pho-' + selectedSite.id} site={selectedSite} demoMode={demoMode} uploaderName={authUser ? (authUser.name || authUser.email) : ''} />
                 )}
-                {activeTab === 'chat' && (
-                  <ChatRoomTab key={'chat-' + selectedSite.id} site={selectedSite} authUser={authUser} demoMode={demoMode} />
-                )}
               </>
             )}
 
@@ -13158,6 +13292,9 @@
 
           {/* v28: 💬 AI 채팅 위젯 — 서버 연결 시에만 (데모(오프라인)는 미지원). v33: 현재 현장·탭 스코프 전달 */}
           {!demoMode && <ChatWidget site={selectedSite} activeTab={activeTab} />}
+
+          {/* v39: 채팅 홈 오버레이 — 현장별 직원방·고객방 */}
+          {chatHomeOpen && authUser && <ChatHome onClose={() => setChatHomeOpen(false)} authUser={authUser} />}
         </div>
 
         {/* 견적서 인쇄 영역 (화면 숨김 / 인쇄 시에만 표시) */}

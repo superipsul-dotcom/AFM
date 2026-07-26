@@ -1262,6 +1262,18 @@ async function initDB() {
   await pool.query(`ALTER TABLE interior_chat_messages ADD COLUMN IF NOT EXISTS attach_path TEXT NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE interior_chat_messages ADD COLUMN IF NOT EXISTS attach_name TEXT NOT NULL DEFAULT ''`);
   await pool.query(`ALTER TABLE interior_chat_messages ADD COLUMN IF NOT EXISTS attach_mime TEXT NOT NULL DEFAULT ''`);
+  // (v39) 채팅방 분리 — 현장당 방 2개: internal(직원+협력업체) | client(고객). 방=(site_id, room_kind).
+  await pool.query(`ALTER TABLE interior_chat_messages ADD COLUMN IF NOT EXISTS room_kind TEXT NOT NULL DEFAULT 'internal'`);
+  // 기존 게스트 메시지 재분류: 클라이언트 발신 → 고객방. (팀/AI/시스템/협력업체 발신은 직원방 = 기본값)
+  await pool.query(`UPDATE interior_chat_messages SET room_kind='client' WHERE kind='client' AND room_kind='internal'`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_interior_chat_room ON interior_chat_messages (site_id, room_kind, id)`);
+  // 참여자를 방에 귀속: 클라이언트=고객방, 협력업체=직원방(Option C).
+  await pool.query(`ALTER TABLE interior_chat_participants ADD COLUMN IF NOT EXISTS room_kind TEXT NOT NULL DEFAULT 'internal'`);
+  await pool.query(`UPDATE interior_chat_participants SET room_kind = CASE WHEN kind='client' THEN 'client' ELSE 'internal' END`);
+  // 읽음표시를 방 단위로: PK (user_id, site_id) → (user_id, site_id, room_kind). 기존 행은 internal 로 귀속.
+  await pool.query(`ALTER TABLE interior_chat_reads ADD COLUMN IF NOT EXISTS room_kind TEXT NOT NULL DEFAULT 'internal'`);
+  await pool.query(`ALTER TABLE interior_chat_reads DROP CONSTRAINT IF EXISTS interior_chat_reads_pkey`);
+  await pool.query(`ALTER TABLE interior_chat_reads ADD PRIMARY KEY (user_id, site_id, room_kind)`);
 
   // (v25) 매뉴얼 시드 — 전체 0건일 때만 노션 43건을 가장 오래된 팀에 적재
   await seedManualsIfEmpty();
@@ -9231,9 +9243,11 @@ app.get('/api/me/notify-channels', (req, res) => {
 // (v36) 💬 채팅방 — 현장(room=site) 단위 팀 채팅 + @AI 어시스턴트
 //   site 소유검증은 app.use('/api/sites/:id') 미들웨어가 선행(타팀 404).
 // ========================================
+// (v39) 방 종류 정규화 — internal(직원방) | client(고객방). 그 외 입력은 안전하게 internal.
+function normRoom(v) { return v === 'client' ? 'client' : 'internal'; }
 function rowToChatMsg(r) {
   return {
-    id: String(r.id), site_id: String(r.site_id),
+    id: String(r.id), site_id: String(r.site_id), room_kind: r.room_kind || 'internal',
     sender_user_id: r.sender_user_id == null ? null : String(r.sender_user_id),
     sender_name: r.sender_name || (r.kind === 'ai' ? 'AI' : ''),
     kind: r.kind || 'user', body: r.body || '',
@@ -9241,7 +9255,7 @@ function rowToChatMsg(r) {
     created_at: new Date(r.created_at).toISOString(),
   };
 }
-const CHAT_MSG_COLS = 'id, site_id, sender_user_id, sender_name, kind, body, attach_path, attach_name, attach_mime, created_at';
+const CHAT_MSG_COLS = 'id, site_id, room_kind, sender_user_id, sender_name, kind, body, attach_path, attach_name, attach_mime, created_at';
 // (v38) 서명 URL 부착 헬퍼(미설정/실패 시 null). 채팅 첨부·기타 공용.
 async function signPathOrNull(path, expiresIn = 3600) {
   if (!path || !storageConfigured()) return null;
@@ -9261,13 +9275,14 @@ app.get('/api/sites/:id/chat', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const room = normRoom(req.query.room);
     const after = parseId(req.query.after);
     const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 60));
     let rows;
     if (after) {
-      rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 AND id>$2 ORDER BY id ASC LIMIT 200`, [id, after])).rows;
+      rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 AND room_kind=$2 AND id>$3 ORDER BY id ASC LIMIT 200`, [id, room, after])).rows;
     } else {
-      rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT $2`, [id, limit])).rows.reverse();
+      rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 AND room_kind=$2 ORDER BY id DESC LIMIT $3`, [id, room, limit])).rows.reverse();
     }
     res.json({ messages: await withChatAttachUrls(rows.map(rowToChatMsg)) });
   } catch (err) {
@@ -9276,8 +9291,22 @@ app.get('/api/sites/:id/chat', async (req, res) => {
   }
 });
 
-// (v38) 채팅 첨부 업로드 서명 URL — 파일은 sites/<id>/chat/ 경로.
-app.post('/api/sites/:id/chat/sign-upload', makeSignUploadHandler('chat', '채팅 첨부'));
+// (v38/v39) 채팅 첨부 업로드 서명 URL — 파일은 방별 sites/<id>/chat/<room>/ 경로(방 간 첨부 격리).
+app.post('/api/sites/:id/chat/sign-upload', async (req, res) => {
+  try {
+    if (!storageConfigured()) return res.status(503).json({ error: '스토리지 미설정' });
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const room = normRoom((req.body || {}).room);
+    const fileName = typeof (req.body || {}).file_name === 'string' ? req.body.file_name.trim() : '';
+    if (!fileName) return res.status(400).json({ success: false, message: '파일명(file_name)이 필요합니다.' });
+    const signed = await signUploadUrl(buildStoragePath(id, `chat/${room}`, fileName));
+    res.json({ upload_url: signed.uploadUrl, storage_path: signed.path });
+  } catch (err) {
+    console.error('POST /api/sites/:id/chat/sign-upload 오류:', err.message);
+    res.status(502).json({ success: false, message: '채팅 첨부 업로드 URL 발급에 실패했습니다.' });
+  }
+});
 
 // POST /api/sites/:id/chat {body, attach?} — 메시지 전송. @AI 멘션 시 AI 응답도 함께 생성. 팀원에게 알림.
 app.post('/api/sites/:id/chat', async (req, res) => {
@@ -9285,54 +9314,40 @@ app.post('/api/sites/:id/chat', async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
     const b = req.body || {};
+    const room = normRoom(b.room);
     const body = typeof b.body === 'string' ? b.body.trim() : '';
-    const attach = parseChatAttach(b.attach, id);
+    const attach = parseChatAttach(b.attach, id, room);
     if (!body && !attach) return res.status(400).json({ success: false, message: '메시지 또는 첨부가 필요합니다.' });
     if (body.length > 4000) return res.status(400).json({ success: false, message: '메시지가 너무 깁니다(4000자 이하).' });
 
     const senderName = await currentUserName(req);
-    const userMsg = await postChatMessage(req.teamId, id, { kind: 'user', senderUserId: req.userId, senderName, body, attach });
+    const userMsg = await postChatMessage(req.teamId, id, { kind: 'user', roomKind: room, senderUserId: req.userId, senderName, body, attach });
     const created = [userMsg];
 
     // 팀원 전체에게 새 메시지 알림(발신자 제외 — notifyUsers 가 처리). 인앱+개인설정 외부채널.
     const teamIds = await teamUserIdsByRole(req.teamId, false);
     const siteNameQ = await pool.query('SELECT name FROM interior_sites WHERE id=$1', [id]);
     const siteName = siteNameQ.rows.length ? siteNameQ.rows[0].name : '현장';
+    const rLabel = room === 'client' ? '고객방' : '직원방';
     await notifyUsers({
       teamId: req.teamId, userIds: teamIds, actorUserId: req.userId,
-      type: 'chat_message', title: `💬 ${siteName} 새 메시지`, body: `${senderName}: ${body ? body.slice(0, 80) : (attach ? '📎 ' + (attach.name || '첨부') : '')}`,
-      siteId: id, refType: 'chat', refId: null,
+      type: 'chat_message', title: `💬 ${siteName} · ${rLabel} 새 메시지`, body: `${senderName}: ${body ? body.slice(0, 80) : (attach ? '📎 ' + (attach.name || '첨부') : '')}`,
+      siteId: id, refType: 'chat', refId: room,
     });
 
-    // (v36) @AI 멘션 → AI 응답 생성(현장 스코프 + 최근 대화 맥락).
+    // (v36/v39) @AI 멘션 → 방별 응답. 직원방=풀 액세스, 고객방=제한형(고객이 보므로 발신자가 직원이어도 내부정보 차단).
     const mentionsAi = /@ai\b/i.test(body) || /(^|\s)ai\s*(야|님|씨|봇|,|\?|아)/i.test(body);
     if (mentionsAi) {
-      const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
-      const scope = { site_id: id, site_name: siteName, tab_label: '채팅' };
-      const recent = (await pool.query(
-        `SELECT sender_name, kind, body FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT 10`, [id]
-      )).rows.reverse();
-      const convo = [
-        { role: 'system', content: chatSystemPrompt(req.teamId, today, scope)
-          + '\n\n[채팅방 모드] 여러 사람이 있는 현장 채팅방입니다. @AI 로 호출됐습니다. 방금 사용자의 요청에 짧고 명확히 답하세요(2~5문장). 직전 대화 맥락을 참고하되, 답은 마지막 사용자 메시지에 집중.' },
-        ...recent.map((m) => ({ role: m.kind === 'ai' ? 'assistant' : 'user', content: `${m.kind === 'ai' ? '' : (m.sender_name + ': ')}${m.body}`.slice(0, 2000) })),
-      ];
-      const r = await runAiConversation(convo, 700);
-      const aiText = r.ok ? r.reply : `⚠️ ${r.error || 'AI 응답에 실패했습니다.'}`;
-      const aiIns = await pool.query(
-        `INSERT INTO interior_chat_messages (team_id, site_id, sender_user_id, sender_name, kind, body)
-         VALUES ($1,$2,NULL,'AI','ai',$3) RETURNING ${CHAT_MSG_COLS}`,
-        [req.teamId, id, aiText]
-      );
-      created.push(rowToChatMsg(aiIns.rows[0]));
+      const aiText = await generateRoomAiReply(req.teamId, id, siteName, room, false);
+      created.push(await postChatMessage(req.teamId, id, { kind: 'ai', roomKind: room, senderName: 'AI', body: aiText }));
     }
 
     // 발신자의 읽음 위치 갱신(마지막 생성 메시지까지)
     const lastId = created[created.length - 1].id;
     await pool.query(
-      `INSERT INTO interior_chat_reads (user_id, site_id, last_read_id) VALUES ($1,$2,$3)
-       ON CONFLICT (user_id, site_id) DO UPDATE SET last_read_id=GREATEST(interior_chat_reads.last_read_id, EXCLUDED.last_read_id), updated_at=now()`,
-      [req.userId, id, lastId]
+      `INSERT INTO interior_chat_reads (user_id, site_id, room_kind, last_read_id) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (user_id, site_id, room_kind) DO UPDATE SET last_read_id=GREATEST(interior_chat_reads.last_read_id, EXCLUDED.last_read_id), updated_at=now()`,
+      [req.userId, id, room, lastId]
     );
     res.status(201).json({ messages: await withChatAttachUrls(created) });
   } catch (err) {
@@ -9346,11 +9361,12 @@ app.post('/api/sites/:id/chat/read', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const room = normRoom((req.body || {}).room);
     const lastId = parseId((req.body || {}).last_id) || 0;
     await pool.query(
-      `INSERT INTO interior_chat_reads (user_id, site_id, last_read_id) VALUES ($1,$2,$3)
-       ON CONFLICT (user_id, site_id) DO UPDATE SET last_read_id=GREATEST(interior_chat_reads.last_read_id, EXCLUDED.last_read_id), updated_at=now()`,
-      [req.userId, id, lastId]
+      `INSERT INTO interior_chat_reads (user_id, site_id, room_kind, last_read_id) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (user_id, site_id, room_kind) DO UPDATE SET last_read_id=GREATEST(interior_chat_reads.last_read_id, EXCLUDED.last_read_id), updated_at=now()`,
+      [req.userId, id, room, lastId]
     );
     res.json({ success: true });
   } catch (err) {
@@ -9364,31 +9380,59 @@ app.post('/api/sites/:id/chat/read', async (req, res) => {
 // ========================================
 function rowToParticipant(r, req) {
   return {
-    id: String(r.id), kind: r.kind || 'client', name: r.name || '', note: r.note || '',
+    id: String(r.id), kind: r.kind || 'client', room_kind: r.room_kind || 'internal',
+    name: r.name || '', note: r.note || '',
     token: r.token, url: `${appBaseUrl(req)}/#/chat/${r.token}`,
     revoked: !!r.revoked, last_seen_at: r.last_seen_at, created_at: r.created_at,
   };
 }
-// (v38) 첨부 검증 — {path,name,mime}. path 는 반드시 sites/<siteId>/chat/ 하위여야 함(경로 주입 차단).
-function parseChatAttach(attach, siteId) {
+// (v38/v39) 첨부 검증 — {path,name,mime}. path 는 반드시 해당 방의 sites/<siteId>/chat/<room>/ 하위여야 함(방 간·경로 주입 차단).
+function parseChatAttach(attach, siteId, room) {
   if (!attach || typeof attach !== 'object') return null;
   const path = typeof attach.path === 'string' ? attach.path.trim() : '';
-  if (!path || path.includes('..') || !path.startsWith(`sites/${siteId}/chat/`)) return null;
+  const prefix = `sites/${siteId}/chat/${normRoom(room)}/`;
+  if (!path || path.includes('..') || !path.startsWith(prefix)) return null;
   return {
     path,
     name: typeof attach.name === 'string' ? attach.name.trim().slice(0, 200) : '',
     mime: typeof attach.mime === 'string' ? attach.mime.trim().slice(0, 100) : '',
   };
 }
-// 팀·시스템 발신 채팅 메시지(자동 브리핑용). kind='system'|'ai'|'user'|'client'|'vendor'.
-async function postChatMessage(teamId, siteId, { kind = 'system', senderName = '', senderUserId = null, body = '', attach = null }) {
+// 팀·시스템 발신 채팅 메시지(자동 브리핑용). kind='system'|'ai'|'user'|'client'|'vendor'. roomKind=internal|client.
+async function postChatMessage(teamId, siteId, { kind = 'system', roomKind = 'internal', senderName = '', senderUserId = null, body = '', attach = null }) {
   const a = attach || {};
   const ins = await pool.query(
-    `INSERT INTO interior_chat_messages (team_id, site_id, sender_user_id, sender_name, kind, body, attach_path, attach_name, attach_mime)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${CHAT_MSG_COLS}`,
-    [teamId, siteId, senderUserId, senderName, kind, body || '', a.path || '', a.name || '', a.mime || '']
+    `INSERT INTO interior_chat_messages (team_id, site_id, room_kind, sender_user_id, sender_name, kind, body, attach_path, attach_name, attach_mime)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${CHAT_MSG_COLS}`,
+    [teamId, siteId, normRoom(roomKind), senderUserId, senderName, kind, body || '', a.path || '', a.name || '', a.mime || '']
   );
   return rowToChatMsg(ins.rows[0]);
+}
+// (v39) 방별 @AI 응답 생성. 직원방(internal)+직원 발신 = 풀 액세스(run_sql). 고객방 또는 게스트(forceRestricted) = 제한형(일정만, 내부정보 차단).
+async function generateRoomAiReply(teamId, siteId, siteName, room, forceRestricted) {
+  const rk = normRoom(room);
+  const recent = (await pool.query(
+    `SELECT sender_name, kind, body FROM interior_chat_messages WHERE site_id=$1 AND room_kind=$2 ORDER BY id DESC LIMIT 10`, [siteId, rk]
+  )).rows.reverse();
+  const history = recent.map((m) => ({ role: m.kind === 'ai' ? 'assistant' : 'user', content: `${m.kind === 'ai' ? '' : (m.sender_name + ': ')}${m.body}`.slice(0, 2000) }));
+  const restricted = forceRestricted || rk === 'client';
+  if (restricted) {
+    const today = todayKST();
+    const brief = await siteScheduleBrief(siteId);
+    const audience = rk === 'client' ? '클라이언트' : '협력업체';
+    const sys = `당신은 인테리어 시공사 "안도공간"이 ${audience}와 공유하는 '${siteName}' 현장 채팅방의 AI 안내원입니다. 오늘(KST): ${today}.\n`
+      + `아래 [공사 일정]과 대화만 근거로 공사 진행 상황·일정·완료 여부를 친절하고 짧게(2~4문장) 안내하세요.\n`
+      + `⚠️ 이 방은 외부 참여자가 함께 봅니다. 비용·견적·발주 금액·단가·원가·이윤·내부 담당자·다른 현장 등 내부 정보는 절대 답하지 말고 "자세한 내용은 담당자에게 문의해 주세요"라고 답하세요. 일정에 없는 것은 지어내지 마세요.\n`
+      + `[공사 일정]\n${brief}`;
+    const r = await runAiConversation([{ role: 'system', content: sys }, ...history], 500, false);
+    return r.ok ? r.reply : '지금은 답변을 드리기 어렵습니다. 담당자에게 문의해 주세요.';
+  }
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
+  const scope = { site_id: siteId, site_name: siteName, tab_label: '채팅' };
+  const sys = chatSystemPrompt(teamId, today, scope)
+    + '\n\n[채팅방 모드] 여러 사람이 있는 현장 직원 채팅방입니다. @AI 로 호출됐습니다. 방금 사용자의 요청에 짧고 명확히 답하세요(2~5문장). 직전 대화 맥락을 참고하되, 답은 마지막 사용자 메시지에 집중.';
+  const r = await runAiConversation([{ role: 'system', content: sys }, ...history], 700);
+  return r.ok ? r.reply : `⚠️ ${r.error || 'AI 응답에 실패했습니다.'}`;
 }
 // 게스트 AI(제한형): 내부정보 접근 없음 — 현장 일정만 주입, run_sql 미사용.
 async function siteScheduleBrief(siteId) {
@@ -9411,14 +9455,15 @@ app.post('/api/sites/:id/chat/participants', async (req, res) => {
     if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
     const b = req.body || {};
     const kind = b.kind === 'vendor' ? 'vendor' : 'client';
+    const room = kind === 'vendor' ? 'internal' : 'client'; // 협력업체=직원방, 클라이언트=고객방
     const name = typeof b.name === 'string' ? b.name.trim().slice(0, 60) : '';
     if (!name) return res.status(400).json({ success: false, message: '참여자 이름을 입력하세요.' });
     const note = typeof b.note === 'string' ? b.note.trim().slice(0, 200) : '';
     const token = crypto.randomBytes(18).toString('base64url');
     const { rows } = await pool.query(
-      `INSERT INTO interior_chat_participants (team_id, site_id, token, kind, name, note, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [req.teamId, id, token, kind, name, note, req.userId]
+      `INSERT INTO interior_chat_participants (team_id, site_id, token, kind, room_kind, name, note, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [req.teamId, id, token, kind, room, name, note, req.userId]
     );
     res.status(201).json(rowToParticipant(rows[0], req));
   } catch (err) {
@@ -9461,9 +9506,10 @@ app.post('/api/sites/:id/chat/system', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const room = normRoom((req.body || {}).room);
     const body = typeof (req.body || {}).body === 'string' ? req.body.body.trim().slice(0, 1000) : '';
     if (!body) return res.status(400).json({ success: false, message: '내용이 필요합니다.' });
-    const msg = await postChatMessage(req.teamId, id, { kind: 'system', body });
+    const msg = await postChatMessage(req.teamId, id, { kind: 'system', roomKind: room, body });
     res.status(201).json({ message: msg });
   } catch (err) {
     console.error('POST /api/sites/:id/chat/system 오류:', err.message);
@@ -9487,12 +9533,13 @@ app.get('/api/chat-guest/:token', async (req, res) => {
     const p = await loadParticipant(String(req.params.token || ''));
     if (!p || p.revoked) return res.json({ valid: false, message: '유효하지 않거나 취소된 채팅 링크입니다.' });
     pool.query('UPDATE interior_chat_participants SET last_seen_at=now() WHERE id=$1', [p.id]).catch(() => {});
+    const rk = normRoom(p.room_kind);
     const after = parseId(req.query.after);
     let rows;
-    if (after) rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 AND id>$2 ORDER BY id ASC LIMIT 200`, [p.site_id, after])).rows;
-    else rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT 60`, [p.site_id])).rows.reverse();
+    if (after) rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 AND room_kind=$2 AND id>$3 ORDER BY id ASC LIMIT 200`, [p.site_id, rk, after])).rows;
+    else rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 AND room_kind=$2 ORDER BY id DESC LIMIT 60`, [p.site_id, rk])).rows.reverse();
     res.json({
-      valid: true, site_name: p.site_name, team_name: p.team_name,
+      valid: true, site_name: p.site_name, team_name: p.team_name, room_kind: rk,
       participant: { name: p.name, kind: p.kind },
       messages: await withChatAttachUrls(rows.map(rowToChatMsg)),
     });
@@ -9510,7 +9557,7 @@ app.post('/api/chat-guest/:token/sign-upload', async (req, res) => {
     if (!p || p.revoked) return res.status(403).json({ success: false, message: '유효하지 않은 링크입니다.' });
     const fileName = typeof (req.body || {}).file_name === 'string' ? req.body.file_name.trim() : '';
     if (!fileName) return res.status(400).json({ success: false, message: '파일명이 필요합니다.' });
-    const signed = await signUploadUrl(buildStoragePath(p.site_id, 'chat', fileName));
+    const signed = await signUploadUrl(buildStoragePath(p.site_id, `chat/${normRoom(p.room_kind)}`, fileName));
     res.json({ upload_url: signed.uploadUrl, storage_path: signed.path });
   } catch (err) {
     console.error('POST /api/chat-guest/:token/sign-upload 오류:', err.message);
@@ -9524,46 +9571,107 @@ app.post('/api/chat-guest/:token', async (req, res) => {
     const p = await loadParticipant(String(req.params.token || ''));
     if (!p || p.revoked) return res.status(403).json({ success: false, message: '유효하지 않거나 취소된 채팅 링크입니다.' });
     const gb = req.body || {};
+    const rk = normRoom(p.room_kind);
     const body = typeof gb.body === 'string' ? gb.body.trim() : '';
-    const attach = parseChatAttach(gb.attach, p.site_id);
+    const attach = parseChatAttach(gb.attach, p.site_id, rk);
     if (!body && !attach) return res.status(400).json({ success: false, message: '메시지 또는 첨부가 필요합니다.' });
     if (body.length > 4000) return res.status(400).json({ success: false, message: '메시지가 너무 깁니다.' });
     pool.query('UPDATE interior_chat_participants SET last_seen_at=now() WHERE id=$1', [p.id]).catch(() => {});
 
     const senderName = p.kind === 'vendor' ? `${p.name} (협력업체)` : `${p.name} (클라이언트)`;
-    const msg = await postChatMessage(p.team_id, p.site_id, { kind: p.kind, senderName, body, attach });
+    const msg = await postChatMessage(p.team_id, p.site_id, { kind: p.kind, roomKind: rk, senderName, body, attach });
     const created = [msg];
 
     // 팀원 전체 알림(게스트 발신 → 팀에게)
     const teamIds = await teamUserIdsByRole(p.team_id, false);
+    const rLabel = rk === 'client' ? '고객방' : '직원방';
     await notifyUsers({
       teamId: p.team_id, userIds: teamIds, actorUserId: null,
-      type: 'chat_message', title: `💬 ${p.site_name} 새 메시지`, body: `${senderName}: ${body ? body.slice(0, 80) : (attach ? '📎 ' + (attach.name || '첨부') : '')}`,
-      siteId: p.site_id, refType: 'chat', refId: null,
+      type: 'chat_message', title: `💬 ${p.site_name} · ${rLabel} 새 메시지`, body: `${senderName}: ${body ? body.slice(0, 80) : (attach ? '📎 ' + (attach.name || '첨부') : '')}`,
+      siteId: p.site_id, refType: 'chat', refId: rk,
     });
 
-    // @AI (게스트 제한형): 일정만 근거, run_sql 없음.
+    // @AI (게스트 = 항상 제한형): 일정만 근거, run_sql 없음. 방과 무관하게 내부정보 차단.
     if (/@ai\b/i.test(body) || /(^|\s)ai\s*(야|님|씨|봇|,|\?|아)/i.test(body)) {
-      const today = todayKST();
-      const brief = await siteScheduleBrief(p.site_id);
-      const recent = (await pool.query(`SELECT sender_name, kind, body FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT 8`, [p.site_id])).rows.reverse();
-      const sys = `당신은 인테리어 시공사 "안도공간"이 클라이언트·협력업체와 공유하는 '${p.site_name}' 현장 채팅방의 AI 안내원입니다. 오늘(KST): ${today}.\n`
-        + `아래 [공사 일정]과 대화만 근거로 공사 진행 상황·일정·완료 여부를 친절하고 짧게(2~4문장) 안내하세요.\n`
-        + `⚠️ 비용·견적·발주 금액·단가·내부 담당자·다른 현장 등 내부 정보는 알 수 없습니다. 물으면 "자세한 내용은 담당자에게 문의해 주세요"라고 답하고, 일정에 없는 것은 지어내지 마세요.\n`
-        + `[공사 일정]\n${brief}`;
-      const convo = [
-        { role: 'system', content: sys },
-        ...recent.map((m) => ({ role: m.kind === 'ai' ? 'assistant' : 'user', content: `${m.kind === 'ai' ? '' : (m.sender_name + ': ')}${m.body}`.slice(0, 1500) })),
-      ];
-      const r = await runAiConversation(convo, 500, false); // run_sql 미사용
-      const aiText = r.ok ? r.reply : '지금은 답변을 드리기 어렵습니다. 담당자에게 문의해 주세요.';
-      const aiMsg = await postChatMessage(p.team_id, p.site_id, { kind: 'ai', senderName: 'AI', body: aiText });
-      created.push(aiMsg);
+      const aiText = await generateRoomAiReply(p.team_id, p.site_id, p.site_name, rk, true);
+      created.push(await postChatMessage(p.team_id, p.site_id, { kind: 'ai', roomKind: rk, senderName: 'AI', body: aiText }));
     }
     res.status(201).json({ messages: await withChatAttachUrls(created) });
   } catch (err) {
     console.error('POST /api/chat-guest/:token 오류:', err.message);
     res.status(500).json({ success: false, message: '메시지를 보내지 못했습니다.' });
+  }
+});
+
+// (v39) GET /api/chat/unread — 전역 안읽음 총합(헤더 💬 배지). 내가 보낸 메시지 제외.
+app.get('/api/chat/unread', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS total
+         FROM interior_chat_messages m
+         LEFT JOIN interior_chat_reads r
+           ON r.user_id=$1 AND r.site_id=m.site_id AND r.room_kind=m.room_kind
+        WHERE m.team_id=$2 AND m.id > COALESCE(r.last_read_id, 0) AND (m.sender_user_id IS DISTINCT FROM $1)`,
+      [req.userId, req.teamId]
+    );
+    res.json({ total: rows[0] ? rows[0].total : 0 });
+  } catch (err) {
+    console.error('GET /api/chat/unread 오류:', err.message);
+    res.json({ total: 0 });
+  }
+});
+
+// (v39) GET /api/chat/rooms — 채팅 홈(현장별 방 목록). 현장×방(internal|client) 마지막 메시지+안읽음+참여자 수.
+app.get('/api/chat/rooms', async (req, res) => {
+  try {
+    const sites = (await pool.query(
+      `SELECT id, name, progress_status FROM interior_sites WHERE team_id=$1 AND archived=false ORDER BY id DESC`, [req.teamId]
+    )).rows;
+    const lastMsgs = (await pool.query(
+      `SELECT DISTINCT ON (site_id, room_kind) site_id, room_kind, id, sender_name, kind, body, attach_name, created_at
+         FROM interior_chat_messages WHERE team_id=$1 ORDER BY site_id, room_kind, id DESC`, [req.teamId]
+    )).rows;
+    const unreads = (await pool.query(
+      `SELECT m.site_id, m.room_kind, COUNT(*)::int AS c
+         FROM interior_chat_messages m
+         LEFT JOIN interior_chat_reads r ON r.user_id=$1 AND r.site_id=m.site_id AND r.room_kind=m.room_kind
+        WHERE m.team_id=$2 AND m.id > COALESCE(r.last_read_id,0) AND (m.sender_user_id IS DISTINCT FROM $1)
+        GROUP BY m.site_id, m.room_kind`, [req.userId, req.teamId]
+    )).rows;
+    const parts = (await pool.query(
+      `SELECT site_id, room_kind, COUNT(*)::int AS c
+         FROM interior_chat_participants WHERE team_id=$1 AND revoked=false GROUP BY site_id, room_kind`, [req.teamId]
+    )).rows;
+    const key = (s, r) => `${s}|${r}`;
+    const lastMap = new Map(lastMsgs.map((m) => [key(m.site_id, m.room_kind), m]));
+    const unreadMap = new Map(unreads.map((u) => [key(u.site_id, u.room_kind), u.c]));
+    const partMap = new Map(parts.map((p) => [key(p.site_id, p.room_kind), p.c]));
+    const roomObj = (siteId, rk) => {
+      const lm = lastMap.get(key(siteId, rk));
+      return {
+        room_kind: rk,
+        unread: unreadMap.get(key(siteId, rk)) || 0,
+        participant_count: partMap.get(key(siteId, rk)) || 0,
+        last: lm ? {
+          id: String(lm.id), sender_name: lm.sender_name || (lm.kind === 'ai' ? 'AI' : ''),
+          kind: lm.kind, body: lm.body || '', has_attach: !!lm.attach_name, attach_name: lm.attach_name || '',
+          created_at: new Date(lm.created_at).toISOString(),
+        } : null,
+      };
+    };
+    const out = sites.map((s) => ({
+      site_id: String(s.id), site_name: s.name, progress_status: s.progress_status,
+      rooms: { internal: roomObj(s.id, 'internal'), client: roomObj(s.id, 'client') },
+    }));
+    out.sort((a, b) => {
+      const t = (o) => Math.max(o.rooms.internal.last ? Date.parse(o.rooms.internal.last.created_at) : 0,
+        o.rooms.client.last ? Date.parse(o.rooms.client.last.created_at) : 0);
+      return t(b) - t(a);
+    });
+    res.json({ sites: out });
+  } catch (err) {
+    console.error('GET /api/chat/rooms 오류:', err.message);
+    res.status(500).json({ success: false, message: '채팅방 목록을 불러오지 못했습니다.' });
   }
 });
 
