@@ -1258,6 +1258,10 @@ async function initDB() {
     )
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_chat_participants_site ON interior_chat_participants (site_id, created_at DESC);');
+  // (v38) 채팅 첨부(파일/사진) — Storage 경로+원본명+MIME. 빈값=텍스트 메시지.
+  await pool.query(`ALTER TABLE interior_chat_messages ADD COLUMN IF NOT EXISTS attach_path TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_chat_messages ADD COLUMN IF NOT EXISTS attach_name TEXT NOT NULL DEFAULT ''`);
+  await pool.query(`ALTER TABLE interior_chat_messages ADD COLUMN IF NOT EXISTS attach_mime TEXT NOT NULL DEFAULT ''`);
 
   // (v25) 매뉴얼 시드 — 전체 0건일 때만 노션 43건을 가장 오래된 팀에 적재
   await seedManualsIfEmpty();
@@ -9233,10 +9237,24 @@ function rowToChatMsg(r) {
     sender_user_id: r.sender_user_id == null ? null : String(r.sender_user_id),
     sender_name: r.sender_name || (r.kind === 'ai' ? 'AI' : ''),
     kind: r.kind || 'user', body: r.body || '',
+    attach_name: r.attach_name || '', attach_mime: r.attach_mime || '', attach_path: r.attach_path || '',
     created_at: new Date(r.created_at).toISOString(),
   };
 }
-const CHAT_MSG_COLS = 'id, site_id, sender_user_id, sender_name, kind, body, created_at';
+const CHAT_MSG_COLS = 'id, site_id, sender_user_id, sender_name, kind, body, attach_path, attach_name, attach_mime, created_at';
+// (v38) 서명 URL 부착 헬퍼(미설정/실패 시 null). 채팅 첨부·기타 공용.
+async function signPathOrNull(path, expiresIn = 3600) {
+  if (!path || !storageConfigured()) return null;
+  try { return await signDownloadUrl(path, expiresIn); } catch (e) { return null; }
+}
+// 채팅 메시지 배열에 attach_url 부착(첨부 있는 것만 서명). attach_path 는 응답에서 제거.
+async function withChatAttachUrls(msgs) {
+  return Promise.all(msgs.map(async (m) => {
+    const attach_url = m.attach_path ? await signPathOrNull(m.attach_path) : null;
+    const { attach_path, ...rest } = m;
+    return { ...rest, attach_url };
+  }));
+}
 
 // GET /api/sites/:id/chat?after=<id>&limit= — after 이후 메시지(폴링). after 없으면 최근 limit개.
 app.get('/api/sites/:id/chat', async (req, res) => {
@@ -9251,29 +9269,29 @@ app.get('/api/sites/:id/chat', async (req, res) => {
     } else {
       rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT $2`, [id, limit])).rows.reverse();
     }
-    res.json({ messages: rows.map(rowToChatMsg) });
+    res.json({ messages: await withChatAttachUrls(rows.map(rowToChatMsg)) });
   } catch (err) {
     console.error('GET /api/sites/:id/chat 오류:', err.message);
     res.status(500).json({ success: false, message: '채팅을 불러오지 못했습니다.' });
   }
 });
 
-// POST /api/sites/:id/chat {body} — 메시지 전송. @AI 멘션 시 AI 응답도 함께 생성. 팀원에게 알림.
+// (v38) 채팅 첨부 업로드 서명 URL — 파일은 sites/<id>/chat/ 경로.
+app.post('/api/sites/:id/chat/sign-upload', makeSignUploadHandler('chat', '채팅 첨부'));
+
+// POST /api/sites/:id/chat {body, attach?} — 메시지 전송. @AI 멘션 시 AI 응답도 함께 생성. 팀원에게 알림.
 app.post('/api/sites/:id/chat', async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
-    const body = typeof (req.body || {}).body === 'string' ? req.body.body.trim() : '';
-    if (!body) return res.status(400).json({ success: false, message: '메시지를 입력하세요.' });
+    const b = req.body || {};
+    const body = typeof b.body === 'string' ? b.body.trim() : '';
+    const attach = parseChatAttach(b.attach, id);
+    if (!body && !attach) return res.status(400).json({ success: false, message: '메시지 또는 첨부가 필요합니다.' });
     if (body.length > 4000) return res.status(400).json({ success: false, message: '메시지가 너무 깁니다(4000자 이하).' });
 
     const senderName = await currentUserName(req);
-    const ins = await pool.query(
-      `INSERT INTO interior_chat_messages (team_id, site_id, sender_user_id, sender_name, kind, body)
-       VALUES ($1,$2,$3,$4,'user',$5) RETURNING ${CHAT_MSG_COLS}`,
-      [req.teamId, id, req.userId, senderName, body]
-    );
-    const userMsg = rowToChatMsg(ins.rows[0]);
+    const userMsg = await postChatMessage(req.teamId, id, { kind: 'user', senderUserId: req.userId, senderName, body, attach });
     const created = [userMsg];
 
     // 팀원 전체에게 새 메시지 알림(발신자 제외 — notifyUsers 가 처리). 인앱+개인설정 외부채널.
@@ -9282,7 +9300,7 @@ app.post('/api/sites/:id/chat', async (req, res) => {
     const siteName = siteNameQ.rows.length ? siteNameQ.rows[0].name : '현장';
     await notifyUsers({
       teamId: req.teamId, userIds: teamIds, actorUserId: req.userId,
-      type: 'chat_message', title: `💬 ${siteName} 새 메시지`, body: `${senderName}: ${body.slice(0, 80)}`,
+      type: 'chat_message', title: `💬 ${siteName} 새 메시지`, body: `${senderName}: ${body ? body.slice(0, 80) : (attach ? '📎 ' + (attach.name || '첨부') : '')}`,
       siteId: id, refType: 'chat', refId: null,
     });
 
@@ -9316,7 +9334,7 @@ app.post('/api/sites/:id/chat', async (req, res) => {
        ON CONFLICT (user_id, site_id) DO UPDATE SET last_read_id=GREATEST(interior_chat_reads.last_read_id, EXCLUDED.last_read_id), updated_at=now()`,
       [req.userId, id, lastId]
     );
-    res.status(201).json({ messages: created });
+    res.status(201).json({ messages: await withChatAttachUrls(created) });
   } catch (err) {
     console.error('POST /api/sites/:id/chat 오류:', err.message);
     res.status(500).json({ success: false, message: '메시지를 보내지 못했습니다.' });
@@ -9351,12 +9369,24 @@ function rowToParticipant(r, req) {
     revoked: !!r.revoked, last_seen_at: r.last_seen_at, created_at: r.created_at,
   };
 }
-// 팀·시스템 발신 채팅 메시지(자동 브리핑용). kind='system'|'ai'.
-async function postChatMessage(teamId, siteId, { kind = 'system', senderName = '', senderUserId = null, body }) {
+// (v38) 첨부 검증 — {path,name,mime}. path 는 반드시 sites/<siteId>/chat/ 하위여야 함(경로 주입 차단).
+function parseChatAttach(attach, siteId) {
+  if (!attach || typeof attach !== 'object') return null;
+  const path = typeof attach.path === 'string' ? attach.path.trim() : '';
+  if (!path || path.includes('..') || !path.startsWith(`sites/${siteId}/chat/`)) return null;
+  return {
+    path,
+    name: typeof attach.name === 'string' ? attach.name.trim().slice(0, 200) : '',
+    mime: typeof attach.mime === 'string' ? attach.mime.trim().slice(0, 100) : '',
+  };
+}
+// 팀·시스템 발신 채팅 메시지(자동 브리핑용). kind='system'|'ai'|'user'|'client'|'vendor'.
+async function postChatMessage(teamId, siteId, { kind = 'system', senderName = '', senderUserId = null, body = '', attach = null }) {
+  const a = attach || {};
   const ins = await pool.query(
-    `INSERT INTO interior_chat_messages (team_id, site_id, sender_user_id, sender_name, kind, body)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${CHAT_MSG_COLS}`,
-    [teamId, siteId, senderUserId, senderName, kind, body]
+    `INSERT INTO interior_chat_messages (team_id, site_id, sender_user_id, sender_name, kind, body, attach_path, attach_name, attach_mime)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING ${CHAT_MSG_COLS}`,
+    [teamId, siteId, senderUserId, senderName, kind, body || '', a.path || '', a.name || '', a.mime || '']
   );
   return rowToChatMsg(ins.rows[0]);
 }
@@ -9464,11 +9494,27 @@ app.get('/api/chat-guest/:token', async (req, res) => {
     res.json({
       valid: true, site_name: p.site_name, team_name: p.team_name,
       participant: { name: p.name, kind: p.kind },
-      messages: rows.map(rowToChatMsg),
+      messages: await withChatAttachUrls(rows.map(rowToChatMsg)),
     });
   } catch (err) {
     console.error('GET /api/chat-guest/:token 오류:', err.message);
     res.status(500).json({ valid: false, message: '채팅을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/chat-guest/:token/sign-upload {file_name} — 게스트 첨부 업로드 서명 URL.
+app.post('/api/chat-guest/:token/sign-upload', async (req, res) => {
+  try {
+    if (!storageConfigured()) return res.status(503).json({ error: '스토리지 미설정' });
+    const p = await loadParticipant(String(req.params.token || ''));
+    if (!p || p.revoked) return res.status(403).json({ success: false, message: '유효하지 않은 링크입니다.' });
+    const fileName = typeof (req.body || {}).file_name === 'string' ? req.body.file_name.trim() : '';
+    if (!fileName) return res.status(400).json({ success: false, message: '파일명이 필요합니다.' });
+    const signed = await signUploadUrl(buildStoragePath(p.site_id, 'chat', fileName));
+    res.json({ upload_url: signed.uploadUrl, storage_path: signed.path });
+  } catch (err) {
+    console.error('POST /api/chat-guest/:token/sign-upload 오류:', err.message);
+    res.status(502).json({ success: false, message: '업로드 URL 발급에 실패했습니다.' });
   }
 });
 
@@ -9477,20 +9523,22 @@ app.post('/api/chat-guest/:token', async (req, res) => {
   try {
     const p = await loadParticipant(String(req.params.token || ''));
     if (!p || p.revoked) return res.status(403).json({ success: false, message: '유효하지 않거나 취소된 채팅 링크입니다.' });
-    const body = typeof (req.body || {}).body === 'string' ? req.body.body.trim() : '';
-    if (!body) return res.status(400).json({ success: false, message: '메시지를 입력하세요.' });
+    const gb = req.body || {};
+    const body = typeof gb.body === 'string' ? gb.body.trim() : '';
+    const attach = parseChatAttach(gb.attach, p.site_id);
+    if (!body && !attach) return res.status(400).json({ success: false, message: '메시지 또는 첨부가 필요합니다.' });
     if (body.length > 4000) return res.status(400).json({ success: false, message: '메시지가 너무 깁니다.' });
     pool.query('UPDATE interior_chat_participants SET last_seen_at=now() WHERE id=$1', [p.id]).catch(() => {});
 
     const senderName = p.kind === 'vendor' ? `${p.name} (협력업체)` : `${p.name} (클라이언트)`;
-    const msg = await postChatMessage(p.team_id, p.site_id, { kind: p.kind, senderName, body });
+    const msg = await postChatMessage(p.team_id, p.site_id, { kind: p.kind, senderName, body, attach });
     const created = [msg];
 
     // 팀원 전체 알림(게스트 발신 → 팀에게)
     const teamIds = await teamUserIdsByRole(p.team_id, false);
     await notifyUsers({
       teamId: p.team_id, userIds: teamIds, actorUserId: null,
-      type: 'chat_message', title: `💬 ${p.site_name} 새 메시지`, body: `${senderName}: ${body.slice(0, 80)}`,
+      type: 'chat_message', title: `💬 ${p.site_name} 새 메시지`, body: `${senderName}: ${body ? body.slice(0, 80) : (attach ? '📎 ' + (attach.name || '첨부') : '')}`,
       siteId: p.site_id, refType: 'chat', refId: null,
     });
 
@@ -9512,7 +9560,7 @@ app.post('/api/chat-guest/:token', async (req, res) => {
       const aiMsg = await postChatMessage(p.team_id, p.site_id, { kind: 'ai', senderName: 'AI', body: aiText });
       created.push(aiMsg);
     }
-    res.status(201).json({ messages: created });
+    res.status(201).json({ messages: await withChatAttachUrls(created) });
   } catch (err) {
     console.error('POST /api/chat-guest/:token 오류:', err.message);
     res.status(500).json({ success: false, message: '메시지를 보내지 못했습니다.' });
