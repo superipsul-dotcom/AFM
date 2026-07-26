@@ -1241,6 +1241,23 @@ async function initDB() {
       PRIMARY KEY (user_id, site_id)
     )
   `);
+  // (v37 · 2단계) 채팅방 외부 참여자 — 클라이언트/협력업체를 계정 없이 매직 링크로 참여.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS interior_chat_participants (
+      id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      team_id      BIGINT NOT NULL REFERENCES interior_teams(id) ON DELETE CASCADE,
+      site_id      BIGINT NOT NULL REFERENCES interior_sites(id) ON DELETE CASCADE,
+      token        TEXT NOT NULL UNIQUE,
+      kind         TEXT NOT NULL DEFAULT 'client',   -- client | vendor
+      name         TEXT NOT NULL DEFAULT '',
+      note         TEXT NOT NULL DEFAULT '',
+      created_by   BIGINT REFERENCES interior_users(id) ON DELETE SET NULL,
+      revoked      BOOLEAN NOT NULL DEFAULT false,
+      last_seen_at TIMESTAMPTZ,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_interior_chat_participants_site ON interior_chat_participants (site_id, created_at DESC);');
 
   // (v25) 매뉴얼 시드 — 전체 0건일 때만 노션 43건을 가장 오래된 팀에 적재
   await seedManualsIfEmpty();
@@ -1419,6 +1436,10 @@ app.use('/api', (req, res, next) => {
   }
   // (v17) 공유 열람(외부 고객용)은 무인증 공개 — 정확히 /api/share/* 경로만 예외. 다른 /api/* 는 그대로 401.
   if (pathOnly === '/api/share' || pathOnly.startsWith('/api/share/')) {
+    return next();
+  }
+  // (v37) 채팅 게스트(클라이언트/협력업체 매직 링크) 무인증 — /api/chat-guest/* 만 예외(토큰이 자격증명).
+  if (pathOnly === '/api/chat-guest' || pathOnly.startsWith('/api/chat-guest/')) {
     return next();
   }
   const header = req.headers.authorization || '';
@@ -9320,6 +9341,184 @@ app.post('/api/sites/:id/chat/read', async (req, res) => {
   }
 });
 
+// ========================================
+// (v37 · 2단계/3단계) 채팅방 외부 참여자 + AI 자동 브리핑
+// ========================================
+function rowToParticipant(r, req) {
+  return {
+    id: String(r.id), kind: r.kind || 'client', name: r.name || '', note: r.note || '',
+    token: r.token, url: `${appBaseUrl(req)}/#/chat/${r.token}`,
+    revoked: !!r.revoked, last_seen_at: r.last_seen_at, created_at: r.created_at,
+  };
+}
+// 팀·시스템 발신 채팅 메시지(자동 브리핑용). kind='system'|'ai'.
+async function postChatMessage(teamId, siteId, { kind = 'system', senderName = '', senderUserId = null, body }) {
+  const ins = await pool.query(
+    `INSERT INTO interior_chat_messages (team_id, site_id, sender_user_id, sender_name, kind, body)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${CHAT_MSG_COLS}`,
+    [teamId, siteId, senderUserId, senderName, kind, body]
+  );
+  return rowToChatMsg(ins.rows[0]);
+}
+// 게스트 AI(제한형): 내부정보 접근 없음 — 현장 일정만 주입, run_sql 미사용.
+async function siteScheduleBrief(siteId) {
+  const { rows } = await pool.query(
+    `SELECT title, process, to_char(start_date,'YYYY-MM-DD') s, to_char(end_date,'YYYY-MM-DD') e
+       FROM interior_schedule WHERE site_id=$1 AND kind<>'미팅' ORDER BY start_date ASC, id ASC`, [siteId]
+  );
+  const today = todayKST();
+  if (rows.length === 0) return '(등록된 공사 일정이 아직 없습니다)';
+  return rows.map((r) => {
+    const st = today < r.s ? '예정' : today > r.e ? '완료' : '진행 중';
+    return `- ${r.process || r.title}: ${r.s} ~ ${r.e} (${st})`;
+  }).join('\n');
+}
+
+// POST /api/sites/:id/chat/participants {kind, name, note} — 외부 참여자(클라이언트/협력업체) 초대 링크 발급.
+app.post('/api/sites/:id/chat/participants', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const b = req.body || {};
+    const kind = b.kind === 'vendor' ? 'vendor' : 'client';
+    const name = typeof b.name === 'string' ? b.name.trim().slice(0, 60) : '';
+    if (!name) return res.status(400).json({ success: false, message: '참여자 이름을 입력하세요.' });
+    const note = typeof b.note === 'string' ? b.note.trim().slice(0, 200) : '';
+    const token = crypto.randomBytes(18).toString('base64url');
+    const { rows } = await pool.query(
+      `INSERT INTO interior_chat_participants (team_id, site_id, token, kind, name, note, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [req.teamId, id, token, kind, name, note, req.userId]
+    );
+    res.status(201).json(rowToParticipant(rows[0], req));
+  } catch (err) {
+    console.error('POST /api/sites/:id/chat/participants 오류:', err.message);
+    res.status(500).json({ success: false, message: '참여자 초대에 실패했습니다.' });
+  }
+});
+
+// GET /api/sites/:id/chat/participants — 외부 참여자 목록.
+app.get('/api/sites/:id/chat/participants', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const { rows } = await pool.query('SELECT * FROM interior_chat_participants WHERE site_id=$1 ORDER BY created_at DESC', [id]);
+    res.json(rows.map((r) => rowToParticipant(r, req)));
+  } catch (err) {
+    console.error('GET /api/sites/:id/chat/participants 오류:', err.message);
+    res.status(500).json({ success: false, message: '참여자 목록을 불러오지 못했습니다.' });
+  }
+});
+
+// DELETE /api/chat/participants/:id — 참여자 링크 취소(팀 검증).
+app.delete('/api/chat/participants/:id', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 id 형식입니다.' });
+    const { rowCount } = await pool.query(
+      'UPDATE interior_chat_participants SET revoked=true WHERE id=$1 AND team_id=$2', [id, req.teamId]
+    );
+    if (rowCount === 0) return res.status(404).json({ success: false, message: '해당 참여자를 찾을 수 없습니다.' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/chat/participants/:id 오류:', err.message);
+    res.status(500).json({ success: false, message: '참여자 취소에 실패했습니다.' });
+  }
+});
+
+// (v37 · 3단계) POST /api/sites/:id/chat/system {body} — 시스템/브리핑 메시지 게시(사진 업로드 등 자동 알림용).
+app.post('/api/sites/:id/chat/system', async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success: false, message: '잘못된 현장 id 형식입니다.' });
+    const body = typeof (req.body || {}).body === 'string' ? req.body.body.trim().slice(0, 1000) : '';
+    if (!body) return res.status(400).json({ success: false, message: '내용이 필요합니다.' });
+    const msg = await postChatMessage(req.teamId, id, { kind: 'system', body });
+    res.status(201).json({ message: msg });
+  } catch (err) {
+    console.error('POST /api/sites/:id/chat/system 오류:', err.message);
+    res.status(500).json({ success: false, message: '시스템 메시지를 게시하지 못했습니다.' });
+  }
+});
+
+// ── 게스트(외부 참여자) 무인증 채팅 — 토큰이 자격증명 ──
+async function loadParticipant(token) {
+  const { rows } = await pool.query(
+    `SELECT p.*, s.name AS site_name, t.name AS team_name
+       FROM interior_chat_participants p JOIN interior_sites s ON s.id=p.site_id JOIN interior_teams t ON t.id=p.team_id
+      WHERE p.token=$1`, [token]
+  );
+  return rows[0] || null;
+}
+
+// GET /api/chat-guest/:token — 초기 로드(현장명·참여자·최근 메시지). 취소/무효 토큰 valid:false.
+app.get('/api/chat-guest/:token', async (req, res) => {
+  try {
+    const p = await loadParticipant(String(req.params.token || ''));
+    if (!p || p.revoked) return res.json({ valid: false, message: '유효하지 않거나 취소된 채팅 링크입니다.' });
+    pool.query('UPDATE interior_chat_participants SET last_seen_at=now() WHERE id=$1', [p.id]).catch(() => {});
+    const after = parseId(req.query.after);
+    let rows;
+    if (after) rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 AND id>$2 ORDER BY id ASC LIMIT 200`, [p.site_id, after])).rows;
+    else rows = (await pool.query(`SELECT ${CHAT_MSG_COLS} FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT 60`, [p.site_id])).rows.reverse();
+    res.json({
+      valid: true, site_name: p.site_name, team_name: p.team_name,
+      participant: { name: p.name, kind: p.kind },
+      messages: rows.map(rowToChatMsg),
+    });
+  } catch (err) {
+    console.error('GET /api/chat-guest/:token 오류:', err.message);
+    res.status(500).json({ valid: false, message: '채팅을 불러오지 못했습니다.' });
+  }
+});
+
+// POST /api/chat-guest/:token {body} — 게스트로 메시지 전송. @AI 는 제한형(일정만, 내부정보 차단).
+app.post('/api/chat-guest/:token', async (req, res) => {
+  try {
+    const p = await loadParticipant(String(req.params.token || ''));
+    if (!p || p.revoked) return res.status(403).json({ success: false, message: '유효하지 않거나 취소된 채팅 링크입니다.' });
+    const body = typeof (req.body || {}).body === 'string' ? req.body.body.trim() : '';
+    if (!body) return res.status(400).json({ success: false, message: '메시지를 입력하세요.' });
+    if (body.length > 4000) return res.status(400).json({ success: false, message: '메시지가 너무 깁니다.' });
+    pool.query('UPDATE interior_chat_participants SET last_seen_at=now() WHERE id=$1', [p.id]).catch(() => {});
+
+    const senderName = p.kind === 'vendor' ? `${p.name} (협력업체)` : `${p.name} (클라이언트)`;
+    const msg = await postChatMessage(p.team_id, p.site_id, { kind: p.kind, senderName, body });
+    const created = [msg];
+
+    // 팀원 전체 알림(게스트 발신 → 팀에게)
+    const teamIds = await teamUserIdsByRole(p.team_id, false);
+    await notifyUsers({
+      teamId: p.team_id, userIds: teamIds, actorUserId: null,
+      type: 'chat_message', title: `💬 ${p.site_name} 새 메시지`, body: `${senderName}: ${body.slice(0, 80)}`,
+      siteId: p.site_id, refType: 'chat', refId: null,
+    });
+
+    // @AI (게스트 제한형): 일정만 근거, run_sql 없음.
+    if (/@ai\b/i.test(body) || /(^|\s)ai\s*(야|님|씨|봇|,|\?|아)/i.test(body)) {
+      const today = todayKST();
+      const brief = await siteScheduleBrief(p.site_id);
+      const recent = (await pool.query(`SELECT sender_name, kind, body FROM interior_chat_messages WHERE site_id=$1 ORDER BY id DESC LIMIT 8`, [p.site_id])).rows.reverse();
+      const sys = `당신은 인테리어 시공사 "안도공간"이 클라이언트·협력업체와 공유하는 '${p.site_name}' 현장 채팅방의 AI 안내원입니다. 오늘(KST): ${today}.\n`
+        + `아래 [공사 일정]과 대화만 근거로 공사 진행 상황·일정·완료 여부를 친절하고 짧게(2~4문장) 안내하세요.\n`
+        + `⚠️ 비용·견적·발주 금액·단가·내부 담당자·다른 현장 등 내부 정보는 알 수 없습니다. 물으면 "자세한 내용은 담당자에게 문의해 주세요"라고 답하고, 일정에 없는 것은 지어내지 마세요.\n`
+        + `[공사 일정]\n${brief}`;
+      const convo = [
+        { role: 'system', content: sys },
+        ...recent.map((m) => ({ role: m.kind === 'ai' ? 'assistant' : 'user', content: `${m.kind === 'ai' ? '' : (m.sender_name + ': ')}${m.body}`.slice(0, 1500) })),
+      ];
+      const r = await runAiConversation(convo, 500, false); // run_sql 미사용
+      const aiText = r.ok ? r.reply : '지금은 답변을 드리기 어렵습니다. 담당자에게 문의해 주세요.';
+      const aiMsg = await postChatMessage(p.team_id, p.site_id, { kind: 'ai', senderName: 'AI', body: aiText });
+      created.push(aiMsg);
+    }
+    res.status(201).json({ messages: created });
+  } catch (err) {
+    console.error('POST /api/chat-guest/:token 오류:', err.message);
+    res.status(500).json({ success: false, message: '메시지를 보내지 못했습니다.' });
+  }
+});
+
 // POST /api/me/approval-request — 직원 인증 승인 요청(pending 전환 + 팀 admin 알림). 재요청 허용(재알림).
 app.post('/api/me/approval-request', async (req, res) => {
   try {
@@ -9599,17 +9798,17 @@ function chatSystemPrompt(teamId, today, scope) {
 
 // (v36) gpt-4o + run_sql 도구 루프 공용 실행기 — /api/chat 과 채팅방 AI 가 공유.
 //   convo: [{role:'system',...}, ...대화]. 반환 {ok, reply, queries} 또는 {ok:false, status, error, detail}.
-async function runAiConversation(convo, maxTokens = 900) {
+async function runAiConversation(convo, maxTokens = 900, useTools = true) {
   const apiKey = (process.env.OPENAI_API_KEY || '').trim();
   if (!apiKey) return { ok: false, status: 503, error: 'AI 기능이 설정되지 않았습니다. (OPENAI_API_KEY)' };
-  const tools = [{
+  const tools = useTools ? [{
     type: 'function',
     function: {
       name: 'run_sql',
       description: '팀 데이터베이스에 읽기 전용 PostgreSQL SELECT 1문장을 실행하고 rows 를 반환합니다.',
       parameters: { type: 'object', properties: { sql: { type: 'string', description: 'PostgreSQL SELECT/WITH 단일 문장' } }, required: ['sql'] },
     },
-  }];
+  }] : undefined;
   let queries = 0;
   for (let iter = 0; iter < 6; iter++) {
     const controller = new AbortController();
@@ -9619,7 +9818,7 @@ async function runAiConversation(convo, maxTokens = 900) {
       apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'gpt-4o', messages: convo, tools, tool_choice: 'auto', temperature: 0.2, max_tokens: maxTokens }),
+        body: JSON.stringify({ model: 'gpt-4o', messages: convo, ...(useTools ? { tools, tool_choice: 'auto' } : {}), temperature: 0.2, max_tokens: maxTokens }),
         signal: controller.signal,
       });
     } catch (e) {

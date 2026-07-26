@@ -183,6 +183,12 @@
       const m = (location.hash || '').replace(/^#/, '').match(/(?:^|\/)go\/([a-z_]+)\/(\d+)/);
       return m ? { tab: m[1], siteId: m[2] } : null;
     }
+    // (v37) 채팅 게스트 경로 — #/chat/<token>
+    function parseChatGuestRoute() {
+      const hash = (location.hash || '').replace(/^#/, '');
+      const m = hash.match(/(?:^|\/)chat\/([^/?#]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    }
     // 부팅 시 공유 경로 감지 — 해시(#/share/...) 우선, 쿼리(?share=...) · 실제 경로(/share/...)도 지원.
     function parseShareRoute() {
       const rx = /(?:^|\/)share\/(estimate|order|client)\/([^/?#]+)/; // (v22) client 추가
@@ -953,6 +959,13 @@
       async chatRoomMessages(siteId, afterId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat${afterId ? `?after=${afterId}` : ''}`); },
       async chatRoomSend(siteId, body) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat`, { method: 'POST', body: JSON.stringify({ body }) }); },
       async chatRoomRead(siteId, lastId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/read`, { method: 'POST', body: JSON.stringify({ last_id: lastId }) }); },
+      // (v37) 채팅 외부 참여자(클라이언트/협력업체) + 시스템 브리핑 + 게스트 무인증
+      async chatParticipants(siteId) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/participants`); },
+      async chatInvite(siteId, body) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/participants`, { method: 'POST', body: JSON.stringify(body) }); },
+      async chatRevokeParticipant(id) { return this._tryFetch(`${API_BASE_URL}/chat/participants/${id}`, { method: 'DELETE' }); },
+      async chatPostSystem(siteId, body) { return this._tryFetch(`${API_BASE_URL}/sites/${siteId}/chat/system`, { method: 'POST', body: JSON.stringify({ body }) }); },
+      async chatGuestLoad(token, afterId) { return this._tryFetch(`${API_BASE_URL}/chat-guest/${encodeURIComponent(token)}${afterId ? `?after=${afterId}` : ''}`, { _skipAuthRedirect: true }); },
+      async chatGuestSend(token, body) { return this._tryFetch(`${API_BASE_URL}/chat-guest/${encodeURIComponent(token)}`, { method: 'POST', body: JSON.stringify({ body }), _skipAuthRedirect: true }); },
 
       _ensureSeed() {
         if (!localStorage.getItem(SITES_KEY)) seedSites();
@@ -8424,7 +8437,12 @@
           (shrunk ? ` · 자동 압축으로 ${fmtBytes(savedBytes)} 절약 📦` : ''),
           fail ? 'info' : 'success');
         else toast('사진 업로드에 실패했습니다.', 'error');
-        if (ok) { setLastUpload({ date: pDate, procs: processes, count: ok, memo: pMemo.trim() }); setPMemo(''); await reload(); } // (v22) 알림용 기록
+        if (ok) {
+          setLastUpload({ date: pDate, procs: processes, count: ok, memo: pMemo.trim() }); setPMemo(''); await reload();
+          // (v37 · 3단계) 채팅방에 자동 브리핑 — 클라이언트/협력업체도 새 사진 소식을 받음.
+          const md = pDate ? `${Number(pDate.slice(5, 7))}/${Number(pDate.slice(8, 10))}` : '';
+          api.chatPostSystem(site.id, `📷 ${md} 현장사진 ${ok}장 업로드${processes ? ` · 공정: ${processes}` : ''}${pMemo.trim() ? ` · ${pMemo.trim()}` : ''}`).catch(() => {});
+        } // (v22) 알림용 기록
       };
 
       const confirmDel = async () => { const p = delTarget; setDelTarget(null); setLbIndex(null); try { await api.removePhoto(p.id); toast('사진이 삭제되었습니다.', 'info'); await reload(); } catch (e) { toast('삭제에 실패했습니다.', 'error'); } };
@@ -11487,14 +11505,85 @@
 
     // 💬 AI 채팅 위젯 — 우하단 플로팅, 팀 데이터 Q&A (서버 /api/chat)
     const CHAT_STORE_KEY = 'interior_chat_v28';
+    // (v36/37) 채팅 말풍선 목록 — 팀/게스트 공용. isMine(m)=내 메시지 여부.
+    function ChatBubbleList({ msgs, isMine }) {
+      const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+      const dayLabel = (iso) => { try { return new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }); } catch (e) { return ''; } };
+      const guestKinds = { client: { badge: '클라이언트', cls: 'bg-amber-50 border-amber-200', tag: 'bg-amber-100 text-amber-700' }, vendor: { badge: '협력업체', cls: 'bg-teal-50 border-teal-200', tag: 'bg-teal-100 text-teal-700' } };
+      return (
+        <>
+          {msgs.map((m, i) => {
+            const prev = msgs[i - 1];
+            const showDay = !prev || String(prev.created_at).slice(0, 10) !== String(m.created_at).slice(0, 10);
+            if (m.kind === 'system') {
+              return (
+                <div key={m.id}>
+                  {showDay && <p className="text-center text-[10px] text-slate-400 my-2">{dayLabel(m.created_at)}</p>}
+                  <p className="text-center text-[11px] text-slate-500 py-1"><span className="inline-block bg-slate-100 rounded-full px-3 py-1">{m.body}</span></p>
+                </div>
+              );
+            }
+            const isAi = m.kind === 'ai';
+            const guest = guestKinds[m.kind];
+            const mine = isMine(m);
+            const cleanName = (m.sender_name || '').replace(/\s*\((클라이언트|협력업체)\)\s*$/, '');
+            return (
+              <div key={m.id}>
+                {showDay && <p className="text-center text-[10px] text-slate-400 my-2">{dayLabel(m.created_at)}</p>}
+                <div className={`flex ${mine ? 'justify-end' : 'justify-start'} gap-2`}>
+                  {!mine && (
+                    <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${isAi ? 'bg-indigo-100 text-indigo-600' : guest ? guest.tag : 'bg-slate-200 text-slate-500'}`} title={isAi ? 'AI' : cleanName}>
+                      {isAi ? '🤖' : (cleanName || '?').slice(0, 1)}
+                    </div>
+                  )}
+                  <div className={`max-w-[78%] ${mine ? 'items-end' : 'items-start'} flex flex-col`}>
+                    {!mine && (
+                      <span className={`text-[11px] mb-0.5 flex items-center gap-1 ${isAi ? 'text-indigo-500 font-semibold' : 'text-slate-400'}`}>
+                        {isAi ? 'AI 어시스턴트' : cleanName}
+                        {guest && <span className={`text-[9px] px-1 py-0.5 rounded ${guest.tag}`}>{guest.badge}</span>}
+                      </span>
+                    )}
+                    <div className={`rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words leading-relaxed ${
+                      mine ? 'bg-blue-600 text-white rounded-br-md'
+                        : isAi ? 'bg-indigo-50 border border-indigo-200 text-slate-700 rounded-bl-md'
+                          : guest ? `${guest.cls} border text-slate-700 rounded-bl-md`
+                            : 'bg-white border border-slate-200 text-slate-700 rounded-bl-md'}`}>
+                      {m.body}
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-0.5 px-1">{fmtTime(m.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      );
+    }
+
+    // (v37) AI 타이핑 인디케이터 (공용)
+    function AiTypingIndicator() {
+      return (
+        <div className="flex justify-start gap-2">
+          <div className="shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">🤖</div>
+          <div className="bg-indigo-50 border border-indigo-200 rounded-2xl rounded-bl-md px-4 py-3 flex gap-1 items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
+            <span className="text-[11px] text-indigo-500 ml-1">AI가 답하는 중…</span>
+          </div>
+        </div>
+      );
+    }
+
     // (v36) 💬 현장 채팅방 — 팀 채팅 + @AI 어시스턴트. 4초 폴링(탭 열려있을 때).
-    function ChatRoomTab({ site, authUser, demoMode }) {
+    function ChatRoomTab({ site, authUser, demoMode, isAdmin = false }) {
       const toast = useToast();
       const [msgs, setMsgs] = useState([]);
       const [loading, setLoading] = useState(true);
       const [input, setInput] = useState('');
       const [sending, setSending] = useState(false);
       const [aiThinking, setAiThinking] = useState(false);
+      const [inviteOpen, setInviteOpen] = useState(false); // (v37) 참여자 초대 모달
       const listRef = useRef(null);
       const inputRef = useRef(null);
       const lastIdRef = useRef(0);
@@ -11546,17 +11635,16 @@
       };
       const askAi = () => { setInput((v) => (/@ai/i.test(v) ? v : ('@AI ' + v))); if (inputRef.current) inputRef.current.focus(); };
 
-      const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
-      const dayLabel = (iso) => { try { return new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }); } catch (e) { return ''; } };
-
       return (
         <Card className="p-0 overflow-hidden flex flex-col" >
           <div className="px-4 py-3 border-b border-slate-100 bg-slate-800 text-white shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="leading-tight">
-                <p className="text-sm font-bold">💬 {site.name} 채팅방</p>
-                <p className="text-[11px] text-slate-300">팀 채팅 · <b className="text-white">@AI</b> 로 현장 데이터를 물어보세요</p>
+            <div className="flex items-center justify-between gap-2">
+              <div className="leading-tight min-w-0">
+                <p className="text-sm font-bold truncate">💬 {site.name} 채팅방</p>
+                <p className="text-[11px] text-slate-300">팀 · 클라이언트 · 협력업체 + <b className="text-white">@AI</b></p>
               </div>
+              <button onClick={() => setInviteOpen(true)} title="클라이언트/협력업체 초대"
+                className="shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/25 transition">👥 참여자 초대</button>
             </div>
           </div>
           <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50" style={{ height: '56vh' }}>
@@ -11566,57 +11654,12 @@
               <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
                 <div className="text-4xl">💬</div>
                 <p className="text-sm text-slate-400">아직 대화가 없습니다. 첫 메시지를 보내보세요.</p>
-                <p className="text-[11px] text-slate-400">예: "@AI 이번 주 일정 알려줘" · "@AI 타일 발주 얼마였지?"</p>
+                <p className="text-[11px] text-slate-400">예: "@AI 이번 주 일정 알려줘" · [👥 참여자 초대]로 클라이언트도 부를 수 있어요</p>
               </div>
             ) : (
-              msgs.map((m, i) => {
-                const prev = msgs[i - 1];
-                const showDay = !prev || String(prev.created_at).slice(0, 10) !== String(m.created_at).slice(0, 10);
-                if (m.kind === 'system') {
-                  return (
-                    <div key={m.id}>
-                      {showDay && <p className="text-center text-[10px] text-slate-400 my-2">{dayLabel(m.created_at)}</p>}
-                      <p className="text-center text-[11px] text-slate-400 py-1">{m.body}</p>
-                    </div>
-                  );
-                }
-                const isAi = m.kind === 'ai';
-                const isMine = !isAi && String(m.sender_user_id || '') === meId;
-                return (
-                  <div key={m.id}>
-                    {showDay && <p className="text-center text-[10px] text-slate-400 my-2">{dayLabel(m.created_at)}</p>}
-                    <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} gap-2`}>
-                      {!isMine && (
-                        <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${isAi ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}`} title={isAi ? 'AI' : m.sender_name}>
-                          {isAi ? '🤖' : (m.sender_name || '?').slice(0, 1)}
-                        </div>
-                      )}
-                      <div className={`max-w-[78%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                        {!isMine && <span className={`text-[11px] mb-0.5 ${isAi ? 'text-indigo-500 font-semibold' : 'text-slate-400'}`}>{isAi ? 'AI 어시스턴트' : m.sender_name}</span>}
-                        <div className={`rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words leading-relaxed ${
-                          isMine ? 'bg-blue-600 text-white rounded-br-md'
-                            : isAi ? 'bg-indigo-50 border border-indigo-200 text-slate-700 rounded-bl-md'
-                              : 'bg-white border border-slate-200 text-slate-700 rounded-bl-md'}`}>
-                          {m.body}
-                        </div>
-                        <span className="text-[10px] text-slate-400 mt-0.5 px-1">{fmtTime(m.created_at)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+              <ChatBubbleList msgs={msgs} isMine={(m) => m.kind === 'user' && String(m.sender_user_id || '') === meId} />
             )}
-            {aiThinking && (
-              <div className="flex justify-start gap-2">
-                <div className="shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">🤖</div>
-                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl rounded-bl-md px-4 py-3 flex gap-1 items-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  <span className="text-[11px] text-indigo-500 ml-1">AI가 답하는 중…</span>
-                </div>
-              </div>
-            )}
+            {aiThinking && <AiTypingIndicator />}
           </div>
           <form onSubmit={(e) => { e.preventDefault(); send(); }} className="p-2.5 border-t border-slate-100 bg-white flex gap-2 shrink-0">
             <button type="button" onClick={askAi} title="AI에게 질문 — 현장 데이터를 답해줍니다"
@@ -11625,7 +11668,173 @@
               className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
             <Button type="submit" disabled={sending || !input.trim()}>{sending ? '…' : '전송'}</Button>
           </form>
+          {inviteOpen && <ChatInviteModal site={site} onClose={() => setInviteOpen(false)} />}
         </Card>
+      );
+    }
+
+    // (v37) 채팅 외부 참여자(클라이언트/협력업체) 초대 관리 모달
+    function ChatInviteModal({ site, onClose }) {
+      const toast = useToast();
+      const [list, setList] = useState(null);
+      const [kind, setKind] = useState('client');
+      const [name, setName] = useState('');
+      const [note, setNote] = useState('');
+      const [creating, setCreating] = useState(false);
+      const load = useCallback(async () => { try { setList(await api.chatParticipants(site.id)); } catch (e) { setList([]); } }, [site.id]);
+      useEffect(() => { load(); }, [load]);
+      const create = async () => {
+        if (!name.trim()) { toast('참여자 이름을 입력하세요.', 'error'); return; }
+        setCreating(true);
+        try {
+          const p = await api.chatInvite(site.id, { kind, name: name.trim(), note: note.trim() });
+          const ok = await copyToClipboard(p.url);
+          toast(ok ? '초대 링크를 복사했습니다 — 카톡/문자로 보내세요.' : '초대 링크를 만들었습니다.', 'success');
+          setName(''); setNote(''); await load();
+        } catch (e) { toast(e.message || '초대에 실패했습니다.', 'error'); }
+        finally { setCreating(false); }
+      };
+      const copy = async (url) => { const ok = await copyToClipboard(url); toast(ok ? '링크를 복사했습니다.' : '복사 실패', ok ? 'success' : 'error'); };
+      const share = async (p) => {
+        const text = `[${site.name}] 현장 채팅방 초대\n아래 링크로 들어오시면 진행 상황을 보고 대화할 수 있어요 (앱 설치 불필요)\n${p.url}`;
+        if (navigator.share) { try { await navigator.share({ title: '현장 채팅 초대', text }); return; } catch (e) {} }
+        copy(text);
+      };
+      const revoke = async (p) => { try { await api.chatRevokeParticipant(p.id); toast('참여자를 내보냈습니다.', 'info'); await load(); } catch (e) { toast('취소 실패', 'error'); } };
+      const active = (list || []).filter((p) => !p.revoked);
+      return (
+        <Modal isOpen onClose={onClose} title="👥 채팅방 참여자 초대" size="md">
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500">클라이언트·협력업체를 <b>계정 없이</b> 초대합니다. 링크를 받은 사람은 이 현장 채팅방에서 대화하고, 진행 상황을 <b>@AI</b>에게 물어볼 수 있어요. (비용·견적 등 내부 정보는 보이지 않습니다.)</p>
+            <div className="rounded-xl border border-slate-200 p-3.5 space-y-2.5">
+              <div className="inline-flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                <button onClick={() => setKind('client')} className={`px-3 py-1 rounded-md transition ${kind === 'client' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500'}`}>클라이언트</button>
+                <button onClick={() => setKind('vendor')} className={`px-3 py-1 rounded-md transition ${kind === 'vendor' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-500'}`}>협력업체</button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Input placeholder={kind === 'client' ? '예: 홍길동 고객님' : '예: 대산우드 김반장'} value={name} onChange={(e) => setName(e.target.value)} />
+                <Input placeholder="메모 (선택)" value={note} onChange={(e) => setNote(e.target.value)} />
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={create} disabled={creating}>{creating ? '발급 중…' : '＋ 초대 링크 만들기 (복사)'}</Button>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 mb-1.5">참여자 {active.length > 0 && <span className="font-normal text-slate-400">· {active.length}명</span>}</p>
+              {list === null ? <p className="text-sm text-slate-400 py-3 text-center">불러오는 중…</p>
+                : active.length === 0 ? <p className="text-sm text-slate-400 py-3 text-center">아직 초대한 외부 참여자가 없습니다.</p>
+                  : (
+                    <ul className="divide-y divide-slate-100 border border-slate-100 rounded-xl">
+                      {active.map((p) => (
+                        <li key={p.id} className="flex items-center gap-2 px-3 py-2">
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${p.kind === 'vendor' ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700'}`}>{p.kind === 'vendor' ? '협력업체' : '클라이언트'}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-slate-700 truncate">{p.name}</p>
+                            {p.note && <p className="text-[11px] text-slate-400 truncate">{p.note}</p>}
+                          </div>
+                          <Button size="sm" variant="ghost" onClick={() => copy(p.url)}>복사</Button>
+                          <Button size="sm" variant="ghost" onClick={() => share(p)}>공유</Button>
+                          <Button size="sm" variant="ghost" className="text-red-500 hover:bg-red-50" onClick={() => revoke(p)}>내보내기</Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    // (v37) 채팅 게스트 뷰 — 클라이언트/협력업체 무인증 채팅 (#/chat/<token>)
+    function ChatGuestView({ token }) {
+      const [phase, setPhase] = useState('loading'); // loading | ready | error
+      const [info, setInfo] = useState(null); // {site_name, team_name, participant}
+      const [msgs, setMsgs] = useState([]);
+      const [input, setInput] = useState('');
+      const [sending, setSending] = useState(false);
+      const [aiThinking, setAiThinking] = useState(false);
+      const [errMsg, setErrMsg] = useState('');
+      const listRef = useRef(null);
+      const lastIdRef = useRef(0);
+      const myLabel = info ? `${info.participant.name} (${info.participant.kind === 'vendor' ? '협력업체' : '클라이언트'})` : '';
+
+      const applyNew = (nw) => {
+        if (!nw || !nw.length) return;
+        setMsgs((prev) => { const seen = new Set(prev.map((x) => x.id)); return [...prev, ...nw.filter((x) => !seen.has(x.id))]; });
+        lastIdRef.current = Math.max(lastIdRef.current, ...nw.map((x) => Number(x.id)));
+      };
+      const boot = useCallback(async () => {
+        try {
+          const d = await api.chatGuestLoad(token);
+          if (!d || !d.valid) { setPhase('error'); setErrMsg((d && d.message) || '유효하지 않은 링크입니다.'); return; }
+          setInfo({ site_name: d.site_name, team_name: d.team_name, participant: d.participant });
+          setMsgs(d.messages || []);
+          if (d.messages && d.messages.length) lastIdRef.current = Number(d.messages[d.messages.length - 1].id);
+          setPhase('ready');
+        } catch (e) { setPhase('error'); setErrMsg('채팅을 불러오지 못했습니다.'); }
+      }, [token]);
+      useEffect(() => { boot(); }, [boot]);
+      useEffect(() => {
+        if (phase !== 'ready') return undefined;
+        const iv = setInterval(async () => {
+          if (document.hidden) return;
+          try { const d = await api.chatGuestLoad(token, lastIdRef.current || undefined); if (d && d.valid) applyNew(d.messages); } catch (e) {}
+        }, 4000);
+        return () => clearInterval(iv);
+      }, [phase, token]);
+      useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [msgs, aiThinking, phase]);
+
+      const send = async () => {
+        const q = input.trim(); if (!q || sending) return;
+        const isAi = /@ai\b/i.test(q);
+        setInput(''); setSending(true); setAiThinking(isAi);
+        try { const d = await api.chatGuestSend(token, q); applyNew(d && d.messages); }
+        catch (e) { setInput(q); }
+        finally { setSending(false); setAiThinking(false); }
+      };
+
+      if (phase === 'loading') return <div className="min-h-screen flex items-center justify-center bg-slate-100"><span className="w-8 h-8 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin"></span></div>;
+      if (phase === 'error') return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
+          <div className="text-center"><div className="text-4xl mb-2">🔒</div><p className="text-slate-600 font-medium">{errMsg}</p><p className="text-sm text-slate-400 mt-1">담당자에게 새 링크를 요청해 주세요.</p></div>
+        </div>
+      );
+      return (
+        <div className="min-h-screen bg-slate-100 flex flex-col">
+          <div className="bg-slate-800 text-white px-4 py-3 shrink-0">
+            <div className="max-w-2xl mx-auto flex items-center justify-between">
+              <div className="leading-tight">
+                <p className="text-sm font-bold">💬 {info.site_name} 채팅방</p>
+                <p className="text-[11px] text-slate-300">{info.team_name} · {myLabel}로 참여 중</p>
+              </div>
+              <span className="text-[10px] px-2 py-1 rounded-full bg-white/10">읽기+대화</span>
+            </div>
+          </div>
+          <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-2">
+            <div className="max-w-2xl mx-auto space-y-2">
+              {msgs.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="text-4xl mb-2">👋</div>
+                  <p className="text-sm text-slate-500">안녕하세요! 현장 진행 상황을 여기서 확인하고 대화할 수 있어요.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">예: "@AI 공사 언제 끝나요?"</p>
+                </div>
+              ) : (
+                <ChatBubbleList msgs={msgs} isMine={(m) => (m.kind === 'client' || m.kind === 'vendor') && m.sender_name === myLabel} />
+              )}
+              {aiThinking && <AiTypingIndicator />}
+            </div>
+          </div>
+          <form onSubmit={(e) => { e.preventDefault(); send(); }} className="p-2.5 border-t border-slate-200 bg-white shrink-0">
+            <div className="max-w-2xl mx-auto flex gap-2">
+              <button type="button" onClick={() => { setInput((v) => (/@ai/i.test(v) ? v : ('@AI ' + v))); }}
+                className="shrink-0 px-2.5 rounded-xl bg-indigo-50 text-indigo-600 text-sm font-semibold hover:bg-indigo-100 transition">🤖 AI</button>
+              <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="메시지 입력 · @AI 로 진행상황 질문"
+                className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <Button type="submit" disabled={sending || !input.trim()}>{sending ? '…' : '전송'}</Button>
+            </div>
+          </form>
+          <p className="text-center text-[11px] text-slate-400 py-2">본 채팅은 {SUPPLIER.name}에서 제공하는 현장 소통 채널입니다.</p>
+        </div>
       );
     }
 
@@ -13957,6 +14166,7 @@
     function AuthGate() {
       // v17: 공유 경로면 로그인 게이트 대신 공개 ShareView 렌더 (부팅 1회 감지)
       const [shareRoute] = useState(() => parseShareRoute());
+      const [chatGuestToken] = useState(() => parseChatGuestRoute()); // (v37) 채팅 게스트
       const [status, setStatus] = useState('checking'); // checking | guest | authed | demo
       const [user, setUser] = useState(null);
       const [mustChangePw, setMustChangePw] = useState(false); // (v31) 임시 비밀번호 로그인 → 변경 강제
@@ -13975,7 +14185,7 @@
       }, []);
 
       const boot = useCallback(async () => {
-        if (parseShareRoute()) return; // 공유 경로면 인증 부팅 스킵(ShareView가 대신 렌더)
+        if (parseShareRoute() || parseChatGuestRoute()) return; // 공유/게스트 경로면 인증 부팅 스킵
         setStatus('checking');
         try {
           const data = await api.authMe(); // 토큰 있으면 Bearer 부착; 없으면 서버가 401
@@ -14013,6 +14223,7 @@
       }, []);
 
       // v17: 공유 경로 → 무로그인 공개 뷰 (모든 훅 이후 분기 — 훅 순서 보존)
+      if (chatGuestToken) return <ChatGuestView token={chatGuestToken} />; // (v37) 채팅 게스트
       if (shareRoute) {
         return shareRoute.kind === 'client'
           ? <ClientView token={shareRoute.token} /> // (v22) 클라이언트 페이지

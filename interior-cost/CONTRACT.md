@@ -1666,3 +1666,28 @@ proposed = round_unit>0 ? Math.floor(afterDiscount / round_unit) * round_unit : 
 ## 검증 (2026-07-26, 로컬+실 OpenAI)
 - API: notify-prefs 저장/채널상태, 채팅 전송, **@AI 멘션→'목공 진행중' 정확 응답**(현장 스코프), 폴링.
 - Playwright: 💬채팅 탭 렌더·말풍선(내/AI)·전송→AI 응답 관통·타이핑 인디케이터 / 나의 정보 🔔알림 설정(채널 토글·설정필요 배지·이벤트 칩). 콘솔 에러 0. 테스트 데이터·prefs 정리.
+
+---
+
+# v37 — 채팅방 2단계(외부 참여자: 클라이언트/협력업체) + 3단계(AI 자동 브리핑) (2026-07-26)
+
+## 37-0 DB
+- **interior_chat_participants**(team_id,site_id,token UNIQUE,kind[client|vendor],name,note,created_by,revoked,last_seen_at) — 계정 없는 외부 참여자.
+
+## 37-1 외부 참여자(매직 링크)
+- 관리(authed): `POST /api/sites/:id/chat/participants {kind,name,note}`(링크 발급) · `GET`(목록) · `DELETE /api/chat/participants/:id`(취소·팀검증).
+- **게스트(무인증, 토큰=자격증명, /api/chat-guest/* 게이트 예외)**: `GET /api/chat-guest/:token?after=`(로드/폴링) · `POST`(전송). 게스트 메시지 kind=client|vendor, sender_name="{이름} (클라이언트|협력업체)".
+- **게스트 @AI = 제한형**: `runAiConversation(convo,500,false)` — **run_sql 미사용**, 시스템 프롬프트에 현장 일정(`siteScheduleBrief`)만 주입 + "비용/견적/발주/내부정보 모름→담당자 문의" 지시. 실검증: 일정질문 정확 응답, 비용질문 거부(누출 0).
+- 게스트 발신 → 팀원 인앱+외부 알림(notifyUsers actorUserId=null).
+
+## 37-2 AI 자동 브리핑(3단계)
+- `POST /api/sites/:id/chat/system {body}`(authed) → kind='system' 메시지. **사진 업로드 성공 후 PhotosTab 이 자동 호출** → "📷 M/D 현장사진 N장 업로드 · 공정: …" 를 채팅방(클라이언트도 보는)에 게시.
+
+## 37-3 UI
+- **ChatBubbleList**/**AiTypingIndicator** 공용 컴포넌트 추출(팀·게스트 동일 룩). 게스트(client/vendor) 말풍선=앰버/틸 + 배지.
+- ChatRoomTab: 헤더 [👥 참여자 초대] → **ChatInviteModal**(클라이언트/협력업체 토글·이름·메모·링크 즉시 복사·참여자 목록·복사/공유/내보내기).
+- **ChatGuestView**(무인증 `#/chat/<token>`, `parseChatGuestRoute` → AuthGate 분기): 헤더(현장·참여자)·말풍선·4초 폴링·@AI·전송. 최대폭 2xl 모바일 친화.
+
+## 검증 (2026-07-26, 로컬+실 OpenAI, Playwright)
+- API: 참여자 초대→게스트 로드/전송, 게스트 @AI(일정 응답 O·비용 거부 O), 팀 채팅에 게스트 메시지 노출.
+- Playwright: 게스트뷰 @AI "7/27 완공예정" 응답 / 팀뷰 클라이언트 메시지 앰버 배지+알림 1 / 초대 모달(참여자 1명·복사/공유/내보내기). 콘솔 에러 0. 테스트 데이터 정리.
